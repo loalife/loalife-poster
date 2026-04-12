@@ -204,7 +204,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     </div>
     <div id="th" style="display:none;">
       <div class="script-box"><div class="script-label">読み上げスクリプト</div><div class="script-text" id="sc-h"></div></div>
-      <div class="script-box"><div class="script-label">最寄りの保健所（神楽坂周辺）</div><div class="script-text">新宿区保健所<br>03-5273-3820</div></div>
+<div class="script-box"><div class="script-label">最寄りの保健所</div><div class="script-text" id="hokenjo-name"></div><div class="script-text" id="hokenjo-tel" style="margin-top:4px;"></div><div class="script-text" id="hokenjo-address" style="font-size:11px;color:var(--brown-light);margin-top:2px;"></div></div>
+<a class="call-btn" id="hokenjo-call" href="tel:">保健所に電話する</a>
       <a class="call-btn" href="tel:0352733820">保健所に電話する</a>
     </div>
     <div class="cta-box">
@@ -300,7 +301,11 @@ async function generate() {
   document.getElementById('c-name').textContent = name;
   document.getElementById('c-breed').textContent = breed;
   document.getElementById('sc-p').textContent = '「迷子の犬の届け出をしたいのですが。名前は' + name + '、' + breed + 'です。' + feat + '。' + place + 'でいなくなりました。連絡先は' + tel + 'です。」';
-  document.getElementById('sc-h').textContent = '「迷子の犬を探しています。' + breed + 'で、名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合は' + tel + 'にご連絡いただけますか。」';
+  document.getElementById('sc-h').textContent = var hokenjo = getHokenjo(place);
+document.getElementById('hokenjo-name').textContent = hokenjo.name;
+document.getElementById('hokenjo-tel').textContent = hokenjo.tel;
+document.getElementById('hokenjo-address').textContent = hokenjo.address;
+document.getElementById('hokenjo-call').href = 'tel:' + hokenjo.tel.replace(/-/g, '');'「迷子の犬を探しています。' + breed + 'で、名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合は' + tel + 'にご連絡いただけますか。」';
 
   var posterPhotoWrap = document.getElementById('poster-photo-wrap');
   posterPhotoWrap.innerHTML = photoBase64
@@ -386,6 +391,44 @@ function sw(id) {
   window.scrollTo(0, 0);
 }
 
+  var hokenjoData = {
+  '新宿': { name: '新宿区保健所', tel: '03-5273-3820', address: '新宿区歌舞伎町1-4-1' },
+  '神楽坂': { name: '新宿区保健所', tel: '03-5273-3820', address: '新宿区歌舞伎町1-4-1' },
+  '早稲田': { name: '新宿区保健所', tel: '03-5273-3820', address: '新宿区歌舞伎町1-4-1' },
+  '渋谷': { name: '渋谷区保健所', tel: '03-3463-2111', address: '渋谷区宇田川町1-1' },
+  '恵比寿': { name: '渋谷区保健所', tel: '03-3463-2111', address: '渋谷区宇田川町1-1' },
+  '代官山': { name: '渋谷区保健所', tel: '03-3463-2111', address: '渋谷区宇田川町1-1' },
+  '港': { name: '港区保健所', tel: '03-6400-0084', address: '港区海岸1-4-22' },
+  '六本木': { name: '港区保健所', tel: '03-6400-0084', address: '港区海岸1-4-22' },
+  '麻布': { name: '港区保健所', tel: '03-6400-0084', address: '港区海岸1-4-22' },
+  '千代田': { name: '千代田区保健所', tel: '03-5211-8166', address: '千代田区九段南1-2-1' },
+  '中央': { name: '中央区保健所', tel: '03-3541-5930', address: '中央区築地1-1-1' },
+  '文京': { name: '文京区保健所', tel: '03-5803-1291', address: '文京区春日1-16-21' },
+  '台東': { name: '台東区保健所', tel: '03-3847-9405', address: '台東区東上野4-22-8' },
+  '墨田': { name: '墨田区保健所', tel: '03-5608-6191', address: '墨田区吾妻橋1-23-20' },
+  '江東': { name: '江東区保健所', tel: '03-3647-5946', address: '江東区東陽4-11-28' },
+  '品川': { name: '品川区保健所', tel: '03-5742-6706', address: '品川区広町2-1-36' },
+  '目黒': { name: '目黒区保健所', tel: '03-5722-9500', address: '目黒区上目黒2-19-15' },
+  '大田': { name: '大田区保健所', tel: '03-5764-0661', address: '大田区蒲田5-13-14' },
+  '世田谷': { name: '世田谷区保健所', tel: '03-5432-2908', address: '世田谷区世田谷4-21-27' },
+  '中野': { name: '中野区保健所', tel: '03-3382-6500', address: '中野区中野2-17-6' },
+  '杉並': { name: '杉並区保健所', tel: '03-3391-0015', address: '杉並区阿佐谷南1-15-1' },
+  '豊島': { name: '豊島区保健所', tel: '03-3987-4172', address: '豊島区東池袋4-42-16' },
+  '北': { name: '北区保健所', tel: '03-3919-4500', address: '北区王子1-11-1' },
+  '荒川': { name: '荒川区保健所', tel: '03-3802-4243', address: '荒川区荒川2-2-3' },
+  '板橋': { name: '板橋区保健所', tel: '03-3579-2327', address: '板橋区板橋2-65-6' },
+  '練馬': { name: '練馬区保健所', tel: '03-5984-2484', address: '練馬区豊玉北6-12-1' },
+  '足立': { name: '足立区保健所', tel: '03-3880-5964', address: '足立区中央本町1-22-1' },
+  '葛飾': { name: '葛飾区保健所', tel: '03-3602-1204', address: '葛飾区青戸4-15-14' },
+  '江戸川': { name: '江戸川区保健所', tel: '03-3652-1303', address: '江戸川区中央1-4-1' },
+};
+
+function getHokenjo(place) {
+  for (var key in hokenjoData) {
+    if (place.indexOf(key) !== -1) return hokenjoData[key];
+  }
+  return null;
+}
 function st(t, el) {
   document.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
   el.classList.add('on');
