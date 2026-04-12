@@ -47,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .poster-top h1{color:#fff;font-size:20px;font-weight:500;letter-spacing:3px;}
 .poster-top p{color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px;}
 .poster-mid{padding:1rem 1.25rem;display:flex;gap:14px;}
-.poster-img{width:88px;height:88px;border-radius:14px;background:var(--beige-mid);flex-shrink:0;object-fit:cover;}
+.poster-img{width:88px;height:88px;border-radius:14px;flex-shrink:0;object-fit:cover;}
 .poster-img-placeholder{width:88px;height:88px;border-radius:14px;background:var(--beige-mid);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:36px;}
 .poster-name{font-size:19px;font-weight:500;color:var(--brown);margin-bottom:4px;}
 .poster-detail{font-size:12px;color:var(--brown-mid);line-height:1.9;}
@@ -108,7 +108,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="fg">
         <label>愛犬の写真</label>
         <div class="photo-upload">
-          <input type="file" accept="image/*" onchange="handlePhoto(event)">
+          <input type="file" accept="image/*" id="photo-input" onchange="handlePhoto(event)">
           <div id="upload-placeholder">
             <div class="photo-upload-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
             <p style="font-size:13px;font-weight:500;color:var(--brown);">写真を追加する</p>
@@ -174,7 +174,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">見かけた場所・状況を教えてください。飼い主にすぐ届きます。</p>
     <div class="form-area">
       <div class="fg"><label>見かけた場所</label><input id="s-place" type="text" placeholder="例：神楽坂駅 北口付近"></div>
-      <div class="fg"><label>状況・コメント</label><textarea id="s-comment" placeholder="例：赤い首輪のコーギーを見ました。矢来公園の方向に走っていきました。"></textarea></div>
+      <div class="fg"><label>状況・コメント</label><textarea id="s-comment" placeholder="例：赤い首輪のコーギーを見ました。"></textarea></div>
     </div>
     <button class="btn-main" onclick="sendSighting()">目撃情報を送信する</button>
     <button class="btn-sub" onclick="sw('s2')">戻る</button>
@@ -237,12 +237,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   </div>
 </div>
 
-<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const firebaseConfig = {
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+var firebaseConfig = {
   apiKey: "AIzaSyCyMcceBNNRpg-lyTtd7oslSwEDOxcco2g",
   authDomain: "loalife-5071d.firebaseapp.com",
   projectId: "loalife-5071d",
@@ -250,13 +249,12 @@ const firebaseConfig = {
   messagingSenderId: "405613985494",
   appId: "1:405613985494:web:eb4be0f5caa132fe6d9377"
 };
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
 var petData = {};
 var currentDocId = null;
 
-window.handlePhoto = function(event) {
+function handlePhoto(event) {
   var file = event.target.files[0];
   if (!file) return;
   var reader = new FileReader();
@@ -269,24 +267,25 @@ window.handlePhoto = function(event) {
     placeholder.style.display = 'none';
   };
   reader.readAsDataURL(file);
-};
+}
 
-window.generate = async function() {
+async function generate() {
   var name = document.getElementById('f-name').value || 'ロア';
   var breed = document.getElementById('f-breed').value || 'コーギー';
   var feat = document.getElementById('f-feat').value || '';
   var place = document.getElementById('f-place').value || '';
   var tel = document.getElementById('f-tel').value || '';
-  petData = { ...petData, name, breed, feat, place, tel };
+  petData = Object.assign({}, petData, { name: name, breed: breed, feat: feat, place: place, tel: tel });
 
   try {
-    var docRef = await addDoc(collection(db, 'pets'), {
-      name, breed, feat, place, tel,
+    var docRef = await db.collection('pets').add({
+      name: name, breed: breed, feat: feat, place: place, tel: tel,
       photo: petData.photoBase64 || null,
-      createdAt: serverTimestamp()
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     currentDocId = docRef.id;
   } catch(e) {
+    console.log('Firestore error:', e);
     currentDocId = 'demo-' + Date.now();
   }
 
@@ -324,28 +323,28 @@ window.generate = async function() {
 
   await loadSightings();
   sw('s2');
-};
+}
 
-window.sendSighting = async function() {
+async function sendSighting() {
   var place = document.getElementById('s-place').value;
   var comment = document.getElementById('s-comment').value;
   if (!place && !comment) { alert('場所またはコメントを入力してください'); return; }
   try {
-    await addDoc(collection(db, 'pets', currentDocId || 'demo', 'sightings'), {
-      place, comment, createdAt: serverTimestamp()
+    await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
+      place: place, comment: comment,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch(e) { console.log(e); }
   document.getElementById('s-place').value = '';
   document.getElementById('s-comment').value = '';
   await loadSightings();
   sw('s-success');
-};
+}
 
 async function loadSightings() {
   if (!currentDocId) return;
   try {
-    var q = query(collection(db, 'pets', currentDocId, 'sightings'), orderBy('createdAt', 'desc'));
-    var snapshot = await getDocs(q);
+    var snapshot = await db.collection('pets').doc(currentDocId).collection('sightings').orderBy('createdAt', 'desc').get();
     var list = document.getElementById('sighting-list');
     var count = document.getElementById('sighting-count');
     if (snapshot.empty) {
@@ -365,18 +364,18 @@ async function loadSightings() {
   } catch(e) { console.log(e); }
 }
 
-window.sw = function(id) {
+function sw(id) {
   document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
-};
+}
 
-window.st = function(t, el) {
+function st(t, el) {
   document.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
   el.classList.add('on');
   document.getElementById('tp').style.display = t === 'p' ? 'block' : 'none';
   document.getElementById('th').style.display = t === 'h' ? 'block' : 'none';
-};
+}
 </script>
 </body>
 </html>
