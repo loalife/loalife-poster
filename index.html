@@ -3,240 +3,380 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LOALIFE - 迷子ポスター作成</title>
+<title>LOALIFE - 迷子犬ポスター作成</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; background: #f5f5f0; min-height: 100vh; }
-.app { max-width: 480px; margin: 0 auto; padding: 1rem; }
-.step { display: none; }
-.step.active { display: block; }
-.logo { font-size: 20px; font-weight: 500; color: #1a1a1a; margin-bottom: 1.5rem; margin-top: 1rem; display: flex; align-items: center; gap: 8px; }
-.logo-dot { width: 10px; height: 10px; border-radius: 50%; background: #1D9E75; }
-h2 { font-size: 18px; font-weight: 500; color: #1a1a1a; margin-bottom: 0.5rem; }
-.sub { font-size: 14px; color: #666; margin-bottom: 1.5rem; line-height: 1.6; }
-.form-group { margin-bottom: 1rem; }
-label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
-input, textarea, select { width: 100%; font-size: 15px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; color: #1a1a1a; font-family: inherit; outline: none; }
-input:focus, textarea:focus { border-color: #1D9E75; }
-textarea { resize: none; height: 72px; }
-.btn-primary { width: 100%; padding: 14px; background: #1D9E75; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 1rem; font-family: inherit; }
-.btn-primary:active { opacity: 0.85; }
-.btn-secondary { width: 100%; padding: 12px; background: #fff; color: #1a1a1a; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 0.75rem; font-family: inherit; }
-.poster-card { border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background: #fff; }
-.poster-header { background: #D85A30; padding: 1rem; text-align: center; }
-.poster-header h1 { color: #fff; font-size: 26px; font-weight: 500; letter-spacing: 2px; }
-.poster-body { padding: 1rem; display: flex; gap: 1rem; }
-.poster-photo { width: 100px; height: 100px; border-radius: 8px; background: #f0f0f0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
-.poster-info { flex: 1; }
-.poster-name { font-size: 20px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
-.poster-detail { font-size: 13px; color: #555; line-height: 1.8; }
-.poster-footer { padding: 0.75rem 1rem; background: #f9f9f9; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-.contact { font-size: 13px; color: #1a1a1a; font-weight: 500; }
-.qr-box { width: 56px; height: 56px; background: #fff; border: 1px solid #ddd; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px; }
-.qr-row { display: flex; gap: 2px; }
-.qr-cell { width: 6px; height: 6px; background: #1a1a1a; border-radius: 1px; }
-.qr-cell.w { background: #fff; }
-.loalife-badge { margin-top: 1rem; background: #E1F5EE; border: 1px solid #5DCAA5; border-radius: 8px; padding: 1rem; }
-.loalife-badge p { font-size: 13px; color: #0F6E56; line-height: 1.6; }
-.loalife-badge strong { font-weight: 500; }
-.actions { margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.action-btn { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; background: #fff; color: #1a1a1a; font-family: inherit; text-align: center; }
-.tab-bar { display: flex; gap: 4px; margin-bottom: 1.5rem; background: #eee; padding: 4px; border-radius: 8px; }
-.tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; cursor: pointer; border-radius: 6px; color: #666; border: none; background: transparent; font-family: inherit; }
-.tab.active { background: #fff; color: #1a1a1a; font-weight: 500; }
-.script-card { background: #f9f9f9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-.script-card h3 { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 0.5rem; }
-.script-card p { font-size: 14px; color: #1a1a1a; line-height: 1.8; }
-.emergency-btn { width: 100%; padding: 14px; background: #D85A30; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 8px; font-family: inherit; }
-.green-btn { background: #1D9E75; }
-.register-cta { margin-top: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 1.25rem; text-align: center; }
-.register-cta p { font-size: 13px; color: #666; margin-bottom: 0.75rem; line-height: 1.6; }
-.progress { display: flex; gap: 4px; margin-bottom: 1.5rem; }
-.progress-dot { height: 4px; flex: 1; border-radius: 2px; background: #ddd; }
-.progress-dot.done { background: #1D9E75; }
-.card-preview { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
-.card-avatar { width: 64px; height: 64px; border-radius: 50%; background: #E1F5EE; display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
-.card-info { flex: 1; }
-.card-name { font-size: 18px; font-weight: 500; color: #1a1a1a; }
-.card-breed { font-size: 13px; color: #666; margin-top: 2px; }
-.card-tag { display: inline-block; margin-top: 6px; font-size: 11px; color: #0F6E56; background: #E1F5EE; padding: 2px 8px; border-radius: 20px; }
-.card-qr { width: 48px; height: 48px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; flex-shrink: 0; }
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --peach:#E8765A;--peach-light:#FAEAE5;--peach-mid:#F0997B;
+  --beige:#FFFBF5;--beige-mid:#F2E8DC;--beige-dark:#E8D9C8;
+  --brown:#3D2C2C;--brown-mid:#7A5C5C;--brown-light:#B09090;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--beige);min-height:100vh;}
+.phone{max-width:390px;margin:0 auto;background:var(--beige);padding-bottom:3rem;}
+.step{display:none;}.step.active{display:block;}
+.header{padding:1.25rem 1.25rem 0.75rem;display:flex;align-items:center;gap:8px;}
+.logo-mark{width:28px;height:28px;border-radius:50%;background:var(--peach);display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:14px;height:14px;fill:#fff;}
+.logo-text{font-size:17px;font-weight:500;color:var(--brown);}
+.progress{display:flex;gap:5px;padding:0 1.25rem;margin-bottom:1.5rem;}
+.dot{height:4px;flex:1;border-radius:2px;background:var(--beige-dark);}
+.dot.on{background:var(--peach);}
+.hero{margin:0 1.25rem 1.5rem;background:var(--peach-light);border-radius:20px;padding:1.5rem;border:1px solid var(--beige-dark);}
+.hero h2{font-size:22px;font-weight:500;color:var(--brown);line-height:1.3;margin-bottom:8px;}
+.hero p{font-size:13px;color:var(--brown-mid);line-height:1.7;}
+.hero .now{font-size:13px;font-weight:500;color:var(--peach);margin-top:8px;}
+.form-area{padding:0 1.25rem;}
+.fg{margin-bottom:1rem;}
+.fg label{font-size:12px;font-weight:500;color:var(--brown-mid);display:block;margin-bottom:5px;}
+.fg input,.fg textarea{width:100%;font-size:15px;padding:12px 14px;border:1.5px solid var(--beige-dark);border-radius:14px;background:#fff;color:var(--brown);font-family:inherit;outline:none;-webkit-appearance:none;}
+.fg input:focus,.fg textarea:focus{border-color:var(--peach);}
+.fg textarea{resize:none;height:72px;}
+.photo-upload{border:1.5px dashed var(--beige-dark);border-radius:16px;padding:1.5rem;text-align:center;background:#fff;cursor:pointer;position:relative;overflow:hidden;}
+.photo-upload input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.photo-upload-icon{width:40px;height:40px;background:var(--peach-light);border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;}
+.photo-upload-icon svg{width:20px;height:20px;fill:var(--peach);}
+.photo-preview-img{width:100%;max-height:200px;object-fit:cover;border-radius:12px;display:none;}
+.btn-main{width:calc(100% - 2.5rem);margin:0 1.25rem;padding:16px;background:var(--peach);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;text-decoration:none;}
+.btn-sub{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:14px;background:#fff;color:var(--brown);border:1.5px solid var(--beige-dark);border-radius:16px;font-size:15px;cursor:pointer;font-family:inherit;display:block;}
+.btn-sighting{width:calc(100% - 2.5rem);margin:0 1.25rem;padding:16px;background:#fff;color:var(--brown);border:2px solid var(--peach);border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
+.section-header{padding:0 1.25rem;margin-bottom:1rem;}
+.section-header span{font-size:17px;font-weight:500;color:var(--brown);}
+.poster-wrap{margin:0 1.25rem 1rem;}
+.poster{background:#fff;border-radius:20px;overflow:hidden;border:1px solid var(--beige-dark);}
+.poster-top{background:var(--peach);padding:1rem 1.25rem;text-align:center;}
+.poster-top h1{color:#fff;font-size:20px;font-weight:500;letter-spacing:3px;}
+.poster-top p{color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px;}
+.poster-mid{padding:1rem 1.25rem;display:flex;gap:14px;}
+.poster-img{width:88px;height:88px;border-radius:14px;background:var(--beige-mid);flex-shrink:0;object-fit:cover;}
+.poster-img-placeholder{width:88px;height:88px;border-radius:14px;background:var(--beige-mid);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:36px;}
+.poster-name{font-size:19px;font-weight:500;color:var(--brown);margin-bottom:4px;}
+.poster-detail{font-size:12px;color:var(--brown-mid);line-height:1.9;}
+.poster-bottom{padding:0.75rem 1.25rem;background:var(--beige);border-top:1px solid var(--beige-dark);display:flex;justify-content:space-between;align-items:center;}
+.poster-contact{font-size:13px;font-weight:500;color:var(--brown);}
+.poster-sub{font-size:11px;color:var(--brown-light);margin-top:1px;}
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 1.25rem 1rem;}
+.action-btn{padding:12px 8px;background:#fff;color:var(--brown);border:1.5px solid var(--beige-dark);border-radius:14px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;text-align:center;}
+.badge{margin:0 1.25rem 1rem;background:var(--peach-light);border:1px solid var(--peach-mid);border-radius:16px;padding:1rem 1.25rem;}
+.badge-title{font-size:13px;font-weight:500;color:var(--peach);margin-bottom:4px;}
+.badge-text{font-size:13px;color:var(--brown-mid);line-height:1.6;}
+.divider{margin:0 1.25rem 1rem;border:none;border-top:1px solid var(--beige-dark);}
+.sighting-header{padding:0 1.25rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:6px;}
+.sighting-dot{width:8px;height:8px;border-radius:50%;background:var(--peach);}
+.sighting-list{margin:0 1.25rem;}
+.sighting-item{background:#fff;border-radius:16px;border:1px solid var(--beige-dark);padding:1rem;margin-bottom:8px;}
+.sighting-place{font-size:13px;font-weight:500;color:var(--brown);margin-bottom:2px;}
+.sighting-comment{font-size:12px;color:var(--brown-mid);line-height:1.6;}
+.sighting-time{font-size:11px;color:var(--brown-light);margin-top:4px;}
+.loading{text-align:center;padding:1rem;font-size:13px;color:var(--brown-mid);}
+.success-wrap{padding:3rem 1.25rem;text-align:center;}
+.success-icon{width:72px;height:72px;background:var(--peach-light);border-radius:50%;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;}
+.success-icon svg{width:36px;height:36px;fill:var(--peach);}
+.success-title{font-size:22px;font-weight:500;color:var(--brown);margin-bottom:0.75rem;}
+.success-text{font-size:14px;color:var(--brown-mid);line-height:1.7;margin-bottom:2rem;}
+.card-wrap{margin:0 1.25rem 1rem;background:#fff;border-radius:20px;border:1px solid var(--beige-dark);padding:1.25rem;display:flex;align-items:center;gap:1rem;}
+.card-avatar{width:68px;height:68px;border-radius:50%;flex-shrink:0;object-fit:cover;}
+.card-avatar-placeholder{width:68px;height:68px;border-radius:50%;background:var(--peach-light);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;}
+.card-name{font-size:19px;font-weight:500;color:var(--brown);}
+.card-breed{font-size:13px;color:var(--brown-mid);margin-top:2px;}
+.card-tag{display:inline-block;margin-top:6px;font-size:11px;color:var(--peach);background:var(--peach-light);padding:3px 10px;border-radius:20px;font-weight:500;}
+.tab-row{display:flex;gap:4px;margin:0 1.25rem 1.25rem;background:var(--beige-mid);padding:4px;border-radius:12px;}
+.tab{flex:1;padding:9px;text-align:center;font-size:13px;cursor:pointer;border-radius:10px;color:var(--brown-mid);border:none;background:transparent;font-family:inherit;}
+.tab.on{background:#fff;color:var(--brown);font-weight:500;}
+.script-box{margin:0 1.25rem 1rem;background:#fff;border-radius:16px;padding:1rem 1.25rem;border:1px solid var(--beige-dark);}
+.script-label{font-size:11px;font-weight:500;color:var(--brown-mid);margin-bottom:8px;}
+.script-text{font-size:14px;color:var(--brown);line-height:1.8;}
+.call-btn{width:calc(100% - 2.5rem);margin:0 1.25rem 0.75rem;padding:15px;background:var(--peach);color:#fff;border:none;border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-decoration:none;text-align:center;}
+.cta-box{margin:1rem 1.25rem;background:#fff;border:1.5px solid var(--beige-dark);border-radius:20px;padding:1.25rem;text-align:center;}
+.cta-text{font-size:13px;color:var(--brown-mid);line-height:1.6;margin-bottom:1rem;}
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="logo"><div class="logo-dot"></div>LOALIFE</div>
-
-  <div class="step active" id="step-form">
-    <div class="progress">
-      <div class="progress-dot done"></div>
-      <div class="progress-dot"></div>
-      <div class="progress-dot"></div>
-    </div>
-    <h2>迷子のポスターを作る</h2>
-    <p class="sub">情報を入れるだけで、30秒でポスターが完成します。アプリ不要です。</p>
-    <div class="form-group">
-      <label>名前</label>
-      <input type="text" id="pet-name" placeholder="例：ロア">
-    </div>
-    <div class="form-group">
-      <label>犬種</label>
-      <input type="text" id="pet-breed" placeholder="例：コーギー">
-    </div>
-    <div class="form-group">
-      <label>毛色・特徴</label>
-      <textarea id="pet-features" placeholder="例：茶色と白のコーギー、首輪は赤"></textarea>
-    </div>
-    <div class="form-group">
-      <label>迷子になった場所</label>
-      <input type="text" id="lost-place" placeholder="例：神楽坂駅周辺">
-    </div>
-    <div class="form-group">
-      <label>連絡先（電話番号）</label>
-      <input type="tel" id="contact" placeholder="例：090-1234-5678">
-    </div>
-    <button class="btn-primary" onclick="showPoster()">ポスターを生成する</button>
+<div class="phone">
+  <div class="header">
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26C17.81 13.47 19 11.38 19 9c0-3.87-3.13-7-7-7z"/></svg></div>
+    <span class="logo-text">LOALIFE</span>
   </div>
 
-  <div class="step" id="step-poster">
-    <div class="progress">
-      <div class="progress-dot done"></div>
-      <div class="progress-dot done"></div>
-      <div class="progress-dot"></div>
+  <div class="step active" id="s1">
+    <div class="progress"><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="hero">
+      <h2>迷子犬ポスターを30秒で作成</h2>
+      <p>写真と情報を入力するだけでSNS投稿用画像とコンビニ印刷用ポスターを自動生成。アプリ不要。</p>
+      <div class="now">今すぐ探し始められます。</div>
     </div>
-    <h2>ポスターが完成しました</h2>
-    <p class="sub">このままSNSに投稿するか、コンビニで印刷できます。</p>
-    <div class="poster-card">
-      <div class="poster-header"><h1>迷子のお知らせ</h1></div>
-      <div class="poster-body">
-        <div class="poster-photo">🐕</div>
-        <div class="poster-info">
-          <div class="poster-name" id="poster-name"></div>
-          <div class="poster-detail" id="poster-detail"></div>
+    <div class="form-area">
+      <div class="fg">
+        <label>愛犬の写真</label>
+        <div class="photo-upload">
+          <input type="file" accept="image/*" onchange="handlePhoto(event)">
+          <div id="upload-placeholder">
+            <div class="photo-upload-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
+            <p style="font-size:13px;font-weight:500;color:var(--brown);">写真を追加する</p>
+            <p style="font-size:11px;color:var(--brown-light);margin-top:2px;">タップして選択</p>
+          </div>
+          <img class="photo-preview-img" id="photo-preview" src="" alt="プレビュー">
         </div>
       </div>
-      <div class="poster-footer">
-        <div>
-          <div class="contact" id="poster-contact"></div>
-          <div style="font-size: 11px; color: #888; margin-top: 2px;">見かけた方はご連絡ください</div>
+      <div class="fg"><label>名前</label><input id="f-name" placeholder="例：ロア" type="text"></div>
+      <div class="fg"><label>犬種</label><input id="f-breed" placeholder="例：コーギー" type="text"></div>
+      <div class="fg"><label>毛色・特徴</label><textarea id="f-feat" placeholder="例：茶色と白、赤い首輪"></textarea></div>
+      <div class="fg"><label>迷子になった場所</label><input id="f-place" placeholder="例：神楽坂駅周辺" type="text"></div>
+      <div class="fg"><label>連絡先</label><input id="f-tel" placeholder="例：090-1234-5678" type="tel"></div>
+    </div>
+    <button class="btn-main" style="margin-top:1rem;" onclick="generate()">ポスターを生成する</button>
+  </div>
+
+  <div class="step" id="s2">
+    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div>
+    <div class="section-header"><span>ポスターが完成しました</span></div>
+    <div class="poster-wrap">
+      <div class="poster">
+        <div class="poster-top"><h1>迷子のお知らせ</h1><p>LOALIFE 迷子ネットワーク</p></div>
+        <div class="poster-mid">
+          <div id="poster-photo-wrap"></div>
+          <div>
+            <div class="poster-name" id="p-name"></div>
+            <div class="poster-detail" id="p-detail"></div>
+          </div>
         </div>
-        <div class="qr-box">
-          <div class="qr-row"><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell w"></div><div class="qr-cell"></div><div class="qr-cell"></div></div>
-          <div class="qr-row"><div class="qr-cell w"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell w"></div><div class="qr-cell"></div></div>
-          <div class="qr-row"><div class="qr-cell"></div><div class="qr-cell w"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell w"></div></div>
-          <div class="qr-row"><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell w"></div><div class="qr-cell"></div><div class="qr-cell"></div></div>
+        <div class="poster-bottom">
+          <div>
+            <div class="poster-contact" id="p-tel"></div>
+            <div class="poster-sub">見かけた方はご連絡ください</div>
+          </div>
+          <div id="qr-code"></div>
         </div>
       </div>
     </div>
-    <div class="actions">
+    <div class="action-row">
       <button class="action-btn">インスタ用に保存</button>
       <button class="action-btn">コンビニ印刷PDF</button>
     </div>
-    <div class="loalife-badge">
-      <p><strong>LOALIFEが見守っています</strong><br>ポスターのQRコードを読むと、この子のプロフィールページが開きます。保護した方が直接あなたに連絡できます。</p>
+    <div class="badge">
+      <div class="badge-title">LOALIFEが見守っています</div>
+      <div class="badge-text">QRを読んだ人がプロフィールページへ。保護した方が直接連絡できます。</div>
     </div>
-    <button class="btn-primary" onclick="showScript()">警察・保健所への連絡スクリプトを見る</button>
-    <button class="btn-secondary" onclick="showCard()">うちの子カードも作っておく</button>
+    <hr class="divider">
+    <div class="sighting-header"><div class="sighting-dot"></div><span id="sighting-count">目撃情報 0件</span></div>
+    <div class="sighting-list" id="sighting-list"><p class="loading">まだ目撃情報はありません</p></div>
+    <div style="margin-bottom:1rem;"></div>
+    <button class="btn-sighting" onclick="sw('s-sighting')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--peach)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      目撃情報を送る
+    </button>
+    <button class="btn-sub" style="margin-top:0.75rem;" onclick="sw('s3')">警察・保健所への連絡スクリプト</button>
+    <button class="btn-sub" onclick="sw('s-card')">うちの子カードを見る</button>
   </div>
 
-  <div class="step" id="step-script">
-    <div class="progress">
-      <div class="progress-dot done"></div>
-      <div class="progress-dot done"></div>
-      <div class="progress-dot done"></div>
+  <div class="step" id="s-sighting">
+    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
+    <div class="section-header"><span>目撃情報を送る</span></div>
+    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">見かけた場所・状況を教えてください。飼い主にすぐ届きます。</p>
+    <div class="form-area">
+      <div class="fg"><label>見かけた場所</label><input id="s-place" type="text" placeholder="例：神楽坂駅 北口付近"></div>
+      <div class="fg"><label>状況・コメント</label><textarea id="s-comment" placeholder="例：赤い首輪のコーギーを見ました。矢来公園の方向に走っていきました。"></textarea></div>
     </div>
-    <h2>連絡スクリプト</h2>
-    <p class="sub">このまま読み上げるだけでOKです。パニックの時に考えなくていい設計です。</p>
-    <div class="tab-bar">
-      <button class="tab active" onclick="switchTab('police', this)">警察</button>
-      <button class="tab" onclick="switchTab('hokenjo', this)">保健所</button>
-    </div>
-    <div id="tab-police">
-      <div class="script-card">
-        <h3>読み上げスクリプト</h3>
-        <p id="police-script"></p>
-      </div>
-      <a href="tel:110"><button class="emergency-btn">警察に電話する（110）</button></a>
-    </div>
-    <div id="tab-hokenjo" style="display:none;">
-      <div class="script-card">
-        <h3>読み上げスクリプト</h3>
-        <p id="hokenjo-script"></p>
-      </div>
-      <div class="script-card">
-        <h3>最寄りの保健所（神楽坂周辺）</h3>
-        <p>新宿区保健所<br>03-5273-3820<br>新宿区歌舞伎町1-4-1</p>
-      </div>
-      <a href="tel:0352733820"><button class="emergency-btn green-btn">保健所に電話する</button></a>
-    </div>
-    <div class="register-cta">
-      <p>事前に登録しておけば、次回からポスターが<strong>ワンタップ</strong>で生成されます。うちの子カードも作れます。</p>
-      <button class="btn-primary" onclick="showCard()">うちの子カードを作る</button>
+    <button class="btn-main" onclick="sendSighting()">目撃情報を送信する</button>
+    <button class="btn-sub" onclick="sw('s2')">戻る</button>
+  </div>
+
+  <div class="step" id="s-success">
+    <div class="success-wrap">
+      <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+      <div class="success-title">送信しました</div>
+      <div class="success-text">目撃情報が飼い主に届きました。<br>ご協力ありがとうございます。<br><br>周りの人にもシェアしてもらえると助かります。</div>
+      <button class="btn-main" style="width:100%;margin:0 0 0.75rem;" onclick="sw('s2')">ポスターページに戻る</button>
+      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-sighting')">もう一件送る</button>
     </div>
   </div>
 
-  <div class="step" id="step-card">
-    <div class="progress">
-      <div class="progress-dot done"></div>
-      <div class="progress-dot done"></div>
-      <div class="progress-dot done"></div>
+  <div class="step" id="s3">
+    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
+    <div class="section-header"><span>連絡スクリプト</span></div>
+    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">このまま読み上げるだけでOKです。</p>
+    <div class="tab-row">
+      <button class="tab on" onclick="st('p',this)">警察</button>
+      <button class="tab" onclick="st('h',this)">保健所</button>
     </div>
-    <h2>うちの子カード</h2>
-    <p class="sub">名刺として犬友に渡したり、インスタにシェアできます。QRコードから迷子時の連絡も受け取れます。</p>
-    <div class="card-preview">
-      <div class="card-avatar">🐕</div>
-      <div class="card-info">
-        <div class="card-name" id="card-name"></div>
-        <div class="card-breed" id="card-breed"></div>
+    <div id="tp">
+      <div class="script-box"><div class="script-label">読み上げスクリプト</div><div class="script-text" id="sc-p"></div></div>
+      <a class="call-btn" href="tel:110">警察に電話する（110）</a>
+    </div>
+    <div id="th" style="display:none;">
+      <div class="script-box"><div class="script-label">読み上げスクリプト</div><div class="script-text" id="sc-h"></div></div>
+      <div class="script-box"><div class="script-label">最寄りの保健所（神楽坂周辺）</div><div class="script-text">新宿区保健所<br>03-5273-3820</div></div>
+      <a class="call-btn" href="tel:0352733820">保健所に電話する</a>
+    </div>
+    <div class="cta-box">
+      <div class="cta-text">事前登録しておけば次回からワンタップでポスターが生成されます。</div>
+      <button class="btn-main" style="width:100%;margin:0;" onclick="sw('s-card')">うちの子カードを作る</button>
+    </div>
+    <button class="btn-sub" onclick="sw('s2')">戻る</button>
+  </div>
+
+  <div class="step" id="s-card">
+    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
+    <div class="section-header"><span>うちの子カード</span></div>
+    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">名刺として犬友に渡したり、インスタにシェアできます。</p>
+    <div class="card-wrap">
+      <div id="card-photo-wrap"></div>
+      <div style="flex:1;">
+        <div class="card-name" id="c-name"></div>
+        <div class="card-breed" id="c-breed"></div>
         <div class="card-tag">LOALIFEが見守っています</div>
       </div>
-      <div class="card-qr">QR</div>
+      <div id="card-qr"></div>
     </div>
-    <div class="loalife-badge">
-      <p>このカードをインスタにシェアすると、あなたの犬友達がLOALIFEを知るきっかけになります。QRコードを読んだ人がプロフィールページに飛び、迷子時の連絡窓口になります。</p>
+    <div class="badge">
+      <div class="badge-title">名刺として配れる・インスタでシェアできる</div>
+      <div class="badge-text">QRを読んだ人がプロフィールページへ。迷子モードON時は保護した方が直接連絡できます。</div>
     </div>
-    <button class="btn-primary">インスタ用に保存</button>
-    <button class="btn-secondary">コンビニ印刷（名刺サイズ）</button>
-    <button class="btn-secondary" onclick="showForm()">最初からやり直す</button>
+    <button class="btn-main" style="margin-top:1rem;">インスタ用に保存</button>
+    <button class="btn-sub">コンビニ印刷（名刺サイズ）</button>
+    <button class="btn-sub" onclick="sw('s1')">最初からやり直す</button>
   </div>
 </div>
 
-<script>
-var petData = {};
+<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-function showPoster() {
-  var name = document.getElementById('pet-name').value || '（名前未入力）';
-  var breed = document.getElementById('pet-breed').value || '（犬種未入力）';
-  var features = document.getElementById('pet-features').value || '';
-  var place = document.getElementById('lost-place').value || '（場所未入力）';
-  var contact = document.getElementById('contact').value || '（連絡先未入力）';
-  petData = { name: name, breed: breed, features: features, place: place, contact: contact };
-  document.getElementById('poster-name').textContent = name;
-  document.getElementById('poster-detail').innerHTML = '犬種：' + breed + '<br>特徴：' + features + '<br>場所：' + place;
-  document.getElementById('poster-contact').textContent = contact;
-  document.getElementById('police-script').textContent = '「迷子の犬の届け出をしたいのですが。犬の名前は' + name + '、' + breed + 'です。' + features + '。' + place + 'でいなくなりました。連絡先は' + contact + 'です。」';
-  document.getElementById('hokenjo-script').textContent = '「迷子の犬を探しています。' + breed + 'で、名前は' + name + 'といいます。' + features + '。' + place + 'でいなくなりました。もし保護された場合は' + contact + 'にご連絡いただけますか。」';
-  document.getElementById('card-name').textContent = name;
-  document.getElementById('card-breed').textContent = breed;
-  switchStep('step-poster');
+const firebaseConfig = {
+  apiKey: "AIzaSyCyMcceBNNRpg-lyTtd7oslSwEDOxcco2g",
+  authDomain: "loalife-5071d.firebaseapp.com",
+  projectId: "loalife-5071d",
+  storageBucket: "loalife-5071d.firebasestorage.app",
+  messagingSenderId: "405613985494",
+  appId: "1:405613985494:web:eb4be0f5caa132fe6d9377"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+var petData = {};
+var currentDocId = null;
+
+window.handlePhoto = function(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    petData.photoBase64 = e.target.result;
+    var preview = document.getElementById('photo-preview');
+    var placeholder = document.getElementById('upload-placeholder');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    placeholder.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+};
+
+window.generate = async function() {
+  var name = document.getElementById('f-name').value || 'ロア';
+  var breed = document.getElementById('f-breed').value || 'コーギー';
+  var feat = document.getElementById('f-feat').value || '';
+  var place = document.getElementById('f-place').value || '';
+  var tel = document.getElementById('f-tel').value || '';
+  petData = { ...petData, name, breed, feat, place, tel };
+
+  try {
+    var docRef = await addDoc(collection(db, 'pets'), {
+      name, breed, feat, place, tel,
+      photo: petData.photoBase64 || null,
+      createdAt: serverTimestamp()
+    });
+    currentDocId = docRef.id;
+  } catch(e) {
+    currentDocId = 'demo-' + Date.now();
+  }
+
+  var profileUrl = window.location.href.split('?')[0] + '?id=' + currentDocId;
+
+  document.getElementById('p-name').textContent = name;
+  document.getElementById('p-detail').innerHTML = '犬種：' + breed + '<br>特徴：' + feat + '<br>場所：' + place;
+  document.getElementById('p-tel').textContent = tel;
+  document.getElementById('c-name').textContent = name;
+  document.getElementById('c-breed').textContent = breed;
+  document.getElementById('sc-p').textContent = '「迷子の犬の届け出をしたいのですが。名前は' + name + '、' + breed + 'です。' + feat + '。' + place + 'でいなくなりました。連絡先は' + tel + 'です。」';
+  document.getElementById('sc-h').textContent = '「迷子の犬を探しています。' + breed + 'で、名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合は' + tel + 'にご連絡いただけますか。」';
+
+  var posterPhotoWrap = document.getElementById('poster-photo-wrap');
+  posterPhotoWrap.innerHTML = petData.photoBase64
+    ? '<img class="poster-img" src="' + petData.photoBase64 + '" alt="' + name + '">'
+    : '<div class="poster-img-placeholder">🐕</div>';
+
+  var cardPhotoWrap = document.getElementById('card-photo-wrap');
+  cardPhotoWrap.innerHTML = petData.photoBase64
+    ? '<img class="card-avatar" src="' + petData.photoBase64 + '" alt="' + name + '">'
+    : '<div class="card-avatar-placeholder">🐕</div>';
+
+  var qrEl = document.getElementById('qr-code');
+  qrEl.innerHTML = '';
+  QRCode.toCanvas(document.createElement('canvas'), profileUrl, { width: 60, margin: 0 }, function(err, canvas) {
+    if (!err) qrEl.appendChild(canvas);
+  });
+
+  var cardQrEl = document.getElementById('card-qr');
+  cardQrEl.innerHTML = '';
+  QRCode.toCanvas(document.createElement('canvas'), profileUrl, { width: 52, margin: 0 }, function(err, canvas) {
+    if (!err) cardQrEl.appendChild(canvas);
+  });
+
+  await loadSightings();
+  sw('s2');
+};
+
+window.sendSighting = async function() {
+  var place = document.getElementById('s-place').value;
+  var comment = document.getElementById('s-comment').value;
+  if (!place && !comment) { alert('場所またはコメントを入力してください'); return; }
+  try {
+    await addDoc(collection(db, 'pets', currentDocId || 'demo', 'sightings'), {
+      place, comment, createdAt: serverTimestamp()
+    });
+  } catch(e) { console.log(e); }
+  document.getElementById('s-place').value = '';
+  document.getElementById('s-comment').value = '';
+  await loadSightings();
+  sw('s-success');
+};
+
+async function loadSightings() {
+  if (!currentDocId) return;
+  try {
+    var q = query(collection(db, 'pets', currentDocId, 'sightings'), orderBy('createdAt', 'desc'));
+    var snapshot = await getDocs(q);
+    var list = document.getElementById('sighting-list');
+    var count = document.getElementById('sighting-count');
+    if (snapshot.empty) {
+      list.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
+      count.textContent = '目撃情報 0件';
+      return;
+    }
+    count.textContent = '目撃情報 ' + snapshot.size + '件';
+    list.innerHTML = '';
+    snapshot.forEach(function(doc) {
+      var d = doc.data();
+      var item = document.createElement('div');
+      item.className = 'sighting-item';
+      item.innerHTML = '<div class="sighting-place">' + (d.place || '') + '</div><div class="sighting-comment">' + (d.comment || '') + '</div><div class="sighting-time">受信済み</div>';
+      list.appendChild(item);
+    });
+  } catch(e) { console.log(e); }
 }
 
-function showScript() { switchStep('step-script'); }
-function showCard() { switchStep('step-card'); }
-function showForm() { switchStep('step-form'); }
-
-function switchStep(id) {
+window.sw = function(id) {
   document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
-}
+};
 
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
-  document.getElementById('tab-police').style.display = tab === 'police' ? 'block' : 'none';
-  document.getElementById('tab-hokenjo').style.display = tab === 'hokenjo' ? 'block' : 'none';
-}
+window.st = function(t, el) {
+  document.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
+  el.classList.add('on');
+  document.getElementById('tp').style.display = t === 'p' ? 'block' : 'none';
+  document.getElementById('th').style.display = t === 'h' ? 'block' : 'none';
+};
 </script>
 </body>
 </html>
