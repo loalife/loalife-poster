@@ -45,6 +45,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .btn-main:active{opacity:0.9;}
 .btn-sub{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:14px;background:#fff;color:var(--brown);border:1.5px solid var(--beige-dark);border-radius:16px;font-size:15px;cursor:pointer;font-family:inherit;display:block;text-align:center;text-decoration:none;}
 .btn-found{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:14px;background:var(--green-light);color:var(--green);border:1.5px solid var(--green);border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;}
+.btn-protect{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:16px;background:var(--green);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;}
 .btn-sighting{width:calc(100% - 2.5rem);margin:0 1.25rem;padding:16px;background:#fff;color:var(--brown);border:2px solid var(--peach);border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
 .section-header{padding:0 1.25rem;margin-bottom:1rem;}
 .section-header span{font-size:17px;font-weight:500;color:var(--brown);}
@@ -66,9 +67,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .poster-cta{flex:1;}
 .poster-cta p{font-size:12px;font-weight:500;color:var(--brown);margin-bottom:2px;}
 .poster-cta small{font-size:10px;color:var(--brown-mid);}
-.badge{margin:0 1.25rem 1rem;background:var(--peach-light);border:1px solid var(--peach-mid);border-radius:16px;padding:1rem 1.25rem;}
-.badge-title{font-size:13px;font-weight:500;color:var(--peach);margin-bottom:4px;}
-.badge-text{font-size:13px;color:var(--brown-mid);line-height:1.6;}
 .privacy-badge{margin:0 1.25rem 1rem;background:var(--green-light);border:1px solid var(--green);border-radius:16px;padding:0.75rem 1.25rem;display:flex;align-items:center;gap:8px;}
 .privacy-badge svg{width:16px;height:16px;fill:var(--green);flex-shrink:0;}
 .privacy-badge p{font-size:12px;color:var(--green);line-height:1.5;}
@@ -97,14 +95,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
 .call-btn{width:calc(100% - 2.5rem);margin:0 1.25rem 0.75rem;padding:15px;background:var(--peach);color:#fff;border:none;border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-decoration:none;text-align:center;}
 .search-box{margin:0 1.25rem 1rem;background:#fff;border-radius:16px;padding:1rem 1.25rem;border:1px solid var(--beige-dark);}
 .search-link{display:block;margin-top:12px;padding:12px;background:var(--peach-light);color:var(--peach);border-radius:12px;text-align:center;font-size:13px;font-weight:500;text-decoration:none;}
-.protect-wrap{padding:2rem 1.25rem;text-align:center;}
+.protect-wrap{padding:2rem 1.25rem 1rem;text-align:center;}
 .protect-header{font-size:22px;font-weight:500;color:var(--brown);margin-bottom:0.5rem;}
 .protect-sub{font-size:14px;color:var(--brown-mid);line-height:1.7;margin-bottom:1.5rem;}
 .pet-card{background:#fff;border-radius:20px;border:1px solid var(--beige-dark);padding:1.25rem;margin-bottom:1.5rem;text-align:left;display:flex;gap:14px;align-items:center;}
 .pet-card-img{width:72px;height:72px;border-radius:50%;flex-shrink:0;object-fit:cover;background:var(--beige-mid);display:flex;align-items:center;justify-content:center;font-size:30px;}
 .pet-card-name{font-size:18px;font-weight:500;color:var(--brown);}
-.pet-card-breed{font-size:13px;color:var(--brown-mid);margin-top:2px;}
+.pet-card-breed{font-size:13px;color:var(--brown-mid);margin-top:2px;line-height:1.5;}
 .pet-card-tag{display:inline-block;margin-top:6px;font-size:11px;color:var(--peach);background:var(--peach-light);padding:3px 10px;border-radius:20px;font-weight:500;}
+.protect-note{margin:1rem 1.25rem 0;font-size:11px;color:var(--brown-light);text-align:center;line-height:1.6;}
 </style>
 </head>
 <body>
@@ -158,15 +157,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <button class="btn-main" style="margin-top:1rem;" onclick="generate()">ポスターを今すぐ作る</button>
   </div>
 
-  <!-- STEP 2: ポスター完成 -->
+  <!-- STEP 2: ポスター完成（飼い主画面） -->
   <div class="step" id="s2">
     <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div>
-
     <div class="emergency-bar">
       <p>まず警察に電話しましたか？</p>
       <a href="tel:110">警察に電話する（110）</a>
     </div>
-
     <div class="section-header"><span>ポスターが完成しました</span></div>
     <div class="poster-wrap">
       <div class="poster">
@@ -187,24 +184,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
         </div>
       </div>
     </div>
-
     <div class="privacy-badge">
       <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
       <p>電話番号はポスターに掲載されません。LOALIFEを通じて安全に通知が届きます。</p>
     </div>
-
     <button class="btn-main" onclick="saveInstagram()">インスタ・SNSにシェアする</button>
     <button class="btn-sub" onclick="sw('s3')">警察・保健所への連絡スクリプト</button>
-
     <hr class="divider" style="margin-top:1.25rem;">
-
     <div class="sighting-header"><div class="sighting-dot"></div><span id="sighting-count">目撃情報 0件</span></div>
     <div class="sighting-list" id="sighting-list"><p class="loading">まだ目撃情報はありません</p></div>
     <div style="margin-bottom:1rem;"></div>
-
-    <button class="btn-sighting" onclick="sw('s-sighting')">
+    <button class="btn-sighting" onclick="sw('s-sighting-owner')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--peach)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-      目撃情報を受け取る
+      目撃情報を受け取る設定
     </button>
     <button class="btn-found" onclick="sw('s-found')">見つかりました</button>
   </div>
@@ -213,7 +205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   <div class="step" id="s3">
     <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
     <div class="section-header"><span>連絡スクリプト</span></div>
-    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">このまま読み上げるだけでOKです。パニックの時に考えなくていい設計です。</p>
+    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">このまま読み上げるだけでOKです。</p>
     <div class="tab-row">
       <button class="tab on" onclick="st('p',this)">警察に届ける</button>
       <button class="tab" onclick="st('h',this)">保健所に届ける</button>
@@ -233,16 +225,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <a class="call-btn" id="hokenjo-call" href="tel:">保健所に電話する</a>
       <div class="search-box" id="hokenjo-search" style="display:none;">
         <div class="script-label">最寄りの保健所</div>
-        <p style="font-size:13px;color:var(--brown-mid);">現在、東京23区のみ対応しています。お住まいの地域の保健所を検索してください。</p>
+        <p style="font-size:13px;color:var(--brown-mid);">現在、東京23区のみ対応しています。</p>
         <a class="search-link" href="https://www.google.com/search?q=保健所+迷子犬+届け出" target="_blank">Googleで保健所を検索する</a>
       </div>
     </div>
     <button class="btn-sub" onclick="sw('s2')">ポスターに戻る</button>
   </div>
 
-  <!-- 目撃情報を送る -->
-  <div class="step" id="s-sighting">
-    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
+  <!-- 目撃情報設定（飼い主用） -->
+  <div class="step" id="s-sighting-owner">
+    <div class="section-header"><span>目撃情報の受け取り設定</span></div>
+    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">QRコードを読んだ人からの情報がここに届きます。</p>
+    <div class="sighting-list" id="sighting-list-owner"><p class="loading">まだ目撃情報はありません</p></div>
+    <button class="btn-sub" style="margin-top:1rem;" onclick="sw('s2')">ポスターに戻る</button>
+  </div>
+
+  <!-- 目撃情報送信（保護者用） -->
+  <div class="step" id="s-sighting-visitor">
     <div class="section-header"><span>目撃情報を送る</span></div>
     <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">見かけた場所・状況を教えてください。飼い主にすぐ届きます。</p>
     <div class="form-area">
@@ -250,7 +249,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="fg"><label>状況・コメント</label><textarea id="s-comment" placeholder="例：赤い首輪のコーギーを見ました。矢来公園の方向に走っていきました。"></textarea></div>
     </div>
     <button class="btn-main" onclick="sendSighting()">目撃情報を送信する</button>
-    <button class="btn-sub" onclick="sw('s2')">戻る</button>
+    <button class="btn-sub" onclick="sw('s-protect')">戻る</button>
   </div>
 
   <!-- 送信完了 -->
@@ -259,8 +258,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
       <div class="success-title">送信しました</div>
       <div class="success-text">目撃情報が飼い主に届きました。<br>ご協力ありがとうございます。<br><br>周りの人にもシェアしてもらえると助かります。</div>
-      <button class="btn-main" style="width:100%;margin:0 0 0.75rem;" onclick="sw('s2')">ポスターページに戻る</button>
-      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-sighting')">もう一件送る</button>
+      <button class="btn-main" style="width:100%;margin:0 0 0.75rem;" onclick="sw('s-protect')">保護者ページに戻る</button>
+      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-sighting-visitor')">もう一件送る</button>
+    </div>
+  </div>
+
+  <!-- 保護しました完了 -->
+  <div class="step" id="s-protected">
+    <div class="success-wrap">
+      <div class="success-icon green"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+      <div class="success-title">飼い主に通知しました</div>
+      <div class="success-text">飼い主に通知が届きました。<br>間もなく連絡が来ます。<br><br>安全な場所で待ってあげてください。</div>
+      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-protect')">戻る</button>
     </div>
   </div>
 
@@ -280,7 +289,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     <div class="protect-wrap">
       <div class="protect-header">この子を見かけましたか？</div>
       <div class="protect-sub">情報を送ると飼い主に直接届きます。<br>電話番号は不要です。</div>
-      <div class="pet-card" id="protect-pet-card">
+      <div class="pet-card">
         <div class="pet-card-img" id="protect-img">🐕</div>
         <div>
           <div class="pet-card-name" id="protect-name"></div>
@@ -289,8 +298,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
         </div>
       </div>
     </div>
-    <button class="btn-main" onclick="sw('s-sighting')">目撃情報を送る</button>
-    <button class="btn-sub" style="margin-top:0.75rem;">保護しました（飼い主に通知）</button>
+    <button class="btn-main" onclick="sw('s-sighting-visitor')">目撃情報を送る</button>
+    <button class="btn-protect" onclick="sendProtect()">保護しました（飼い主に通知）</button>
+    <p class="protect-note">通知はLOALIFEを通じて安全に届きます。<br>あなたの個人情報は共有されません。</p>
   </div>
 </div>
 
@@ -312,6 +322,7 @@ var db = firebase.firestore();
 var photoBase64 = null;
 var currentDocId = null;
 var petName = '';
+var isVisitor = false;
 
 var hokenjoData = {
   '新宿':{ name:'新宿区保健所', tel:'03-5273-3820', address:'新宿区歌舞伎町1-4-1' },
@@ -353,8 +364,7 @@ function getHokenjo(place) {
 }
 
 function toggleOptional() {
-  var el = document.getElementById('optional-fields');
-  el.classList.toggle('open');
+  document.getElementById('optional-fields').classList.toggle('open');
 }
 
 function handlePhoto(event) {
@@ -363,11 +373,9 @@ function handlePhoto(event) {
   var reader = new FileReader();
   reader.onload = function(e) {
     photoBase64 = e.target.result;
-    var preview = document.getElementById('photo-preview');
-    var placeholder = document.getElementById('upload-placeholder');
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    placeholder.style.display = 'none';
+    document.getElementById('photo-preview').src = e.target.result;
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('upload-placeholder').style.display = 'none';
   };
   reader.readAsDataURL(file);
 }
@@ -376,7 +384,6 @@ async function generate() {
   var name = document.getElementById('f-name').value || '（名前未入力）';
   var feat = document.getElementById('f-feat').value || '';
   var place = document.getElementById('f-place').value || '';
-  var tel = document.getElementById('f-tel').value || '';
   petName = name;
 
   try {
@@ -393,9 +400,8 @@ async function generate() {
   var profileUrl = window.location.href.split('?')[0] + '?id=' + currentDocId;
 
   document.getElementById('p-name').textContent = name;
-  document.getElementById('p-detail').innerHTML = feat + '<br><span style="color:var(--brown-light)">場所：' + place + '</span>';
-
-  document.getElementById('sc-p').textContent = '「迷子の犬の届け出をしたいのですが。犬の名前は' + name + 'です。' + feat + '。' + place + 'でいなくなりました。」';
+  document.getElementById('p-detail').innerHTML = feat + (place ? '<br><span style="color:var(--brown-light)">場所：' + place + '</span>' : '');
+  document.getElementById('sc-p').textContent = '「迷子の犬の届け出をしたいのですが。名前は' + name + 'です。' + feat + '。' + place + 'でいなくなりました。」';
   document.getElementById('sc-h').textContent = '「迷子の犬を探しています。名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合はご連絡いただけますか。」';
 
   var hokenjo = getHokenjo(place);
@@ -413,8 +419,7 @@ async function generate() {
     document.getElementById('hokenjo-search').style.display = 'block';
   }
 
-  var posterPhotoWrap = document.getElementById('poster-photo-wrap');
-  posterPhotoWrap.innerHTML = photoBase64
+  document.getElementById('poster-photo-wrap').innerHTML = photoBase64
     ? '<img class="poster-img" src="' + photoBase64 + '" alt="' + name + '">'
     : '<div class="poster-img-placeholder">🐕</div>';
 
@@ -444,7 +449,7 @@ function saveInstagram() {
 }
 
 function saveFoundPost() {
-  alert('「' + petName + 'が見つかりました！ありがとうございました」\n\nこのメッセージをコピーしてSNSに投稿してください。');
+  alert('「' + petName + 'が見つかりました！\nたくさんのご協力ありがとうございました🐾」\n\nこのメッセージをコピーしてSNSに投稿してください。');
 }
 
 async function sendSighting() {
@@ -453,7 +458,7 @@ async function sendSighting() {
   if (!place && !comment) { alert('場所またはコメントを入力してください'); return; }
   try {
     await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
-      place: place, comment: comment,
+      place: place, comment: comment, type: 'sighting',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch(e) { console.log(e); }
@@ -463,26 +468,41 @@ async function sendSighting() {
   sw('s-success');
 }
 
+async function sendProtect() {
+  try {
+    await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
+      place: '保護しました', comment: 'この子を保護しました。飼い主の方、ご連絡ください。', type: 'protect',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.log(e); }
+  sw('s-protected');
+}
+
 async function loadSightings() {
   if (!currentDocId) return;
   try {
     var snapshot = await db.collection('pets').doc(currentDocId).collection('sightings').orderBy('createdAt', 'desc').get();
     var list = document.getElementById('sighting-list');
+    var listOwner = document.getElementById('sighting-list-owner');
     var count = document.getElementById('sighting-count');
     if (snapshot.empty) {
-      list.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
-      count.textContent = '目撃情報 0件';
+      if(list) list.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
+      if(listOwner) listOwner.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
+      if(count) count.textContent = '目撃情報 0件';
       return;
     }
-    count.textContent = '目撃情報 ' + snapshot.size + '件';
-    list.innerHTML = '';
+    if(count) count.textContent = '目撃情報 ' + snapshot.size + '件';
+    var html = '';
     snapshot.forEach(function(doc) {
       var d = doc.data();
-      var item = document.createElement('div');
-      item.className = 'sighting-item';
-      item.innerHTML = '<div class="sighting-place">' + (d.place || '') + '</div><div class="sighting-comment">' + (d.comment || '') + '</div><div class="sighting-time">受信済み</div>';
-      list.appendChild(item);
+      var isProtect = d.type === 'protect';
+      html += '<div class="sighting-item" style="' + (isProtect ? 'border-color:var(--green);background:var(--green-light);' : '') + '">';
+      html += '<div class="sighting-place" style="' + (isProtect ? 'color:var(--green);' : '') + '">' + (d.place || '') + '</div>';
+      html += '<div class="sighting-comment">' + (d.comment || '') + '</div>';
+      html += '<div class="sighting-time">受信済み</div></div>';
     });
+    if(list) list.innerHTML = html;
+    if(listOwner) listOwner.innerHTML = html;
   } catch(e) { console.log(e); }
 }
 
@@ -502,13 +522,15 @@ function st(t, el) {
 var urlParams = new URLSearchParams(window.location.search);
 var petId = urlParams.get('id');
 if (petId) {
+  isVisitor = true;
+  currentDocId = petId;
   sw('s-protect');
   db.collection('pets').doc(petId).get().then(function(doc) {
     if (doc.exists) {
       var d = doc.data();
+      petName = d.name || '';
       document.getElementById('protect-name').textContent = d.name || '';
       document.getElementById('protect-breed').textContent = d.feat || '';
-      currentDocId = petId;
     }
   }).catch(function(e) { console.log(e); });
 }
