@@ -229,7 +229,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
     </div>
     <div class="badge">
       <div class="badge-title">名刺として配れる・インスタでシェアできる</div>
-      <div class="badge-text">QRを読んだ人がプロフィールページへ。迷子モードON時は保護した方が直接連絡できます。</div>
+      <div class="badge-text">この子を見かけましたか？情報を入力すると、飼い主にすぐ届きます。</div>
     </div>
     <button class="btn-main" style="margin-top:1rem;">インスタ用に保存</button>
     <button class="btn-sub">コンビニ印刷（名刺サイズ）</button>
@@ -364,13 +364,11 @@ async function loadSightings() {
   } catch(e) { console.log(e); }
 }
 
-  function saveInstagram() {
-  var poster = document.getElementById('poster-preview');
+ function saveInstagram() {
   html2canvas(document.querySelector('.poster'), { scale: 2, useCORS: true }).then(function(canvas) {
-    var link = document.createElement('a');
-    link.download = 'loalife-poster.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    var img = canvas.toDataURL('image/png');
+    var win = window.open();
+    win.document.write('<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + img + '" style="max-width:100%;" /><p style="color:#fff;text-align:center;font-size:13px;margin-top:8px;">長押しして「写真に保存」を選んでください</p></body></html>');
   });
 }
 function sw(id) {
