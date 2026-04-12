@@ -251,7 +251,7 @@ var firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
-var petData = {};
+var photoBase64 = null;
 var currentDocId = null;
 
 function handlePhoto(event) {
@@ -259,7 +259,7 @@ function handlePhoto(event) {
   if (!file) return;
   var reader = new FileReader();
   reader.onload = function(e) {
-    petData.photoBase64 = e.target.result;
+    photoBase64 = e.target.result;
     var preview = document.getElementById('photo-preview');
     var placeholder = document.getElementById('upload-placeholder');
     preview.src = e.target.result;
@@ -275,12 +275,14 @@ async function generate() {
   var feat = document.getElementById('f-feat').value || '';
   var place = document.getElementById('f-place').value || '';
   var tel = document.getElementById('f-tel').value || '';
-  petData = Object.assign({}, petData, { name: name, breed: breed, feat: feat, place: place, tel: tel });
 
   try {
     var docRef = await db.collection('pets').add({
-      name: name, breed: breed, feat: feat, place: place, tel: tel,
-      photo: petData.photoBase64 || null,
+      name: name,
+      breed: breed,
+      feat: feat,
+      place: place,
+      tel: tel,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     currentDocId = docRef.id;
@@ -300,22 +302,22 @@ async function generate() {
   document.getElementById('sc-h').textContent = '「迷子の犬を探しています。' + breed + 'で、名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合は' + tel + 'にご連絡いただけますか。」';
 
   var posterPhotoWrap = document.getElementById('poster-photo-wrap');
-  posterPhotoWrap.innerHTML = petData.photoBase64
-    ? '<img class="poster-img" src="' + petData.photoBase64 + '" alt="' + name + '">'
+  posterPhotoWrap.innerHTML = photoBase64
+    ? '<img class="poster-img" src="' + photoBase64 + '" alt="' + name + '">'
     : '<div class="poster-img-placeholder">🐕</div>';
 
   var cardPhotoWrap = document.getElementById('card-photo-wrap');
-  cardPhotoWrap.innerHTML = petData.photoBase64
-    ? '<img class="card-avatar" src="' + petData.photoBase64 + '" alt="' + name + '">'
+  cardPhotoWrap.innerHTML = photoBase64
+    ? '<img class="card-avatar" src="' + photoBase64 + '" alt="' + name + '">'
     : '<div class="card-avatar-placeholder">🐕</div>';
 
   var qrEl = document.getElementById('qr-code');
   qrEl.innerHTML = '';
- new QRCode(qrEl, { text: profileUrl, width: 60, height: 60, correctLevel: QRCode.CorrectLevel.L });
+  new QRCode(qrEl, { text: profileUrl, width: 60, height: 60, correctLevel: QRCode.CorrectLevel.L });
 
   var cardQrEl = document.getElementById('card-qr');
   cardQrEl.innerHTML = '';
-new QRCode(cardQrEl, { text: profileUrl, width: 52, height: 52, correctLevel: QRCode.CorrectLevel.L });
+  new QRCode(cardQrEl, { text: profileUrl, width: 52, height: 52, correctLevel: QRCode.CorrectLevel.L });
 
   await loadSightings();
   sw('s2');
@@ -327,7 +329,8 @@ async function sendSighting() {
   if (!place && !comment) { alert('場所またはコメントを入力してください'); return; }
   try {
     await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
-      place: place, comment: comment,
+      place: place,
+      comment: comment,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch(e) { console.log(e); }
