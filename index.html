@@ -149,7 +149,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
       </div>
     </div>
     <div class="action-row">
-      <button class="action-btn">インスタ用に保存</button>
+    <button class="action-btn" onclick="saveInstagram()">インスタ用に保存</button>
       <button class="action-btn">コンビニ印刷PDF</button>
     </div>
     <div class="badge">
@@ -237,6 +237,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;ba
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -363,6 +364,15 @@ async function loadSightings() {
   } catch(e) { console.log(e); }
 }
 
+  function saveInstagram() {
+  var poster = document.getElementById('poster-preview');
+  html2canvas(document.querySelector('.poster'), { scale: 2, useCORS: true }).then(function(canvas) {
+    var link = document.createElement('a');
+    link.download = 'loalife-poster.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
 function sw(id) {
   document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
