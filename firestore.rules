@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is in a household
+    function isMember(hid) {
+      return request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
+    }
+
+    // Helper: check if member is visible to current user
+    function memberVisible(hid, memberId) {
+      let m = get(/databases/$(database)/documents/households/$(hid)/members/$(memberId)).data;
+      return m.visibility == "household" || m.ownerUid == request.auth.uid;
+    }
+
+    // ─── User profiles ───────────────────────────────────────────
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // "Me" items — always private, only owner can access
+      match /meItems/{itemId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // ─── Invite codes (lookup table for joining) ──────────────────
+    match /inviteCodes/{code} {
+      // Anyone authenticated can read (to join a household)
+      allow read: if request.auth != null;
+      // Anyone authenticated can create (household owner writes this)
+      allow create: if request.auth != null;
+      // No updates or deletes from clients
+      allow update, delete: if false;
+    }
+
+    // ─── Households ───────────────────────────────────────────────
+    match /households/{hid} {
+      // Any member can read the household doc
+      allow read: if request.auth != null &&
+        request.auth.uid in resource.data.memberUids;
+
+      // Only the owner can create a household (ownerUid must match caller)
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.ownerUid;
+
+      // Members can update (e.g., to add themselves via arrayUnion)
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.memberUids ||
+        request.auth.uid == resource.data.ownerUid
+      );
+
+      // Only owner can delete
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
+
+      // ─── Household members ──────────────────────────────────────
+      match /members/{memberId} {
+        // Visible if: household visibility OR the owner is querying
+        allow read: if isMember(hid) && memberVisible(hid, memberId);
+
+        // Create: must be a household member and own the record
+        allow create: if isMember(hid) &&
+          request.auth.uid == request.resource.data.ownerUid;
+
+        // Update/delete: only the owner of this member record
+        allow update, delete: if isMember(hid) &&
+          request.auth.uid == resource.data.ownerUid;
+
+        // ─── Member items ─────────────────────────────────────────
+        match /items/{itemId} {
+          // Readable if parent member is visible to current user
+          allow read: if isMember(hid) && memberVisible(hid, memberId);
+
+          // Create: must be a household member and own the item
+          allow create: if isMember(hid) &&
+            request.auth.uid == request.resource.data.ownerUid;
+
+          // Update/delete: only the owner
+          allow update, delete: if isMember(hid) &&
+            request.auth.uid == resource.data.ownerUid;
+        }
+      }
+    }
+  }
+}
