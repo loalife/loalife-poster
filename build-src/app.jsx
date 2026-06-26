@@ -157,10 +157,24 @@ function generateIcal(items, members, meEmoji) {
   return lines.join("\r\n");
 }
 
-function downloadIcal(content){
+function downloadIcal(content, filename="loalife-calendar.ics"){
   const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
+  // iOS Share Sheet (最も確実 — iOSでAppleカレンダーへの追加を促す)
+  if(navigator.share&&typeof File!=="undefined"){
+    const file=new File([blob],filename,{type:"text/calendar"});
+    if(navigator.canShare?.({files:[file]})){
+      navigator.share({files:[file],title:"LOALIFEカレンダー"}).catch(()=>{});
+      return;
+    }
+  }
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="loalife-calendar.ics";a.click();URL.revokeObjectURL(url);
+  // iOS Safariはdownload属性を無視するので新しいタブで開く
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
+    window.open(url,"_blank");
+  }else{
+    const a=document.createElement("a");a.href=url;a.download=filename;a.click();
+  }
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
 const HOURS=Array.from({length:24},(_,i)=>i);
@@ -844,7 +858,7 @@ function App(){
                             <span className="yl-dash-item-emoji">{it.emoji||"•"}</span>
                             <span className="yl-dash-item-text">{it.title}{it.time&&<span className="yl-dash-item-time"> {it.time}</span>}</span>
                             <span className={"yl-dash-tag "+tone}>{tag}</span>
-                            <a className="yl-cal-add" href={calUrl} target="_blank" rel="noopener noreferrer" title="Googleカレンダーに追加" onClick={e=>e.stopPropagation()}>📅</a>
+                            <button className="yl-cal-add" onClick={e=>{e.stopPropagation();downloadIcal(generateIcal([it],members,meEmoji),`${it.title}.ics`);}} title="カレンダーに追加（Apple/Google）">📅</button>
                           </li>
                         );
                       })}
@@ -942,7 +956,7 @@ function App(){
                             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
                             {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
                             {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
-                            {it.dueDate&&<a className="yl-cal-item" href={gcalLink(it,nameOf(it.space),it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||""))} target="_blank" rel="noopener noreferrer" title="Googleカレンダーに追加" onClick={e=>e.stopPropagation()}>📅</a>}
+                            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();downloadIcal(generateIcal([it],members,meEmoji),`${it.title}.ics`);}} title="カレンダーに追加（Apple/Google）">📅</button>}
                             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(it.id);}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
                           </div>
                         )}
