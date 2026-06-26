@@ -1,4 +1,4 @@
-const CACHE = "loalife-v1";
+const CACHE = "loalife-v3";
 const ASSETS = ["/", "/index.html", "/icon-192.png", "/icon-512.png", "/manifest.json"];
 
 self.addEventListener("install", e => {
