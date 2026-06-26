@@ -21,7 +21,7 @@ const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Numbe
 const TYPE_META={dream:{label:"夢",emoji:"🌈",bg:"#FFE0EC",fg:"#FF2D7E"},work:{label:"仕事",emoji:"💼",bg:"#E6E8FB",fg:"#4F5BD5"},event:{label:"予定",emoji:"📅",bg:"#ECE3FF",fg:"#7C4DFF"},social:{label:"飲み会",emoji:"🍻",bg:"#FFE7D6",fg:"#E8730C"},habit:{label:"習慣",emoji:"💪",bg:"#FFF4D6",fg:"#D99400"}};
 const ME_TYPES=["dream","work","event","social","habit"];
 const KIND_STYLE={pet:{bg:"#DBF6F1",fg:"#0E9E8E",word:"ケア"},person:{bg:"#E3EEFF",fg:"#3B7BF6",word:"予定"}};
-const DOG_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"rabies",label:"狂犬病",emoji:"🐕"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
+const DOG_KINDS=[{key:"daycare",label:"保育園",emoji:"🏫"},{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"rabies",label:"狂犬病",emoji:"🐕"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const CAT_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"groom",label:"お手入れ",emoji:"🧼"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const PERSON_KINDS=[{key:"lesson",label:"習い事",emoji:"🎒"},{key:"event",label:"予定",emoji:"📅"},{key:"school",label:"学校行事",emoji:"🏫"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"dental",label:"歯科",emoji:"🦷"},{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
@@ -31,6 +31,8 @@ const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐦","🐢"];
 const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
+// 1日のルーティン（タスクテンプレ）
+const ROUTINE_TEMPLATES=[{title:"散歩",emoji:"🦮",time:"07:00"},{title:"ごはん",emoji:"🍚",time:"08:00"},{title:"トイレ掃除",emoji:"🧹",time:"09:00"}];
 const REMINDER_OPTS=[{key:0,label:"開始時"},{key:5,label:"5分前"},{key:30,label:"30分前"},{key:60,label:"1時間前"},{key:1440,label:"前日"}];
 const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${mins}分前`;
 
@@ -54,11 +56,27 @@ function scheduleReminders(items, members) {
   if (!notifSupported || Notification.permission !== "granted") return [];
   const ids = [];
   const now = new Date();
+  const todayStr = iso(now);
   items.forEach(item => {
-    if (!item.time || !item.reminders?.length || !item.dueDate) return;
-    const d = daysUntil(item.dueDate);
+    if (!item.time || !item.reminders?.length) return;
     const [h, mn] = item.time.split(":").map(Number);
     const memberName = item.space === "me" ? "わたし" : (members.find(m => m.id === item.space)?.name || "");
+    // 毎日のルーティン：今日まだ完了していなければ今日の時刻で通知
+    if (item.type === "routine") {
+      if (item.doneDate === todayStr) return;
+      item.reminders.forEach(minsBefore => {
+        const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, mn - minsBefore, 0, 0);
+        const delay = base - now;
+        if (delay > 0 && delay < 24 * 60 * 60 * 1000) {
+          ids.push(setTimeout(() => {
+            fireNotif(`${item.emoji || "🐾"} ${item.title}`, `${memberName}の${minsBefore === 0 ? "時間です" : reminderLabel(minsBefore)+"です"}`);
+          }, delay));
+        }
+      });
+      return;
+    }
+    if (!item.dueDate) return;
+    const d = daysUntil(item.dueDate);
     item.reminders.forEach(minsBefore => {
       const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       base.setDate(base.getDate() + (d ?? 0));
@@ -278,6 +296,9 @@ function App(){
 
   // Calendar picker state
   const[calPicker,setCalPicker]=useState(null); // {item} | {bulk:true}
+
+  // ルーティン編集モーダル state
+  const[routineEdit,setRoutineEdit]=useState(null); // {id?,title,emoji,time,reminders,space}
 
   // Load local data
   useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
@@ -623,6 +644,45 @@ function App(){
     showFlash("追加しました！");
   };
 
+  // --- ルーティン（1日のタスク）---
+  const todayIso=iso(new Date());
+  const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:activeMember.id});
+  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:"🐾",time:"08:00",reminders:[0],space:activeMember.id});
+  const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"🐾",time:r.time||"08:00",reminders:r.reminders||[],space:r.space});
+  const toggleRoutineReminder=(mins)=>setRoutineEdit(prev=>prev?{...prev,reminders:prev.reminders.includes(mins)?prev.reminders.filter(m=>m!==mins):[...prev.reminders,mins].sort((a,b)=>a-b)}:prev);
+  const saveRoutine=()=>{
+    if(!routineEdit)return;
+    const title=routineEdit.title.trim();if(!title)return;
+    const rem=routineEdit.reminders.length?routineEdit.reminders:undefined;
+    let next,savedId;
+    if(routineEdit.id){
+      savedId=routineEdit.id;
+      next=items.map(x=>x.id===routineEdit.id?{...x,title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem}:x);
+    }else{
+      savedId="rt"+Date.now();
+      next=[...items,{id:savedId,space:routineEdit.space,type:"routine",title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem,repeat:"daily",doneDate:null,createdAt:Date.now()}];
+    }
+    persist(members,next);
+    const saved=next.find(x=>x.id===savedId);
+    if(saved)saveItemToFs(saved).catch(()=>{});
+    setRoutineEdit(null);showFlash("ルーティンを保存しました 🗓");
+  };
+  const toggleRoutine=(id)=>{
+    const r=items.find(x=>x.id===id);if(!r)return;
+    const done=r.doneDate===todayIso;
+    const next=items.map(x=>x.id===id?{...x,doneDate:done?null:todayIso}:x);
+    persist(members,next);
+    const u=next.find(x=>x.id===id);if(u)saveItemToFs(u).catch(()=>{});
+  };
+  const removeRoutine=(id)=>{
+    const r=items.find(x=>x.id===id);
+    deleteItemFromFs(r).catch(()=>{});
+    persist(members,items.filter(x=>x.id!==id));
+    setRoutineEdit(null);
+  };
+  const routines=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="routine").sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")),[items,tab]);
+  const routineDone=routines.filter(r=>r.doneDate===todayIso).length;
+
   // Last date per care kind for active member
   const lastDates=useMemo(()=>{
     if(!activeMember)return{};
@@ -635,7 +695,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab);if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   const meItems=items.filter(x=>x.space==="me");
@@ -914,6 +974,41 @@ function App(){
               </section>
             )}
 
+            {/* 1日のタイムライン（ルーティン）メンバータブのみ */}
+            {isMemberTab&&(
+              <section className="yl-routine">
+                <div className="yl-routine-head">
+                  <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
+                  {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
+                </div>
+                {routines.length===0?(
+                  <p className="yl-routine-empty">毎日くりかえすお世話を、下のテンプレから追加できます</p>
+                ):(
+                  <ul className="yl-timeline">
+                    {routines.map(r=>{
+                      const done=r.doneDate===todayIso;
+                      return(
+                        <li key={r.id} className={"yl-tl-item"+(done?" done":"")}>
+                          <span className="yl-tl-time">{r.time||"--:--"}</span>
+                          <span className="yl-tl-dot"/>
+                          <button className="yl-tl-body" onClick={()=>openRoutineEdit(r)}>
+                            <span className="yl-tl-emoji">{r.emoji}</span>
+                            <span className="yl-tl-text">{r.title}</span>
+                            {r.reminders&&r.reminders.length>0&&<span className="yl-tl-bell">🔔</span>}
+                          </button>
+                          <button className={"yl-check"+(done?" on":"")} onClick={()=>toggleRoutine(r.id)} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="yl-routine-tpl">
+                  {ROUTINE_TEMPLATES.map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openRoutineTemplate(t)}>{t.emoji} {t.title}</button>)}
+                  <button className="yl-tpl-btn custom" onClick={openRoutineCustom}>＋ 自由</button>
+                </div>
+              </section>
+            )}
+
             {/* 1タップ追加パネル（メンバータブのみ） */}
             {isMemberTab&&(
               <div className="yl-quickbar">
@@ -1033,6 +1128,22 @@ function App(){
             <div className="yl-modal-btns">
               <button className="yl-modal-cancel" onClick={()=>setQuickAdd(null)}>キャンセル</button>
               <button className="yl-addbtn modal" onClick={saveQuickAdd}>追加する</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {routineEdit&&(
+        <div className="yl-overlay" onClick={()=>setRoutineEdit(null)}>
+          <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
+            <div className="yl-routine-emojirow">{["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"].map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
+            <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder="やること（例：夜の散歩）" autoFocus/>
+            <div className="yl-optrow"><label className="yl-opt">時間<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
+            <div className="yl-notify"><span className="yl-notify-label">🔔 リマインド（複数OK）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div></div>
+            <div className="yl-modal-btns">
+              {routineEdit.id&&<button className="yl-modal-cancel" onClick={()=>removeRoutine(routineEdit.id)}>削除</button>}
+              <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>閉じる</button>
+              <button className="yl-addbtn modal" onClick={saveRoutine}>保存</button>
             </div>
           </div>
         </div>
