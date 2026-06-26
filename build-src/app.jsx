@@ -32,7 +32,36 @@ const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
 // 1日のルーティン（タスクテンプレ）
-const ROUTINE_TEMPLATES=[{title:"散歩",emoji:"🦮",time:"07:00"},{title:"ごはん",emoji:"🍚",time:"08:00"},{title:"トイレ掃除",emoji:"🧹",time:"09:00"}];
+// ルーティン（1日のタスク）テンプレ：相手によって内容を変える
+const ROUTINE_TEMPLATES={
+  pet:[{title:"散歩",emoji:"🦮",time:"07:00"},{title:"ごはん",emoji:"🍚",time:"08:00"},{title:"トイレ掃除",emoji:"🧹",time:"09:00"}],
+  person:[{title:"歯みがき",emoji:"🪥",time:"08:00"},{title:"宿題",emoji:"📖",time:"17:00"},{title:"お風呂",emoji:"🛁",time:"19:00"},{title:"薬",emoji:"💊",time:"20:00"}],
+};
+const routineTemplatesFor=(m)=>ROUTINE_TEMPLATES[m&&m.kind==="person"?"person":"pet"];
+const ROUTINE_EMOJIS={pet:["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"],person:["🪥","📖","🛁","💊","🍚","🌙","⏰","🎒","🧴","💧"]};
+// 消耗品（ストック）テンプレ：買った日＋消費サイクルで「そろそろ切れそう」を自動表示
+const SUPPLY_TEMPLATES={
+  pet:[{title:"フード",emoji:"🍚",cycleDays:30},{title:"おやつ",emoji:"🦴",cycleDays:30},{title:"トイレシーツ",emoji:"🧻",cycleDays:30},{title:"薬・サプリ",emoji:"💊",cycleDays:30}],
+  person:[{title:"おむつ",emoji:"🧷",cycleDays:30},{title:"ティッシュ",emoji:"🧻",cycleDays:30},{title:"洗剤",emoji:"🧴",cycleDays:45},{title:"薬・サプリ",emoji:"💊",cycleDays:30}],
+};
+const supplyTemplatesFor=(m)=>SUPPLY_TEMPLATES[m&&m.kind==="person"?"person":"pet"];
+const SUPPLY_EMOJIS=["🍚","🦴","🧻","💊","🧷","🧴","🥫","🧼","🪥","🧂","☕","🍼"];
+const SUPPLY_CYCLES=[7,14,30,45,60,90];
+// 残り日数とトーンを算出。lowAt=サイクルの20%（最低3日）を切ったら「そろそろ」
+function supplyStatus(item){
+  if(!item.lastBought||!item.cycleDays)return null;
+  const since=-daysUntil(item.lastBought);
+  const left=item.cycleDays-since;
+  const lowAt=Math.max(3,Math.round(item.cycleDays*0.2));
+  const tone=left<0?"out":(left<=lowAt?"low":"ok");
+  return{left,tone,since,lowAt};
+}
+function supplyLine(item){
+  const s=supplyStatus(item);if(!s)return"";
+  if(s.tone==="out")return"切れているかも・買い足しを";
+  if(s.tone==="low")return`あと${s.left}日で切れそう`;
+  return`在庫OK（あと${s.left}日分）`;
+}
 const REMINDER_OPTS=[{key:0,label:"開始時"},{key:5,label:"5分前"},{key:30,label:"30分前"},{key:60,label:"1時間前"},{key:1440,label:"前日"}];
 const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${mins}分前`;
 
@@ -299,6 +328,9 @@ function App(){
 
   // ルーティン編集モーダル state
   const[routineEdit,setRoutineEdit]=useState(null); // {id?,title,emoji,time,reminders,space}
+
+  // 消耗品ストック編集モーダル state
+  const[supplyEdit,setSupplyEdit]=useState(null); // {id?,title,emoji,cycleDays,lastBought,space}
 
   // Load local data
   useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
@@ -647,8 +679,8 @@ function App(){
   // --- ルーティン（1日のタスク）---
   const todayIso=iso(new Date());
   const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:activeMember.id});
-  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:"🐾",time:"08:00",reminders:[0],space:activeMember.id});
-  const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"🐾",time:r.time||"08:00",reminders:r.reminders||[],space:r.space});
+  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:activeMember.kind==="person"?"⏰":"🐾",time:"08:00",reminders:[0],space:activeMember.id});
+  const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"⏰",time:r.time||"08:00",reminders:r.reminders||[],space:r.space});
   const toggleRoutineReminder=(mins)=>setRoutineEdit(prev=>prev?{...prev,reminders:prev.reminders.includes(mins)?prev.reminders.filter(m=>m!==mins):[...prev.reminders,mins].sort((a,b)=>a-b)}:prev);
   const saveRoutine=()=>{
     if(!routineEdit)return;
@@ -683,6 +715,43 @@ function App(){
   const routines=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="routine").sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")),[items,tab]);
   const routineDone=routines.filter(r=>r.doneDate===todayIso).length;
 
+  // --- 消耗品ストック（買った日＋サイクルで残量を自動計算）---
+  const openSupplyTemplate=(t)=>setSupplyEdit({title:t.title,emoji:t.emoji,cycleDays:t.cycleDays,lastBought:todayIso,space:activeMember.id});
+  const openSupplyCustom=()=>setSupplyEdit({title:"",emoji:"🥫",cycleDays:30,lastBought:todayIso,space:activeMember.id});
+  const openSupplyEdit=(s)=>setSupplyEdit({id:s.id,title:s.title,emoji:s.emoji||"🥫",cycleDays:s.cycleDays||30,lastBought:s.lastBought||todayIso,space:s.space});
+  const saveSupply=()=>{
+    if(!supplyEdit)return;
+    const title=supplyEdit.title.trim();if(!title)return;
+    let next,savedId;
+    if(supplyEdit.id){
+      savedId=supplyEdit.id;
+      next=items.map(x=>x.id===supplyEdit.id?{...x,title,emoji:supplyEdit.emoji,cycleDays:Number(supplyEdit.cycleDays),lastBought:supplyEdit.lastBought}:x);
+    }else{
+      savedId="sp"+Date.now();
+      next=[...items,{id:savedId,space:supplyEdit.space,type:"supply",title,emoji:supplyEdit.emoji,cycleDays:Number(supplyEdit.cycleDays),lastBought:supplyEdit.lastBought,createdAt:Date.now()}];
+    }
+    persist(members,next);
+    const saved=next.find(x=>x.id===savedId);
+    if(saved)saveItemToFs(saved).catch(()=>{});
+    setSupplyEdit(null);showFlash("ストックを保存しました 📦");
+  };
+  // 「買った！」＝最後に買った日を今日に更新（ユーザー入力はここだけ）
+  const markBought=(id)=>{
+    const next=items.map(x=>x.id===id?{...x,lastBought:todayIso}:x);
+    persist(members,next);
+    const u=next.find(x=>x.id===id);if(u)saveItemToFs(u).catch(()=>{});
+    const it=next.find(x=>x.id===id);
+    showFlash(`${it?.emoji||"📦"} 買った！次は約${it?.cycleDays||30}日後の目安です`);
+  };
+  const removeSupply=(id)=>{
+    deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});
+    persist(members,items.filter(x=>x.id!==id));
+    setSupplyEdit(null);
+  };
+  const supplies=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="supply").sort((a,b)=>{const la=(supplyStatus(a)||{}).left??999,lb=(supplyStatus(b)||{}).left??999;return la-lb;}),[items,tab]);
+  // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
+  const lowSupplies=useMemo(()=>items.filter(x=>x.type==="supply").map(x=>({item:x,st:supplyStatus(x)})).filter(o=>o.st&&o.st.tone!=="ok"),[items]);
+
   // Last date per care kind for active member
   const lastDates=useMemo(()=>{
     if(!activeMember)return{};
@@ -695,7 +764,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   const meItems=items.filter(x=>x.space==="me");
@@ -939,7 +1008,7 @@ function App(){
             )}
 
             <h2 className="yl-sec-title" style={{marginTop:18}}>みんなの状態</h2>
-            <div className="yl-statusgrid">{spaces.map(s=>{const st=statusFor(s.id);let line,sub=null;if(st.over>0)line=`🔴 期限切れ ${st.over}件`;else if(st.next){line=s.kind==="pet"?"今日は安心して過ごせます":"順調です";sub=`次の予定：${st.next.title}・${st.nextDays===0?"今日":"あと"+st.nextDays+"日"}`;}else line=s.kind==="pet"?"今日も元気です":"予定はありません";return<button key={s.id} className={"yl-statuscard "+(st.over>0?"alert":"")} onClick={()=>setTab(s.id)}><span className="yl-status-emoji">{s.emoji}</span><span className="yl-status-body"><span className="yl-status-name">{s.name}</span><span className="yl-status-line">{line}</span>{sub&&<span className="yl-status-sub">{sub}</span>}</span><span className="yl-status-dot" style={{background:st.over>0?"#E5484D":"#2FC9A8"}}/></button>;})}
+            <div className="yl-statusgrid">{spaces.map(s=>{const st=statusFor(s.id);const sup=lowSupplies.filter(o=>o.item.space===s.id).sort((a,b)=>a.st.left-b.st.left);const worst=sup[0];const alert=st.over>0||(worst&&worst.st.tone==="out");let line,sub=null;if(st.over>0)line=`🔴 期限切れ ${st.over}件`;else if(st.next){line=s.kind==="pet"?"今日は安心して過ごせます":"順調です";sub=`次の予定：${st.next.title}・${st.nextDays===0?"今日":"あと"+st.nextDays+"日"}`;}else line=s.kind==="pet"?"今日も元気です":"予定はありません";const supText=worst?`${worst.item.emoji} ${worst.item.title}：${worst.st.tone==="out"?"切れているかも":"あと"+worst.st.left+"日で切れそう"}`:null;return<button key={s.id} className={"yl-statuscard "+(alert?"alert":"")} onClick={()=>setTab(s.id)}><span className="yl-status-emoji">{s.emoji}</span><span className="yl-status-body"><span className="yl-status-name">{s.name}</span><span className="yl-status-line">{line}</span>{supText?<span className={"yl-status-supply "+worst.st.tone}>{supText}</span>:sub&&<span className="yl-status-sub">{sub}</span>}</span><span className="yl-status-dot" style={{background:alert?"#E5484D":"#2FC9A8"}}/></button>;})}
             </div>
 
             <section className="yl-summary"><h2 className="yl-sec-title light">これまでの記録</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">達成したこと</span></div><div className="yl-stat"><span className="yl-stat-n">{summary.careOverdue}</span><span className="yl-stat-l">対応が必要なこと</span></div><div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">家族メンバー</span></div></div></section>
@@ -1003,8 +1072,43 @@ function App(){
                   </ul>
                 )}
                 <div className="yl-routine-tpl">
-                  {ROUTINE_TEMPLATES.map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openRoutineTemplate(t)}>{t.emoji} {t.title}</button>)}
+                  {routineTemplatesFor(activeMember).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openRoutineTemplate(t)}>{t.emoji} {t.title}</button>)}
                   <button className="yl-tpl-btn custom" onClick={openRoutineCustom}>＋ 自由</button>
+                </div>
+              </section>
+            )}
+
+            {/* 消耗品ストック（メンバータブのみ）買った日だけ入れれば残量を自動表示 */}
+            {isMemberTab&&(
+              <section className="yl-supply">
+                <div className="yl-routine-head">
+                  <h2 className="yl-routine-title">📦 ストック</h2>
+                  {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
+                </div>
+                {supplies.length===0?(
+                  <p className="yl-routine-empty">フードなどの消耗品を登録すると、残量を自動で見守ります</p>
+                ):(
+                  <ul className="yl-supply-list">
+                    {supplies.map(s=>{
+                      const st=supplyStatus(s)||{tone:"ok",left:0};
+                      return(
+                        <li key={s.id} className={"yl-supply-item "+st.tone}>
+                          <button className="yl-supply-main" onClick={()=>openSupplyEdit(s)}>
+                            <span className="yl-supply-emoji">{s.emoji}</span>
+                            <span className="yl-supply-info">
+                              <span className="yl-supply-name">{s.title}</span>
+                              <span className={"yl-supply-line "+st.tone}>{supplyLine(s)}</span>
+                            </span>
+                          </button>
+                          <button className="yl-supply-bought" onClick={()=>markBought(s.id)}>買った</button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="yl-routine-tpl">
+                  {supplyTemplatesFor(activeMember).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openSupplyTemplate(t)}>{t.emoji} {t.title}</button>)}
+                  <button className="yl-tpl-btn custom" onClick={openSupplyCustom}>＋ 自由</button>
                 </div>
               </section>
             )}
@@ -1136,7 +1240,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setRoutineEdit(null)}>
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
-            <div className="yl-routine-emojirow">{["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"].map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
+            <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[(members.find(m=>m.id===routineEdit.space)||{}).kind==="person"?"person":"pet"]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
             <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder="やること（例：夜の散歩）" autoFocus/>
             <div className="yl-optrow"><label className="yl-opt">時間<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
             <div className="yl-notify"><span className="yl-notify-label">🔔 リマインド（複数OK）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div></div>
@@ -1144,6 +1248,25 @@ function App(){
               {routineEdit.id&&<button className="yl-modal-cancel" onClick={()=>removeRoutine(routineEdit.id)}>削除</button>}
               <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>閉じる</button>
               <button className="yl-addbtn modal" onClick={saveRoutine}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {supplyEdit&&(
+        <div className="yl-overlay" onClick={()=>setSupplyEdit(null)}>
+          <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">{supplyEdit.id?"ストックを編集":"ストックを追加"}</h3>
+            <div className="yl-routine-emojirow">{SUPPLY_EMOJIS.map(e=><button key={e} className={"yl-emoji"+(supplyEdit.emoji===e?" on":"")} onClick={()=>setSupplyEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
+            <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder="品名（例：フード）" autoFocus/>
+            <div className="yl-optrow">
+              <label className="yl-opt">最後に買った日<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
+              <label className="yl-opt">消費サイクル<select className="yl-select" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:Number(e.target.value)}))}>{SUPPLY_CYCLES.map(d=><option key={d} value={d}>{d}日</option>)}</select></label>
+            </div>
+            {supplyEdit.lastBought&&<p className="yl-supply-preview">{supplyLine({lastBought:supplyEdit.lastBought,cycleDays:Number(supplyEdit.cycleDays)})}</p>}
+            <div className="yl-modal-btns">
+              {supplyEdit.id&&<button className="yl-modal-cancel" onClick={()=>removeSupply(supplyEdit.id)}>削除</button>}
+              <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>閉じる</button>
+              <button className="yl-addbtn modal" onClick={saveSupply}>保存</button>
             </div>
           </div>
         </div>
