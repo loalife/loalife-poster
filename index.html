@@ -2,538 +2,1391 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LOALIFE - 迷子犬を探す</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>わたしと家族のリスト - LOALIFE</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --peach:#E8765A;--peach-light:#FAEAE5;--peach-mid:#F0997B;
-  --beige:#FFFBF5;--beige-mid:#F2E8DC;--beige-dark:#E8D9C8;
-  --brown:#3D2C2C;--brown-mid:#7A5C5C;--brown-light:#B09090;
-  --green:#2D7A4F;--green-light:#E8F5EE;
-}
-body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--beige);min-height:100vh;}
-.phone{max-width:390px;margin:0 auto;background:var(--beige);padding-bottom:4rem;}
-.step{display:none;}.step.active{display:block;}
-.header{padding:1.25rem 1.25rem 0.75rem;display:flex;align-items:center;gap:8px;}
-.logo-mark{width:28px;height:28px;border-radius:50%;background:var(--peach);display:flex;align-items:center;justify-content:center;}
-.logo-mark svg{width:14px;height:14px;fill:#fff;}
-.logo-text{font-size:17px;font-weight:500;color:var(--brown);}
-.progress{display:flex;gap:5px;padding:0 1.25rem;margin-bottom:1.5rem;}
-.dot{height:4px;flex:1;border-radius:2px;background:var(--beige-dark);}
-.dot.on{background:var(--peach);}
-.hero{margin:0 1.25rem 1.5rem;background:var(--peach-light);border-radius:20px;padding:1.5rem;border:1px solid var(--beige-dark);}
-.hero h2{font-size:22px;font-weight:500;color:var(--brown);line-height:1.3;margin-bottom:8px;}
-.hero p{font-size:13px;color:var(--brown-mid);line-height:1.7;}
-.hero .now{font-size:13px;font-weight:500;color:var(--peach);margin-top:8px;}
-.form-area{padding:0 1.25rem;}
-.fg{margin-bottom:1rem;}
-.fg label{font-size:12px;font-weight:500;color:var(--brown-mid);display:block;margin-bottom:5px;}
-.fg .hint{font-size:11px;color:var(--brown-light);margin-bottom:5px;}
-.fg input,.fg textarea{width:100%;font-size:15px;padding:12px 14px;border:1.5px solid var(--beige-dark);border-radius:14px;background:#fff;color:var(--brown);font-family:inherit;outline:none;-webkit-appearance:none;}
-.fg input:focus,.fg textarea:focus{border-color:var(--peach);}
-.fg textarea{resize:none;height:72px;}
-.optional-toggle{text-align:center;margin:0.5rem 0 1rem;cursor:pointer;font-size:13px;color:var(--brown-mid);text-decoration:underline;}
-.optional-fields{display:none;}
-.optional-fields.open{display:block;}
-.photo-upload{border:1.5px dashed var(--beige-dark);border-radius:16px;padding:1.25rem;text-align:center;background:#fff;cursor:pointer;position:relative;overflow:hidden;}
-.photo-upload input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-.photo-upload-icon{width:36px;height:36px;background:var(--peach-light);border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;}
-.photo-upload-icon svg{width:18px;height:18px;fill:var(--peach);}
-.photo-preview-img{width:100%;max-height:180px;object-fit:cover;border-radius:12px;display:none;}
-.btn-main{width:calc(100% - 2.5rem);margin:0 1.25rem;padding:16px;background:var(--peach);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;text-decoration:none;}
-.btn-main:active{opacity:0.9;}
-.btn-sub{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:14px;background:#fff;color:var(--brown);border:1.5px solid var(--beige-dark);border-radius:16px;font-size:15px;cursor:pointer;font-family:inherit;display:block;text-align:center;text-decoration:none;}
-.btn-found{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:14px;background:var(--green-light);color:var(--green);border:1.5px solid var(--green);border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;}
-.btn-protect{width:calc(100% - 2.5rem);margin:0.75rem 1.25rem 0;padding:16px;background:var(--green);color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-align:center;}
-.btn-sighting{width:calc(100% - 2.5rem);margin:0 1.25rem;padding:16px;background:#fff;color:var(--brown);border:2px solid var(--peach);border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
-.section-header{padding:0 1.25rem;margin-bottom:1rem;}
-.section-header span{font-size:17px;font-weight:500;color:var(--brown);}
-.emergency-bar{margin:0 1.25rem 1rem;background:#fff3f0;border:1.5px solid var(--peach);border-radius:16px;padding:1rem 1.25rem;}
-.emergency-bar p{font-size:13px;color:var(--brown);margin-bottom:8px;font-weight:500;}
-.emergency-bar a{display:block;padding:12px;background:var(--peach);color:#fff;border-radius:12px;text-align:center;font-size:14px;font-weight:500;text-decoration:none;}
-.poster-wrap{margin:0 1.25rem 1rem;}
-.poster{background:#fff;border-radius:20px;overflow:hidden;border:1px solid var(--beige-dark);}
-.poster-top{background:var(--peach);padding:1rem 1.25rem;text-align:center;}
-.poster-top h1{color:#fff;font-size:20px;font-weight:500;letter-spacing:3px;}
-.poster-top p{color:rgba(255,255,255,0.85);font-size:11px;margin-top:2px;}
-.poster-mid{padding:1rem 1.25rem;display:flex;gap:14px;}
-.poster-img{width:88px;height:88px;border-radius:14px;flex-shrink:0;object-fit:cover;}
-.poster-img-placeholder{width:88px;height:88px;border-radius:14px;background:var(--beige-mid);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:36px;}
-.poster-name{font-size:19px;font-weight:500;color:var(--brown);margin-bottom:4px;}
-.poster-detail{font-size:12px;color:var(--brown-mid);line-height:1.9;}
-.poster-bottom{padding:1rem 1.25rem;background:var(--beige);border-top:1px solid var(--beige-dark);display:flex;justify-content:space-between;align-items:center;gap:12px;}
-.poster-qr-area{flex-shrink:0;}
-.poster-cta{flex:1;}
-.poster-cta p{font-size:12px;font-weight:500;color:var(--brown);margin-bottom:2px;}
-.poster-cta small{font-size:10px;color:var(--brown-mid);}
-.privacy-badge{margin:0 1.25rem 1rem;background:var(--green-light);border:1px solid var(--green);border-radius:16px;padding:0.75rem 1.25rem;display:flex;align-items:center;gap:8px;}
-.privacy-badge svg{width:16px;height:16px;fill:var(--green);flex-shrink:0;}
-.privacy-badge p{font-size:12px;color:var(--green);line-height:1.5;}
-.divider{margin:0 1.25rem 1rem;border:none;border-top:1px solid var(--beige-dark);}
-.sighting-header{padding:0 1.25rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:6px;}
-.sighting-dot{width:8px;height:8px;border-radius:50%;background:var(--peach);}
-.sighting-list{margin:0 1.25rem;}
-.sighting-item{background:#fff;border-radius:16px;border:1px solid var(--beige-dark);padding:1rem;margin-bottom:8px;}
-.sighting-place{font-size:13px;font-weight:500;color:var(--brown);margin-bottom:2px;}
-.sighting-comment{font-size:12px;color:var(--brown-mid);line-height:1.6;}
-.sighting-time{font-size:11px;color:var(--brown-light);margin-top:4px;}
-.loading{text-align:center;padding:1rem;font-size:13px;color:var(--brown-mid);}
-.success-wrap{padding:3rem 1.25rem;text-align:center;}
-.success-icon{width:72px;height:72px;background:var(--peach-light);border-radius:50%;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;}
-.success-icon svg{width:36px;height:36px;fill:var(--peach);}
-.success-icon.green{background:var(--green-light);}
-.success-icon.green svg{fill:var(--green);}
-.success-title{font-size:22px;font-weight:500;color:var(--brown);margin-bottom:0.75rem;}
-.success-text{font-size:14px;color:var(--brown-mid);line-height:1.7;margin-bottom:2rem;}
-.tab-row{display:flex;gap:4px;margin:0 1.25rem 1.25rem;background:var(--beige-mid);padding:4px;border-radius:12px;}
-.tab{flex:1;padding:9px;text-align:center;font-size:13px;cursor:pointer;border-radius:10px;color:var(--brown-mid);border:none;background:transparent;font-family:inherit;}
-.tab.on{background:#fff;color:var(--brown);font-weight:500;}
-.script-box{margin:0 1.25rem 1rem;background:#fff;border-radius:16px;padding:1rem 1.25rem;border:1px solid var(--beige-dark);}
-.script-label{font-size:11px;font-weight:500;color:var(--brown-mid);margin-bottom:8px;}
-.script-text{font-size:14px;color:var(--brown);line-height:1.8;}
-.call-btn{width:calc(100% - 2.5rem);margin:0 1.25rem 0.75rem;padding:15px;background:var(--peach);color:#fff;border:none;border-radius:16px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;display:block;text-decoration:none;text-align:center;}
-.search-box{margin:0 1.25rem 1rem;background:#fff;border-radius:16px;padding:1rem 1.25rem;border:1px solid var(--beige-dark);}
-.search-link{display:block;margin-top:12px;padding:12px;background:var(--peach-light);color:var(--peach);border-radius:12px;text-align:center;font-size:13px;font-weight:500;text-decoration:none;}
-.protect-wrap{padding:2rem 1.25rem 1rem;text-align:center;}
-.protect-header{font-size:22px;font-weight:500;color:var(--brown);margin-bottom:0.5rem;}
-.protect-sub{font-size:14px;color:var(--brown-mid);line-height:1.7;margin-bottom:1.5rem;}
-.pet-card{background:#fff;border-radius:20px;border:1px solid var(--beige-dark);padding:1.25rem;margin-bottom:1.5rem;text-align:left;display:flex;gap:14px;align-items:center;}
-.pet-card-img{width:72px;height:72px;border-radius:50%;flex-shrink:0;object-fit:cover;background:var(--beige-mid);display:flex;align-items:center;justify-content:center;font-size:30px;}
-.pet-card-name{font-size:18px;font-weight:500;color:var(--brown);}
-.pet-card-breed{font-size:13px;color:var(--brown-mid);margin-top:2px;line-height:1.5;}
-.pet-card-tag{display:inline-block;margin-top:6px;font-size:11px;color:var(--peach);background:var(--peach-light);padding:3px 10px;border-radius:20px;font-weight:500;}
-.protect-note{margin:1rem 1.25rem 0;font-size:11px;color:var(--brown-light);text-align:center;line-height:1.6;}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: #FFF0F6; }
+  #root { min-height: 100%; }
 </style>
 </head>
 <body>
-<div class="phone">
-  <div class="header">
-    <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26C17.81 13.47 19 11.38 19 9c0-3.87-3.13-7-7-7z"/></svg></div>
-    <span class="logo-text">LOALIFE</span>
-  </div>
-
-  <!-- STEP 1: フォーム -->
-  <div class="step active" id="s1">
-    <div class="progress"><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="hero">
-      <h2>今すぐポスターを作る。<br>1秒でも早く。</h2>
-      <p>3項目だけ入力してください。ポスターがすぐ完成します。</p>
-      <div class="now">あなたの個人情報は公開されません。</div>
-    </div>
-    <div class="form-area">
-      <div class="fg">
-        <label>名前</label>
-        <input id="f-name" placeholder="例：ロア" type="text">
-      </div>
-      <div class="fg">
-        <label>犬種・特徴</label>
-        <textarea id="f-feat" placeholder="例：コーギー、茶色と白、赤い首輪、体重10kg"></textarea>
-      </div>
-      <div class="fg">
-        <label>迷子になった場所</label>
-        <input id="f-place" placeholder="例：神楽坂駅周辺" type="text">
-      </div>
-      <div class="optional-toggle" onclick="toggleOptional()">＋ 写真・連絡先を追加する（任意）</div>
-      <div class="optional-fields" id="optional-fields">
-        <div class="fg">
-          <label>愛犬の写真（任意）</label>
-          <div class="photo-upload">
-            <input type="file" accept="image/*" onchange="handlePhoto(event)">
-            <div id="upload-placeholder">
-              <div class="photo-upload-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
-              <p style="font-size:13px;font-weight:500;color:var(--brown);">写真を追加する</p>
-            </div>
-            <img class="photo-preview-img" id="photo-preview" src="" alt="">
-          </div>
-        </div>
-        <div class="fg">
-          <label>連絡先（任意）</label>
-          <div class="hint">LOALIFEを通じて通知が届きます。ポスターには掲載されません。</div>
-          <input id="f-tel" placeholder="例：090-1234-5678" type="tel">
-        </div>
-      </div>
-    </div>
-    <button class="btn-main" style="margin-top:1rem;" onclick="generate()">ポスターを今すぐ作る</button>
-  </div>
-
-  <!-- STEP 2: ポスター完成（飼い主画面） -->
-  <div class="step" id="s2">
-    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot"></div></div>
-    <div class="emergency-bar">
-      <p>まず警察に電話しましたか？</p>
-      <a href="tel:110">警察に電話する（110）</a>
-    </div>
-    <div class="section-header"><span>ポスターが完成しました</span></div>
-    <div class="poster-wrap">
-      <div class="poster">
-        <div class="poster-top"><h1>迷子のお知らせ</h1><p>LOALIFE 迷子ネットワーク</p></div>
-        <div class="poster-mid">
-          <div id="poster-photo-wrap"></div>
-          <div>
-            <div class="poster-name" id="p-name"></div>
-            <div class="poster-detail" id="p-detail"></div>
-          </div>
-        </div>
-        <div class="poster-bottom">
-          <div class="poster-cta">
-            <p>見かけた方はこちら</p>
-            <small>QRを読むと直接通知が届きます</small>
-          </div>
-          <div class="poster-qr-area" id="qr-code"></div>
-        </div>
-      </div>
-    </div>
-    <div class="privacy-badge">
-      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-      <p>電話番号はポスターに掲載されません。LOALIFEを通じて安全に通知が届きます。</p>
-    </div>
-    <button class="btn-main" onclick="saveInstagram()">インスタ・SNSにシェアする</button>
-    <button class="btn-sub" onclick="sw('s3')">警察・保健所への連絡スクリプト</button>
-    <hr class="divider" style="margin-top:1.25rem;">
-    <div class="sighting-header"><div class="sighting-dot"></div><span id="sighting-count">目撃情報 0件</span></div>
-    <div class="sighting-list" id="sighting-list"><p class="loading">まだ目撃情報はありません</p></div>
-    <div style="margin-bottom:1rem;"></div>
-    <button class="btn-sighting" onclick="sw('s-sighting-owner')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--peach)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-      目撃情報を受け取る設定
-    </button>
-    <button class="btn-found" onclick="sw('s-found')">見つかりました</button>
-  </div>
-
-  <!-- STEP 3: 連絡スクリプト -->
-  <div class="step" id="s3">
-    <div class="progress"><div class="dot on"></div><div class="dot on"></div><div class="dot on"></div></div>
-    <div class="section-header"><span>連絡スクリプト</span></div>
-    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">このまま読み上げるだけでOKです。</p>
-    <div class="tab-row">
-      <button class="tab on" onclick="st('p',this)">警察に届ける</button>
-      <button class="tab" onclick="st('h',this)">保健所に届ける</button>
-    </div>
-    <div id="tp">
-      <div class="script-box"><div class="script-label">読み上げスクリプト</div><div class="script-text" id="sc-p"></div></div>
-      <a class="call-btn" href="tel:110">警察に電話する（110）</a>
-    </div>
-    <div id="th" style="display:none;">
-      <div class="script-box"><div class="script-label">読み上げスクリプト</div><div class="script-text" id="sc-h"></div></div>
-      <div class="script-box" id="hokenjo-box">
-        <div class="script-label">最寄りの保健所（東京23区）</div>
-        <div class="script-text" id="hokenjo-name"></div>
-        <div class="script-text" id="hokenjo-tel" style="margin-top:4px;"></div>
-        <div style="font-size:11px;color:var(--brown-light);margin-top:2px;" id="hokenjo-address"></div>
-      </div>
-      <a class="call-btn" id="hokenjo-call" href="tel:">保健所に電話する</a>
-      <div class="search-box" id="hokenjo-search" style="display:none;">
-        <div class="script-label">最寄りの保健所</div>
-        <p style="font-size:13px;color:var(--brown-mid);">現在、東京23区のみ対応しています。</p>
-        <a class="search-link" href="https://www.google.com/search?q=保健所+迷子犬+届け出" target="_blank">Googleで保健所を検索する</a>
-      </div>
-    </div>
-    <button class="btn-sub" onclick="sw('s2')">ポスターに戻る</button>
-  </div>
-
-  <!-- 目撃情報設定（飼い主用） -->
-  <div class="step" id="s-sighting-owner">
-    <div class="section-header"><span>目撃情報の受け取り設定</span></div>
-    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">QRコードを読んだ人からの情報がここに届きます。</p>
-    <div class="sighting-list" id="sighting-list-owner"><p class="loading">まだ目撃情報はありません</p></div>
-    <button class="btn-sub" style="margin-top:1rem;" onclick="sw('s2')">ポスターに戻る</button>
-  </div>
-
-  <!-- 目撃情報送信（保護者用） -->
-  <div class="step" id="s-sighting-visitor">
-    <div class="section-header"><span>目撃情報を送る</span></div>
-    <p style="font-size:13px;color:var(--brown-mid);padding:0 1.25rem;margin-bottom:1.25rem;line-height:1.6;">見かけた場所・状況を教えてください。飼い主にすぐ届きます。</p>
-    <div class="form-area">
-      <div class="fg"><label>見かけた場所</label><input id="s-place" type="text" placeholder="例：神楽坂駅 北口付近"></div>
-      <div class="fg"><label>状況・コメント</label><textarea id="s-comment" placeholder="例：赤い首輪のコーギーを見ました。矢来公園の方向に走っていきました。"></textarea></div>
-    </div>
-    <button class="btn-main" onclick="sendSighting()">目撃情報を送信する</button>
-    <button class="btn-sub" onclick="sw('s-protect')">戻る</button>
-  </div>
-
-  <!-- 送信完了 -->
-  <div class="step" id="s-success">
-    <div class="success-wrap">
-      <div class="success-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-      <div class="success-title">送信しました</div>
-      <div class="success-text">目撃情報が飼い主に届きました。<br>ご協力ありがとうございます。<br><br>周りの人にもシェアしてもらえると助かります。</div>
-      <button class="btn-main" style="width:100%;margin:0 0 0.75rem;" onclick="sw('s-protect')">保護者ページに戻る</button>
-      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-sighting-visitor')">もう一件送る</button>
-    </div>
-  </div>
-
-  <!-- 保護しました完了 -->
-  <div class="step" id="s-protected">
-    <div class="success-wrap">
-      <div class="success-icon green"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-      <div class="success-title">飼い主に通知しました</div>
-      <div class="success-text">飼い主に通知が届きました。<br>間もなく連絡が来ます。<br><br>安全な場所で待ってあげてください。</div>
-      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s-protect')">戻る</button>
-    </div>
-  </div>
-
-  <!-- 見つかりました -->
-  <div class="step" id="s-found">
-    <div class="success-wrap">
-      <div class="success-icon green"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
-      <div class="success-title">見つかってよかった</div>
-      <div class="success-text">協力してくれた人たちに<br>感謝を伝えましょう。<br><br>「見つかりました」の投稿が<br>次の迷子犬を救う力になります。</div>
-      <button class="btn-main" style="width:100%;margin:0 0 0.75rem;" onclick="saveFoundPost()">「見つかりました」を投稿する</button>
-      <button class="btn-sub" style="width:100%;margin:0;" onclick="sw('s1')">最初に戻る</button>
-    </div>
-  </div>
-
-  <!-- QRから来た保護者向けページ -->
-  <div class="step" id="s-protect">
-    <div class="protect-wrap">
-      <div class="protect-header">この子を見かけましたか？</div>
-      <div class="protect-sub">情報を送ると飼い主に直接届きます。<br>電話番号は不要です。</div>
-      <div class="pet-card">
-        <div class="pet-card-img" id="protect-img">🐕</div>
-        <div>
-          <div class="pet-card-name" id="protect-name"></div>
-          <div class="pet-card-breed" id="protect-breed"></div>
-          <div class="pet-card-tag">迷子捜索中</div>
-        </div>
-      </div>
-    </div>
-    <button class="btn-main" onclick="sw('s-sighting-visitor')">目撃情報を送る</button>
-    <button class="btn-protect" onclick="sendProtect()">保護しました（飼い主に通知）</button>
-    <p class="protect-note">通知はLOALIFEを通じて安全に届きます。<br>あなたの個人情報は共有されません。</p>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<div id="root"></div>
 <script>
-var firebaseConfig = {
-  apiKey: "AIzaSyCyMcceBNNRpg-lyTtd7oslSwEDOxcco2g",
-  authDomain: "loalife-5071d.firebaseapp.com",
-  projectId: "loalife-5071d",
-  storageBucket: "loalife-5071d.firebasestorage.app",
-  messagingSenderId: "405613985494",
-  appId: "1:405613985494:web:eb4be0f5caa132fe6d9377"
-};
-firebase.initializeApp(firebaseConfig);
-var db = firebase.firestore();
-var photoBase64 = null;
-var currentDocId = null;
-var petName = '';
-var isVisitor = false;
-
-var hokenjoData = {
-  '新宿':{ name:'新宿区保健所', tel:'03-5273-3820', address:'新宿区歌舞伎町1-4-1' },
-  '神楽坂':{ name:'新宿区保健所', tel:'03-5273-3820', address:'新宿区歌舞伎町1-4-1' },
-  '早稲田':{ name:'新宿区保健所', tel:'03-5273-3820', address:'新宿区歌舞伎町1-4-1' },
-  '渋谷':{ name:'渋谷区保健所', tel:'03-3463-2111', address:'渋谷区宇田川町1-1' },
-  '恵比寿':{ name:'渋谷区保健所', tel:'03-3463-2111', address:'渋谷区宇田川町1-1' },
-  '代官山':{ name:'渋谷区保健所', tel:'03-3463-2111', address:'渋谷区宇田川町1-1' },
-  '港':{ name:'港区保健所', tel:'03-6400-0084', address:'港区海岸1-4-22' },
-  '六本木':{ name:'港区保健所', tel:'03-6400-0084', address:'港区海岸1-4-22' },
-  '麻布':{ name:'港区保健所', tel:'03-6400-0084', address:'港区海岸1-4-22' },
-  '千代田':{ name:'千代田区保健所', tel:'03-5211-8166', address:'千代田区九段南1-2-1' },
-  '中央':{ name:'中央区保健所', tel:'03-3541-5930', address:'中央区築地1-1-1' },
-  '文京':{ name:'文京区保健所', tel:'03-5803-1291', address:'文京区春日1-16-21' },
-  '台東':{ name:'台東区保健所', tel:'03-3847-9405', address:'台東区東上野4-22-8' },
-  '墨田':{ name:'墨田区保健所', tel:'03-5608-6191', address:'墨田区吾妻橋1-23-20' },
-  '江東':{ name:'江東区保健所', tel:'03-3647-5946', address:'江東区東陽4-11-28' },
-  '品川':{ name:'品川区保健所', tel:'03-5742-6706', address:'品川区広町2-1-36' },
-  '目黒':{ name:'目黒区保健所', tel:'03-5722-9500', address:'目黒区上目黒2-19-15' },
-  '大田':{ name:'大田区保健所', tel:'03-5764-0661', address:'大田区蒲田5-13-14' },
-  '世田谷':{ name:'世田谷区保健所', tel:'03-5432-2908', address:'世田谷区世田谷4-21-27' },
-  '中野':{ name:'中野区保健所', tel:'03-3382-6500', address:'中野区中野2-17-6' },
-  '杉並':{ name:'杉並区保健所', tel:'03-3391-0015', address:'杉並区阿佐谷南1-15-1' },
-  '豊島':{ name:'豊島区保健所', tel:'03-3987-4172', address:'豊島区東池袋4-42-16' },
-  '北区':{ name:'北区保健所', tel:'03-3919-4500', address:'北区王子1-11-1' },
-  '荒川':{ name:'荒川区保健所', tel:'03-3802-4243', address:'荒川区荒川2-2-3' },
-  '板橋':{ name:'板橋区保健所', tel:'03-3579-2327', address:'板橋区板橋2-65-6' },
-  '練馬':{ name:'練馬区保健所', tel:'03-5984-2484', address:'練馬区豊玉北6-12-1' },
-  '足立':{ name:'足立区保健所', tel:'03-3880-5964', address:'足立区中央本町1-22-1' },
-  '葛飾':{ name:'葛飾区保健所', tel:'03-3602-1204', address:'葛飾区青戸4-15-14' },
-  '江戸川':{ name:'江戸川区保健所', tel:'03-3652-1303', address:'江戸川区中央1-4-1' },
-};
-
-function getHokenjo(place) {
-  for (var key in hokenjoData) {
-    if (place.indexOf(key) !== -1) return hokenjoData[key];
-  }
-  return null;
-}
-
-function toggleOptional() {
-  document.getElementById('optional-fields').classList.toggle('open');
-}
-
-function handlePhoto(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    photoBase64 = e.target.result;
-    document.getElementById('photo-preview').src = e.target.result;
-    document.getElementById('photo-preview').style.display = 'block';
-    document.getElementById('upload-placeholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-
-async function generate() {
-  var name = document.getElementById('f-name').value || '（名前未入力）';
-  var feat = document.getElementById('f-feat').value || '';
-  var place = document.getElementById('f-place').value || '';
-  petName = name;
-
-  try {
-    var docRef = await db.collection('pets').add({
-      name: name, feat: feat, place: place,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+/* localStorage-backed window.storage polyfill */
+window.storage = {
+  get: function(key) {
+    return Promise.resolve().then(function() {
+      var v = localStorage.getItem(key);
+      return v != null ? { value: v } : null;
     });
-    currentDocId = docRef.id;
-  } catch(e) {
-    console.log('Firestore error:', e);
-    currentDocId = 'demo-' + Date.now();
+  },
+  set: function(key, value) {
+    return Promise.resolve().then(function() {
+      localStorage.setItem(key, value);
+    });
+  },
+  delete: function(key) {
+    return Promise.resolve().then(function() {
+      localStorage.removeItem(key);
+    });
   }
+};
+</script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
 
-  var profileUrl = window.location.href.split('?')[0] + '?id=' + currentDocId;
+const STORAGE_KEY = "patty-yaritai-v3";
 
-  document.getElementById('p-name').textContent = name;
-  document.getElementById('p-detail').innerHTML = feat + (place ? '<br><span style="color:var(--brown-light)">場所：' + place + '</span>' : '');
-  document.getElementById('sc-p').textContent = '「迷子の犬の届け出をしたいのですが。名前は' + name + 'です。' + feat + '。' + place + 'でいなくなりました。」';
-  document.getElementById('sc-h').textContent = '「迷子の犬を探しています。名前は' + name + 'といいます。' + feat + '。' + place + 'でいなくなりました。保護された場合はご連絡いただけますか。」';
+/* ---------- date helpers ---------- */
+const iso = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+};
+const plusDays = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return iso(d);
+};
+const daysUntil = (s) => {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  const due = new Date(y, m - 1, d);
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due - t0) / 86400000);
+};
+const addInterval = (s, rep) => {
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (rep === "daily") dt.setDate(dt.getDate() + 1);
+  else if (rep === "weekly") dt.setDate(dt.getDate() + 7);
+  else if (rep === "monthly") dt.setMonth(dt.getMonth() + 1);
+  else if (rep === "yearly") dt.setFullYear(dt.getFullYear() + 1);
+  return iso(dt);
+};
+const fmtDate = (s) => {
+  if (!s) return "";
+  const [, m, d] = s.split("-").map(Number);
+  return `${m}/${d}`;
+};
 
-  var hokenjo = getHokenjo(place);
-  if (hokenjo) {
-    document.getElementById('hokenjo-name').textContent = hokenjo.name;
-    document.getElementById('hokenjo-tel').textContent = hokenjo.tel;
-    document.getElementById('hokenjo-address').textContent = hokenjo.address;
-    document.getElementById('hokenjo-call').href = 'tel:' + hokenjo.tel.replace(/-/g, '');
-    document.getElementById('hokenjo-box').style.display = 'block';
-    document.getElementById('hokenjo-call').style.display = 'block';
-    document.getElementById('hokenjo-search').style.display = 'none';
-  } else {
-    document.getElementById('hokenjo-box').style.display = 'none';
-    document.getElementById('hokenjo-call').style.display = 'none';
-    document.getElementById('hokenjo-search').style.display = 'block';
-  }
+/* ---------- meta ---------- */
+const TYPE_META = {
+  dream: { label: "夢", emoji: "🌈", bg: "#FFE0EC", fg: "#FF2D7E" },
+  work: { label: "仕事", emoji: "💼", bg: "#E6E8FB", fg: "#4F5BD5" },
+  event: { label: "予定", emoji: "📅", bg: "#ECE3FF", fg: "#7C4DFF" },
+  social: { label: "飲み会", emoji: "🍻", bg: "#FFE7D6", fg: "#E8730C" },
+  habit: { label: "習慣", emoji: "💪", bg: "#FFF4D6", fg: "#D99400" },
+};
+const ME_TYPES = ["dream", "work", "event", "social", "habit"];
+const KIND_STYLE = {
+  pet: { bg: "#DBF6F1", fg: "#0E9E8E", word: "ケア" },
+  person: { bg: "#E3EEFF", fg: "#3B7BF6", word: "予定" },
+};
+const DOG_KINDS = [
+  { key: "vaccine", label: "ワクチン", emoji: "💉" },
+  { key: "rabies", label: "狂犬病", emoji: "🐕" },
+  { key: "filaria", label: "フィラリア", emoji: "🦟" },
+  { key: "trim", label: "トリミング", emoji: "✂️" },
+  { key: "hospital", label: "通院", emoji: "🏥" },
+  { key: "other", label: "その他", emoji: "🐾" },
+];
+const CAT_KINDS = [
+  { key: "vaccine", label: "ワクチン", emoji: "💉" },
+  { key: "filaria", label: "フィラリア", emoji: "🦟" },
+  { key: "trim", label: "トリミング", emoji: "✂️" },
+  { key: "hospital", label: "通院", emoji: "🏥" },
+  { key: "other", label: "その他", emoji: "🐾" },
+];
+const OTHER_PET_KINDS = [
+  { key: "checkup", label: "健康診断", emoji: "🩺" },
+  { key: "groom", label: "お手入れ", emoji: "🧼" },
+  { key: "hospital", label: "通院", emoji: "🏥" },
+  { key: "other", label: "その他", emoji: "🐾" },
+];
+const PERSON_KINDS = [
+  { key: "vaccine", label: "予防接種", emoji: "💉" },
+  { key: "checkup", label: "健康診断", emoji: "🩺" },
+  { key: "lesson", label: "習い事", emoji: "🎒" },
+  { key: "hospital", label: "通院", emoji: "🏥" },
+  { key: "event", label: "予定", emoji: "📅" },
+  { key: "other", label: "その他", emoji: "✨" },
+];
+const SPECIES = [
+  { key: "dog", label: "犬", emoji: "🐶" },
+  { key: "cat", label: "猫", emoji: "🐱" },
+  { key: "other", label: "その他", emoji: "🐹" },
+];
+const HIGH_KINDS = new Set(["vaccine", "filaria", "rabies", "hospital", "checkup"]);
+const PET_EMOJIS = ["🐶", "🐱", "🐰", "🐹", "🐦", "🐢"];
+const PERSON_EMOJIS = ["👧", "🧒", "👦", "👶", "👩", "👨"];
+const REPEATS = [
+  { key: "none", label: "なし" },
+  { key: "daily", label: "毎日" },
+  { key: "weekly", label: "毎週" },
+  { key: "monthly", label: "毎月" },
+  { key: "yearly", label: "毎年" },
+];
+const REMINDER_OPTS = [
+  { key: 0, label: "開始時" },
+  { key: 5, label: "5分前" },
+  { key: 30, label: "30分前" },
+  { key: 60, label: "1時間前" },
+  { key: 1440, label: "前日" },
+];
+const reminderLabel = (mins) => (REMINDER_OPTS.find((o) => o.key === mins) || {}).label || `${mins}分前`;
 
-  document.getElementById('poster-photo-wrap').innerHTML = photoBase64
-    ? '<img class="poster-img" src="' + photoBase64 + '" alt="' + name + '">'
-    : '<div class="poster-img-placeholder">🐕</div>';
-
-  var qrEl = document.getElementById('qr-code');
-  qrEl.innerHTML = '';
-  new QRCode(qrEl, { text: profileUrl, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.L });
-
-  await loadSightings();
-  sw('s2');
-}
-
-function saveInstagram() {
-  html2canvas(document.querySelector('.poster'), { scale: 2, useCORS: true }).then(function(canvas) {
-    canvas.toBlob(function(blob) {
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      link.href = url;
-      link.download = 'loalife-' + petName + '.png';
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(function() {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
-    }, 'image/png');
+function downscaleImage(file, maxDim = 1100, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDim) { height = (height * maxDim) / width; width = maxDim; }
+      else if (height >= width && height > maxDim) { width = (width * maxDim) / height; height = maxDim; }
+      const c = document.createElement("canvas");
+      c.width = Math.round(width); c.height = Math.round(height);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      try { resolve(c.toDataURL("image/jpeg", quality)); } catch (e) { reject(e); }
+    };
+    img.onerror = reject;
+    img.src = url;
   });
 }
+const careKindsFor = (m) => {
+  if (!m) return [];
+  if (m.kind === "person") return PERSON_KINDS;
+  if (m.species === "cat") return CAT_KINDS;
+  if (m.species === "other") return OTHER_PET_KINDS;
+  return DOG_KINDS;
+};
 
-function saveFoundPost() {
-  alert('「' + petName + 'が見つかりました！\nたくさんのご協力ありがとうございました🐾」\n\nこのメッセージをコピーしてSNSに投稿してください。');
+/* ---------- emoji auto-guess ---------- */
+const EMOJI_RULES = [
+  [["目", "眼", "ICL", "メガネ", "視力", "レーシック"], "👁️"],
+  [["マラソン", "ラン", "走", "ジョギング", "駅伝"], "🏃"],
+  [["ジム", "筋トレ", "トレーニング", "クロスフィット", "crossfit", "筋"], "🏋️"],
+  [["自転車", "サイクリング", "ロングライド", "ライド", "ロード"], "🚴"],
+  [["泳", "スイミング", "プール", "水泳"], "🏊"],
+  [["ヨガ", "ストレッチ", "瞑想"], "🧘"],
+  [["ピアノ", "ジャズ", "鍵盤", "セッション"], "🎹"],
+  [["ギター", "楽器", "音楽", "バンド"], "🎸"],
+  [["ライブ", "コンサート", "歌", "カラオケ"], "🎤"],
+  [["映画", "シネマ"], "🎬"],
+  [["本", "読書", "読む"], "📚"],
+  [["試験", "資格", "勉強", "検定", "TOEIC", "G検定", "学習"], "🎓"],
+  [["面接", "転職", "仕事", "キャリア", "案件", "副業"], "💼"],
+  [["会議", "打ち合わせ", "打合せ", "MTG", "ミーティング", "商談"], "📊"],
+  [["飲み", "飲み会", "会食", "宴会", "パーティ", "ランチ会", "歓迎会", "送別会", "二次会"], "🍻"],
+  [["旅", "旅行", "海外", "ペルー", "訪ね", "観光", "ステイ"], "✈️"],
+  [["海", "ビーチ", "南国"], "🏖️"],
+  [["山", "登山", "富士", "ハイキング", "トレッキング"], "⛰️"],
+  [["語", "スペイン語", "英語", "中国語", "会話"], "🗣️"],
+  [["写真", "カメラ", "撮"], "📷"],
+  [["料理", "ごはん", "ご飯", "レストラン", "食", "クッキング"], "🍳"],
+  [["コーヒー", "カフェ", "珈琲"], "☕"],
+  [["貯金", "お金", "投資", "iDeCo", " ideco", "ふるさと納税", "資産", "NISA"], "💰"],
+  [["病院", "通院", "受診", "健診", "健康診断", "診察"], "🏥"],
+  [["ワクチン", "予防接種", "注射", "接種"], "💉"],
+  [["フィラリア", "蚊", "ノミ", "ダニ"], "🦟"],
+  [["狂犬病"], "🐕"],
+  [["歯", "歯科", "デンタル"], "🦷"],
+  [["美容", "トリミング", "カット", "ヘア", "サロン"], "✂️"],
+  [["散歩", "お散歩", "ウォーキング"], "🦮"],
+  [["習い事", "レッスン", "塾", "スクール"], "🎒"],
+  [["誕生", "記念", "バースデー"], "🎂"],
+  [["結婚", "プロポーズ", "婚"], "💍"],
+  [["掃除", "片付", "そうじ"], "🧹"],
+  [["引っ越", "引越", "移住"], "📦"],
+  [["占い", "星", "運勢"], "✨"],
+];
+const PICKER_EMOJIS = [
+  "✨", "🌈", "💪", "🏃", "🚴", "🏋️", "🧘", "🎹", "🎸", "🎤",
+  "🎬", "📚", "🎓", "💼", "✈️", "🏖️", "⛰️", "📷", "🍳", "☕",
+  "💰", "🏥", "💉", "🦷", "✂️", "🦮", "🐶", "🐱", "🎂", "💍",
+  "🧸", "🧹", "📦", "🗣️", "👁️", "🦟", "❤️", "⭐", "🎯", "🌷",
+];
+function guessEmoji(title, fallback) {
+  const t = (title || "").toLowerCase();
+  for (const [keys, emo] of EMOJI_RULES) {
+    if (keys.some((k) => t.includes(k.toLowerCase()))) return emo;
+  }
+  return fallback;
 }
 
-async function sendSighting() {
-  var place = document.getElementById('s-place').value;
-  var comment = document.getElementById('s-comment').value;
-  if (!place && !comment) { alert('場所またはコメントを入力してください'); return; }
-  try {
-    await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
-      place: place, comment: comment, type: 'sighting',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch(e) { console.log(e); }
-  document.getElementById('s-place').value = '';
-  document.getElementById('s-comment').value = '';
-  await loadSightings();
-  sw('s-success');
+/* ---------- seed ---------- */
+function makeSeed() {
+  let c = Date.now();
+  const next = () => --c;
+  const me = [
+    { emoji: "👁️", type: "dream", title: "ICL手術でメガネを卒業する" },
+    { emoji: "🏃‍♀️", type: "dream", title: "フルマラソンを完走する" },
+    { emoji: "💼", type: "event", title: "HR企画ポジションの面接", dueDate: plusDays(3) },
+    { emoji: "💪", type: "habit", title: "ジムに行く", dueDate: plusDays(2), repeat: "weekly" },
+    { emoji: "🇵🇪", type: "dream", title: "ペルーの家族のルーツを訪ねる" },
+    { emoji: "🎹", type: "dream", title: "ジャズピアノでステージに立つ" },
+    { emoji: "💗", type: "dream", title: "LOALIFEをもっと多くの人に届ける" },
+  ].map((it, i) => ({ id: "m" + i, space: "me", repeat: "none", done: false, createdAt: next(), ...it }));
+
+  const roa = [
+    { emoji: "💉", title: "混合ワクチン", careKind: "vaccine", repeat: "yearly", dueDate: plusDays(18) },
+    { emoji: "🦟", title: "フィラリア予防薬", careKind: "filaria", repeat: "monthly", dueDate: plusDays(4) },
+    { emoji: "🐕", title: "狂犬病ワクチン", careKind: "rabies", repeat: "yearly", dueDate: plusDays(-5) },
+    { emoji: "✂️", title: "トリミング", careKind: "trim", repeat: "monthly", dueDate: plusDays(25) },
+  ].map((it, i) => ({ id: "r" + i, space: "roa", type: "care", done: false, createdAt: next(), ...it }));
+
+  return {
+    members: [{ id: "roa", name: "ロア", emoji: "🐶", kind: "pet", species: "dog" }],
+    items: [...me, ...roa],
+  };
 }
 
-async function sendProtect() {
-  try {
-    await db.collection('pets').doc(currentDocId || 'demo').collection('sightings').add({
-      place: '保護しました', comment: 'この子を保護しました。飼い主の方、ご連絡ください。', type: 'protect',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch(e) { console.log(e); }
-  sw('s-protected');
+/* ---------- due status ---------- */
+function dueStatus(item) {
+  if (!item.dueDate) return null;
+  const d = daysUntil(item.dueDate);
+  if (d > 3) return { label: fmtDate(item.dueDate), tone: "normal" };
+  if (d > 0) return { label: `あと${d}日`, tone: "soon" };
+  if (d === 0) return { label: "今日", tone: "today" };
+  if (item.type === "dream") return { label: "また今度でも大丈夫", tone: "gentleOver" };
+  if (item.careKind && HIGH_KINDS.has(item.careKind))
+    return { label: "期限を過ぎています", tone: "careOver" };
+  return { label: `${-d}日すぎてます`, tone: "gentleOver" };
 }
 
-async function loadSightings() {
-  if (!currentDocId) return;
-  try {
-    var snapshot = await db.collection('pets').doc(currentDocId).collection('sightings').orderBy('createdAt', 'desc').get();
-    var list = document.getElementById('sighting-list');
-    var listOwner = document.getElementById('sighting-list-owner');
-    var count = document.getElementById('sighting-count');
-    if (snapshot.empty) {
-      if(list) list.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
-      if(listOwner) listOwner.innerHTML = '<p class="loading">まだ目撃情報はありません</p>';
-      if(count) count.textContent = '目撃情報 0件';
+function App() {
+  const [members, setMembers] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("home");
+  const [filter, setFilter] = useState("all");
+  const [flash, setFlash] = useState("");
+
+  const [draft, setDraft] = useState("");
+  const [draftType, setDraftType] = useState("dream");
+  const [draftKind, setDraftKind] = useState("vaccine");
+  const [draftDate, setDraftDate] = useState("");
+  const [draftTime, setDraftTime] = useState("");
+  const [draftRepeat, setDraftRepeat] = useState("none");
+  const [draftReminders, setDraftReminders] = useState([]);
+  const [draftAuto, setDraftAuto] = useState(false);
+
+  const [adding, setAdding] = useState(false);
+  const [newKind, setNewKind] = useState("pet");
+  const [newSpecies, setNewSpecies] = useState("dog");
+  const [newName, setNewName] = useState("");
+  const [newEmoji, setNewEmoji] = useState("🐶");
+
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [pickerId, setPickerId] = useState(null);
+  const [viewer, setViewer] = useState(null);
+  const [photos, setPhotos] = useState({});
+  const [usage, setUsage] = useState({});
+
+  const [editItemId, setEditItemId] = useState(null);
+  const [eTitle, setETitle] = useState("");
+  const [eDate, setEDate] = useState("");
+  const [eTime, setETime] = useState("");
+  const [eRepeat, setERepeat] = useState("none");
+  const [eReminders, setEReminders] = useState([]);
+
+  const [onboarding, setOnboarding] = useState(false);
+  const [obStep, setObStep] = useState(0);
+  const [obWish, setObWish] = useState("");
+  const [obKind, setObKind] = useState(null);
+  const [obSpecies, setObSpecies] = useState("dog");
+  const [obName, setObName] = useState("");
+  const [obEmoji, setObEmoji] = useState("🐶");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY);
+        if (res && res.value) {
+          const v = JSON.parse(res.value);
+          setMembers(v.members || []);
+          setItems(v.items || []);
+          setUsage(v.usage || {});
+          setLoaded(true);
+          return;
+        }
+      } catch (e) {}
+      setMembers([]);
+      setItems([]);
+      setOnboarding(true);
+      setLoaded(true);
+    })();
+  }, []);
+
+  const persist = async (m, it, u = usage) => {
+    setMembers(m);
+    setItems(it);
+    setUsage(u);
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify({ members: m, items: it, usage: u }));
+    } catch (e) {}
+  };
+
+  const showFlash = (msg) => {
+    setFlash(msg);
+    setTimeout(() => setFlash(""), 2200);
+  };
+
+  const loadSample = () => {
+    const seed = makeSeed();
+    persist(seed.members, seed.items);
+    setOnboarding(false);
+    setTab("home");
+  };
+
+  const finishOnboarding = () => {
+    const newMembers = [];
+    const newItems = [];
+    if (obWish.trim()) {
+      newItems.push({
+        id: "x" + Date.now(),
+        space: "me",
+        type: "dream",
+        title: obWish.trim(),
+        emoji: guessEmoji(obWish.trim(), "🌈"),
+        repeat: "none",
+        done: false,
+        createdAt: Date.now(),
+      });
+    }
+    if (obKind && obName.trim()) {
+      const m = { id: "f" + Date.now(), name: obName.trim(), emoji: obEmoji, kind: obKind };
+      if (obKind === "pet") m.species = obSpecies;
+      newMembers.push(m);
+    }
+    persist(newMembers, newItems);
+    setOnboarding(false);
+    setObStep(0);
+    setTab("home");
+  };
+
+  const resetApp = () => {
+    try {
+      window.storage && window.storage.delete(STORAGE_KEY).catch(() => {});
+    } catch (e) {}
+    setMembers([]);
+    setItems([]);
+    setPhotos({});
+    setConfirmDel(null);
+    setObStep(0);
+    setObWish("");
+    setObKind(null);
+    setObSpecies("dog");
+    setObName("");
+    setObEmoji("🐶");
+    setOnboarding(true);
+    setTab("home");
+  };
+
+  const activeMember = members.find((m) => m.id === tab);
+  const isMemberTab = !!activeMember;
+
+  useEffect(() => {
+    setFilter("all");
+    if (activeMember) {
+      const list = careKindsFor(activeMember);
+      const kind = list.find((k) => k.key === draftKind) ? draftKind : list[0].key;
+      if (kind !== draftKind) setDraftKind(kind);
+      const label = (list.find((k) => k.key === kind) || {}).label || "";
+      if (kind !== "other" && (draft === "" || draftAuto)) { setDraft(label); setDraftAuto(true); }
+      else if (kind === "other" && draftAuto) { setDraft(""); setDraftAuto(false); }
+    } else if (draftAuto) {
+      setDraft("");
+      setDraftAuto(false);
+    }
+  }, [tab]); // eslint-disable-line
+
+  const toggle = (id) => {
+    const it = items.find((x) => x.id === id);
+    if (!it) return;
+    let next;
+    if (!it.done && it.repeat && it.repeat !== "none") {
+      const base = it.dueDate || iso(new Date());
+      const newDue = addInterval(base, it.repeat);
+      next = items.map((x) => (x.id === id ? { ...x, dueDate: newDue, done: false } : x));
+      showFlash(`✓ ${it.title} 完了！次回 ${fmtDate(newDue)} に更新`);
+    } else {
+      next = items.map((x) =>
+        x.id === id ? { ...x, done: !x.done, completedAt: !x.done ? Date.now() : null } : x
+      );
+    }
+    persist(members, next);
+  };
+
+  const remove = (id) => {
+    const it = items.find((x) => x.id === id);
+    if (it && it.photo) { try { window.storage && window.storage.delete(`photo:${id}`).catch(() => {}); } catch (e) {} }
+    persist(members, items.filter((x) => x.id !== id));
+  };
+
+  const onFilePicked = async (e, id) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await downscaleImage(file);
+      setPhotos((p) => ({ ...p, [id]: dataUrl }));
+      try { window.storage && window.storage.set(`photo:${id}`, dataUrl).catch(() => {}); } catch (er) {}
+      setItems((prev) => {
+        const next = prev.map((x) => (x.id === id ? { ...x, photo: true } : x));
+        try { window.storage && window.storage.set(STORAGE_KEY, JSON.stringify({ members, items: next })).catch(() => {}); } catch (er) {}
+        return next;
+      });
+      showFlash("証明書を保存しました 📷");
+    } catch (err) {
+      showFlash("保存できませんでした。別の画像でお試しください");
+    }
+  };
+
+  const viewPhoto = async (id) => {
+    if (photos[id]) { setViewer({ id, src: photos[id] }); return; }
+    setViewer({ id, loading: true });
+    try {
+      const res = await window.storage.get(`photo:${id}`);
+      setViewer({ id, src: res && res.value });
+    } catch (e) {
+      setViewer({ id, src: null });
+    }
+  };
+
+  const removePhoto = (id) => {
+    try { window.storage && window.storage.delete(`photo:${id}`).catch(() => {}); } catch (e) {}
+    setPhotos((p) => { const n = { ...p }; delete n[id]; return n; });
+    persist(members, items.map((x) => (x.id === id ? { ...x, photo: false } : x)));
+    setViewer(null);
+    showFlash("証明書を削除しました");
+  };
+
+  const snooze = (id) => {
+    const tomorrow = plusDays(1);
+    persist(members, items.map((x) => (x.id === id ? { ...x, dueDate: tomorrow } : x)));
+    showFlash("明日へ送りました");
+  };
+
+  const setEmoji = (id, emo) => {
+    persist(members, items.map((x) => (x.id === id ? { ...x, emoji: emo } : x)));
+    setPickerId(null);
+  };
+
+  const openEdit = (it) => {
+    setEditItemId(it.id);
+    setETitle(it.title);
+    setEDate(it.dueDate || "");
+    setETime(it.time || "");
+    setERepeat(it.repeat || "none");
+    setEReminders(it.reminders || []);
+  };
+
+  const saveEdit = () => {
+    persist(members, items.map((x) =>
+      x.id === editItemId
+        ? {
+            ...x,
+            title: eTitle.trim() || x.title,
+            dueDate: eDate || undefined,
+            time: eTime || undefined,
+            repeat: eRepeat,
+            reminders: eReminders.length ? eReminders : undefined,
+          }
+        : x
+    ));
+    setEditItemId(null);
+  };
+
+  const toggleEReminder = (mins) =>
+    setEReminders((prev) =>
+      prev.includes(mins) ? prev.filter((m) => m !== mins) : [...prev, mins].sort((a, b) => a - b)
+    );
+
+  const toggleReminder = (mins) =>
+    setDraftReminders((prev) =>
+      prev.includes(mins) ? prev.filter((m) => m !== mins) : [...prev, mins].sort((a, b) => a - b)
+    );
+
+  const pickCareKind = (k) => {
+    setDraftKind(k.key);
+    if (k.key === "other") {
+      if (draftAuto) { setDraft(""); setDraftAuto(false); }
       return;
     }
-    if(count) count.textContent = '目撃情報 ' + snapshot.size + '件';
-    var html = '';
-    snapshot.forEach(function(doc) {
-      var d = doc.data();
-      var isProtect = d.type === 'protect';
-      html += '<div class="sighting-item" style="' + (isProtect ? 'border-color:var(--green);background:var(--green-light);' : '') + '">';
-      html += '<div class="sighting-place" style="' + (isProtect ? 'color:var(--green);' : '') + '">' + (d.place || '') + '</div>';
-      html += '<div class="sighting-comment">' + (d.comment || '') + '</div>';
-      html += '<div class="sighting-time">受信済み</div></div>';
-    });
-    if(list) list.innerHTML = html;
-    if(listOwner) listOwner.innerHTML = html;
-  } catch(e) { console.log(e); }
-}
+    if (draft === "" || draftAuto) { setDraft(k.label); setDraftAuto(true); }
+  };
 
-function sw(id) {
-  document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0, 0);
-}
-
-function st(t, el) {
-  document.querySelectorAll('.tab').forEach(function(b) { b.classList.remove('on'); });
-  el.classList.add('on');
-  document.getElementById('tp').style.display = t === 'p' ? 'block' : 'none';
-  document.getElementById('th').style.display = t === 'h' ? 'block' : 'none';
-}
-
-var urlParams = new URLSearchParams(window.location.search);
-var petId = urlParams.get('id');
-if (petId) {
-  isVisitor = true;
-  currentDocId = petId;
-  sw('s-protect');
-  db.collection('pets').doc(petId).get().then(function(doc) {
-    if (doc.exists) {
-      var d = doc.data();
-      petName = d.name || '';
-      document.getElementById('protect-name').textContent = d.name || '';
-      document.getElementById('protect-breed').textContent = d.feat || '';
+  const addItem = () => {
+    let title = draft.trim();
+    let careMeta = null;
+    if (isMemberTab) {
+      careMeta = careKindsFor(activeMember).find((x) => x.key === draftKind);
+      if (!title && draftKind !== "other") title = (careMeta || {}).label || "";
     }
-  }).catch(function(e) { console.log(e); });
+    if (!title) return;
+    let base = {
+      id: "x" + Date.now(),
+      space: tab,
+      title,
+      done: false,
+      createdAt: Date.now(),
+      dueDate: draftDate || undefined,
+      time: draftTime || undefined,
+      repeat: draftRepeat,
+      reminders: draftReminders.length ? draftReminders : undefined,
+    };
+    if (isMemberTab) {
+      base = { ...base, type: "care", careKind: draftKind, emoji: guessEmoji(title, careMeta.emoji) };
+    } else {
+      base = { ...base, type: draftType, emoji: guessEmoji(title, TYPE_META[draftType].emoji) };
+    }
+    const uKey = tab + " " + title;
+    const nextUsage = { ...usage, [uKey]: (usage[uKey] || 0) + 1 };
+    persist(members, [...items, base], nextUsage);
+    setDraftDate("");
+    setDraftTime("");
+    setDraftRepeat("none");
+    setDraftReminders([]);
+    if (isMemberTab && careMeta && draftKind !== "other") { setDraft(careMeta.label); setDraftAuto(true); }
+    else { setDraft(""); setDraftAuto(false); }
+  };
+
+  const addMember = () => {
+    const name = newName.trim();
+    if (!name) return;
+    const id = "f" + Date.now();
+    const member = { id, name, emoji: newEmoji, kind: newKind };
+    if (newKind === "pet") member.species = newSpecies;
+    const nm = [...members, member];
+    persist(nm, items);
+    setNewName("");
+    setAdding(false);
+    setTab(id);
+  };
+
+  const removeMember = (id) => {
+    const m = members.find((x) => x.id === id);
+    persist(members.filter((x) => x.id !== id), items.filter((x) => x.space !== id));
+    setTab("me");
+    setConfirmDel(null);
+    if (m) showFlash(`${m.name} を削除しました`);
+  };
+
+  const saveRename = (id) => {
+    const name = editName.trim();
+    if (name) persist(members.map((m) => (m.id === id ? { ...m, name } : m)), items);
+    setEditingId(null);
+  };
+
+  const visible = useMemo(() => {
+    let arr = items.filter((x) => x.space === tab);
+    if (filter !== "all") {
+      arr = arr.filter((x) => (isMemberTab ? x.careKind === filter : x.type === filter));
+    }
+    arr = [...arr].sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return b.createdAt - a.createdAt;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+    return arr.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+  }, [items, tab, filter, isMemberTab]);
+
+  const filterChips = useMemo(() => {
+    const all = { key: "all", label: "すべて" };
+    if (isMemberTab) return [all, ...careKindsFor(activeMember)];
+    return [all, ...ME_TYPES.map((t) => ({ key: t, label: TYPE_META[t].label }))];
+  }, [tab, isMemberTab]); // eslint-disable-line
+
+  const suggestions = useMemo(() => {
+    const prefix = tab + " ";
+    return Object.entries(usage)
+      .filter(([k, c]) => k.startsWith(prefix) && c >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([k]) => k.slice(prefix.length));
+  }, [usage, tab]);
+
+  const meItems = items.filter((x) => x.space === "me");
+  const doneCount = meItems.filter((x) => x.done).length;
+  const pct = meItems.length ? Math.round((doneCount / meItems.length) * 100) : 0;
+
+  const memberStats = useMemo(() => {
+    if (!isMemberTab) return null;
+    const arr = items.filter((x) => x.space === tab);
+    let soon = 0, over = 0;
+    arr.forEach((x) => {
+      const d = daysUntil(x.dueDate);
+      if (d === null) return;
+      if (d < 0) over++;
+      else if (d <= 7) soon++;
+    });
+    return { soon, over };
+  }, [items, tab, isMemberTab]);
+
+  const emojiSet = newKind === "person" ? PERSON_EMOJIS : PET_EMOJIS;
+
+  const spaces = useMemo(
+    () => [{ id: "me", name: "わたし", emoji: "🙂", kind: "me" }, ...members],
+    [members]
+  );
+
+  const statusFor = (spaceId) => {
+    const arr = items.filter((x) => x.space === spaceId && !x.done && x.dueDate);
+    let over = 0, next = null, nextDays = Infinity;
+    arr.forEach((x) => {
+      const d = daysUntil(x.dueDate);
+      if (d < 0) over++;
+      else if (d < nextDays) { nextDays = d; next = x; }
+    });
+    return { over, next, nextDays };
+  };
+
+  const todayList = useMemo(() => {
+    return items
+      .filter((x) => !x.done && x.dueDate && daysUntil(x.dueDate) <= 0)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [items]);
+
+  const summary = useMemo(() => {
+    const dreams = items.filter((x) => x.type === "dream" && x.done).length;
+    const careOverdue = items.filter(
+      (x) => x.type === "care" && !x.done && x.dueDate && daysUntil(x.dueDate) < 0
+    ).length;
+    return { dreams, careOverdue, family: members.length };
+  }, [items, members]);
+
+  const nameOf = (spaceId) =>
+    spaceId === "me" ? "わたし" : (members.find((m) => m.id === spaceId) || {}).name || "";
+
+  return (
+    <div className="yl-root">
+      <style>{css}</style>
+
+      {onboarding && (
+        <div className="yl-ob">
+          {obStep === 0 && (
+            <div className="yl-ob-inner">
+              <div className="yl-ob-emoji">🏠</div>
+              <h1 className="yl-ob-title">わたしと、大切な家族を、ひとつの場所で。</h1>
+              <p className="yl-ob-sub">家族みんなの"状態"が、ひと目でわかる。</p>
+              <button className="yl-ob-btn" onClick={() => setObStep(1)}>はじめる</button>
+              <button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button>
+            </div>
+          )}
+
+          {obStep === 1 && (
+            <div className="yl-ob-inner">
+              <p className="yl-ob-step">1 / 2</p>
+              <h2 className="yl-ob-h2">まず、あなたの「やりたいこと」を1つ</h2>
+              <p className="yl-ob-sub">あとから、いつでも追加できます</p>
+              <div className="yl-ob-chips">
+                {["旅行に行く", "資格をとる", "カフェ巡り", "運動を習慣に"].map((ex) => (
+                  <button key={ex} className="yl-ob-chip" onClick={() => setObWish(ex)}>{ex}</button>
+                ))}
+              </div>
+              <input
+                className="yl-input"
+                value={obWish}
+                onChange={(e) => setObWish(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && setObStep(2)}
+                placeholder="やりたいこと…"
+                autoFocus
+              />
+              <button className="yl-ob-btn" onClick={() => setObStep(2)}>次へ</button>
+              <button className="yl-ob-link" onClick={() => { setObWish(""); setObStep(2); }}>スキップ</button>
+            </div>
+          )}
+
+          {obStep === 2 && (
+            <div className="yl-ob-inner">
+              <p className="yl-ob-step">2 / 2</p>
+              <h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>
+              {!obKind ? (
+                <div className="yl-ob-choices">
+                  <button className="yl-ob-choice" onClick={() => { setObKind("pet"); setObEmoji(PET_EMOJIS[0]); }}>🐶 ペット</button>
+                  <button className="yl-ob-choice" onClick={() => { setObKind("person"); setObEmoji(PERSON_EMOJIS[0]); }}>👧 家族（人）</button>
+                  <button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button>
+                </div>
+              ) : (
+                <div className="yl-ob-form">
+                  {obKind === "pet" && (
+                    <div className="yl-kindrow">
+                      {SPECIES.map((s) => (
+                        <button
+                          key={s.key}
+                          className={"yl-kindbtn sm" + (obSpecies === s.key ? " on" : "")}
+                          onClick={() => { setObSpecies(s.key); setObEmoji(s.emoji); }}
+                        >{s.emoji} {s.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="yl-emoji-row">
+                    {(obKind === "person" ? PERSON_EMOJIS : PET_EMOJIS).map((e) => (
+                      <button key={e} className={"yl-emoji" + (obEmoji === e ? " on" : "")} onClick={() => setObEmoji(e)}>{e}</button>
+                    ))}
+                  </div>
+                  <input
+                    className="yl-input"
+                    value={obName}
+                    onChange={(e) => setObName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && finishOnboarding()}
+                    placeholder={obKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"}
+                    autoFocus
+                  />
+                  <button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button>
+                  <button className="yl-ob-link" onClick={() => setObKind(null)}>戻る</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="yl-wrap">
+        <header className="yl-head">
+          <h1 className="yl-title">わたしと家族のリスト</h1>
+        </header>
+
+        <nav className="yl-tabs">
+          <button className={"yl-tab" + (tab === "home" ? " on" : "")} onClick={() => setTab("home")}>
+            ホーム
+          </button>
+          <button className={"yl-tab" + (tab === "me" ? " on" : "")} onClick={() => setTab("me")}>
+            わたし
+          </button>
+          {members.map((m) => (
+            <button
+              key={m.id}
+              className={"yl-tab" + (tab === m.id ? " on" : "")}
+              onClick={() => setTab(m.id)}
+            >
+              {m.emoji} {m.name}
+            </button>
+          ))}
+          <button className="yl-tab add" onClick={() => setAdding((v) => !v)}>＋追加</button>
+        </nav>
+
+        {adding && (
+          <div className="yl-petform">
+            <div className="yl-kindrow">
+              <button
+                className={"yl-kindbtn" + (newKind === "pet" ? " on" : "")}
+                onClick={() => { setNewKind("pet"); setNewEmoji(PET_EMOJIS[0]); }}
+              >🐶 ペット</button>
+              <button
+                className={"yl-kindbtn" + (newKind === "person" ? " on" : "")}
+                onClick={() => { setNewKind("person"); setNewEmoji(PERSON_EMOJIS[0]); }}
+              >👤 家族（人）</button>
+            </div>
+            {newKind === "pet" && (
+              <div className="yl-kindrow">
+                {SPECIES.map((s) => (
+                  <button
+                    key={s.key}
+                    className={"yl-kindbtn sm" + (newSpecies === s.key ? " on" : "")}
+                    onClick={() => { setNewSpecies(s.key); setNewEmoji(s.emoji); }}
+                  >{s.emoji} {s.label}</button>
+                ))}
+              </div>
+            )}
+            <div className="yl-emoji-row">
+              {emojiSet.map((e) => (
+                <button
+                  key={e}
+                  className={"yl-emoji" + (newEmoji === e ? " on" : "")}
+                  onClick={() => setNewEmoji(e)}
+                >{e}</button>
+              ))}
+            </div>
+            <div className="yl-petform-row">
+              <input
+                className="yl-input"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addMember()}
+                placeholder={newKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"}
+              />
+              <button className="yl-addbtn" onClick={addMember}>登録</button>
+            </div>
+          </div>
+        )}
+
+        {tab === "home" ? (
+          <div className="yl-home">
+            {todayList.length === 0 ? (
+              <section className="yl-hero">
+                <div className="yl-hero-emoji">✨</div>
+                <p className="yl-hero-title">今日やることはありません</p>
+                <p className="yl-hero-sub">
+                  {members.some((m) => m.kind === "pet")
+                    ? `${members.find((m) => m.kind === "pet").emoji} ${members.find((m) => m.kind === "pet").name}は今日も元気です`
+                    : "ゆっくり過ごせる一日を"}
+                </p>
+              </section>
+            ) : (
+              <section className="yl-today">
+                <h2 className="yl-sec-title">今日のこと</h2>
+                {todayList.map((it) => {
+                  const od = daysUntil(it.dueDate) < 0;
+                  return (
+                    <button key={it.id} className="yl-today-row" onClick={() => setTab(it.space)}>
+                      <span className="yl-today-emoji">{it.emoji || "•"}</span>
+                      <span className="yl-today-body">
+                        <span className="yl-today-text">{it.title}</span>
+                        <span className="yl-today-who">{nameOf(it.space)}{it.time ? " ・ " + it.time : ""}</span>
+                      </span>
+                      <span className={"yl-today-tag" + (od ? " over" : "")}>{od ? "期限切れ" : "今日"}</span>
+                    </button>
+                  );
+                })}
+              </section>
+            )}
+
+            <h2 className="yl-sec-title">みんなの状態</h2>
+            <div className="yl-statusgrid">
+              {spaces.map((s) => {
+                const st = statusFor(s.id);
+                const tone = st.over > 0 ? "alert" : "ok";
+                let line, sub = null;
+                if (st.over > 0) {
+                  line = `🔴 期限切れ ${st.over}件`;
+                } else if (st.next) {
+                  line = s.kind === "pet" ? "今日は安心して過ごせます" : "順調です";
+                  sub = `次の予定：${st.next.title}・${st.nextDays === 0 ? "今日" : "あと" + st.nextDays + "日"}`;
+                } else {
+                  line = s.kind === "pet" ? "今日も元気です" : "予定はありません";
+                }
+                return (
+                  <button key={s.id} className={"yl-statuscard " + tone} onClick={() => setTab(s.id)}>
+                    <span className="yl-status-emoji">{s.emoji}</span>
+                    <span className="yl-status-body">
+                      <span className="yl-status-name">{s.name}</span>
+                      <span className="yl-status-line">{line}</span>
+                      {sub && <span className="yl-status-sub">{sub}</span>}
+                    </span>
+                    <span className="yl-status-dot" style={{ background: st.over > 0 ? "#E5484D" : "#2FC9A8" }} />
+                  </button>
+                );
+              })}
+            </div>
+
+            <section className="yl-summary">
+              <h2 className="yl-sec-title light">これまでの見守り</h2>
+              <div className="yl-summary-row">
+                <div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">叶えた夢</span></div>
+                <div className="yl-stat"><span className="yl-stat-n">{summary.careOverdue}</span><span className="yl-stat-l">ケアの取りこぼし</span></div>
+                <div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">見守る家族</span></div>
+              </div>
+            </section>
+
+            <button className="yl-reset" onClick={resetApp}>⟳ サンプルを消して最初から</button>
+          </div>
+        ) : (
+        <>
+        {!isMemberTab ? (
+          <section className="yl-meter">
+            <div className="yl-meter-top">
+              <span className="yl-meter-label">わくわくメーター</span>
+              <span className="yl-meter-count">{doneCount} / {meItems.length}</span>
+            </div>
+            <div className="yl-bar"><div className="yl-fill" style={{ width: pct + "%" }} /></div>
+          </section>
+        ) : (
+          <section className="yl-petstatus">
+            <div className="yl-petstatus-head">
+              {editingId === activeMember.id ? (
+                <div className="yl-rename">
+                  <input
+                    className="yl-input sm"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveRename(activeMember.id)}
+                    autoFocus
+                  />
+                  <button className="yl-addbtn sm" onClick={() => saveRename(activeMember.id)}>保存</button>
+                </div>
+              ) : (
+                <span className="yl-petstatus-title" style={{ color: KIND_STYLE[activeMember.kind].fg }}>
+                  {activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
+                  <button
+                    className="yl-icon"
+                    onClick={() => { setEditingId(activeMember.id); setEditName(activeMember.name); }}
+                    aria-label="名前を変更"
+                  >✏️</button>
+                </span>
+              )}
+            </div>
+            <div className="yl-petstatus-chips">
+              <span className="yl-pill soon">⏰ 近い {memberStats?.soon || 0}</span>
+              <span className="yl-pill over">🔴 期限切れ {memberStats?.over || 0}</span>
+              <button className="yl-pet-del" onClick={() => setConfirmDel(activeMember)}>削除</button>
+            </div>
+          </section>
+        )}
+
+        <div className="yl-addbox">
+          {!isMemberTab ? (
+            <div className="yl-typerow">
+              {ME_TYPES.map((t) => (
+                <button
+                  key={t}
+                  className={"yl-chip" + (draftType === t ? " on" : "")}
+                  style={draftType === t ? { background: TYPE_META[t].fg, color: "#fff", borderColor: "transparent" } : undefined}
+                  onClick={() => setDraftType(t)}
+                >{TYPE_META[t].emoji} {TYPE_META[t].label}</button>
+              ))}
+            </div>
+          ) : (
+            <div className="yl-typerow">
+              {careKindsFor(activeMember).map((k) => (
+                <button
+                  key={k.key}
+                  className={"yl-chip" + (draftKind === k.key ? " on" : "")}
+                  style={draftKind === k.key ? { background: KIND_STYLE[activeMember.kind].fg, color: "#fff", borderColor: "transparent" } : undefined}
+                  onClick={() => pickCareKind(k)}
+                >{k.emoji} {k.label}</button>
+              ))}
+            </div>
+          )}
+          {suggestions.length > 0 && (
+            <div className="yl-suggest">
+              <span className="yl-suggest-label">よく使う</span>
+              <div className="yl-suggest-chips">
+                {suggestions.map((s) => (
+                  <button key={s} className="yl-suggest-chip" onClick={() => { setDraft(s); setDraftAuto(false); }}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="yl-add">
+            <input
+              className="yl-input"
+              value={draft}
+              onChange={(e) => { setDraft(e.target.value); setDraftAuto(false); }}
+              onKeyDown={(e) => e.key === "Enter" && addItem()}
+              placeholder={
+                isMemberTab
+                  ? (draftKind === "other"
+                      ? "内容を入力…"
+                      : `${(careKindsFor(activeMember).find((k) => k.key === draftKind) || {}).label || "内容"}を追加…`)
+                  : `${TYPE_META[draftType].label}を追加…`
+              }
+            />
+            <button className="yl-addbtn" onClick={addItem}>追加</button>
+          </div>
+          <div className="yl-optrow">
+            <label className="yl-opt">期限
+              <input type="date" className="yl-date" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
+            </label>
+            <label className="yl-opt">時間
+              <input type="time" className="yl-date" value={draftTime} onChange={(e) => setDraftTime(e.target.value)} />
+            </label>
+            <label className="yl-opt">繰り返し
+              <select className="yl-select" value={draftRepeat} onChange={(e) => setDraftRepeat(e.target.value)}>
+                {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="yl-notify">
+            <span className="yl-notify-label">🔔 通知（任意・複数OK）</span>
+            <div className="yl-notify-chips">
+              {REMINDER_OPTS.map((o) => (
+                <button
+                  key={o.key}
+                  className={"yl-nchip" + (draftReminders.includes(o.key) ? " on" : "")}
+                  onClick={() => toggleReminder(o.key)}
+                >{o.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="yl-sort">
+          {filterChips.map((f) => (
+            <button
+              key={f.key}
+              className={"yl-sortbtn" + (filter === f.key ? " on" : "")}
+              onClick={() => setFilter(f.key)}
+            >{f.emoji ? f.emoji + " " : ""}{f.label}</button>
+          ))}
+        </div>
+
+        {!loaded ? (
+          <p className="yl-loading">よみこみ中…</p>
+        ) : visible.length === 0 ? (
+          <p className="yl-empty">まだありません。上のフォームから追加できます。</p>
+        ) : (
+          <ul className="yl-list">
+            {visible.map((it) => {
+              let meta, label;
+              if (isMemberTab) {
+                meta = KIND_STYLE[activeMember.kind];
+                label = (careKindsFor(activeMember).find((k) => k.key === it.careKind) || {}).label || "ケア";
+              } else {
+                meta = TYPE_META[it.type] || TYPE_META.dream;
+                label = meta.label;
+              }
+              const ds = dueStatus(it);
+              return (
+                <li key={it.id} className={"yl-card" + (it.done ? " is-done" : "")}>
+                  <button
+                    className="yl-bubble"
+                    style={{ background: meta.bg, color: meta.fg }}
+                    onClick={() => setPickerId(it.id)}
+                    title="タップで絵文字を変更"
+                  >{it.emoji}</button>
+                  <div className="yl-body" onClick={() => openEdit(it)}>
+                    <div className="yl-row1">
+                      <span className="yl-badge" style={{ background: meta.bg, color: meta.fg }}>{label}</span>
+                      <span className="yl-text">{it.title}</span>
+                    </div>
+                    {(ds || it.time || it.reminders || it.type === "care" || (it.repeat && it.repeat !== "none")) && (
+                      <div className="yl-meta">
+                        {ds && <span className={"yl-due " + ds.tone}>{ds.label}</span>}
+                        {it.time && <span className="yl-time">🕐 {it.time}</span>}
+                        {it.repeat && it.repeat !== "none" && (
+                          <span className="yl-repeat">🔁 {REPEATS.find((r) => r.key === it.repeat)?.label}</span>
+                        )}
+                        {it.reminders && it.reminders.length > 0 && (
+                          <span className="yl-notif">🔔 {it.reminders.length <= 2 ? it.reminders.map(reminderLabel).join("・") : it.reminders.length + "件"}</span>
+                        )}
+                        {!it.done && it.dueDate && daysUntil(it.dueDate) <= 0 && (
+                          <button className="yl-snooze" onClick={(e) => { e.stopPropagation(); snooze(it.id); }}>→ 明日へ</button>
+                        )}
+                        {it.type === "care" && (
+                          it.photo ? (
+                            <button className="yl-photo" onClick={(e) => { e.stopPropagation(); viewPhoto(it.id); }}>📷 証明書</button>
+                          ) : (
+                            <label className="yl-photo add" onClick={(e) => e.stopPropagation()}>
+                              📎 証明書を追加
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: "none" }}
+                                onChange={(e) => onFilePicked(e, it.id)}
+                              />
+                            </label>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button className={"yl-check" + (it.done ? " on" : "")} onClick={() => toggle(it.id)} aria-label="完了">
+                    <svg viewBox="0 0 24 24" width="15" height="15">
+                      <path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <button className="yl-del" onClick={() => remove(it.id)} aria-label="削除">×</button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        </>
+        )}
+
+        <p className="yl-foot">試作版・データはこの端末に保存されます</p>
+      </div>
+
+      {editItemId && (
+        <div className="yl-overlay" onClick={() => setEditItemId(null)}>
+          <div className="yl-modal edit" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">編集</h3>
+            <input
+              className="yl-input"
+              value={eTitle}
+              onChange={(e) => setETitle(e.target.value)}
+              placeholder="タイトル"
+            />
+            <div className="yl-optrow">
+              <label className="yl-opt">期限
+                <input type="date" className="yl-date" value={eDate} onChange={(e) => setEDate(e.target.value)} />
+              </label>
+              <label className="yl-opt">時間
+                <input type="time" className="yl-date" value={eTime} onChange={(e) => setETime(e.target.value)} />
+              </label>
+              <label className="yl-opt">繰り返し
+                <select className="yl-select" value={eRepeat} onChange={(e) => setERepeat(e.target.value)}>
+                  {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="yl-notify">
+              <span className="yl-notify-label">🔔 通知</span>
+              <div className="yl-notify-chips">
+                {REMINDER_OPTS.map((o) => (
+                  <button
+                    key={o.key}
+                    className={"yl-nchip" + (eReminders.includes(o.key) ? " on" : "")}
+                    onClick={() => toggleEReminder(o.key)}
+                  >{o.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setEditItemId(null)}>閉じる</button>
+              <button className="yl-addbtn modal" onClick={saveEdit}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewer && (
+        <div className="yl-overlay" onClick={() => setViewer(null)}>
+          <div className="yl-modal photo" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">証明書</h3>
+            {viewer.loading ? (
+              <p className="yl-loading">読み込み中…</p>
+            ) : viewer.src ? (
+              <img className="yl-photo-img" src={viewer.src} alt="証明書" />
+            ) : (
+              <p className="yl-empty">画像が見つかりませんでした</p>
+            )}
+            <div className="yl-modal-btns">
+              {viewer.src && (
+                <button className="yl-modal-cancel" onClick={() => removePhoto(viewer.id)}>削除</button>
+              )}
+              <button className="yl-modal-cancel" onClick={() => setViewer(null)}>閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pickerId && (
+        <div className="yl-overlay" onClick={() => setPickerId(null)}>
+          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">絵文字を選ぶ</h3>
+            <div className="yl-emoji-grid">
+              {PICKER_EMOJIS.map((e) => (
+                <button key={e} className="yl-emoji-pick" onClick={() => setEmoji(pickerId, e)}>{e}</button>
+              ))}
+            </div>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setEmoji(pickerId, "")}>絵文字なし</button>
+              <button className="yl-modal-cancel" onClick={() => setPickerId(null)}>閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div className="yl-overlay" onClick={() => setConfirmDel(null)}>
+          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="yl-modal-emoji">{confirmDel.emoji}</div>
+            <h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3>
+            <p className="yl-modal-body">
+              {(() => {
+                const n = items.filter((x) => x.space === confirmDel.id).length;
+                return n > 0
+                  ? `${confirmDel.name}の${KIND_STYLE[confirmDel.kind].word}（${n}件）も一緒に消えます。この操作は元に戻せません。`
+                  : "この操作は元に戻せません。";
+              })()}
+            </p>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setConfirmDel(null)}>キャンセル</button>
+              <button className="yl-modal-del" onClick={() => removeMember(confirmDel.id)}>削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {flash && <div className="yl-flash">{flash}</div>}
+    </div>
+  );
 }
+
+const css = `
+.yl-root{min-height:100%;font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4","Quicksand","Rounded Mplus 1c",system-ui,-apple-system,sans-serif;background:linear-gradient(170deg,#FFF0F6 0%,#F4F0FF 55%,#EFFAF7 100%);padding:22px 14px 40px;box-sizing:border-box;color:#3A2E3F;position:relative;}
+.yl-wrap{max-width:520px;margin:0 auto;}
+.yl-head{text-align:center;margin-bottom:14px;}
+.yl-title{margin:0;font-size:22px;font-weight:800;line-height:1.2;color:#2E2740;letter-spacing:.01em;}
+.yl-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;}
+.yl-tab{flex:0 0 auto;border:none;border-radius:99px;padding:9px 15px;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;background:#fff;color:#9A86A8;box-shadow:0 3px 9px rgba(120,80,160,.08);transition:transform .15s ease;white-space:nowrap;}
+.yl-tab:active{transform:scale(.96);}
+.yl-tab.on{background:linear-gradient(135deg,#FF4D8D,#9B6DFF);color:#fff;box-shadow:0 4px 12px rgba(255,77,141,.28);}
+.yl-tab.add{background:#fff;color:#C06A99;border:2px dashed #F3C3DC;box-shadow:none;}
+.yl-petform{background:#fff;border-radius:18px;padding:12px;margin-bottom:14px;box-shadow:0 5px 16px rgba(120,80,160,.1);}
+.yl-kindrow{display:flex;gap:8px;margin-bottom:10px;}
+.yl-kindbtn{flex:1;border:2px solid #F3E7EF;background:#fff;border-radius:12px;padding:9px;font-size:13px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;}
+.yl-kindbtn.on{border-color:transparent;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);color:#fff;}
+.yl-kindbtn.sm{padding:7px;font-size:12.5px;}
+.yl-emoji-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.yl-emoji{width:38px;height:38px;border-radius:12px;border:2px solid #F3E7EF;background:#fff;font-size:20px;cursor:pointer;padding:0;}
+.yl-emoji.on{border-color:#FF87B5;background:#FFF0F6;}
+.yl-petform-row{display:flex;gap:8px;}
+.yl-meter{background:#fff;border-radius:18px;padding:13px 15px;margin-bottom:12px;box-shadow:0 5px 16px rgba(255,77,141,.1);}
+.yl-meter-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.yl-meter-label{font-size:13px;font-weight:800;color:#FF3D86;}
+.yl-meter-count{font-size:13px;font-weight:800;color:#7C4DFF;}
+.yl-bar{height:11px;border-radius:99px;background:#F3E7EF;overflow:hidden;}
+.yl-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#FF4D8D,#9B6DFF,#34D3C0);transition:width .45s cubic-bezier(.34,1.56,.64,1);}
+.yl-petstatus{background:#fff;border-radius:18px;padding:13px 15px;margin-bottom:12px;box-shadow:0 5px 16px rgba(120,80,160,.1);}
+.yl-petstatus-head{margin-bottom:9px;}
+.yl-petstatus-title{font-size:14px;font-weight:800;display:inline-flex;align-items:center;gap:6px;}
+.yl-icon{border:none;background:transparent;cursor:pointer;font-size:13px;padding:0 2px;}
+.yl-rename{display:flex;gap:7px;}
+.yl-input.sm{padding:7px 11px;font-size:13.5px;}
+.yl-addbtn.sm{padding:0 13px;font-size:13px;}
+.yl-petstatus-chips{display:flex;gap:8px;align-items:center;}
+.yl-pill{font-size:12px;font-weight:800;padding:5px 11px;border-radius:99px;}
+.yl-pill.soon{background:#FFF1D2;color:#E08A00;}
+.yl-pill.over{background:#FFE2E2;color:#E5484D;}
+.yl-pet-del{margin-left:auto;border:none;background:transparent;color:#C9A9C0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.yl-sort{display:flex;gap:7px;margin-bottom:12px;}
+.yl-sortbtn{border:none;background:#fff;border-radius:99px;padding:7px 13px;font-size:12.5px;font-weight:700;font-family:inherit;color:#9A86A8;cursor:pointer;box-shadow:0 2px 7px rgba(120,80,160,.07);}
+.yl-sortbtn.on{background:#3A2E3F;color:#fff;}
+.yl-loading,.yl-empty{text-align:center;color:#B59CC0;font-weight:600;padding:26px 0;}
+.yl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.yl-card{position:relative;display:flex;align-items:center;gap:12px;background:#fff;border-radius:20px;padding:12px 13px;box-shadow:0 5px 15px rgba(120,80,160,.09);transition:background .3s ease;}
+.yl-bubble{flex:0 0 auto;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;border:none;cursor:pointer;font-family:inherit;transition:transform .12s ease;}
+.yl-bubble:active{transform:scale(.92);}
+.yl-body{flex:1;min-width:0;cursor:pointer;}
+.yl-suggest{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.yl-suggest-label{font-size:11px;font-weight:800;color:#9A86A8;flex:0 0 auto;}
+.yl-suggest-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.yl-suggest-chip{border:2px solid #E9DFF0;background:#FBF8FD;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:800;font-family:inherit;color:#6B5B7A;cursor:pointer;}
+.yl-suggest-chip:active{transform:scale(.95);}
+.yl-modal.edit{max-width:360px;text-align:left;}
+.yl-modal.edit .yl-modal-title{text-align:center;}
+.yl-modal.edit .yl-input{width:100%;box-sizing:border-box;margin-bottom:12px;}
+.yl-modal.edit .yl-optrow{margin-top:0;margin-bottom:4px;}
+.yl-addbtn.modal{flex:1;border-radius:14px;padding:12px;}
+.yl-row1{display:flex;align-items:center;gap:8px;}
+.yl-badge{flex:0 0 auto;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:7px;}
+.yl-text{font-size:14.5px;font-weight:700;line-height:1.3;}
+.is-done .yl-text{text-decoration:line-through;color:#B6A8C0;text-decoration-color:#E3B7D0;}
+.is-done .yl-bubble{filter:saturate(.5);opacity:.75;}
+.yl-meta{display:flex;gap:9px;align-items:center;margin-top:5px;margin-left:1px;flex-wrap:wrap;}
+.yl-due{font-size:11.5px;font-weight:800;}
+.yl-due.normal{color:#9A86A8;}
+.yl-due.soon{color:#E08A00;}
+.yl-due.today{color:#FF2D7E;}
+.yl-due.gentleOver{color:#F08A3C;}
+.yl-due.careOver{color:#E5484D;background:#FFE2E2;padding:2px 8px;border-radius:7px;}
+.yl-repeat{font-size:11px;font-weight:700;color:#9A86A8;}
+.yl-check{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:2.5px solid #F0C7DC;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .2s ease;}
+.yl-check svg{opacity:0;transform:scale(.5);transition:all .2s ease;}
+.yl-check.on{border-color:transparent;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);}
+.yl-check.on svg{opacity:1;transform:scale(1);}
+.yl-check:focus-visible{outline:3px solid #FFC2DA;outline-offset:2px;}
+.yl-del{position:absolute;top:-7px;right:-7px;width:21px;height:21px;border-radius:50%;border:none;background:#fff;color:#C9A9C0;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);opacity:0;transition:opacity .15s ease;}
+.yl-card:hover .yl-del{opacity:1;}
+.yl-addbox{margin-top:0;margin-bottom:14px;background:#fff;border-radius:20px;padding:13px;box-shadow:0 5px 16px rgba(120,80,160,.09);}
+.yl-typerow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.yl-chip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;transition:transform .12s ease;}
+.yl-chip:active{transform:scale(.95);}
+.yl-add{display:flex;gap:8px;}
+.yl-input{flex:1;border:2px solid #FBD9E8;border-radius:14px;padding:11px 14px;font-size:14.5px;font-family:inherit;font-weight:600;background:#fff;color:#3A2E3F;outline:none;transition:border-color .2s ease;min-width:0;}
+.yl-input::placeholder{color:#CDB6C8;}
+.yl-input:focus{border-color:#FF87B5;}
+.yl-addbtn{border:none;border-radius:14px;padding:0 18px;font-size:14.5px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);box-shadow:0 4px 12px rgba(255,77,141,.3);transition:transform .15s ease;white-space:nowrap;}
+.yl-addbtn:active{transform:scale(.95);}
+.yl-optrow{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
+.yl-time{font-size:11px;font-weight:800;color:#7C4DFF;}
+.yl-notif{font-size:11px;font-weight:800;color:#E08A00;}
+.yl-snooze{border:none;background:#F2ECFB;color:#7C4DFF;font-size:11px;font-weight:800;font-family:inherit;padding:3px 9px;border-radius:99px;cursor:pointer;}
+.yl-snooze:active{transform:scale(.94);}
+.yl-photo{display:inline-flex;align-items:center;border:none;background:#E8F6F2;color:#0E9E8E;font-size:11px;font-weight:800;font-family:inherit;padding:3px 9px;border-radius:99px;cursor:pointer;}
+.yl-photo.add{background:#F3EEF8;color:#9A86A8;}
+.yl-photo:active{transform:scale(.94);}
+.yl-photo-img{width:100%;border-radius:14px;max-height:60vh;object-fit:contain;background:#F6F2F8;margin-bottom:14px;}
+.yl-modal.photo{max-width:380px;}
+.yl-notify{margin-top:12px;border-top:1px solid #F3E7EF;padding-top:11px;}
+.yl-notify-label{font-size:11px;font-weight:800;color:#9A86A8;display:block;margin-bottom:8px;}
+.yl-notify-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.yl-nchip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;transition:transform .12s ease;}
+.yl-nchip:active{transform:scale(.94);}
+.yl-nchip.on{border-color:transparent;background:linear-gradient(135deg,#FFB347,#FF8FA3);color:#fff;}
+.yl-opt{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;color:#9A86A8;}
+.yl-date,.yl-select{border:2px solid #F3E7EF;border-radius:11px;padding:7px 9px;font-family:inherit;font-size:13px;font-weight:700;color:#3A2E3F;background:#fff;outline:none;}
+.yl-date:focus,.yl-select:focus{border-color:#FF87B5;}
+.yl-foot{text-align:center;font-size:11.5px;color:#B49EC0;font-weight:600;margin:18px 0 0;}
+.yl-flash{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#3A2E3F;color:#fff;font-size:13px;font-weight:700;padding:11px 18px;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.22);animation:rise .3s ease;max-width:90%;text-align:center;z-index:50;}
+@keyframes rise{from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+.yl-overlay{position:fixed;inset:0;background:rgba(58,46,63,.38);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:24px;z-index:60;animation:fade .2s ease;}
+@keyframes fade{from{opacity:0;}to{opacity:1;}}
+.yl-modal{background:#fff;border-radius:24px;padding:24px 22px 18px;max-width:340px;width:100%;text-align:center;box-shadow:0 18px 50px rgba(120,80,160,.3);animation:pop .25s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+.yl-modal-emoji{font-size:40px;margin-bottom:6px;}
+.yl-modal-title{margin:0 0 8px;font-size:17px;font-weight:800;color:#3A2E3F;}
+.yl-modal-body{margin:0 0 18px;font-size:13px;font-weight:600;line-height:1.55;color:#8A7C94;}
+.yl-modal-btns{display:flex;gap:9px;}
+.yl-modal-cancel{flex:1;border:2px solid #F0E4EE;background:#fff;border-radius:14px;padding:12px;font-size:14px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;}
+.yl-modal-del{flex:1;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF6B6B,#E5484D);box-shadow:0 4px 12px rgba(229,72,77,.3);}
+.yl-modal-cancel:active,.yl-modal-del:active{transform:scale(.96);}
+.yl-emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:16px;}
+.yl-emoji-pick{aspect-ratio:1;border:2px solid #F3E7EF;background:#fff;border-radius:12px;font-size:21px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,border-color .12s ease;}
+.yl-emoji-pick:hover{border-color:#FF87B5;}
+.yl-emoji-pick:active{transform:scale(.88);}
+@media (prefers-reduced-motion: reduce){.yl-fill,.yl-card,.yl-check,.yl-check svg,.yl-addbtn,.yl-tab,.yl-chip{transition:none;}}
+.yl-home{display:flex;flex-direction:column;gap:18px;}
+.yl-sec-title{font-size:14px;font-weight:800;color:#3A2E3F;margin:0 0 10px;}
+.yl-sec-title.light{color:#9A86A8;}
+.yl-hero{background:#fff;border-radius:22px;padding:28px 18px;text-align:center;box-shadow:0 6px 18px rgba(255,77,141,.1);}
+.yl-hero-emoji{font-size:38px;}
+.yl-hero-title{margin:8px 0 4px;font-size:18px;font-weight:800;color:#3A2E3F;}
+.yl-hero-sub{margin:0;font-size:13px;font-weight:700;color:#8A7C94;}
+.yl-today{background:#fff;border-radius:20px;padding:14px;box-shadow:0 5px 16px rgba(120,80,160,.09);}
+.yl-today-row{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;padding:9px 4px;cursor:pointer;text-align:left;border-bottom:1px solid #F6EFF4;font-family:inherit;}
+.yl-today-row:last-child{border-bottom:none;}
+.yl-today-emoji{font-size:22px;flex:0 0 auto;}
+.yl-today-body{flex:1;display:flex;flex-direction:column;min-width:0;}
+.yl-today-text{font-size:14.5px;font-weight:700;color:#3A2E3F;}
+.yl-today-who{font-size:11px;font-weight:700;color:#A596B2;margin-top:2px;}
+.yl-today-tag{flex:0 0 auto;font-size:11px;font-weight:800;color:#7C4DFF;background:#EFE7FB;padding:4px 9px;border-radius:99px;}
+.yl-today-tag.over{color:#E5484D;background:#FFE2E2;}
+.yl-statusgrid{display:flex;flex-direction:column;gap:9px;}
+.yl-statuscard{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:none;border-left:5px solid #34D3C0;border-radius:16px;padding:13px;cursor:pointer;text-align:left;box-shadow:0 4px 13px rgba(120,80,160,.08);font-family:inherit;transition:transform .12s ease;}
+.yl-statuscard:active{transform:scale(.99);}
+.yl-statuscard.alert{border-left-color:#E5484D;}
+.yl-status-emoji{font-size:26px;flex:0 0 auto;}
+.yl-status-body{flex:1;display:flex;flex-direction:column;min-width:0;}
+.yl-status-name{font-size:15px;font-weight:800;color:#3A2E3F;}
+.yl-status-line{font-size:12px;font-weight:700;color:#8A7C94;margin-top:2px;}
+.yl-status-sub{font-size:11px;font-weight:700;color:#B0A0BD;margin-top:2px;}
+.yl-reset{display:block;margin:6px auto 0;border:none;background:transparent;color:#C2B2CE;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;}
+.yl-ob{position:fixed;inset:0;z-index:80;background:linear-gradient(170deg,#FFF0F6 0%,#F4F0FF 55%,#EFFAF7 100%);display:flex;align-items:center;justify-content:center;padding:28px 22px;animation:fade .25s ease;overflow-y:auto;}
+.yl-ob-inner{width:100%;max-width:380px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.yl-ob-emoji{font-size:48px;margin-bottom:10px;}
+.yl-ob-title{margin:0 0 8px;font-size:23px;font-weight:800;line-height:1.4;color:#2E2740;}
+.yl-ob-h2{margin:6px 0 6px;font-size:19px;font-weight:800;color:#3A2E3F;line-height:1.4;}
+.yl-ob-step{margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.1em;color:#C06A99;}
+.yl-ob-sub{margin:0 0 18px;font-size:13.5px;font-weight:700;color:#8A7C94;}
+.yl-ob-btn{width:100%;border:none;border-radius:16px;padding:15px;font-size:16px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);box-shadow:0 6px 16px rgba(255,77,141,.32);margin-top:6px;}
+.yl-ob-btn:active{transform:scale(.98);}
+.yl-ob-link{border:none;background:transparent;color:#9A86A8;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;padding:12px;margin-top:2px;}
+.yl-ob-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:14px;}
+.yl-ob-chip{border:2px solid #F3D9E8;background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:800;font-family:inherit;color:#C0568F;cursor:pointer;}
+.yl-ob-chip:active{transform:scale(.95);}
+.yl-ob .yl-input{width:100%;box-sizing:border-box;margin-bottom:6px;}
+.yl-ob-choices{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px;}
+.yl-ob-choice{border:2px solid #EEE3F3;background:#fff;border-radius:16px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;color:#3A2E3F;cursor:pointer;}
+.yl-ob-choice:active{transform:scale(.98);}
+.yl-ob-form{width:100%;display:flex;flex-direction:column;gap:10px;}
+.yl-ob-form .yl-kindrow,.yl-ob-form .yl-emoji-row{justify-content:center;}
+.yl-statuscard.alert .yl-status-line{color:#E5484D;}
+.yl-status-glyph{font-size:20px;flex:0 0 auto;}
+.yl-status-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;}
+.yl-summary{background:linear-gradient(135deg,#FFF0F6,#F1ECFF);border-radius:20px;padding:16px;}
+.yl-summary-row{display:flex;gap:10px;}
+.yl-stat{flex:1;background:#fff;border-radius:14px;padding:13px 8px;text-align:center;}
+.yl-stat-n{display:block;font-size:24px;font-weight:800;color:#FF2D7E;}
+.yl-stat-l{display:block;font-size:10.5px;font-weight:800;color:#9A86A8;margin-top:3px;}
+`;
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
 </script>
 </body>
 </html>
