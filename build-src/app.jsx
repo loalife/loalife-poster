@@ -251,6 +251,10 @@ function App(){
   const[copiedCode,setCopiedCode]=useState(false);
   const householdUnsub=useRef(null);
 
+  // Quick-add state
+  const[quickAdd,setQuickAdd]=useState(null); // {kind,emoji,title,space,lastDate,repeat}
+  const[quickDate,setQuickDate]=useState("");
+
   // Load local data
   useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
 
@@ -576,6 +580,37 @@ function App(){
     setEditingId(null);
   };
 
+  // --- Quick-add functions ---
+  const openQuickAdd=(kind,emoji,title,space,lastDate,repeat)=>{
+    setQuickAdd({kind,emoji,title,space,lastDate:lastDate||null,repeat:repeat||"none"});
+    setQuickDate("");
+  };
+  const openQuickCopy=(it)=>{
+    setQuickAdd({kind:it.careKind,emoji:it.emoji,title:it.title,space:it.space,lastDate:it.dueDate||null,repeat:it.repeat||"none"});
+    setQuickDate("");
+  };
+  const saveQuickAdd=()=>{
+    if(!quickAdd)return;
+    const base={id:"x"+Date.now(),space:quickAdd.space,title:quickAdd.title,emoji:quickAdd.emoji,type:"care",careKind:quickAdd.kind,done:false,createdAt:Date.now(),dueDate:quickDate||undefined,repeat:quickAdd.repeat};
+    const next=[...items,base];
+    persist(members,next);
+    saveItemToFs(base).catch(()=>{});
+    setQuickAdd(null);setQuickDate("");
+    showFlash("追加しました！");
+  };
+
+  // Last date per care kind for active member
+  const lastDates=useMemo(()=>{
+    if(!activeMember)return{};
+    const mi=items.filter(x=>x.space===activeMember.id&&x.dueDate);
+    const res={};
+    careKindsFor(activeMember).forEach(k=>{
+      const ki=mi.filter(x=>x.careKind===k.key);
+      if(ki.length>0)res[k.key]=ki.sort((a,b)=>b.dueDate.localeCompare(a.dueDate))[0];
+    });
+    return res;
+  },[items,activeMember]);
+
   const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab);if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
@@ -855,6 +890,28 @@ function App(){
               </section>
             )}
 
+            {/* 1タップ追加パネル（メンバータブのみ） */}
+            {isMemberTab&&(
+              <div className="yl-quickbar">
+                <p className="yl-quickbar-label">1タップ追加</p>
+                <div className="yl-quickbar-grid">
+                  {careKindsFor(activeMember).map(k=>{
+                    const prev=lastDates[k.key];
+                    return(
+                      <button key={k.key} className="yl-quickbar-item" onClick={()=>openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat)}>
+                        <span className="yl-quickbar-ico">{k.emoji}</span>
+                        <span className="yl-quickbar-info">
+                          <span className="yl-quickbar-name">{k.label}</span>
+                          <span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span>
+                        </span>
+                        <span className="yl-quickbar-plus">＋</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="yl-addbox">
               {!isMemberTab?<div className="yl-typerow">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}>{TYPE_META[t].emoji} {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}>{k.emoji} {k.label}</button>)}</div>}
               {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
@@ -884,6 +941,7 @@ function App(){
                             {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat">🔁 {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
                             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
                             {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
+                            {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
                             {it.dueDate&&<a className="yl-cal-item" href={gcalLink(it,nameOf(it.space),it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||""))} target="_blank" rel="noopener noreferrer" title="Googleカレンダーに追加" onClick={e=>e.stopPropagation()}>📅</a>}
                             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(it.id);}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
                           </div>
@@ -906,6 +964,27 @@ function App(){
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMePicker(false);}}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
+      {quickAdd&&(
+        <div className="yl-overlay" onClick={()=>setQuickAdd(null)}>
+          <div className="yl-modal quickadd" onClick={e=>e.stopPropagation()}>
+            <div className="yl-quickadd-head">
+              <span className="yl-quickadd-ico">{quickAdd.emoji}</span>
+              <div>
+                <p className="yl-quickadd-name">{quickAdd.title}</p>
+                {quickAdd.lastDate&&<p className="yl-quickadd-prev">前回: {fmtDate(quickAdd.lastDate)}</p>}
+              </div>
+            </div>
+            <label className="yl-opt" style={{display:"block",marginBottom:14}}>
+              日付
+              <input type="date" className="yl-date" style={{display:"block",width:"100%",marginTop:6}} value={quickDate} onChange={e=>setQuickDate(e.target.value)} autoFocus/>
+            </label>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={()=>setQuickAdd(null)}>キャンセル</button>
+              <button className="yl-addbtn modal" onClick={saveQuickAdd}>追加する</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showShareModal&&<ShareModal/>}
       {flash&&<div className="yl-flash">{flash}</div>}
     </div>
