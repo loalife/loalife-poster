@@ -148,11 +148,14 @@ function App(){
   const[obBirthday,setObBirthday]=useState("");
   const[notifPerm,setNotifPerm]=useState(notifSupported?Notification.permission:"denied");
   const[meEmoji,setMeEmoji]=useState("🙂");
+  const[meBirthday,setMeBirthday]=useState("");
+  const[meBdayEdit,setMeBdayEdit]=useState(false);
+  const[meBdayDraft,setMeBdayDraft]=useState("");
   const[mePicker,setMePicker]=useState(false);
   const timerIds=useRef([]);
 
   // Load data
-  useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
+  useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
 
   // Schedule reminders when items/permission change
   useEffect(()=>{
@@ -171,8 +174,9 @@ function App(){
     });
   },[loaded,notifPerm]);
 
-  const persist=async(m,it,u=usage)=>{setMembers(m);setItems(it);setUsage(u);try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji}));}catch(e){}};
-  const persistMeEmoji=(emo)=>{setMeEmoji(emo);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo})).catch(()=>{});}catch(e){}};
+  const persist=async(m,it,u=usage)=>{setMembers(m);setItems(it);setUsage(u);try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji,meBirthday}));}catch(e){}};
+  const persistMeEmoji=(emo)=>{setMeEmoji(emo);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo,meBirthday})).catch(()=>{});}catch(e){}};
+  const persistMeBirthday=(bday)=>{setMeBirthday(bday);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji,meBirthday:bday})).catch(()=>{});}catch(e){}};
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
@@ -183,7 +187,7 @@ function App(){
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
-  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setOnboarding(true);setTab("home");};
+  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setOnboarding(true);setTab("home");};
 
   const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
 
@@ -261,8 +265,8 @@ function App(){
   const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&!x.done&&x.dueDate&&daysUntil(x.dueDate)<0).length,family:members.length}),[items,members]);
   const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
 
-  // Birthdays coming up (within 7 days)
-  const upcomingBirthdays=useMemo(()=>members.filter(m=>m.birthday).map(m=>({...m,daysUntil:daysUntilBirthday(m.birthday)})).filter(m=>m.daysUntil!==null&&m.daysUntil<=7).sort((a,b)=>a.daysUntil-b.daysUntil),[members]);
+  // Birthdays coming up (within 7 days) — includes "me"
+  const upcomingBirthdays=useMemo(()=>{const all=[...members.filter(m=>m.birthday)];if(meBirthday)all.unshift({id:"me",name:"わたし",emoji:meEmoji,birthday:meBirthday});return all.map(m=>({...m,daysUntil:daysUntilBirthday(m.birthday)})).filter(m=>m.daysUntil!==null&&m.daysUntil<=7).sort((a,b)=>a.daysUntil-b.daysUntil);},[members,meBirthday,meEmoji]);
 
   const showNotifBanner=notifSupported&&notifPerm==="default";
   const hasReminders=items.some(x=>x.reminders?.length);
@@ -333,7 +337,7 @@ function App(){
           </div>
         ):(
           <>
-            {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label"><button className="yl-me-emoji-btn" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button>わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div></section>:(
+            {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label"><button className="yl-me-emoji-btn" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button>わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 誕生日を登録する"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">{editingId===activeMember.id?<div className="yl-rename"><input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/><label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label><button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button></div>:<span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>{activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}<button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");}}>✏️</button></span>}</div>
                 <div className="yl-petstatus-chips">
