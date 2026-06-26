@@ -159,21 +159,10 @@ function generateIcal(items, members, meEmoji) {
 
 function downloadIcal(content, filename="loalife-calendar.ics"){
   const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
-  // iOS Share Sheet (最も確実 — iOSでAppleカレンダーへの追加を促す)
-  if(navigator.share&&typeof File!=="undefined"){
-    const file=new File([blob],filename,{type:"text/calendar"});
-    if(navigator.canShare?.({files:[file]})){
-      navigator.share({files:[file],title:"LOALIFEカレンダー"}).catch(()=>{});
-      return;
-    }
-  }
   const url=URL.createObjectURL(blob);
-  // iOS Safariはdownload属性を無視するので新しいタブで開く
-  if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
-    window.open(url,"_blank");
-  }else{
-    const a=document.createElement("a");a.href=url;a.download=filename;a.click();
-  }
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
@@ -268,6 +257,9 @@ function App(){
   // Quick-add state
   const[quickAdd,setQuickAdd]=useState(null); // {kind,emoji,title,space,lastDate,repeat}
   const[quickDate,setQuickDate]=useState("");
+
+  // Calendar picker state
+  const[calPicker,setCalPicker]=useState(null); // {item} | {bulk:true}
 
   // Load local data
   useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
@@ -839,7 +831,7 @@ function App(){
               <section className="yl-dashboard">
                 <div className="yl-dash-head">
                   <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
-                  <button className="yl-cal-export" onClick={exportCalendar} title="カレンダーにエクスポート">📅 エクスポート</button>
+                  <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 エクスポート</button>
                 </div>
                 {groupedDashboard.map(({space:s,items:gItems})=>(
                   <div key={s.id} className="yl-dash-group">
@@ -858,7 +850,7 @@ function App(){
                             <span className="yl-dash-item-emoji">{it.emoji||"•"}</span>
                             <span className="yl-dash-item-text">{it.title}{it.time&&<span className="yl-dash-item-time"> {it.time}</span>}</span>
                             <span className={"yl-dash-tag "+tone}>{tag}</span>
-                            <button className="yl-cal-add" onClick={e=>{e.stopPropagation();downloadIcal(generateIcal([it],members,meEmoji),`${it.title}.ics`);}} title="カレンダーに追加（Apple/Google）">📅</button>
+                            <button className="yl-cal-add" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>
                           </li>
                         );
                       })}
@@ -956,7 +948,7 @@ function App(){
                             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
                             {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
                             {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
-                            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();downloadIcal(generateIcal([it],members,meEmoji),`${it.title}.ics`);}} title="カレンダーに追加（Apple/Google）">📅</button>}
+                            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>}
                             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(it.id);}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
                           </div>
                         )}
@@ -978,6 +970,34 @@ function App(){
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMePicker(false);}}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
+      {calPicker&&(()=>{
+        const it=calPicker.item;
+        const memberName=it?nameOf(it.space):"";
+        const memberEmoji=it?(it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||"")):"";
+        const gcal=it?gcalLink(it,memberName,memberEmoji):null;
+        const icsContent=it?generateIcal([it],members,meEmoji):generateIcal(items,members,meEmoji);
+        const icsName=it?`${it.title}.ics`:"loalife-calendar.ics";
+        return(
+          <div className="yl-overlay" onClick={()=>setCalPicker(null)}>
+            <div className="yl-modal cal-picker" onClick={e=>e.stopPropagation()}>
+              <h3 className="yl-modal-title">📅 カレンダーに追加</h3>
+              {it&&<p className="yl-cal-picker-sub">{it.emoji} {it.title}</p>}
+              <a className="yl-cal-choice-btn google" href={gcal||"#"} target="_blank" rel="noopener noreferrer" onClick={()=>setCalPicker(null)}>
+                <svg width="18" height="18" viewBox="0 0 48 48" style={{flexShrink:0}}><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+                Googleカレンダー
+              </a>
+              <button className="yl-cal-choice-btn apple" onClick={()=>{downloadIcal(icsContent,icsName);setCalPicker(null);}}>
+                🍎 Appleカレンダー（.ics）
+              </button>
+              <p className="yl-cal-note">
+                💡 iPhoneでAppleカレンダーに追加するには：<br/>
+                <strong>SafariブラウザでこのサイトをURL直接開く</strong> → 📅タップ → .icsをダウンロード → カレンダーで開く
+              </p>
+              <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCalPicker(null)}>閉じる</button></div>
+            </div>
+          </div>
+        );
+      })()}
       {quickAdd&&(
         <div className="yl-overlay" onClick={()=>setQuickAdd(null)}>
           <div className="yl-modal quickadd" onClick={e=>e.stopPropagation()}>
