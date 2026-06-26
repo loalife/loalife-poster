@@ -282,7 +282,7 @@ function App(){
       )}
 
       <div className="yl-wrap">
-        <header className="yl-head"><h1 className="yl-title">わたしと家族のリスト</h1></header>
+        <header className="yl-head"><h1 className="yl-title">🏠 ホーム</h1></header>
 
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
