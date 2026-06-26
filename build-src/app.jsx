@@ -1,5 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { FB_READY, fbAuth, fbDb } from "./firebase";
+import {
+  GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+} from "firebase/auth";
+import {
+  doc, setDoc, getDoc, updateDoc, deleteDoc,
+  collection, onSnapshot, serverTimestamp,
+  arrayUnion, writeBatch, getDocs, query, where
+} from "firebase/firestore";
 
 const STORAGE_KEY = "patty-yaritai-v3";
 const iso = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; };
@@ -41,7 +50,6 @@ function fireNotif(title, body) {
   } catch(e) {}
 }
 
-// Schedule timeouts for today's reminders; returns array of timeout IDs
 function scheduleReminders(items, members) {
   if (!notifSupported || Notification.permission !== "granted") return [];
   const ids = [];
@@ -52,7 +60,6 @@ function scheduleReminders(items, members) {
     const [h, mn] = item.time.split(":").map(Number);
     const memberName = item.space === "me" ? "わたし" : (members.find(m => m.id === item.space)?.name || "");
     item.reminders.forEach(minsBefore => {
-      // base: item's date at its time
       const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       base.setDate(base.getDate() + (d ?? 0));
       base.setHours(h, mn - minsBefore, 0, 0);
@@ -79,11 +86,10 @@ function guessEmoji(title,fallback){const t=(title||"").toLowerCase();for(const[
 
 const storage={get:k=>Promise.resolve().then(()=>{const v=localStorage.getItem(k);return v!=null?{value:v}:null;}),set:(k,v)=>Promise.resolve().then(()=>localStorage.setItem(k,v)),delete:k=>Promise.resolve().then(()=>localStorage.removeItem(k))};
 
-function makeSeed(){let c=Date.now();const next=()=>--c;const me=[{emoji:"👁️",type:"dream",title:"ICL手術でメガネを卒業する"},{emoji:"🏃",type:"dream",title:"フルマラソンを完走する"},{emoji:"💼",type:"event",title:"HR企画ポジションの面接",dueDate:plusDays(3)},{emoji:"💪",type:"habit",title:"ジムに行く",dueDate:plusDays(2),repeat:"weekly"},{emoji:"✈️",type:"dream",title:"ペルーの家族のルーツを訪ねる"},{emoji:"🎹",type:"dream",title:"ジャズピアノでステージに立つ"},{emoji:"💗",type:"dream",title:"LOALIFEをもっと多くの人に届ける"}].map((it,i)=>({id:"m"+i,space:"me",repeat:"none",done:false,createdAt:next(),...it}));const roa=[{emoji:"💉",title:"混合ワクチン",careKind:"vaccine",repeat:"yearly",dueDate:plusDays(18)},{emoji:"🦟",title:"フィラリア予防薬",careKind:"filaria",repeat:"monthly",dueDate:plusDays(4)},{emoji:"🐕",title:"狂犬病ワクチン",careKind:"rabies",repeat:"yearly",dueDate:plusDays(-5)},{emoji:"✂️",title:"トリミング",careKind:"trim",repeat:"monthly",dueDate:plusDays(25)}].map((it,i)=>({id:"r"+i,space:"roa",type:"care",done:false,createdAt:next(),...it}));return{members:[{id:"roa",name:"ロア",emoji:"🐶",kind:"pet",species:"dog",birthday:""}],items:[...me,...roa]};}
+function makeSeed(){let c=Date.now();const next=()=>--c;const me=[{emoji:"👁️",type:"dream",title:"ICL手術でメガネを卒業する"},{emoji:"🏃",type:"dream",title:"フルマラソンを完走する"},{emoji:"💼",type:"event",title:"HR企画ポジションの面接",dueDate:plusDays(3)},{emoji:"💪",type:"habit",title:"ジムに行く",dueDate:plusDays(2),repeat:"weekly"},{emoji:"✈️",type:"dream",title:"ペルーの家族のルーツを訪ねる"},{emoji:"🎹",type:"dream",title:"ジャズピアノでステージに立つ"},{emoji:"💗",type:"dream",title:"LOALIFEをもっと多くの人に届ける"}].map((it,i)=>({id:"m"+i,space:"me",repeat:"none",done:false,createdAt:next(),...it}));const roa=[{emoji:"💉",title:"混合ワクチン",careKind:"vaccine",repeat:"yearly",dueDate:plusDays(18)},{emoji:"🦟",title:"フィラリア予防薬",careKind:"filaria",repeat:"monthly",dueDate:plusDays(4)},{emoji:"🐕",title:"狂犬病ワクチン",careKind:"rabies",repeat:"yearly",dueDate:plusDays(-5)},{emoji:"✂️",title:"トリミング",careKind:"trim",repeat:"monthly",dueDate:plusDays(25)}].map((it,i)=>({id:"r"+i,space:"roa",type:"care",done:false,createdAt:next(),...it}));return{members:[{id:"roa",name:"ロア",emoji:"🐶",kind:"pet",species:"dog",birthday:"",visibility:"household"}],items:[...me,...roa]};}
 
 function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(item.careKind&&HIGH_KINDS.has(item.careKind))return{label:"期限を過ぎています",tone:"careOver"};return{label:`${-d}日すぎてます`,tone:"gentleOver"};}
 
-// Birthday check: returns days until next birthday (0 = today)
 function daysUntilBirthday(birthday) {
   if (!birthday) return null;
   const [,bm,bd] = birthday.split("-").map(Number);
@@ -94,6 +100,69 @@ function daysUntilBirthday(birthday) {
   return Math.round((next - today) / 86400000);
 }
 
+function genCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+// --- Calendar helpers ---
+function gcalLink(item, memberName, memberEmoji) {
+  const title = encodeURIComponent(`${item.emoji||""} ${item.title} [${memberEmoji}${memberName}]`);
+  const [y,m,d]=item.dueDate.split("-").map(Number);
+  let dates;
+  if(item.time){
+    const [h,mn]=item.time.split(":").map(Number);
+    const fmt=(dt)=>`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}T${String(dt.getHours()).padStart(2,"0")}${String(dt.getMinutes()).padStart(2,"0")}00`;
+    const st=new Date(y,m-1,d,h,mn);const en=new Date(st.getTime()+3600000);
+    dates=`${fmt(st)}/${fmt(en)}`;
+  }else{
+    const s=`${y}${String(m).padStart(2,"0")}${String(d).padStart(2,"0")}`;
+    const nd=new Date(y,m-1,d+1);
+    const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
+    dates=`${s}/${e}`;
+  }
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}`;
+}
+
+function generateIcal(items, members, meEmoji) {
+  const nameOf=(sid)=>sid==="me"?"わたし":(members.find(m=>m.id===sid)?.name||"");
+  const emojiOf=(sid)=>sid==="me"?meEmoji:(members.find(m=>m.id===sid)?.emoji||"");
+  const now=new Date();
+  const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}T${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}00Z`;
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LOALIFE//Family//JA","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LOALIFE家族カレンダー"];
+  items.filter(it=>it.dueDate&&!it.done).forEach(item=>{
+    const [y,m,d]=item.dueDate.split("-").map(Number);
+    lines.push("BEGIN:VEVENT");
+    lines.push(`UID:loalife-${item.id}@loalife`);
+    lines.push(`SUMMARY:${item.emoji||""} ${item.title} [${emojiOf(item.space)}${nameOf(item.space)}]`);
+    lines.push(`DTSTAMP:${stamp}`);
+    if(item.time){
+      const [h,mn]=item.time.split(":").map(Number);
+      const fmt=(dt)=>`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}T${String(dt.getHours()).padStart(2,"0")}${String(dt.getMinutes()).padStart(2,"0")}00`;
+      const st=new Date(y,m-1,d,h,mn);const en=new Date(st.getTime()+3600000);
+      lines.push(`DTSTART;TZID=Asia/Tokyo:${fmt(st)}`);
+      lines.push(`DTEND;TZID=Asia/Tokyo:${fmt(en)}`);
+    }else{
+      const s=`${y}${String(m).padStart(2,"0")}${String(d).padStart(2,"0")}`;
+      const nd=new Date(y,m-1,d+1);
+      const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
+      lines.push(`DTSTART;VALUE=DATE:${s}`);lines.push(`DTEND;VALUE=DATE:${e}`);
+    }
+    if(item.repeat&&item.repeat!=="none"){
+      const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};
+      lines.push(`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`);
+    }
+    lines.push("END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
+function downloadIcal(content){
+  const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="loalife-calendar.ics";a.click();URL.revokeObjectURL(url);
+}
+
 const HOURS=Array.from({length:24},(_,i)=>i);
 const MINS=[0,5,10,15,20,25,30,35,40,45,50,55];
 function TimeInput({value,onChange}){
@@ -101,6 +170,20 @@ function TimeInput({value,onChange}){
   const curM=value?Math.round(Number(value.split(":")[1])/5)*5%60:0;
   const upd=(h,m)=>{if(h===""){onChange("");return;}const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");onChange(hh+":"+mm);};
   return(<div className="yl-timepick"><select className="yl-tsel" value={curH} onChange={e=>upd(e.target.value===""?"":Number(e.target.value),curM)}><option value="">--</option>{HOURS.map(h=><option key={h} value={h}>{String(h).padStart(2,"0")}</option>)}</select><span className="yl-tcolon">:</span><select className="yl-tsel" value={curM} onChange={e=>upd(curH===""?9:curH,Number(e.target.value))}>{MINS.map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}</option>)}</select></div>);
+}
+
+// Visibility toggle component
+function VisibilityToggle({value, onChange}) {
+  const isHousehold = value === "household";
+  return (
+    <button
+      className={"yl-vis-toggle" + (isHousehold ? " household" : " private")}
+      onClick={() => onChange(isHousehold ? "private" : "household")}
+      title={isHousehold ? "家族に見せています" : "自分だけに表示"}
+    >
+      {isHousehold ? "👨‍👩‍👧 家族に見せる" : "🔒 自分のみ"}
+    </button>
+  );
 }
 
 function App(){
@@ -124,9 +207,11 @@ function App(){
   const[newName,setNewName]=useState("");
   const[newEmoji,setNewEmoji]=useState("🐶");
   const[newBirthday,setNewBirthday]=useState("");
+  const[newVisibility,setNewVisibility]=useState("household");
   const[editingId,setEditingId]=useState(null);
   const[editName,setEditName]=useState("");
   const[editBirthday,setEditBirthday]=useState("");
+  const[editVisibility,setEditVisibility]=useState("household");
   const[confirmDel,setConfirmDel]=useState(null);
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -154,8 +239,77 @@ function App(){
   const[mePicker,setMePicker]=useState(false);
   const timerIds=useRef([]);
 
-  // Load data
+  // Firebase / Family sharing state
+  const[fireUser,setFireUser]=useState(null);
+  const[fireLoading,setFireLoading]=useState(FB_READY);
+  const[household,setHousehold]=useState(null);
+  const[showShareModal,setShowShareModal]=useState(false);
+  const[shareStep,setShareStep]=useState("menu");
+  const[joinCodeInput,setJoinCodeInput]=useState("");
+  const[shareError,setShareError]=useState("");
+  const[shareLoading,setShareLoading]=useState(false);
+  const[copiedCode,setCopiedCode]=useState(false);
+  const householdUnsub=useRef(null);
+
+  // Load local data
   useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
+
+  // Firebase Auth state
+  useEffect(()=>{
+    if(!FB_READY){setFireLoading(false);return;}
+    return onAuthStateChanged(fbAuth,async(user)=>{
+      setFireUser(user);
+      if(user){
+        try{
+          const uRef=doc(fbDb,"users",user.uid);
+          const uSnap=await getDoc(uRef);
+          if(uSnap.exists()){
+            const ud=uSnap.data();
+            if(ud.meEmoji)setMeEmoji(ud.meEmoji);
+            if(ud.meBirthday)setMeBirthday(ud.meBirthday);
+            if(ud.householdId){
+              const hhSnap=await getDoc(doc(fbDb,"households",ud.householdId));
+              if(hhSnap.exists()){
+                setHousehold({id:ud.householdId,...hhSnap.data()});
+              }
+            }
+          }
+        }catch(e){}
+      }else{
+        setHousehold(null);
+        if(householdUnsub.current){householdUnsub.current();householdUnsub.current=null;}
+      }
+      setFireLoading(false);
+    });
+  },[]);
+
+  // Firestore members real-time subscription
+  useEffect(()=>{
+    if(householdUnsub.current){householdUnsub.current();householdUnsub.current=null;}
+    if(!household||!fireUser)return;
+    const hid=household.id;
+    const q=collection(fbDb,"households",hid,"members");
+    const unsub=onSnapshot(q,(snap)=>{
+      const firestoreMembers=snap.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(m=>m.visibility==="household"||m.ownerUid===fireUser.uid);
+      setMembers(firestoreMembers);
+      // Also load items for each member from Firestore
+      Promise.all(firestoreMembers.map(async m=>{
+        const iSnap=await getDocs(collection(fbDb,"households",hid,"members",m.id,"items"));
+        return iSnap.docs.map(d=>({id:d.id,...d.data(),space:m.id}));
+      })).then(allItems=>{
+        const flat=allItems.flat();
+        // Merge with local "me" items
+        setItems(prev=>{
+          const meItems=prev.filter(x=>x.space==="me");
+          return[...meItems,...flat];
+        });
+      }).catch(()=>{});
+    });
+    householdUnsub.current=unsub;
+    return()=>{unsub();householdUnsub.current=null;};
+  },[household,fireUser]);
 
   // Schedule reminders when items/permission change
   useEffect(()=>{
@@ -174,39 +328,194 @@ function App(){
     });
   },[loaded,notifPerm]);
 
-  const persist=async(m,it,u=usage)=>{setMembers(m);setItems(it);setUsage(u);try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji,meBirthday}));}catch(e){}};
-  const persistMeEmoji=(emo)=>{setMeEmoji(emo);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo,meBirthday})).catch(()=>{});}catch(e){}};
-  const persistMeBirthday=(bday)=>{setMeBirthday(bday);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji,meBirthday:bday})).catch(()=>{});}catch(e){}};
+  // Local persist (used when no household)
+  const persist=async(m,it,u=usage)=>{
+    setMembers(m);setItems(it);setUsage(u);
+    if(!household){
+      try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji,meBirthday}));}catch(e){}
+    }
+  };
+
+  // Firestore: save member
+  const saveMemberToFs=async(member)=>{
+    if(!household||!fireUser)return;
+    const hid=household.id;
+    const{id,...rest}=member;
+    await setDoc(doc(fbDb,"households",hid,"members",id),{...rest,ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
+  };
+
+  // Firestore: save item
+  const saveItemToFs=async(item)=>{
+    if(!household||!fireUser)return;
+    if(item.space==="me")return; // Me items stay local
+    const hid=household.id;
+    const{id,space,...rest}=item;
+    await setDoc(doc(fbDb,"households",hid,"members",space,"items",id),{...rest,ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
+  };
+
+  // Firestore: delete item
+  const deleteItemFromFs=async(item)=>{
+    if(!household||!fireUser||item.space==="me")return;
+    const hid=household.id;
+    try{await deleteDoc(doc(fbDb,"households",hid,"members",item.space,"items",item.id));}catch(e){}
+  };
+
+  // Firestore: delete member + items
+  const deleteMemberFromFs=async(memberId)=>{
+    if(!household||!fireUser)return;
+    const hid=household.id;
+    try{
+      const iSnap=await getDocs(collection(fbDb,"households",hid,"members",memberId,"items"));
+      const batch=writeBatch(fbDb);
+      iSnap.docs.forEach(d=>batch.delete(d.ref));
+      batch.delete(doc(fbDb,"households",hid,"members",memberId));
+      await batch.commit();
+    }catch(e){}
+  };
+
+  const persistMeEmoji=(emo)=>{
+    setMeEmoji(emo);
+    try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo,meBirthday})).catch(()=>{});}catch(e){}
+    if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:emo},{merge:true}).catch(()=>{});}catch(e){}}
+  };
+  const persistMeBirthday=(bday)=>{
+    setMeBirthday(bday);
+    try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji,meBirthday:bday})).catch(()=>{});}catch(e){}
+    if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meBirthday:bday},{merge:true}).catch(()=>{});}catch(e){}}
+  };
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
   const finishOnboarding=()=>{
     const nm=[];const ni=[];
     if(obWish.trim())ni.push({id:"x"+Date.now(),space:"me",type:"dream",title:obWish.trim(),emoji:guessEmoji(obWish.trim(),"🌈"),repeat:"none",done:false,createdAt:Date.now()});
-    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,kind:obKind,birthday:obBirthday||""};if(obKind==="pet")m.species=obSpecies;nm.push(m);}
+    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;nm.push(m);}
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
-  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setOnboarding(true);setTab("home");};
+  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
 
   const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
 
+  // --- Family sharing functions ---
+  const signInWithGoogle=async()=>{
+    if(!FB_READY)return;
+    setShareLoading(true);setShareError("");
+    try{
+      const provider=new GoogleAuthProvider();
+      await signInWithPopup(fbAuth,provider);
+    }catch(e){
+      setShareError("サインインできませんでした");
+    }
+    setShareLoading(false);
+  };
+
+  const signOutUser=async()=>{
+    if(!FB_READY)return;
+    await fbSignOut(fbAuth);
+    setFireUser(null);setHousehold(null);setShareStep("menu");setShowShareModal(false);
+    showFlash("サインアウトしました");
+  };
+
+  const createHousehold=async()=>{
+    if(!fireUser)return;
+    setShareLoading(true);setShareError("");
+    try{
+      const code=genCode();
+      const hid="hh_"+Date.now();
+      const batch=writeBatch(fbDb);
+      // Create household doc
+      batch.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp()});
+      // Create invite code lookup
+      batch.set(doc(fbDb,"inviteCodes",code),{householdId:hid});
+      // Update user profile
+      batch.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
+      // Migrate existing members to Firestore
+      members.forEach(m=>{
+        const{id,...rest}=m;
+        batch.set(doc(fbDb,"households",hid,"members",id),{...rest,visibility:m.visibility||"household",ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+        items.filter(it=>it.space===id).forEach(it=>{
+          const{id:iid,space,...irest}=it;
+          batch.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...irest,ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+        });
+      });
+      await batch.commit();
+      const newHH={id:hid,ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid]};
+      setHousehold(newHH);
+      setShareStep("created");
+    }catch(e){
+      setShareError("作成できませんでした: "+e.message);
+    }
+    setShareLoading(false);
+  };
+
+  const joinHousehold=async()=>{
+    if(!fireUser||!joinCodeInput.trim())return;
+    setShareLoading(true);setShareError("");
+    try{
+      const code=joinCodeInput.trim().toUpperCase();
+      const codeSnap=await getDoc(doc(fbDb,"inviteCodes",code));
+      if(!codeSnap.exists())throw new Error("招待コードが見つかりません");
+      const hid=codeSnap.data().householdId;
+      if(household&&household.id===hid)throw new Error("すでにこの家族に参加しています");
+      // Add user to household
+      await updateDoc(doc(fbDb,"households",hid),{memberUids:arrayUnion(fireUser.uid)});
+      // Update user profile
+      await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
+      const hhSnap=await getDoc(doc(fbDb,"households",hid));
+      setHousehold({id:hid,...hhSnap.data()});
+      setShowShareModal(false);
+      showFlash("家族に参加しました 👨‍👩‍👧");
+    }catch(e){
+      setShareError(e.message||"参加できませんでした");
+    }
+    setShareLoading(false);
+  };
+
+  const leaveHousehold=async()=>{
+    if(!fireUser||!household)return;
+    setShareLoading(true);
+    try{
+      await updateDoc(doc(fbDb,"households",household.id),{memberUids:arrayUnion()});
+      await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:null},{merge:true});
+      setHousehold(null);setShowShareModal(false);
+      showFlash("家族スペースを退出しました");
+    }catch(e){}
+    setShareLoading(false);
+  };
+
+  const copyInviteCode=()=>{
+    if(!household)return;
+    navigator.clipboard?.writeText(household.inviteCode).then(()=>{setCopiedCode(true);setTimeout(()=>setCopiedCode(false),2000);}).catch(()=>{});
+  };
+
+  // --- Main app state derived ---
   const activeMember=members.find(m=>m.id===tab);
   const isMemberTab=!!activeMember;
 
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
-  const toggle=(id)=>{const it=items.find(x=>x.id===id);if(!it)return;let next;if(!it.done&&it.repeat&&it.repeat!=="none"){const base=it.dueDate||iso(new Date());const newDue=addInterval(base,it.repeat);next=items.map(x=>x.id===id?{...x,dueDate:newDue,done:false}:x);showFlash(`完了！次回 ${fmtDate(newDue)} に更新`);}else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);}persist(members,next);};
+  const toggle=(id)=>{
+    const it=items.find(x=>x.id===id);if(!it)return;let next;
+    if(!it.done&&it.repeat&&it.repeat!=="none"){const base=it.dueDate||iso(new Date());const newDue=addInterval(base,it.repeat);next=items.map(x=>x.id===id?{...x,dueDate:newDue,done:false}:x);showFlash(`完了！次回 ${fmtDate(newDue)} に更新`);}
+    else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);}
+    persist(members,next);
+    const updated=next.find(x=>x.id===id);
+    if(updated)saveItemToFs(updated).catch(()=>{});
+  };
 
-  const remove=(id)=>{const it=items.find(x=>x.id===id);if(it&&it.photo){try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}}persist(members,items.filter(x=>x.id!==id));};
+  const remove=(id)=>{
+    const it=items.find(x=>x.id===id);
+    if(it&&it.photo){try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}}
+    deleteItemFromFs(it).catch(()=>{});
+    persist(members,items.filter(x=>x.id!==id));
+  };
 
   const onFilePicked=async(e,id)=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
-    // Check file size before processing
     if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
     try{
       const dataUrl=await downscaleImage(file);
-      // Check localStorage space (rough estimate)
       try{localStorage.setItem("__test__",dataUrl);localStorage.removeItem("__test__");}
       catch(e){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
@@ -218,10 +527,10 @@ function App(){
 
   const viewPhoto=async(id)=>{if(photos[id]){setViewer({id,src:photos[id]});return;}setViewer({id,loading:true});try{const res=await storage.get(`photo:${id}`);setViewer({id,src:res&&res.value});}catch(e){setViewer({id,src:null});}};
   const removePhoto=(id)=>{try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});persist(members,items.map(x=>x.id===id?{...x,photo:false}:x));setViewer(null);showFlash("証明書を削除しました");};
-  const snooze=(id)=>{persist(members,items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x));showFlash("明日へ送りました");};
-  const setEmoji=(id,emo)=>{persist(members,items.map(x=>x.id===id?{...x,emoji:emo}:x));setPickerId(null);};
+  const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("明日へ送りました");};
+  const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
   const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);};
-  const saveEdit=()=>{persist(members,items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined}:x));setEditItemId(null);};
+  const saveEdit=()=>{const next=items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
   const toggleEReminder=(mins)=>setEReminders(prev=>prev.includes(mins)?prev.filter(m=>m!==mins):[...prev,mins].sort((a,b)=>a-b));
   const toggleReminder=(mins)=>setDraftReminders(prev=>prev.includes(mins)?prev.filter(m=>m!==mins):[...prev,mins].sort((a,b)=>a-b));
   const pickCareKind=(k)=>{setDraftKind(k.key);if(k.key==="other"){if(draftAuto){setDraft("");setDraftAuto(false);}return;}if(draft===""||draftAuto){setDraft(k.label);setDraftAuto(true);}};
@@ -235,6 +544,7 @@ function App(){
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
     const uKey=tab+" "+title;
     persist(members,[...items,base],{...usage,[uKey]:(usage[uKey]||0)+1});
+    saveItemToFs(base).catch(()=>{});
     setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);
     if(isMemberTab&&careMeta&&draftKind!=="other"){setDraft(careMeta.label);setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
   };
@@ -242,14 +552,29 @@ function App(){
   const addMember=()=>{
     const name=newName.trim();if(!name)return;
     const id="f"+Date.now();
-    const member={id,name,emoji:newEmoji,kind:newKind,birthday:newBirthday||""};
+    const member={id,name,emoji:newEmoji,kind:newKind,birthday:newBirthday||"",visibility:newVisibility};
     if(newKind==="pet")member.species=newSpecies;
     persist([...members,member],items);
-    setNewName("");setNewBirthday("");setAdding(false);setTab(id);
+    saveMemberToFs(member).catch(()=>{});
+    setNewName("");setNewBirthday("");setNewVisibility("household");setAdding(false);setTab(id);
   };
 
-  const removeMember=(id)=>{const m=members.find(x=>x.id===id);persist(members.filter(x=>x.id!==id),items.filter(x=>x.space!==id));setTab("me");setConfirmDel(null);if(m)showFlash(`${m.name} を削除しました`);};
-  const saveRename=(id)=>{const name=editName.trim();if(name)persist(members.map(m=>m.id===id?{...m,name,birthday:editBirthday}:m),items);setEditingId(null);};
+  const removeMember=(id)=>{
+    const m=members.find(x=>x.id===id);
+    persist(members.filter(x=>x.id!==id),items.filter(x=>x.space!==id));
+    deleteMemberFromFs(id).catch(()=>{});
+    setTab("me");setConfirmDel(null);
+    if(m)showFlash(`${m.name} を削除しました`);
+  };
+
+  const saveRename=(id)=>{
+    const name=editName.trim();if(!name)return;
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,visibility:editVisibility}:m);
+    persist(next,items);
+    const updated=next.find(m=>m.id===id);
+    if(updated)saveMemberToFs(updated).catch(()=>{});
+    setEditingId(null);
+  };
 
   const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab);if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
@@ -265,11 +590,131 @@ function App(){
   const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&!x.done&&x.dueDate&&daysUntil(x.dueDate)<0).length,family:members.length}),[items,members]);
   const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
 
-  // Birthdays coming up (within 7 days) — includes "me"
   const upcomingBirthdays=useMemo(()=>{const all=[...members.filter(m=>m.birthday)];if(meBirthday)all.unshift({id:"me",name:"わたし",emoji:meEmoji,birthday:meBirthday});return all.map(m=>({...m,daysUntil:daysUntilBirthday(m.birthday)})).filter(m=>m.daysUntil!==null&&m.daysUntil<=7).sort((a,b)=>a.daysUntil-b.daysUntil);},[members,meBirthday,meEmoji]);
 
   const showNotifBanner=notifSupported&&notifPerm==="default";
   const hasReminders=items.some(x=>x.reminders?.length);
+
+  // Grouped dashboard: items due within 7 days (or overdue), grouped by person
+  const groupedDashboard=useMemo(()=>{
+    const relevant=items.filter(x=>{
+      if(!x.dueDate||x.done)return false;
+      const d=daysUntil(x.dueDate);
+      return d!==null&&d<=7;
+    }).sort((a,b)=>(daysUntil(a.dueDate)||0)-(daysUntil(b.dueDate)||0));
+    return spaces.map(s=>({space:s,items:relevant.filter(x=>x.space===s.id)})).filter(g=>g.items.length>0);
+  },[items,spaces]);
+
+  const exportCalendar=()=>{
+    const content=generateIcal(items,members,meEmoji);
+    downloadIcal(content);
+    showFlash("カレンダーファイルをダウンロードしました 📅");
+  };
+
+  const inHousehold=!!(fireUser&&household);
+
+  // Share modal content
+  const ShareModal=()=>{
+    if(!FB_READY){
+      return(
+        <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
+          <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">👨‍👩‍👧 家族共有</h3>
+            <div className="yl-share-info">
+              <p className="yl-share-desc">家族共有を使うには、Firebaseの設定が必要です。</p>
+              <p className="yl-share-desc" style={{marginTop:8}}>build-src/firebase.js にFirebaseプロジェクトの設定を入力してください。</p>
+            </div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button></div>
+          </div>
+        </div>
+      );
+    }
+    if(!fireUser){
+      return(
+        <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
+          <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">👨‍👩‍👧 家族共有</h3>
+            <p className="yl-share-desc">Googleアカウントでサインインすると、家族とデータを共有できます。</p>
+            {shareError&&<p className="yl-share-error">{shareError}</p>}
+            <button className="yl-google-btn" onClick={signInWithGoogle} disabled={shareLoading}>
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+              Googleでサインイン
+            </button>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button></div>
+          </div>
+        </div>
+      );
+    }
+    // Signed in
+    if(!household){
+      return(
+        <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
+          <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">👨‍👩‍👧 家族共有</h3>
+            <p className="yl-share-desc">{fireUser.displayName||fireUser.email} でサインイン中</p>
+            {shareStep==="menu"&&(
+              <>
+                <button className="yl-share-choice" onClick={()=>setShareStep("create")}>＋ 新しい家族スペースを作る</button>
+                <button className="yl-share-choice" onClick={()=>setShareStep("join")}>🔗 招待コードで参加する</button>
+              </>
+            )}
+            {shareStep==="create"&&(
+              <>
+                <p className="yl-share-desc">今のデータをFirestoreに移行して、家族スペースを作ります。</p>
+                {shareError&&<p className="yl-share-error">{shareError}</p>}
+                <button className="yl-share-choice primary" onClick={createHousehold} disabled={shareLoading}>{shareLoading?"作成中…":"家族スペースを作る"}</button>
+                <button className="yl-modal-cancel" onClick={()=>setShareStep("menu")}>戻る</button>
+              </>
+            )}
+            {shareStep==="join"&&(
+              <>
+                <input className="yl-input" value={joinCodeInput} onChange={e=>setJoinCodeInput(e.target.value.toUpperCase())} placeholder="招待コード（6文字）" maxLength={6} style={{letterSpacing:"0.2em",textAlign:"center"}}/>
+                {shareError&&<p className="yl-share-error">{shareError}</p>}
+                <button className="yl-share-choice primary" onClick={joinHousehold} disabled={shareLoading||!joinCodeInput.trim()}>{shareLoading?"参加中…":"参加する"}</button>
+                <button className="yl-modal-cancel" onClick={()=>{setShareStep("menu");setShareError("");}}>戻る</button>
+              </>
+            )}
+            {shareStep==="created"&&(
+              <>
+                <div className="yl-invite-box">
+                  <p className="yl-invite-label">招待コード</p>
+                  <p className="yl-invite-code">{household?.inviteCode}</p>
+                  <button className="yl-copy-btn" onClick={copyInviteCode}>{copiedCode?"コピー済！":"コードをコピー"}</button>
+                </div>
+                <p className="yl-share-desc">このコードを家族に送って、一緒に使いましょう。</p>
+              </>
+            )}
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button>
+              <button className="yl-modal-cancel" style={{color:"#E5484D"}} onClick={signOutUser}>サインアウト</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // In a household
+    return(
+      <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
+        <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
+          <h3 className="yl-modal-title">👨‍👩‍👧 家族共有</h3>
+          <div className="yl-share-status">
+            <span className="yl-share-dot"/>
+            <span>{fireUser.displayName||fireUser.email}</span>
+          </div>
+          <div className="yl-invite-box">
+            <p className="yl-invite-label">招待コード</p>
+            <p className="yl-invite-code">{household.inviteCode}</p>
+            <button className="yl-copy-btn" onClick={copyInviteCode}>{copiedCode?"コピー済！":"コードをコピー"}</button>
+          </div>
+          <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p>
+          <div className="yl-modal-btns">
+            <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button>
+            <button className="yl-modal-cancel" style={{color:"#E5484D"}} onClick={signOutUser}>サインアウト</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return(
     <div className="yl-root">
@@ -282,12 +727,21 @@ function App(){
       )}
 
       <div className="yl-wrap">
-        <header className="yl-head"><h1 className="yl-title">🏠 ホーム</h1></header>
+        <header className="yl-head">
+          <h1 className="yl-title">🏠 ホーム</h1>
+          <button
+            className={"yl-share-btn"+(inHousehold?" active":"")}
+            onClick={()=>{setShowShareModal(true);setShareStep(household?"menu":"menu");setShareError("");}}
+            title="家族共有"
+          >
+            {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
+          </button>
+        </header>
 
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
           <button className={"yl-tab"+(tab==="me"?" on":"")} onClick={()=>setTab("me")}>{meEmoji} わたし</button>
-          {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-tab"+(tab===m.id?" on":"")} onClick={()=>setTab(m.id)}>{m.emoji} {m.name}{bd===0?" 🎂":bd===1?" 🎂":""}</button>;})}
+          {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-tab"+(tab===m.id?" on":"")} onClick={()=>setTab(m.id)}>{m.emoji} {m.name}{bd===0?" 🎂":bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
           <button className="yl-tab add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
         </nav>
 
@@ -298,12 +752,12 @@ function App(){
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(newEmoji===e?" on":"")} onClick={()=>setNewEmoji(e)}>{e}</button>)}</div>
             <div className="yl-petform-row"><input className="yl-input" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ロア）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
             <label className="yl-opt" style={{marginTop:10}}>誕生日（任意）<input type="date" className="yl-date" value={newBirthday} onChange={e=>setNewBirthday(e.target.value)}/></label>
+            {inHousehold&&<div style={{marginTop:10}}><VisibilityToggle value={newVisibility} onChange={setNewVisibility}/></div>}
           </div>
         )}
 
         {tab==="home"?(
           <div className="yl-home">
-            {/* Notification banner */}
             {showNotifBanner&&(hasReminders||members.some(m=>m.birthday))&&(
               <div className="yl-notif-banner">
                 <span>🔔 通知を許可すると、リマインダーや誕生日をお知らせします</span>
@@ -311,7 +765,6 @@ function App(){
               </div>
             )}
 
-            {/* Upcoming birthdays */}
             {upcomingBirthdays.length>0&&(
               <section className="yl-bday-section">
                 <h2 className="yl-sec-title">もうすぐ誕生日 🎂</h2>
@@ -326,9 +779,47 @@ function App(){
               </section>
             )}
 
-            {todayList.length===0?<section className="yl-hero"><div className="yl-hero-emoji">✨</div><p className="yl-hero-title">今日やることはありません</p><p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":members.length===1?`${members[0].emoji} ${members[0].name}は今日も元気です`:`${members.map(m=>m.emoji).join("")} みんな今日も元気です`}</p></section>:<section className="yl-today"><h2 className="yl-sec-title">今日のこと</h2>{todayList.map(it=>{const od=daysUntil(it.dueDate)<0;return<button key={it.id} className="yl-today-row" onClick={()=>setTab(it.space)}><span className="yl-today-emoji">{it.emoji||"•"}</span><span className="yl-today-body"><span className="yl-today-text">{it.title}</span><span className="yl-today-who">{nameOf(it.space)}{it.time?" ・ "+it.time:""}</span></span><span className={"yl-today-tag"+(od?" over":"")}>{od?"期限切れ":"今日"}</span></button>;})}</section>}
+            {/* Status dashboard grouped by person */}
+            {groupedDashboard.length===0?(
+              <section className="yl-hero">
+                <div className="yl-hero-emoji">✨</div>
+                <p className="yl-hero-title">今後1週間、予定はありません</p>
+                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":members.length===1?`${members[0].emoji} ${members[0].name}は今日も元気です`:`${members.map(m=>m.emoji).join("")} みんな今日も元気です`}</p>
+              </section>
+            ):(
+              <section className="yl-dashboard">
+                <div className="yl-dash-head">
+                  <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
+                  <button className="yl-cal-export" onClick={exportCalendar} title="カレンダーにエクスポート">📅 エクスポート</button>
+                </div>
+                {groupedDashboard.map(({space:s,items:gItems})=>(
+                  <div key={s.id} className="yl-dash-group">
+                    <button className="yl-dash-group-head" onClick={()=>setTab(s.id)}>
+                      <span className="yl-dash-emoji">{s.emoji}</span>
+                      <span className="yl-dash-name">{s.name}</span>
+                    </button>
+                    <ul className="yl-dash-list">
+                      {gItems.map(it=>{
+                        const d=daysUntil(it.dueDate);
+                        const tag=d<0?"期限切れ":d===0?"今日":d===1?"明日":`あと${d}日`;
+                        const tone=d<0?"over":d===0?"today":d<=2?"soon":"normal";
+                        const calUrl=gcalLink(it,s.name,s.emoji);
+                        return(
+                          <li key={it.id} className="yl-dash-item">
+                            <span className="yl-dash-item-emoji">{it.emoji||"•"}</span>
+                            <span className="yl-dash-item-text">{it.title}{it.time&&<span className="yl-dash-item-time"> {it.time}</span>}</span>
+                            <span className={"yl-dash-tag "+tone}>{tag}</span>
+                            <a className="yl-cal-add" href={calUrl} target="_blank" rel="noopener noreferrer" title="Googleカレンダーに追加" onClick={e=>e.stopPropagation()}>📅</a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+            )}
 
-            <h2 className="yl-sec-title">みんなの状態</h2>
+            <h2 className="yl-sec-title" style={{marginTop:18}}>みんなの状態</h2>
             <div className="yl-statusgrid">{spaces.map(s=>{const st=statusFor(s.id);let line,sub=null;if(st.over>0)line=`🔴 期限切れ ${st.over}件`;else if(st.next){line=s.kind==="pet"?"今日は安心して過ごせます":"順調です";sub=`次の予定：${st.next.title}・${st.nextDays===0?"今日":"あと"+st.nextDays+"日"}`;}else line=s.kind==="pet"?"今日も元気です":"予定はありません";return<button key={s.id} className={"yl-statuscard "+(st.over>0?"alert":"")} onClick={()=>setTab(s.id)}><span className="yl-status-emoji">{s.emoji}</span><span className="yl-status-body"><span className="yl-status-name">{s.name}</span><span className="yl-status-line">{line}</span>{sub&&<span className="yl-status-sub">{sub}</span>}</span><span className="yl-status-dot" style={{background:st.over>0?"#E5484D":"#2FC9A8"}}/></button>;})}
             </div>
 
@@ -339,11 +830,26 @@ function App(){
           <>
             {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label"><button className="yl-me-emoji-btn" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button>わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 誕生日を登録する"}</button>}</div></section>:(
               <section className="yl-petstatus">
-                <div className="yl-petstatus-head">{editingId===activeMember.id?<div className="yl-rename"><input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/><label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label><button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button></div>:<span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>{activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}<button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");}}>✏️</button></span>}</div>
+                <div className="yl-petstatus-head">
+                  {editingId===activeMember.id?(
+                    <div className="yl-rename">
+                      <input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/>
+                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label>
+                      {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
+                      <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
+                    </div>
+                  ):(
+                    <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
+                      {activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditVisibility(activeMember.visibility||"household");}}>✏️</button>
+                    </span>
+                  )}
+                </div>
                 <div className="yl-petstatus-chips">
                   <span className="yl-pill soon">⏰ 近い {memberStats?.soon||0}</span>
                   <span className="yl-pill over">🔴 期限切れ {memberStats?.over||0}</span>
                   {activeMember.birthday&&<span className="yl-pill bday">🎂 {fmtBirthday(activeMember.birthday)}</span>}
+                  {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                   <button className="yl-pet-del" onClick={()=>setConfirmDel(activeMember)}>削除</button>
                 </div>
               </section>
@@ -378,6 +884,7 @@ function App(){
                             {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat">🔁 {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
                             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
                             {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
+                            {it.dueDate&&<a className="yl-cal-item" href={gcalLink(it,nameOf(it.space),it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||""))} target="_blank" rel="noopener noreferrer" title="Googleカレンダーに追加" onClick={e=>e.stopPropagation()}>📅</a>}
                             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(it.id);}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
                           </div>
                         )}
@@ -399,6 +906,7 @@ function App(){
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMePicker(false);}}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
+      {showShareModal&&<ShareModal/>}
       {flash&&<div className="yl-flash">{flash}</div>}
     </div>
   );
