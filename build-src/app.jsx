@@ -20,6 +20,7 @@ const SPECIES=[{key:"dog",label:"犬",emoji:"🐶"},{key:"cat",label:"猫",emoji
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐦","🐢"];
 const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
+const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
 const REMINDER_OPTS=[{key:0,label:"開始時"},{key:5,label:"5分前"},{key:30,label:"30分前"},{key:60,label:"1時間前"},{key:1440,label:"前日"}];
 const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${mins}分前`;
@@ -136,10 +137,12 @@ function App(){
   const[obEmoji,setObEmoji]=useState("🐶");
   const[obBirthday,setObBirthday]=useState("");
   const[notifPerm,setNotifPerm]=useState(notifSupported?Notification.permission:"denied");
+  const[meEmoji,setMeEmoji]=useState("🙂");
+  const[mePicker,setMePicker]=useState(false);
   const timerIds=useRef([]);
 
   // Load data
-  useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
+  useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
 
   // Schedule reminders when items/permission change
   useEffect(()=>{
@@ -158,7 +161,8 @@ function App(){
     });
   },[loaded,notifPerm]);
 
-  const persist=async(m,it,u=usage)=>{setMembers(m);setItems(it);setUsage(u);try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u}));}catch(e){}};
+  const persist=async(m,it,u=usage)=>{setMembers(m);setItems(it);setUsage(u);try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji}));}catch(e){}};
+  const persistMeEmoji=(emo)=>{setMeEmoji(emo);try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo})).catch(()=>{});}catch(e){}};
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
@@ -169,7 +173,7 @@ function App(){
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
-  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setOnboarding(true);setTab("home");};
+  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setOnboarding(true);setTab("home");};
 
   const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
 
@@ -241,7 +245,7 @@ function App(){
   const pct=meItems.length?Math.round((doneCount/meItems.length)*100):0;
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab);let soon=0,over=0;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(d===null)return;if(d<0)over++;else if(d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
-  const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:"🙂",kind:"me"},...members],[members]);
+  const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:meEmoji,kind:"me"},...members],[members,meEmoji]);
   const statusFor=(spaceId)=>{const arr=items.filter(x=>x.space===spaceId&&!x.done&&x.dueDate);let over=0,next=null,nextDays=Infinity;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(d<0)over++;else if(d<nextDays){nextDays=d;next=x;}});return{over,next,nextDays};};
   const todayList=useMemo(()=>items.filter(x=>!x.done&&x.dueDate&&daysUntil(x.dueDate)<=0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[items]);
   const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&!x.done&&x.dueDate&&daysUntil(x.dueDate)<0).length,family:members.length}),[items,members]);
@@ -268,7 +272,7 @@ function App(){
 
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
-          <button className={"yl-tab"+(tab==="me"?" on":"")} onClick={()=>setTab("me")}>わたし</button>
+          <button className={"yl-tab"+(tab==="me"?" on":"")} onClick={()=>setTab("me")}>{meEmoji} わたし</button>
           {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-tab"+(tab===m.id?" on":"")} onClick={()=>setTab(m.id)}>{m.emoji} {m.name}{bd===0?" 🎂":bd===1?" 🎂":""}</button>;})}
           <button className="yl-tab add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
         </nav>
@@ -319,7 +323,7 @@ function App(){
           </div>
         ):(
           <>
-            {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label">わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div></section>:(
+            {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label"><button className="yl-me-emoji-btn" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button>わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">{editingId===activeMember.id?<div className="yl-rename"><input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/><button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button></div>:<span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>{activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}<button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);}}>✏️</button></span>}</div>
                 <div className="yl-petstatus-chips">
@@ -335,7 +339,7 @@ function App(){
               {!isMemberTab?<div className="yl-typerow">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}>{TYPE_META[t].emoji} {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}>{k.emoji} {k.label}</button>)}</div>}
               {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
               <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
-              <div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<input type="time" className="yl-date" value={draftTime} onChange={e=>setDraftTime(e.target.value)}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
+              <div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<input type="time" className="yl-date" step="300" value={draftTime} onChange={e=>setDraftTime(e.target.value)}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
               <div className="yl-notify"><span className="yl-notify-label">🔔 通知（任意・複数OK）{notifPerm==="denied"&&<span style={{color:"#E5484D",marginLeft:6,fontWeight:600,fontSize:10}}>端末の設定で通知がオフです</span>}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div></div>
             </div>
 
@@ -376,9 +380,10 @@ function App(){
         <p className="yl-foot">試作版・データはこの端末に保存されます</p>
       </div>
 
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<input type="time" className="yl-date" value={eTime} onChange={e=>setETime(e.target.value)}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label">🔔 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>閉じる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<input type="time" className="yl-date" step="300" value={eTime} onChange={e=>setETime(e.target.value)}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label">🔔 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>閉じる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
       {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">証明書</h3>{viewer.loading?<p className="yl-loading">読み込み中…</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt="証明書"/>:<p className="yl-empty">画像が見つかりませんでした</p>}<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>removePhoto(viewer.id)}>削除</button>}<button className="yl-modal-cancel" onClick={()=>setViewer(null)}>閉じる</button></div></div></div>}
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
+      {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMePicker(false);}}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
       {flash&&<div className="yl-flash">{flash}</div>}
     </div>
