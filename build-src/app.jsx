@@ -126,6 +126,7 @@ function App(){
   const[newBirthday,setNewBirthday]=useState("");
   const[editingId,setEditingId]=useState(null);
   const[editName,setEditName]=useState("");
+  const[editBirthday,setEditBirthday]=useState("");
   const[confirmDel,setConfirmDel]=useState(null);
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -244,7 +245,7 @@ function App(){
   };
 
   const removeMember=(id)=>{const m=members.find(x=>x.id===id);persist(members.filter(x=>x.id!==id),items.filter(x=>x.space!==id));setTab("me");setConfirmDel(null);if(m)showFlash(`${m.name} を削除しました`);};
-  const saveRename=(id)=>{const name=editName.trim();if(name)persist(members.map(m=>m.id===id?{...m,name}:m),items);setEditingId(null);};
+  const saveRename=(id)=>{const name=editName.trim();if(name)persist(members.map(m=>m.id===id?{...m,name,birthday:editBirthday}:m),items);setEditingId(null);};
 
   const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab);if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
@@ -334,7 +335,7 @@ function App(){
           <>
             {!isMemberTab?<section className="yl-meter"><div className="yl-meter-top"><span className="yl-meter-label"><button className="yl-me-emoji-btn" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button>わくわくメーター</span><span className="yl-meter-count">{doneCount} / {meItems.length}</span></div><div className="yl-bar"><div className="yl-fill" style={{width:pct+"%"}}/></div></section>:(
               <section className="yl-petstatus">
-                <div className="yl-petstatus-head">{editingId===activeMember.id?<div className="yl-rename"><input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/><button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button></div>:<span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>{activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}<button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);}}>✏️</button></span>}</div>
+                <div className="yl-petstatus-head">{editingId===activeMember.id?<div className="yl-rename"><input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/><label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label><button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button></div>:<span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>{activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}<button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");}}>✏️</button></span>}</div>
                 <div className="yl-petstatus-chips">
                   <span className="yl-pill soon">⏰ 近い {memberStats?.soon||0}</span>
                   <span className="yl-pill over">🔴 期限切れ {memberStats?.over||0}</span>
