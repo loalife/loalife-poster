@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: is the caller a member of this household?
+    function isMember(householdId) {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid));
+    }
+
+    // Users can read/write their own profile
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Household document
+    match /households/{householdId} {
+      allow read: if isMember(householdId);
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isMember(householdId);
+      allow delete: if request.auth != null &&
+                       resource.data.ownerUid == request.auth.uid;
+
+      // Household members (access control list)
+      match /members/{uid} {
+        allow read: if isMember(householdId);
+        // Owner can add/remove members
+        allow write: if request.auth != null &&
+                        get(/databases/$(database)/documents/households/$(householdId)).data.ownerUid == request.auth.uid;
+        // User can add themselves (accepting invite – phase 2)
+        allow create: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Family members (pets, children, etc.)
+      match /familyMembers/{memberId} {
+        allow read, write: if isMember(householdId);
+      }
+
+      // Items
+      match /items/{itemId} {
+        allow read: if isMember(householdId);
+        allow create: if isMember(householdId) &&
+                         request.resource.data.createdBy == request.auth.uid;
+        allow update: if isMember(householdId);
+        allow delete: if isMember(householdId);
+      }
+    }
+  }
+}
