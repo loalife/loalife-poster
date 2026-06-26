@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>わたしと家族のリスト - LOALIFE</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,7 +42,6 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 const STORAGE_KEY = "patty-yaritai-v3";
 
-/* ---------- date helpers ---------- */
 const iso = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -77,7 +76,6 @@ const fmtDate = (s) => {
   return `${m}/${d}`;
 };
 
-/* ---------- meta ---------- */
 const TYPE_META = {
   dream: { label: "夢", emoji: "🌈", bg: "#FFE0EC", fg: "#FF2D7E" },
   work: { label: "仕事", emoji: "💼", bg: "#E6E8FB", fg: "#4F5BD5" },
@@ -169,7 +167,6 @@ const careKindsFor = (m) => {
   return DOG_KINDS;
 };
 
-/* ---------- emoji auto-guess ---------- */
 const EMOJI_RULES = [
   [["目", "眼", "ICL", "メガネ", "視力", "レーシック"], "👁️"],
   [["マラソン", "ラン", "走", "ジョギング", "駅伝"], "🏃"],
@@ -193,7 +190,7 @@ const EMOJI_RULES = [
   [["写真", "カメラ", "撮"], "📷"],
   [["料理", "ごはん", "ご飯", "レストラン", "食", "クッキング"], "🍳"],
   [["コーヒー", "カフェ", "珈琲"], "☕"],
-  [["貯金", "お金", "投資", "iDeCo", " ideco", "ふるさと納税", "資産", "NISA"], "💰"],
+  [["貯金", "お金", "投資", "iDeCo", "ふるさと納税", "資産", "NISA"], "💰"],
   [["病院", "通院", "受診", "健診", "健康診断", "診察"], "🏥"],
   [["ワクチン", "予防接種", "注射", "接種"], "💉"],
   [["フィラリア", "蚊", "ノミ", "ダニ"], "🦟"],
@@ -222,16 +219,15 @@ function guessEmoji(title, fallback) {
   return fallback;
 }
 
-/* ---------- seed ---------- */
 function makeSeed() {
   let c = Date.now();
   const next = () => --c;
   const me = [
     { emoji: "👁️", type: "dream", title: "ICL手術でメガネを卒業する" },
-    { emoji: "🏃‍♀️", type: "dream", title: "フルマラソンを完走する" },
+    { emoji: "🏃", type: "dream", title: "フルマラソンを完走する" },
     { emoji: "💼", type: "event", title: "HR企画ポジションの面接", dueDate: plusDays(3) },
     { emoji: "💪", type: "habit", title: "ジムに行く", dueDate: plusDays(2), repeat: "weekly" },
-    { emoji: "🇵🇪", type: "dream", title: "ペルーの家族のルーツを訪ねる" },
+    { emoji: "✈️", type: "dream", title: "ペルーの家族のルーツを訪ねる" },
     { emoji: "🎹", type: "dream", title: "ジャズピアノでステージに立つ" },
     { emoji: "💗", type: "dream", title: "LOALIFEをもっと多くの人に届ける" },
   ].map((it, i) => ({ id: "m" + i, space: "me", repeat: "none", done: false, createdAt: next(), ...it }));
@@ -249,7 +245,6 @@ function makeSeed() {
   };
 }
 
-/* ---------- due status ---------- */
 function dueStatus(item) {
   if (!item.dueDate) return null;
   const d = daysUntil(item.dueDate);
@@ -269,7 +264,6 @@ function App() {
   const [tab, setTab] = useState("home");
   const [filter, setFilter] = useState("all");
   const [flash, setFlash] = useState("");
-
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState("dream");
   const [draftKind, setDraftKind] = useState("vaccine");
@@ -278,13 +272,11 @@ function App() {
   const [draftRepeat, setDraftRepeat] = useState("none");
   const [draftReminders, setDraftReminders] = useState([]);
   const [draftAuto, setDraftAuto] = useState(false);
-
   const [adding, setAdding] = useState(false);
   const [newKind, setNewKind] = useState("pet");
   const [newSpecies, setNewSpecies] = useState("dog");
   const [newName, setNewName] = useState("");
   const [newEmoji, setNewEmoji] = useState("🐶");
-
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [confirmDel, setConfirmDel] = useState(null);
@@ -292,14 +284,12 @@ function App() {
   const [viewer, setViewer] = useState(null);
   const [photos, setPhotos] = useState({});
   const [usage, setUsage] = useState({});
-
   const [editItemId, setEditItemId] = useState(null);
   const [eTitle, setETitle] = useState("");
   const [eDate, setEDate] = useState("");
   const [eTime, setETime] = useState("");
   const [eRepeat, setERepeat] = useState("none");
   const [eReminders, setEReminders] = useState([]);
-
   const [onboarding, setOnboarding] = useState(false);
   const [obStep, setObStep] = useState(0);
   const [obWish, setObWish] = useState("");
@@ -376,9 +366,7 @@ function App() {
   };
 
   const resetApp = () => {
-    try {
-      window.storage && window.storage.delete(STORAGE_KEY).catch(() => {});
-    } catch (e) {}
+    try { window.storage && window.storage.delete(STORAGE_KEY).catch(() => {}); } catch (e) {}
     setMembers([]);
     setItems([]);
     setPhotos({});
@@ -409,7 +397,7 @@ function App() {
       setDraft("");
       setDraftAuto(false);
     }
-  }, [tab]); // eslint-disable-line
+  }, [tab]);
 
   const toggle = (id) => {
     const it = items.find((x) => x.id === id);
@@ -419,7 +407,7 @@ function App() {
       const base = it.dueDate || iso(new Date());
       const newDue = addInterval(base, it.repeat);
       next = items.map((x) => (x.id === id ? { ...x, dueDate: newDue, done: false } : x));
-      showFlash(`✓ ${it.title} 完了！次回 ${fmtDate(newDue)} に更新`);
+      showFlash(`完了！次回 ${fmtDate(newDue)} に更新`);
     } else {
       next = items.map((x) =>
         x.id === id ? { ...x, done: !x.done, completedAt: !x.done ? Date.now() : null } : x
@@ -495,14 +483,7 @@ function App() {
   const saveEdit = () => {
     persist(members, items.map((x) =>
       x.id === editItemId
-        ? {
-            ...x,
-            title: eTitle.trim() || x.title,
-            dueDate: eDate || undefined,
-            time: eTime || undefined,
-            repeat: eRepeat,
-            reminders: eReminders.length ? eReminders : undefined,
-          }
+        ? { ...x, title: eTitle.trim() || x.title, dueDate: eDate || undefined, time: eTime || undefined, repeat: eRepeat, reminders: eReminders.length ? eReminders : undefined }
         : x
     ));
     setEditItemId(null);
@@ -551,7 +532,7 @@ function App() {
     } else {
       base = { ...base, type: draftType, emoji: guessEmoji(title, TYPE_META[draftType].emoji) };
     }
-    const uKey = tab + " " + title;
+    const uKey = tab + " " + title;
     const nextUsage = { ...usage, [uKey]: (usage[uKey] || 0) + 1 };
     persist(members, [...items, base], nextUsage);
     setDraftDate("");
@@ -607,10 +588,10 @@ function App() {
     const all = { key: "all", label: "すべて" };
     if (isMemberTab) return [all, ...careKindsFor(activeMember)];
     return [all, ...ME_TYPES.map((t) => ({ key: t, label: TYPE_META[t].label }))];
-  }, [tab, isMemberTab]); // eslint-disable-line
+  }, [tab, isMemberTab]);
 
   const suggestions = useMemo(() => {
-    const prefix = tab + " ";
+    const prefix = tab + " ";
     return Object.entries(usage)
       .filter(([k, c]) => k.startsWith(prefix) && c >= 2)
       .sort((a, b) => b[1] - a[1])
@@ -670,544 +651,7 @@ function App() {
   const nameOf = (spaceId) =>
     spaceId === "me" ? "わたし" : (members.find((m) => m.id === spaceId) || {}).name || "";
 
-  return (
-    <div className="yl-root">
-      <style>{css}</style>
-
-      {onboarding && (
-        <div className="yl-ob">
-          {obStep === 0 && (
-            <div className="yl-ob-inner">
-              <div className="yl-ob-emoji">🏠</div>
-              <h1 className="yl-ob-title">わたしと、大切な家族を、ひとつの場所で。</h1>
-              <p className="yl-ob-sub">家族みんなの"状態"が、ひと目でわかる。</p>
-              <button className="yl-ob-btn" onClick={() => setObStep(1)}>はじめる</button>
-              <button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button>
-            </div>
-          )}
-
-          {obStep === 1 && (
-            <div className="yl-ob-inner">
-              <p className="yl-ob-step">1 / 2</p>
-              <h2 className="yl-ob-h2">まず、あなたの「やりたいこと」を1つ</h2>
-              <p className="yl-ob-sub">あとから、いつでも追加できます</p>
-              <div className="yl-ob-chips">
-                {["旅行に行く", "資格をとる", "カフェ巡り", "運動を習慣に"].map((ex) => (
-                  <button key={ex} className="yl-ob-chip" onClick={() => setObWish(ex)}>{ex}</button>
-                ))}
-              </div>
-              <input
-                className="yl-input"
-                value={obWish}
-                onChange={(e) => setObWish(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && setObStep(2)}
-                placeholder="やりたいこと…"
-                autoFocus
-              />
-              <button className="yl-ob-btn" onClick={() => setObStep(2)}>次へ</button>
-              <button className="yl-ob-link" onClick={() => { setObWish(""); setObStep(2); }}>スキップ</button>
-            </div>
-          )}
-
-          {obStep === 2 && (
-            <div className="yl-ob-inner">
-              <p className="yl-ob-step">2 / 2</p>
-              <h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>
-              {!obKind ? (
-                <div className="yl-ob-choices">
-                  <button className="yl-ob-choice" onClick={() => { setObKind("pet"); setObEmoji(PET_EMOJIS[0]); }}>🐶 ペット</button>
-                  <button className="yl-ob-choice" onClick={() => { setObKind("person"); setObEmoji(PERSON_EMOJIS[0]); }}>👧 家族（人）</button>
-                  <button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button>
-                </div>
-              ) : (
-                <div className="yl-ob-form">
-                  {obKind === "pet" && (
-                    <div className="yl-kindrow">
-                      {SPECIES.map((s) => (
-                        <button
-                          key={s.key}
-                          className={"yl-kindbtn sm" + (obSpecies === s.key ? " on" : "")}
-                          onClick={() => { setObSpecies(s.key); setObEmoji(s.emoji); }}
-                        >{s.emoji} {s.label}</button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="yl-emoji-row">
-                    {(obKind === "person" ? PERSON_EMOJIS : PET_EMOJIS).map((e) => (
-                      <button key={e} className={"yl-emoji" + (obEmoji === e ? " on" : "")} onClick={() => setObEmoji(e)}>{e}</button>
-                    ))}
-                  </div>
-                  <input
-                    className="yl-input"
-                    value={obName}
-                    onChange={(e) => setObName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && finishOnboarding()}
-                    placeholder={obKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"}
-                    autoFocus
-                  />
-                  <button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button>
-                  <button className="yl-ob-link" onClick={() => setObKind(null)}>戻る</button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      <div className="yl-wrap">
-        <header className="yl-head">
-          <h1 className="yl-title">わたしと家族のリスト</h1>
-        </header>
-
-        <nav className="yl-tabs">
-          <button className={"yl-tab" + (tab === "home" ? " on" : "")} onClick={() => setTab("home")}>
-            ホーム
-          </button>
-          <button className={"yl-tab" + (tab === "me" ? " on" : "")} onClick={() => setTab("me")}>
-            わたし
-          </button>
-          {members.map((m) => (
-            <button
-              key={m.id}
-              className={"yl-tab" + (tab === m.id ? " on" : "")}
-              onClick={() => setTab(m.id)}
-            >
-              {m.emoji} {m.name}
-            </button>
-          ))}
-          <button className="yl-tab add" onClick={() => setAdding((v) => !v)}>＋追加</button>
-        </nav>
-
-        {adding && (
-          <div className="yl-petform">
-            <div className="yl-kindrow">
-              <button
-                className={"yl-kindbtn" + (newKind === "pet" ? " on" : "")}
-                onClick={() => { setNewKind("pet"); setNewEmoji(PET_EMOJIS[0]); }}
-              >🐶 ペット</button>
-              <button
-                className={"yl-kindbtn" + (newKind === "person" ? " on" : "")}
-                onClick={() => { setNewKind("person"); setNewEmoji(PERSON_EMOJIS[0]); }}
-              >👤 家族（人）</button>
-            </div>
-            {newKind === "pet" && (
-              <div className="yl-kindrow">
-                {SPECIES.map((s) => (
-                  <button
-                    key={s.key}
-                    className={"yl-kindbtn sm" + (newSpecies === s.key ? " on" : "")}
-                    onClick={() => { setNewSpecies(s.key); setNewEmoji(s.emoji); }}
-                  >{s.emoji} {s.label}</button>
-                ))}
-              </div>
-            )}
-            <div className="yl-emoji-row">
-              {emojiSet.map((e) => (
-                <button
-                  key={e}
-                  className={"yl-emoji" + (newEmoji === e ? " on" : "")}
-                  onClick={() => setNewEmoji(e)}
-                >{e}</button>
-              ))}
-            </div>
-            <div className="yl-petform-row">
-              <input
-                className="yl-input"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addMember()}
-                placeholder={newKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"}
-              />
-              <button className="yl-addbtn" onClick={addMember}>登録</button>
-            </div>
-          </div>
-        )}
-
-        {tab === "home" ? (
-          <div className="yl-home">
-            {todayList.length === 0 ? (
-              <section className="yl-hero">
-                <div className="yl-hero-emoji">✨</div>
-                <p className="yl-hero-title">今日やることはありません</p>
-                <p className="yl-hero-sub">
-                  {members.some((m) => m.kind === "pet")
-                    ? `${members.find((m) => m.kind === "pet").emoji} ${members.find((m) => m.kind === "pet").name}は今日も元気です`
-                    : "ゆっくり過ごせる一日を"}
-                </p>
-              </section>
-            ) : (
-              <section className="yl-today">
-                <h2 className="yl-sec-title">今日のこと</h2>
-                {todayList.map((it) => {
-                  const od = daysUntil(it.dueDate) < 0;
-                  return (
-                    <button key={it.id} className="yl-today-row" onClick={() => setTab(it.space)}>
-                      <span className="yl-today-emoji">{it.emoji || "•"}</span>
-                      <span className="yl-today-body">
-                        <span className="yl-today-text">{it.title}</span>
-                        <span className="yl-today-who">{nameOf(it.space)}{it.time ? " ・ " + it.time : ""}</span>
-                      </span>
-                      <span className={"yl-today-tag" + (od ? " over" : "")}>{od ? "期限切れ" : "今日"}</span>
-                    </button>
-                  );
-                })}
-              </section>
-            )}
-
-            <h2 className="yl-sec-title">みんなの状態</h2>
-            <div className="yl-statusgrid">
-              {spaces.map((s) => {
-                const st = statusFor(s.id);
-                const tone = st.over > 0 ? "alert" : "ok";
-                let line, sub = null;
-                if (st.over > 0) {
-                  line = `🔴 期限切れ ${st.over}件`;
-                } else if (st.next) {
-                  line = s.kind === "pet" ? "今日は安心して過ごせます" : "順調です";
-                  sub = `次の予定：${st.next.title}・${st.nextDays === 0 ? "今日" : "あと" + st.nextDays + "日"}`;
-                } else {
-                  line = s.kind === "pet" ? "今日も元気です" : "予定はありません";
-                }
-                return (
-                  <button key={s.id} className={"yl-statuscard " + tone} onClick={() => setTab(s.id)}>
-                    <span className="yl-status-emoji">{s.emoji}</span>
-                    <span className="yl-status-body">
-                      <span className="yl-status-name">{s.name}</span>
-                      <span className="yl-status-line">{line}</span>
-                      {sub && <span className="yl-status-sub">{sub}</span>}
-                    </span>
-                    <span className="yl-status-dot" style={{ background: st.over > 0 ? "#E5484D" : "#2FC9A8" }} />
-                  </button>
-                );
-              })}
-            </div>
-
-            <section className="yl-summary">
-              <h2 className="yl-sec-title light">これまでの見守り</h2>
-              <div className="yl-summary-row">
-                <div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">叶えた夢</span></div>
-                <div className="yl-stat"><span className="yl-stat-n">{summary.careOverdue}</span><span className="yl-stat-l">ケアの取りこぼし</span></div>
-                <div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">見守る家族</span></div>
-              </div>
-            </section>
-
-            <button className="yl-reset" onClick={resetApp}>⟳ サンプルを消して最初から</button>
-          </div>
-        ) : (
-        <>
-        {!isMemberTab ? (
-          <section className="yl-meter">
-            <div className="yl-meter-top">
-              <span className="yl-meter-label">わくわくメーター</span>
-              <span className="yl-meter-count">{doneCount} / {meItems.length}</span>
-            </div>
-            <div className="yl-bar"><div className="yl-fill" style={{ width: pct + "%" }} /></div>
-          </section>
-        ) : (
-          <section className="yl-petstatus">
-            <div className="yl-petstatus-head">
-              {editingId === activeMember.id ? (
-                <div className="yl-rename">
-                  <input
-                    className="yl-input sm"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && saveRename(activeMember.id)}
-                    autoFocus
-                  />
-                  <button className="yl-addbtn sm" onClick={() => saveRename(activeMember.id)}>保存</button>
-                </div>
-              ) : (
-                <span className="yl-petstatus-title" style={{ color: KIND_STYLE[activeMember.kind].fg }}>
-                  {activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                  <button
-                    className="yl-icon"
-                    onClick={() => { setEditingId(activeMember.id); setEditName(activeMember.name); }}
-                    aria-label="名前を変更"
-                  >✏️</button>
-                </span>
-              )}
-            </div>
-            <div className="yl-petstatus-chips">
-              <span className="yl-pill soon">⏰ 近い {memberStats?.soon || 0}</span>
-              <span className="yl-pill over">🔴 期限切れ {memberStats?.over || 0}</span>
-              <button className="yl-pet-del" onClick={() => setConfirmDel(activeMember)}>削除</button>
-            </div>
-          </section>
-        )}
-
-        <div className="yl-addbox">
-          {!isMemberTab ? (
-            <div className="yl-typerow">
-              {ME_TYPES.map((t) => (
-                <button
-                  key={t}
-                  className={"yl-chip" + (draftType === t ? " on" : "")}
-                  style={draftType === t ? { background: TYPE_META[t].fg, color: "#fff", borderColor: "transparent" } : undefined}
-                  onClick={() => setDraftType(t)}
-                >{TYPE_META[t].emoji} {TYPE_META[t].label}</button>
-              ))}
-            </div>
-          ) : (
-            <div className="yl-typerow">
-              {careKindsFor(activeMember).map((k) => (
-                <button
-                  key={k.key}
-                  className={"yl-chip" + (draftKind === k.key ? " on" : "")}
-                  style={draftKind === k.key ? { background: KIND_STYLE[activeMember.kind].fg, color: "#fff", borderColor: "transparent" } : undefined}
-                  onClick={() => pickCareKind(k)}
-                >{k.emoji} {k.label}</button>
-              ))}
-            </div>
-          )}
-          {suggestions.length > 0 && (
-            <div className="yl-suggest">
-              <span className="yl-suggest-label">よく使う</span>
-              <div className="yl-suggest-chips">
-                {suggestions.map((s) => (
-                  <button key={s} className="yl-suggest-chip" onClick={() => { setDraft(s); setDraftAuto(false); }}>{s}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="yl-add">
-            <input
-              className="yl-input"
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); setDraftAuto(false); }}
-              onKeyDown={(e) => e.key === "Enter" && addItem()}
-              placeholder={
-                isMemberTab
-                  ? (draftKind === "other"
-                      ? "内容を入力…"
-                      : `${(careKindsFor(activeMember).find((k) => k.key === draftKind) || {}).label || "内容"}を追加…`)
-                  : `${TYPE_META[draftType].label}を追加…`
-              }
-            />
-            <button className="yl-addbtn" onClick={addItem}>追加</button>
-          </div>
-          <div className="yl-optrow">
-            <label className="yl-opt">期限
-              <input type="date" className="yl-date" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} />
-            </label>
-            <label className="yl-opt">時間
-              <input type="time" className="yl-date" value={draftTime} onChange={(e) => setDraftTime(e.target.value)} />
-            </label>
-            <label className="yl-opt">繰り返し
-              <select className="yl-select" value={draftRepeat} onChange={(e) => setDraftRepeat(e.target.value)}>
-                {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-              </select>
-            </label>
-          </div>
-          <div className="yl-notify">
-            <span className="yl-notify-label">🔔 通知（任意・複数OK）</span>
-            <div className="yl-notify-chips">
-              {REMINDER_OPTS.map((o) => (
-                <button
-                  key={o.key}
-                  className={"yl-nchip" + (draftReminders.includes(o.key) ? " on" : "")}
-                  onClick={() => toggleReminder(o.key)}
-                >{o.label}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="yl-sort">
-          {filterChips.map((f) => (
-            <button
-              key={f.key}
-              className={"yl-sortbtn" + (filter === f.key ? " on" : "")}
-              onClick={() => setFilter(f.key)}
-            >{f.emoji ? f.emoji + " " : ""}{f.label}</button>
-          ))}
-        </div>
-
-        {!loaded ? (
-          <p className="yl-loading">よみこみ中…</p>
-        ) : visible.length === 0 ? (
-          <p className="yl-empty">まだありません。上のフォームから追加できます。</p>
-        ) : (
-          <ul className="yl-list">
-            {visible.map((it) => {
-              let meta, label;
-              if (isMemberTab) {
-                meta = KIND_STYLE[activeMember.kind];
-                label = (careKindsFor(activeMember).find((k) => k.key === it.careKind) || {}).label || "ケア";
-              } else {
-                meta = TYPE_META[it.type] || TYPE_META.dream;
-                label = meta.label;
-              }
-              const ds = dueStatus(it);
-              return (
-                <li key={it.id} className={"yl-card" + (it.done ? " is-done" : "")}>
-                  <button
-                    className="yl-bubble"
-                    style={{ background: meta.bg, color: meta.fg }}
-                    onClick={() => setPickerId(it.id)}
-                    title="タップで絵文字を変更"
-                  >{it.emoji}</button>
-                  <div className="yl-body" onClick={() => openEdit(it)}>
-                    <div className="yl-row1">
-                      <span className="yl-badge" style={{ background: meta.bg, color: meta.fg }}>{label}</span>
-                      <span className="yl-text">{it.title}</span>
-                    </div>
-                    {(ds || it.time || it.reminders || it.type === "care" || (it.repeat && it.repeat !== "none")) && (
-                      <div className="yl-meta">
-                        {ds && <span className={"yl-due " + ds.tone}>{ds.label}</span>}
-                        {it.time && <span className="yl-time">🕐 {it.time}</span>}
-                        {it.repeat && it.repeat !== "none" && (
-                          <span className="yl-repeat">🔁 {REPEATS.find((r) => r.key === it.repeat)?.label}</span>
-                        )}
-                        {it.reminders && it.reminders.length > 0 && (
-                          <span className="yl-notif">🔔 {it.reminders.length <= 2 ? it.reminders.map(reminderLabel).join("・") : it.reminders.length + "件"}</span>
-                        )}
-                        {!it.done && it.dueDate && daysUntil(it.dueDate) <= 0 && (
-                          <button className="yl-snooze" onClick={(e) => { e.stopPropagation(); snooze(it.id); }}>→ 明日へ</button>
-                        )}
-                        {it.type === "care" && (
-                          it.photo ? (
-                            <button className="yl-photo" onClick={(e) => { e.stopPropagation(); viewPhoto(it.id); }}>📷 証明書</button>
-                          ) : (
-                            <label className="yl-photo add" onClick={(e) => e.stopPropagation()}>
-                              📎 証明書を追加
-                              <input
-                                type="file"
-                                accept="image/*"
-                                style={{ display: "none" }}
-                                onChange={(e) => onFilePicked(e, it.id)}
-                              />
-                            </label>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <button className={"yl-check" + (it.done ? " on" : "")} onClick={() => toggle(it.id)} aria-label="完了">
-                    <svg viewBox="0 0 24 24" width="15" height="15">
-                      <path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  <button className="yl-del" onClick={() => remove(it.id)} aria-label="削除">×</button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        </>
-        )}
-
-        <p className="yl-foot">試作版・データはこの端末に保存されます</p>
-      </div>
-
-      {editItemId && (
-        <div className="yl-overlay" onClick={() => setEditItemId(null)}>
-          <div className="yl-modal edit" onClick={(e) => e.stopPropagation()}>
-            <h3 className="yl-modal-title">編集</h3>
-            <input
-              className="yl-input"
-              value={eTitle}
-              onChange={(e) => setETitle(e.target.value)}
-              placeholder="タイトル"
-            />
-            <div className="yl-optrow">
-              <label className="yl-opt">期限
-                <input type="date" className="yl-date" value={eDate} onChange={(e) => setEDate(e.target.value)} />
-              </label>
-              <label className="yl-opt">時間
-                <input type="time" className="yl-date" value={eTime} onChange={(e) => setETime(e.target.value)} />
-              </label>
-              <label className="yl-opt">繰り返し
-                <select className="yl-select" value={eRepeat} onChange={(e) => setERepeat(e.target.value)}>
-                  {REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="yl-notify">
-              <span className="yl-notify-label">🔔 通知</span>
-              <div className="yl-notify-chips">
-                {REMINDER_OPTS.map((o) => (
-                  <button
-                    key={o.key}
-                    className={"yl-nchip" + (eReminders.includes(o.key) ? " on" : "")}
-                    onClick={() => toggleEReminder(o.key)}
-                  >{o.label}</button>
-                ))}
-              </div>
-            </div>
-            <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={() => setEditItemId(null)}>閉じる</button>
-              <button className="yl-addbtn modal" onClick={saveEdit}>保存</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewer && (
-        <div className="yl-overlay" onClick={() => setViewer(null)}>
-          <div className="yl-modal photo" onClick={(e) => e.stopPropagation()}>
-            <h3 className="yl-modal-title">証明書</h3>
-            {viewer.loading ? (
-              <p className="yl-loading">読み込み中…</p>
-            ) : viewer.src ? (
-              <img className="yl-photo-img" src={viewer.src} alt="証明書" />
-            ) : (
-              <p className="yl-empty">画像が見つかりませんでした</p>
-            )}
-            <div className="yl-modal-btns">
-              {viewer.src && (
-                <button className="yl-modal-cancel" onClick={() => removePhoto(viewer.id)}>削除</button>
-              )}
-              <button className="yl-modal-cancel" onClick={() => setViewer(null)}>閉じる</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {pickerId && (
-        <div className="yl-overlay" onClick={() => setPickerId(null)}>
-          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="yl-modal-title">絵文字を選ぶ</h3>
-            <div className="yl-emoji-grid">
-              {PICKER_EMOJIS.map((e) => (
-                <button key={e} className="yl-emoji-pick" onClick={() => setEmoji(pickerId, e)}>{e}</button>
-              ))}
-            </div>
-            <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={() => setEmoji(pickerId, "")}>絵文字なし</button>
-              <button className="yl-modal-cancel" onClick={() => setPickerId(null)}>閉じる</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDel && (
-        <div className="yl-overlay" onClick={() => setConfirmDel(null)}>
-          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="yl-modal-emoji">{confirmDel.emoji}</div>
-            <h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3>
-            <p className="yl-modal-body">
-              {(() => {
-                const n = items.filter((x) => x.space === confirmDel.id).length;
-                return n > 0
-                  ? `${confirmDel.name}の${KIND_STYLE[confirmDel.kind].word}（${n}件）も一緒に消えます。この操作は元に戻せません。`
-                  : "この操作は元に戻せません。";
-              })()}
-            </p>
-            <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={() => setConfirmDel(null)}>キャンセル</button>
-              <button className="yl-modal-del" onClick={() => removeMember(confirmDel.id)}>削除する</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {flash && <div className="yl-flash">{flash}</div>}
-    </div>
-  );
-}
-
-const css = `
-.yl-root{min-height:100%;font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4","Quicksand","Rounded Mplus 1c",system-ui,-apple-system,sans-serif;background:linear-gradient(170deg,#FFF0F6 0%,#F4F0FF 55%,#EFFAF7 100%);padding:22px 14px 40px;box-sizing:border-box;color:#3A2E3F;position:relative;}
+  const css = `.yl-root{min-height:100%;font-family:"Hiragino Maru Gothic ProN","Quicksand",system-ui,-apple-system,sans-serif;background:linear-gradient(170deg,#FFF0F6 0%,#F4F0FF 55%,#EFFAF7 100%);padding:22px 14px 40px;box-sizing:border-box;color:#3A2E3F;position:relative;}
 .yl-wrap{max-width:520px;margin:0 auto;}
 .yl-head{text-align:center;margin-bottom:14px;}
 .yl-title{margin:0;font-size:22px;font-weight:800;line-height:1.2;color:#2E2740;letter-spacing:.01em;}
@@ -1256,7 +700,6 @@ const css = `
 .yl-suggest-label{font-size:11px;font-weight:800;color:#9A86A8;flex:0 0 auto;}
 .yl-suggest-chips{display:flex;gap:6px;flex-wrap:wrap;}
 .yl-suggest-chip{border:2px solid #E9DFF0;background:#FBF8FD;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:800;font-family:inherit;color:#6B5B7A;cursor:pointer;}
-.yl-suggest-chip:active{transform:scale(.95);}
 .yl-modal.edit{max-width:360px;text-align:left;}
 .yl-modal.edit .yl-modal-title{text-align:center;}
 .yl-modal.edit .yl-input{width:100%;box-sizing:border-box;margin-bottom:12px;}
@@ -1265,9 +708,9 @@ const css = `
 .yl-row1{display:flex;align-items:center;gap:8px;}
 .yl-badge{flex:0 0 auto;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:7px;}
 .yl-text{font-size:14.5px;font-weight:700;line-height:1.3;}
-.is-done .yl-text{text-decoration:line-through;color:#B6A8C0;text-decoration-color:#E3B7D0;}
+.is-done .yl-text{text-decoration:line-through;color:#B6A8C0;}
 .is-done .yl-bubble{filter:saturate(.5);opacity:.75;}
-.yl-meta{display:flex;gap:9px;align-items:center;margin-top:5px;margin-left:1px;flex-wrap:wrap;}
+.yl-meta{display:flex;gap:9px;align-items:center;margin-top:5px;flex-wrap:wrap;}
 .yl-due{font-size:11.5px;font-weight:800;}
 .yl-due.normal{color:#9A86A8;}
 .yl-due.soon{color:#E08A00;}
@@ -1279,38 +722,31 @@ const css = `
 .yl-check svg{opacity:0;transform:scale(.5);transition:all .2s ease;}
 .yl-check.on{border-color:transparent;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);}
 .yl-check.on svg{opacity:1;transform:scale(1);}
-.yl-check:focus-visible{outline:3px solid #FFC2DA;outline-offset:2px;}
 .yl-del{position:absolute;top:-7px;right:-7px;width:21px;height:21px;border-radius:50%;border:none;background:#fff;color:#C9A9C0;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12);opacity:0;transition:opacity .15s ease;}
 .yl-card:hover .yl-del{opacity:1;}
-.yl-addbox{margin-top:0;margin-bottom:14px;background:#fff;border-radius:20px;padding:13px;box-shadow:0 5px 16px rgba(120,80,160,.09);}
+.yl-addbox{margin-bottom:14px;background:#fff;border-radius:20px;padding:13px;box-shadow:0 5px 16px rgba(120,80,160,.09);}
 .yl-typerow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.yl-chip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;transition:transform .12s ease;}
-.yl-chip:active{transform:scale(.95);}
+.yl-chip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;}
 .yl-add{display:flex;gap:8px;}
-.yl-input{flex:1;border:2px solid #FBD9E8;border-radius:14px;padding:11px 14px;font-size:14.5px;font-family:inherit;font-weight:600;background:#fff;color:#3A2E3F;outline:none;transition:border-color .2s ease;min-width:0;}
+.yl-input{flex:1;border:2px solid #FBD9E8;border-radius:14px;padding:11px 14px;font-size:14.5px;font-family:inherit;font-weight:600;background:#fff;color:#3A2E3F;outline:none;min-width:0;}
 .yl-input::placeholder{color:#CDB6C8;}
 .yl-input:focus{border-color:#FF87B5;}
-.yl-addbtn{border:none;border-radius:14px;padding:0 18px;font-size:14.5px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);box-shadow:0 4px 12px rgba(255,77,141,.3);transition:transform .15s ease;white-space:nowrap;}
-.yl-addbtn:active{transform:scale(.95);}
+.yl-addbtn{border:none;border-radius:14px;padding:0 18px;font-size:14.5px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);box-shadow:0 4px 12px rgba(255,77,141,.3);white-space:nowrap;}
 .yl-optrow{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
 .yl-time{font-size:11px;font-weight:800;color:#7C4DFF;}
 .yl-notif{font-size:11px;font-weight:800;color:#E08A00;}
 .yl-snooze{border:none;background:#F2ECFB;color:#7C4DFF;font-size:11px;font-weight:800;font-family:inherit;padding:3px 9px;border-radius:99px;cursor:pointer;}
-.yl-snooze:active{transform:scale(.94);}
 .yl-photo{display:inline-flex;align-items:center;border:none;background:#E8F6F2;color:#0E9E8E;font-size:11px;font-weight:800;font-family:inherit;padding:3px 9px;border-radius:99px;cursor:pointer;}
 .yl-photo.add{background:#F3EEF8;color:#9A86A8;}
-.yl-photo:active{transform:scale(.94);}
 .yl-photo-img{width:100%;border-radius:14px;max-height:60vh;object-fit:contain;background:#F6F2F8;margin-bottom:14px;}
 .yl-modal.photo{max-width:380px;}
 .yl-notify{margin-top:12px;border-top:1px solid #F3E7EF;padding-top:11px;}
 .yl-notify-label{font-size:11px;font-weight:800;color:#9A86A8;display:block;margin-bottom:8px;}
 .yl-notify-chips{display:flex;gap:6px;flex-wrap:wrap;}
-.yl-nchip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;transition:transform .12s ease;}
-.yl-nchip:active{transform:scale(.94);}
+.yl-nchip{border:2px solid #F3E7EF;background:#fff;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;}
 .yl-nchip.on{border-color:transparent;background:linear-gradient(135deg,#FFB347,#FF8FA3);color:#fff;}
 .yl-opt{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;color:#9A86A8;}
 .yl-date,.yl-select{border:2px solid #F3E7EF;border-radius:11px;padding:7px 9px;font-family:inherit;font-size:13px;font-weight:700;color:#3A2E3F;background:#fff;outline:none;}
-.yl-date:focus,.yl-select:focus{border-color:#FF87B5;}
 .yl-foot{text-align:center;font-size:11.5px;color:#B49EC0;font-weight:600;margin:18px 0 0;}
 .yl-flash{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#3A2E3F;color:#fff;font-size:13px;font-weight:700;padding:11px 18px;border-radius:99px;box-shadow:0 8px 24px rgba(0,0,0,.22);animation:rise .3s ease;max-width:90%;text-align:center;z-index:50;}
 @keyframes rise{from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
@@ -1324,12 +760,8 @@ const css = `
 .yl-modal-btns{display:flex;gap:9px;}
 .yl-modal-cancel{flex:1;border:2px solid #F0E4EE;background:#fff;border-radius:14px;padding:12px;font-size:14px;font-weight:800;font-family:inherit;color:#7A6C88;cursor:pointer;}
 .yl-modal-del{flex:1;border:none;border-radius:14px;padding:12px;font-size:14px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF6B6B,#E5484D);box-shadow:0 4px 12px rgba(229,72,77,.3);}
-.yl-modal-cancel:active,.yl-modal-del:active{transform:scale(.96);}
 .yl-emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:16px;}
-.yl-emoji-pick{aspect-ratio:1;border:2px solid #F3E7EF;background:#fff;border-radius:12px;font-size:21px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:transform .12s ease,border-color .12s ease;}
-.yl-emoji-pick:hover{border-color:#FF87B5;}
-.yl-emoji-pick:active{transform:scale(.88);}
-@media (prefers-reduced-motion: reduce){.yl-fill,.yl-card,.yl-check,.yl-check svg,.yl-addbtn,.yl-tab,.yl-chip{transition:none;}}
+.yl-emoji-pick{aspect-ratio:1;border:2px solid #F3E7EF;background:#fff;border-radius:12px;font-size:21px;cursor:pointer;padding:0;}
 .yl-home{display:flex;flex-direction:column;gap:18px;}
 .yl-sec-title{font-size:14px;font-weight:800;color:#3A2E3F;margin:0 0 10px;}
 .yl-sec-title.light{color:#9A86A8;}
@@ -1347,15 +779,21 @@ const css = `
 .yl-today-tag{flex:0 0 auto;font-size:11px;font-weight:800;color:#7C4DFF;background:#EFE7FB;padding:4px 9px;border-radius:99px;}
 .yl-today-tag.over{color:#E5484D;background:#FFE2E2;}
 .yl-statusgrid{display:flex;flex-direction:column;gap:9px;}
-.yl-statuscard{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:none;border-left:5px solid #34D3C0;border-radius:16px;padding:13px;cursor:pointer;text-align:left;box-shadow:0 4px 13px rgba(120,80,160,.08);font-family:inherit;transition:transform .12s ease;}
-.yl-statuscard:active{transform:scale(.99);}
+.yl-statuscard{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:none;border-left:5px solid #34D3C0;border-radius:16px;padding:13px;cursor:pointer;text-align:left;box-shadow:0 4px 13px rgba(120,80,160,.08);font-family:inherit;}
 .yl-statuscard.alert{border-left-color:#E5484D;}
 .yl-status-emoji{font-size:26px;flex:0 0 auto;}
 .yl-status-body{flex:1;display:flex;flex-direction:column;min-width:0;}
 .yl-status-name{font-size:15px;font-weight:800;color:#3A2E3F;}
 .yl-status-line{font-size:12px;font-weight:700;color:#8A7C94;margin-top:2px;}
 .yl-status-sub{font-size:11px;font-weight:700;color:#B0A0BD;margin-top:2px;}
+.yl-statuscard.alert .yl-status-line{color:#E5484D;}
+.yl-status-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;}
 .yl-reset{display:block;margin:6px auto 0;border:none;background:transparent;color:#C2B2CE;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;}
+.yl-summary{background:linear-gradient(135deg,#FFF0F6,#F1ECFF);border-radius:20px;padding:16px;}
+.yl-summary-row{display:flex;gap:10px;}
+.yl-stat{flex:1;background:#fff;border-radius:14px;padding:13px 8px;text-align:center;}
+.yl-stat-n{display:block;font-size:24px;font-weight:800;color:#FF2D7E;}
+.yl-stat-l{display:block;font-size:10.5px;font-weight:800;color:#9A86A8;margin-top:3px;}
 .yl-ob{position:fixed;inset:0;z-index:80;background:linear-gradient(170deg,#FFF0F6 0%,#F4F0FF 55%,#EFFAF7 100%);display:flex;align-items:center;justify-content:center;padding:28px 22px;animation:fade .25s ease;overflow-y:auto;}
 .yl-ob-inner{width:100%;max-width:380px;text-align:center;display:flex;flex-direction:column;align-items:center;}
 .yl-ob-emoji{font-size:48px;margin-bottom:10px;}
@@ -1364,29 +802,392 @@ const css = `
 .yl-ob-step{margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.1em;color:#C06A99;}
 .yl-ob-sub{margin:0 0 18px;font-size:13.5px;font-weight:700;color:#8A7C94;}
 .yl-ob-btn{width:100%;border:none;border-radius:16px;padding:15px;font-size:16px;font-weight:800;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,#FF4D8D,#9B6DFF);box-shadow:0 6px 16px rgba(255,77,141,.32);margin-top:6px;}
-.yl-ob-btn:active{transform:scale(.98);}
 .yl-ob-link{border:none;background:transparent;color:#9A86A8;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;padding:12px;margin-top:2px;}
 .yl-ob-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:14px;}
 .yl-ob-chip{border:2px solid #F3D9E8;background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:800;font-family:inherit;color:#C0568F;cursor:pointer;}
-.yl-ob-chip:active{transform:scale(.95);}
 .yl-ob .yl-input{width:100%;box-sizing:border-box;margin-bottom:6px;}
 .yl-ob-choices{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:8px;}
 .yl-ob-choice{border:2px solid #EEE3F3;background:#fff;border-radius:16px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;color:#3A2E3F;cursor:pointer;}
-.yl-ob-choice:active{transform:scale(.98);}
 .yl-ob-form{width:100%;display:flex;flex-direction:column;gap:10px;}
-.yl-ob-form .yl-kindrow,.yl-ob-form .yl-emoji-row{justify-content:center;}
-.yl-statuscard.alert .yl-status-line{color:#E5484D;}
-.yl-status-glyph{font-size:20px;flex:0 0 auto;}
-.yl-status-dot{flex:0 0 auto;width:11px;height:11px;border-radius:50%;}
-.yl-summary{background:linear-gradient(135deg,#FFF0F6,#F1ECFF);border-radius:20px;padding:16px;}
-.yl-summary-row{display:flex;gap:10px;}
-.yl-stat{flex:1;background:#fff;border-radius:14px;padding:13px 8px;text-align:center;}
-.yl-stat-n{display:block;font-size:24px;font-weight:800;color:#FF2D7E;}
-.yl-stat-l{display:block;font-size:10.5px;font-weight:800;color:#9A86A8;margin-top:3px;}
 `;
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(App));
+  return (
+    <div className="yl-root">
+      <style dangerouslySetInnerHTML={{__html: css}} />
+
+      {onboarding && (
+        <div className="yl-ob">
+          {obStep === 0 && (
+            <div className="yl-ob-inner">
+              <div className="yl-ob-emoji">🏠</div>
+              <h1 className="yl-ob-title">わたしと、大切な家族を、ひとつの場所で。</h1>
+              <p className="yl-ob-sub">家族みんなの"状態"が、ひと目でわかる。</p>
+              <button className="yl-ob-btn" onClick={() => setObStep(1)}>はじめる</button>
+              <button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button>
+            </div>
+          )}
+          {obStep === 1 && (
+            <div className="yl-ob-inner">
+              <p className="yl-ob-step">1 / 2</p>
+              <h2 className="yl-ob-h2">まず、あなたの「やりたいこと」を1つ</h2>
+              <p className="yl-ob-sub">あとから、いつでも追加できます</p>
+              <div className="yl-ob-chips">
+                {["旅行に行く", "資格をとる", "カフェ巡り", "運動を習慣に"].map((ex) => (
+                  <button key={ex} className="yl-ob-chip" onClick={() => setObWish(ex)}>{ex}</button>
+                ))}
+              </div>
+              <input className="yl-input" value={obWish} onChange={(e) => setObWish(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setObStep(2)} placeholder="やりたいこと…" autoFocus />
+              <button className="yl-ob-btn" onClick={() => setObStep(2)}>次へ</button>
+              <button className="yl-ob-link" onClick={() => { setObWish(""); setObStep(2); }}>スキップ</button>
+            </div>
+          )}
+          {obStep === 2 && (
+            <div className="yl-ob-inner">
+              <p className="yl-ob-step">2 / 2</p>
+              <h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>
+              {!obKind ? (
+                <div className="yl-ob-choices">
+                  <button className="yl-ob-choice" onClick={() => { setObKind("pet"); setObEmoji(PET_EMOJIS[0]); }}>🐶 ペット</button>
+                  <button className="yl-ob-choice" onClick={() => { setObKind("person"); setObEmoji(PERSON_EMOJIS[0]); }}>👧 家族（人）</button>
+                  <button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button>
+                </div>
+              ) : (
+                <div className="yl-ob-form">
+                  {obKind === "pet" && (
+                    <div className="yl-kindrow">
+                      {SPECIES.map((s) => (
+                        <button key={s.key} className={"yl-kindbtn sm" + (obSpecies === s.key ? " on" : "")} onClick={() => { setObSpecies(s.key); setObEmoji(s.emoji); }}>{s.emoji} {s.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="yl-emoji-row">
+                    {(obKind === "person" ? PERSON_EMOJIS : PET_EMOJIS).map((e) => (
+                      <button key={e} className={"yl-emoji" + (obEmoji === e ? " on" : "")} onClick={() => setObEmoji(e)}>{e}</button>
+                    ))}
+                  </div>
+                  <input className="yl-input" value={obName} onChange={(e) => setObName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && finishOnboarding()} placeholder={obKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"} autoFocus />
+                  <button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button>
+                  <button className="yl-ob-link" onClick={() => setObKind(null)}>戻る</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="yl-wrap">
+        <header className="yl-head">
+          <h1 className="yl-title">わたしと家族のリスト</h1>
+        </header>
+
+        <nav className="yl-tabs">
+          <button className={"yl-tab" + (tab === "home" ? " on" : "")} onClick={() => setTab("home")}>ホーム</button>
+          <button className={"yl-tab" + (tab === "me" ? " on" : "")} onClick={() => setTab("me")}>わたし</button>
+          {members.map((m) => (
+            <button key={m.id} className={"yl-tab" + (tab === m.id ? " on" : "")} onClick={() => setTab(m.id)}>{m.emoji} {m.name}</button>
+          ))}
+          <button className="yl-tab add" onClick={() => setAdding((v) => !v)}>＋追加</button>
+        </nav>
+
+        {adding && (
+          <div className="yl-petform">
+            <div className="yl-kindrow">
+              <button className={"yl-kindbtn" + (newKind === "pet" ? " on" : "")} onClick={() => { setNewKind("pet"); setNewEmoji(PET_EMOJIS[0]); }}>🐶 ペット</button>
+              <button className={"yl-kindbtn" + (newKind === "person" ? " on" : "")} onClick={() => { setNewKind("person"); setNewEmoji(PERSON_EMOJIS[0]); }}>👤 家族（人）</button>
+            </div>
+            {newKind === "pet" && (
+              <div className="yl-kindrow">
+                {SPECIES.map((s) => (
+                  <button key={s.key} className={"yl-kindbtn sm" + (newSpecies === s.key ? " on" : "")} onClick={() => { setNewSpecies(s.key); setNewEmoji(s.emoji); }}>{s.emoji} {s.label}</button>
+                ))}
+              </div>
+            )}
+            <div className="yl-emoji-row">
+              {emojiSet.map((e) => (
+                <button key={e} className={"yl-emoji" + (newEmoji === e ? " on" : "")} onClick={() => setNewEmoji(e)}>{e}</button>
+              ))}
+            </div>
+            <div className="yl-petform-row">
+              <input className="yl-input" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMember()} placeholder={newKind === "person" ? "名前（例：ゆうと）" : "名前（例：ロア）"} />
+              <button className="yl-addbtn" onClick={addMember}>登録</button>
+            </div>
+          </div>
+        )}
+
+        {tab === "home" ? (
+          <div className="yl-home">
+            {todayList.length === 0 ? (
+              <section className="yl-hero">
+                <div className="yl-hero-emoji">✨</div>
+                <p className="yl-hero-title">今日やることはありません</p>
+                <p className="yl-hero-sub">{members.some((m) => m.kind === "pet") ? `${members.find((m) => m.kind === "pet").emoji} ${members.find((m) => m.kind === "pet").name}は今日も元気です` : "ゆっくり過ごせる一日を"}</p>
+              </section>
+            ) : (
+              <section className="yl-today">
+                <h2 className="yl-sec-title">今日のこと</h2>
+                {todayList.map((it) => {
+                  const od = daysUntil(it.dueDate) < 0;
+                  return (
+                    <button key={it.id} className="yl-today-row" onClick={() => setTab(it.space)}>
+                      <span className="yl-today-emoji">{it.emoji || "•"}</span>
+                      <span className="yl-today-body">
+                        <span className="yl-today-text">{it.title}</span>
+                        <span className="yl-today-who">{nameOf(it.space)}{it.time ? " ・ " + it.time : ""}</span>
+                      </span>
+                      <span className={"yl-today-tag" + (od ? " over" : "")}>{od ? "期限切れ" : "今日"}</span>
+                    </button>
+                  );
+                })}
+              </section>
+            )}
+            <h2 className="yl-sec-title">みんなの状態</h2>
+            <div className="yl-statusgrid">
+              {spaces.map((s) => {
+                const st = statusFor(s.id);
+                let line, sub = null;
+                if (st.over > 0) { line = `🔴 期限切れ ${st.over}件`; }
+                else if (st.next) { line = s.kind === "pet" ? "今日は安心して過ごせます" : "順調です"; sub = `次の予定：${st.next.title}・${st.nextDays === 0 ? "今日" : "あと" + st.nextDays + "日"}`; }
+                else { line = s.kind === "pet" ? "今日も元気です" : "予定はありません"; }
+                return (
+                  <button key={s.id} className={"yl-statuscard " + (st.over > 0 ? "alert" : "")} onClick={() => setTab(s.id)}>
+                    <span className="yl-status-emoji">{s.emoji}</span>
+                    <span className="yl-status-body">
+                      <span className="yl-status-name">{s.name}</span>
+                      <span className="yl-status-line">{line}</span>
+                      {sub && <span className="yl-status-sub">{sub}</span>}
+                    </span>
+                    <span className="yl-status-dot" style={{ background: st.over > 0 ? "#E5484D" : "#2FC9A8" }} />
+                  </button>
+                );
+              })}
+            </div>
+            <section className="yl-summary">
+              <h2 className="yl-sec-title light">これまでの見守り</h2>
+              <div className="yl-summary-row">
+                <div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">叶えた夢</span></div>
+                <div className="yl-stat"><span className="yl-stat-n">{summary.careOverdue}</span><span className="yl-stat-l">ケアの取りこぼし</span></div>
+                <div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">見守る家族</span></div>
+              </div>
+            </section>
+            <button className="yl-reset" onClick={resetApp}>⟳ サンプルを消して最初から</button>
+          </div>
+        ) : (
+          <>
+            {!isMemberTab ? (
+              <section className="yl-meter">
+                <div className="yl-meter-top">
+                  <span className="yl-meter-label">わくわくメーター</span>
+                  <span className="yl-meter-count">{doneCount} / {meItems.length}</span>
+                </div>
+                <div className="yl-bar"><div className="yl-fill" style={{ width: pct + "%" }} /></div>
+              </section>
+            ) : (
+              <section className="yl-petstatus">
+                <div className="yl-petstatus-head">
+                  {editingId === activeMember.id ? (
+                    <div className="yl-rename">
+                      <input className="yl-input sm" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveRename(activeMember.id)} autoFocus />
+                      <button className="yl-addbtn sm" onClick={() => saveRename(activeMember.id)}>保存</button>
+                    </div>
+                  ) : (
+                    <span className="yl-petstatus-title" style={{ color: KIND_STYLE[activeMember.kind].fg }}>
+                      {activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
+                      <button className="yl-icon" onClick={() => { setEditingId(activeMember.id); setEditName(activeMember.name); }} aria-label="名前を変更">✏️</button>
+                    </span>
+                  )}
+                </div>
+                <div className="yl-petstatus-chips">
+                  <span className="yl-pill soon">⏰ 近い {memberStats?.soon || 0}</span>
+                  <span className="yl-pill over">🔴 期限切れ {memberStats?.over || 0}</span>
+                  <button className="yl-pet-del" onClick={() => setConfirmDel(activeMember)}>削除</button>
+                </div>
+              </section>
+            )}
+
+            <div className="yl-addbox">
+              {!isMemberTab ? (
+                <div className="yl-typerow">
+                  {ME_TYPES.map((t) => (
+                    <button key={t} className={"yl-chip" + (draftType === t ? " on" : "")} style={draftType === t ? { background: TYPE_META[t].fg, color: "#fff", borderColor: "transparent" } : undefined} onClick={() => setDraftType(t)}>{TYPE_META[t].emoji} {TYPE_META[t].label}</button>
+                  ))}
+                </div>
+              ) : (
+                <div className="yl-typerow">
+                  {careKindsFor(activeMember).map((k) => (
+                    <button key={k.key} className={"yl-chip" + (draftKind === k.key ? " on" : "")} style={draftKind === k.key ? { background: KIND_STYLE[activeMember.kind].fg, color: "#fff", borderColor: "transparent" } : undefined} onClick={() => pickCareKind(k)}>{k.emoji} {k.label}</button>
+                  ))}
+                </div>
+              )}
+              {suggestions.length > 0 && (
+                <div className="yl-suggest">
+                  <span className="yl-suggest-label">よく使う</span>
+                  <div className="yl-suggest-chips">
+                    {suggestions.map((s) => (
+                      <button key={s} className="yl-suggest-chip" onClick={() => { setDraft(s); setDraftAuto(false); }}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="yl-add">
+                <input className="yl-input" value={draft} onChange={(e) => { setDraft(e.target.value); setDraftAuto(false); }} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder={isMemberTab ? (draftKind === "other" ? "内容を入力…" : `${(careKindsFor(activeMember).find((k) => k.key === draftKind) || {}).label || "内容"}を追加…`) : `${TYPE_META[draftType].label}を追加…`} />
+                <button className="yl-addbtn" onClick={addItem}>追加</button>
+              </div>
+              <div className="yl-optrow">
+                <label className="yl-opt">期限<input type="date" className="yl-date" value={draftDate} onChange={(e) => setDraftDate(e.target.value)} /></label>
+                <label className="yl-opt">時間<input type="time" className="yl-date" value={draftTime} onChange={(e) => setDraftTime(e.target.value)} /></label>
+                <label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={(e) => setDraftRepeat(e.target.value)}>{REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
+              </div>
+              <div className="yl-notify">
+                <span className="yl-notify-label">🔔 通知（任意・複数OK）</span>
+                <div className="yl-notify-chips">
+                  {REMINDER_OPTS.map((o) => (
+                    <button key={o.key} className={"yl-nchip" + (draftReminders.includes(o.key) ? " on" : "")} onClick={() => toggleReminder(o.key)}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="yl-sort">
+              {filterChips.map((f) => (
+                <button key={f.key} className={"yl-sortbtn" + (filter === f.key ? " on" : "")} onClick={() => setFilter(f.key)}>{f.emoji ? f.emoji + " " : ""}{f.label}</button>
+              ))}
+            </div>
+
+            {!loaded ? (
+              <p className="yl-loading">よみこみ中…</p>
+            ) : visible.length === 0 ? (
+              <p className="yl-empty">まだありません。上のフォームから追加できます。</p>
+            ) : (
+              <ul className="yl-list">
+                {visible.map((it) => {
+                  let meta, label;
+                  if (isMemberTab) {
+                    meta = KIND_STYLE[activeMember.kind];
+                    label = (careKindsFor(activeMember).find((k) => k.key === it.careKind) || {}).label || "ケア";
+                  } else {
+                    meta = TYPE_META[it.type] || TYPE_META.dream;
+                    label = meta.label;
+                  }
+                  const ds = dueStatus(it);
+                  return (
+                    <li key={it.id} className={"yl-card" + (it.done ? " is-done" : "")}>
+                      <button className="yl-bubble" style={{ background: meta.bg, color: meta.fg }} onClick={() => setPickerId(it.id)} title="タップで絵文字を変更">{it.emoji}</button>
+                      <div className="yl-body" onClick={() => openEdit(it)}>
+                        <div className="yl-row1">
+                          <span className="yl-badge" style={{ background: meta.bg, color: meta.fg }}>{label}</span>
+                          <span className="yl-text">{it.title}</span>
+                        </div>
+                        {(ds || it.time || it.reminders || it.type === "care" || (it.repeat && it.repeat !== "none")) && (
+                          <div className="yl-meta">
+                            {ds && <span className={"yl-due " + ds.tone}>{ds.label}</span>}
+                            {it.time && <span className="yl-time">🕐 {it.time}</span>}
+                            {it.repeat && it.repeat !== "none" && <span className="yl-repeat">🔁 {REPEATS.find((r) => r.key === it.repeat)?.label}</span>}
+                            {it.reminders && it.reminders.length > 0 && <span className="yl-notif">🔔 {it.reminders.length <= 2 ? it.reminders.map(reminderLabel).join("・") : it.reminders.length + "件"}</span>}
+                            {!it.done && it.dueDate && daysUntil(it.dueDate) <= 0 && <button className="yl-snooze" onClick={(e) => { e.stopPropagation(); snooze(it.id); }}>→ 明日へ</button>}
+                            {it.type === "care" && (it.photo ? (
+                              <button className="yl-photo" onClick={(e) => { e.stopPropagation(); viewPhoto(it.id); }}>📷 証明書</button>
+                            ) : (
+                              <label className="yl-photo add" onClick={(e) => e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => onFilePicked(e, it.id)} /></label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button className={"yl-check" + (it.done ? " on" : "")} onClick={() => toggle(it.id)} aria-label="完了">
+                        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </button>
+                      <button className="yl-del" onClick={() => remove(it.id)} aria-label="削除">×</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+        <p className="yl-foot">試作版・データはこの端末に保存されます</p>
+      </div>
+
+      {editItemId && (
+        <div className="yl-overlay" onClick={() => setEditItemId(null)}>
+          <div className="yl-modal edit" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">編集</h3>
+            <input className="yl-input" value={eTitle} onChange={(e) => setETitle(e.target.value)} placeholder="タイトル" />
+            <div className="yl-optrow">
+              <label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={(e) => setEDate(e.target.value)} /></label>
+              <label className="yl-opt">時間<input type="time" className="yl-date" value={eTime} onChange={(e) => setETime(e.target.value)} /></label>
+              <label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={(e) => setERepeat(e.target.value)}>{REPEATS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></label>
+            </div>
+            <div className="yl-notify">
+              <span className="yl-notify-label">🔔 通知</span>
+              <div className="yl-notify-chips">
+                {REMINDER_OPTS.map((o) => (
+                  <button key={o.key} className={"yl-nchip" + (eReminders.includes(o.key) ? " on" : "")} onClick={() => toggleEReminder(o.key)}>{o.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setEditItemId(null)}>閉じる</button>
+              <button className="yl-addbtn modal" onClick={saveEdit}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewer && (
+        <div className="yl-overlay" onClick={() => setViewer(null)}>
+          <div className="yl-modal photo" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">証明書</h3>
+            {viewer.loading ? <p className="yl-loading">読み込み中…</p> : viewer.src ? <img className="yl-photo-img" src={viewer.src} alt="証明書" /> : <p className="yl-empty">画像が見つかりませんでした</p>}
+            <div className="yl-modal-btns">
+              {viewer.src && <button className="yl-modal-cancel" onClick={() => removePhoto(viewer.id)}>削除</button>}
+              <button className="yl-modal-cancel" onClick={() => setViewer(null)}>閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pickerId && (
+        <div className="yl-overlay" onClick={() => setPickerId(null)}>
+          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="yl-modal-title">絵文字を選ぶ</h3>
+            <div className="yl-emoji-grid">
+              {PICKER_EMOJIS.map((e) => (
+                <button key={e} className="yl-emoji-pick" onClick={() => setEmoji(pickerId, e)}>{e}</button>
+              ))}
+            </div>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setEmoji(pickerId, "")}>絵文字なし</button>
+              <button className="yl-modal-cancel" onClick={() => setPickerId(null)}>閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div className="yl-overlay" onClick={() => setConfirmDel(null)}>
+          <div className="yl-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="yl-modal-emoji">{confirmDel.emoji}</div>
+            <h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3>
+            <p className="yl-modal-body">
+              {(() => {
+                const n = items.filter((x) => x.space === confirmDel.id).length;
+                return n > 0 ? `${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。` : "この操作は元に戻せません。";
+              })()}
+            </p>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={() => setConfirmDel(null)}>キャンセル</button>
+              <button className="yl-modal-del" onClick={() => removeMember(confirmDel.id)}>削除する</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {flash && <div className="yl-flash">{flash}</div>}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
 </script>
 </body>
 </html>
