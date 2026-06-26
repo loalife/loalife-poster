@@ -158,12 +158,30 @@ function generateIcal(items, members, meEmoji) {
 }
 
 function downloadIcal(content, filename="loalife-calendar.ics"){
-  const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download=filename;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isIOS){
+    // iOS: フォームをPOSTで/api/icalに送り、サーバーがtext/calendarで返す
+    // → iOSがHTTPヘッダーを見てAppleカレンダーに渡す
+    const form=document.createElement("form");
+    form.method="POST";
+    form.action="/api/ical";
+    form.target="_blank"; // 新しいSafariタブで開く → iOSがカレンダーと認識
+    const input=document.createElement("input");
+    input.type="hidden";input.name="content";
+    input.value=encodeURIComponent(content);
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }else{
+    // PC/Android: 通常のblob URLダウンロード
+    const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
 }
 
 const HOURS=Array.from({length:24},(_,i)=>i);
