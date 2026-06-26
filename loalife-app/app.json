@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "LOALIFE",
+    "slug": "loalife-app",
+    "version": "1.0.0",
+    "scheme": "loalife",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.loalife.app"
+    },
+    "android": {
+      "package": "com.loalife.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF0F6",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
