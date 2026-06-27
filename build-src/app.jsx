@@ -1049,7 +1049,23 @@ function App(){
               </section>
             )}
 
-            {/* ② 安心ステータス */}
+            {/* ② 見逃せないこと（"爆弾"）── 放置の損害が最大なので最上位に近い位置へ */}
+            {homeData.bombs.length>0&&(
+              <section className="yl-bombs">
+                <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
+                <ul className="yl-bomb-list">
+                  {homeData.bombs.slice(0,4).map(({item,d})=>(
+                    <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
+                      <span className="yl-bomb-emoji">{item.emoji||"⚠️"}</span>
+                      <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
+                      <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* ③ 安心ステータス */}
             <section>
               <h2 className="yl-sec-title">😊 安心ステータス</h2>
               <div className="yl-statusgrid">{spaces.map(s=>{
@@ -1067,22 +1083,6 @@ function App(){
                 );
               })}</div>
             </section>
-
-            {/* ③ 直近の"爆弾" */}
-            {homeData.bombs.length>0&&(
-              <section className="yl-bombs">
-                <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
-                <ul className="yl-bomb-list">
-                  {homeData.bombs.slice(0,4).map(({item,d})=>(
-                    <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
-                      <span className="yl-bomb-emoji">{item.emoji||"⚠️"}</span>
-                      <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
-                      <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
 
             {/* ④ フード・消耗品の残量 */}
             {lowSupplies.length>0&&(
@@ -1105,8 +1105,8 @@ function App(){
               </section>
             )}
 
-            {/* ⑤ 小さなふりかえり */}
-            <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったこと</span></div>{allRoutines.length>0?<div className="yl-stat"><span className="yl-stat-n">{routineDoneToday}/{allRoutines.length}</span><span className="yl-stat-l">今日のルーティン</span></div>:<div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">達成したこと</span></div>}<div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">家族メンバー</span></div></div></section>
+            {/* ⑤ 小さなふりかえり（操作実績だけに純化：達成演出はしない） */}
+            <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
             <button className="yl-reset" onClick={resetApp}>⟳ サンプルを消して最初から</button>
           </div>
         ):(
