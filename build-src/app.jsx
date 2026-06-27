@@ -38,19 +38,23 @@ const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨",
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
 // 1日のルーティン（タスクテンプレ）
 // ルーティン（1日のタスク）テンプレ：相手によって内容を変える
+// kind は "pet" / "person" / "me"（自分）。相手によってテンプレを出し分ける。
 const ROUTINE_TEMPLATES={
   pet:[{title:"散歩",emoji:"🦮",time:"07:00"},{title:"ごはん",emoji:"🍚",time:"08:00"},{title:"トイレ掃除",emoji:"🧹",time:"09:00"}],
   person:[{title:"歯みがき",emoji:"🪥",time:"08:00"},{title:"宿題",emoji:"📖",time:"17:00"},{title:"お風呂",emoji:"🛁",time:"19:00"},{title:"薬",emoji:"💊",time:"20:00"}],
+  me:[{title:"薬・サプリ",emoji:"💊",time:"08:00"},{title:"ストレッチ",emoji:"🧘",time:"07:00"},{title:"水を飲む",emoji:"💧",time:"12:00"},{title:"早く寝る",emoji:"🌙",time:"23:00"}],
 };
-const routineTemplatesFor=(m)=>ROUTINE_TEMPLATES[m&&m.kind==="person"?"person":"pet"];
-const ROUTINE_EMOJIS={pet:["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"],person:["🪥","📖","🛁","💊","🍚","🌙","⏰","🎒","🧴","💧"]};
+const normKind=(k)=>k==="person"?"person":k==="me"?"me":"pet";
+const routineTemplatesFor=(kind)=>ROUTINE_TEMPLATES[normKind(kind)];
+const ROUTINE_EMOJIS={pet:["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"],person:["🪥","📖","🛁","💊","🍚","🌙","⏰","🎒","🧴","💧"],me:["💊","🧘","💧","🌙","☕","📖","🏃","🧴","⏰","🍵"]};
 // 消耗品（ストック）テンプレ：買った日＋消費サイクルで「そろそろ切れそう」を自動表示
 const SUPPLY_TEMPLATES={
   pet:[{title:"フード",emoji:"🍚",cycleDays:30},{title:"おやつ",emoji:"🦴",cycleDays:30},{title:"トイレシーツ",emoji:"🧻",cycleDays:30},{title:"薬・サプリ",emoji:"💊",cycleDays:30}],
   person:[{title:"おむつ",emoji:"🧷",cycleDays:30},{title:"ティッシュ",emoji:"🧻",cycleDays:30},{title:"洗剤",emoji:"🧴",cycleDays:45},{title:"薬・サプリ",emoji:"💊",cycleDays:30}],
+  me:[{title:"サプリ",emoji:"💊",cycleDays:30},{title:"コンタクト",emoji:"👁️",cycleDays:30},{title:"洗剤",emoji:"🧴",cycleDays:45},{title:"日用品",emoji:"🧻",cycleDays:30}],
 };
-const supplyTemplatesFor=(m)=>SUPPLY_TEMPLATES[m&&m.kind==="person"?"person":"pet"];
-const SUPPLY_EMOJIS=["🍚","🦴","🧻","💊","🧷","🧴","🥫","🧼","🪥","🧂","☕","🍼"];
+const supplyTemplatesFor=(kind)=>SUPPLY_TEMPLATES[normKind(kind)];
+const SUPPLY_EMOJIS=["🍚","🦴","🧻","💊","👁️","🧴","🥫","🧼","🪥","🧂","☕","🍼"];
 const SUPPLY_CYCLES=[7,14,30,45,60,90];
 // 残り日数とトーンを算出。lowAt=サイクルの20%（最低3日）を切ったら「そろそろ」
 function supplyStatus(item){
@@ -615,6 +619,9 @@ function App(){
   // --- Main app state derived ---
   const activeMember=members.find(m=>m.id===tab);
   const isMemberTab=!!activeMember;
+  // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
+  const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
+  const curKind=activeMember?activeMember.kind:"me";
 
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
@@ -720,8 +727,8 @@ function App(){
 
   // --- ルーティン（1日のタスク）---
   const todayIso=iso(new Date());
-  const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:activeMember.id});
-  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:activeMember.kind==="person"?"⏰":"🐾",time:"08:00",reminders:[0],space:activeMember.id});
+  const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:tab});
+  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:curKind==="pet"?"🐾":"⏰",time:"08:00",reminders:[0],space:tab});
   const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"⏰",time:r.time||"08:00",reminders:r.reminders||[],space:r.space});
   const toggleRoutineReminder=(mins)=>setRoutineEdit(prev=>prev?{...prev,reminders:prev.reminders.includes(mins)?prev.reminders.filter(m=>m!==mins):[...prev.reminders,mins].sort((a,b)=>a-b)}:prev);
   const saveRoutine=()=>{
@@ -758,8 +765,8 @@ function App(){
   const routineDone=routines.filter(r=>r.doneDate===todayIso).length;
 
   // --- 消耗品ストック（買った日＋サイクルで残量を自動計算）---
-  const openSupplyTemplate=(t)=>setSupplyEdit({title:t.title,emoji:t.emoji,cycleDays:t.cycleDays,lastBought:todayIso,space:activeMember.id});
-  const openSupplyCustom=()=>setSupplyEdit({title:"",emoji:"🥫",cycleDays:30,lastBought:todayIso,space:activeMember.id});
+  const openSupplyTemplate=(t)=>setSupplyEdit({title:t.title,emoji:t.emoji,cycleDays:t.cycleDays,lastBought:todayIso,space:tab});
+  const openSupplyCustom=()=>setSupplyEdit({title:"",emoji:"🥫",cycleDays:30,lastBought:todayIso,space:tab});
   const openSupplyEdit=(s)=>setSupplyEdit({id:s.id,title:s.title,emoji:s.emoji||"🥫",cycleDays:s.cycleDays||30,lastBought:s.lastBought||todayIso,space:s.space});
   const saveSupply=()=>{
     if(!supplyEdit)return;
@@ -1178,8 +1185,8 @@ function App(){
               </section>
             )}
 
-            {/* 1日のタイムライン（ルーティン）メンバータブのみ */}
-            {isMemberTab&&(
+            {/* 1日のタイムライン（ルーティン）わたし＋各メンバー */}
+            {isPersonalTab&&(
               <section className="yl-routine">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
@@ -1207,21 +1214,21 @@ function App(){
                   </ul>
                 )}
                 <div className="yl-routine-tpl">
-                  {routineTemplatesFor(activeMember).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openRoutineTemplate(t)}>{t.emoji} {t.title}</button>)}
+                  {routineTemplatesFor(curKind).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openRoutineTemplate(t)}>{t.emoji} {t.title}</button>)}
                   <button className="yl-tpl-btn custom" onClick={openRoutineCustom}>＋ 自由</button>
                 </div>
               </section>
             )}
 
-            {/* 消耗品ストック（メンバータブのみ）買った日だけ入れれば残量を自動表示 */}
-            {isMemberTab&&(
+            {/* 消耗品ストック（わたし＋各メンバー）買った日だけ入れれば残量を自動表示 */}
+            {isPersonalTab&&(
               <section className="yl-supply">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">📦 ストック</h2>
                   {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
                 </div>
                 {supplies.length===0?(
-                  <p className="yl-routine-empty">フードなどの消耗品を登録すると、残量を自動で見守ります</p>
+                  <p className="yl-routine-empty">{tab==="me"?"サプリ・コンタクト・日用品など、自分の消耗品を登録できます":"フードなどの消耗品を登録すると、残量を自動で見守ります"}</p>
                 ):(
                   <ul className="yl-supply-list">
                     {supplies.map(s=>{
@@ -1242,7 +1249,7 @@ function App(){
                   </ul>
                 )}
                 <div className="yl-routine-tpl">
-                  {supplyTemplatesFor(activeMember).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openSupplyTemplate(t)}>{t.emoji} {t.title}</button>)}
+                  {supplyTemplatesFor(curKind).map(t=><button key={t.title} className="yl-tpl-btn" onClick={()=>openSupplyTemplate(t)}>{t.emoji} {t.title}</button>)}
                   <button className="yl-tpl-btn custom" onClick={openSupplyCustom}>＋ 自由</button>
                 </div>
               </section>
@@ -1375,7 +1382,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setRoutineEdit(null)}>
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
-            <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[(members.find(m=>m.id===routineEdit.space)||{}).kind==="person"?"person":"pet"]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
+            <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[normKind(routineEdit.space==="me"?"me":(members.find(m=>m.id===routineEdit.space)||{}).kind)]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
             <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder="やること（例：夜の散歩）" autoFocus/>
             <div className="yl-optrow"><label className="yl-opt">時間<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
             <div className="yl-notify"><span className="yl-notify-label">🔔 リマインド（複数OK）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div></div>
