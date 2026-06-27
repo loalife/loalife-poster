@@ -367,6 +367,7 @@ function App(){
   const[editVisibility,setEditVisibility]=useState("household");
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
+  const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
   const[photos,setPhotos]=useState({});
@@ -457,6 +458,16 @@ function App(){
     if(raw){try{await storage.set(STORAGE_KEY+".corrupt",raw);}catch(e){}}
     setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);
   })();},[]);
+
+  // データ永続化の要求＋「ホーム画面に追加」案内（iOS等の自動削除リスク低減）
+  useEffect(()=>{
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
+    try{
+      const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone;
+      const dismissed=localStorage.getItem("loalife-a2hs")==="1";
+      if(!standalone&&!dismissed)setA2hsHint(true);
+    }catch(e){}
+  },[]);
 
   // Firebase Auth state
   useEffect(()=>{
@@ -1163,14 +1174,24 @@ function App(){
       <div className="yl-wrap">
         <header className="yl-head">
           <h1 className="yl-title">🏠 ホーム</h1>
-          <button
-            className={"yl-share-btn"+(inHousehold?" active":"")}
-            onClick={()=>{setShowShareModal(true);setShareStep(household?"menu":"menu");setShareError("");}}
-            title="家族共有"
-          >
-            {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
-          </button>
+          {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
+          {FB_READY&&(
+            <button
+              className={"yl-share-btn"+(inHousehold?" active":"")}
+              onClick={()=>{setShowShareModal(true);setShareStep(household?"menu":"menu");setShareError("");}}
+              title="家族共有"
+            >
+              {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
+            </button>
+          )}
         </header>
+
+        {a2hsHint&&(
+          <div className="yl-notif-banner">
+            <span>📲 ホーム画面に追加すると、データが消えにくく安心です</span>
+            <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs","1");}catch(e){}}}>OK</button>
+          </div>
+        )}
 
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
