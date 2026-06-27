@@ -21,6 +21,8 @@ const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Numbe
 const TYPE_META={dream:{label:"夢",emoji:"🌈",bg:"#FFE0EC",fg:"#FF2D7E"},work:{label:"仕事",emoji:"💼",bg:"#E6E8FB",fg:"#4F5BD5"},event:{label:"予定",emoji:"📅",bg:"#ECE3FF",fg:"#7C4DFF"},social:{label:"飲み会",emoji:"🍻",bg:"#FFE7D6",fg:"#E8730C"},habit:{label:"習慣",emoji:"💪",bg:"#FFF4D6",fg:"#D99400"}};
 const ME_TYPES=["dream","work","event","social","habit"];
 const KIND_STYLE={pet:{bg:"#DBF6F1",fg:"#0E9E8E",word:"ケア"},person:{bg:"#E3EEFF",fg:"#3B7BF6",word:"予定"}};
+// 安心ステータスのレベル：OK / 注意 / 要対応
+const LEVEL_META={ok:{label:"OK",dot:"#2FC9A8"},warn:{label:"注意",dot:"#F0A500"},alert:{label:"要対応",dot:"#E5484D"}};
 const DOG_KINDS=[{key:"daycare",label:"保育園",emoji:"🏫"},{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"rabies",label:"狂犬病",emoji:"🐕"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const CAT_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"groom",label:"お手入れ",emoji:"🧼"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
@@ -793,6 +795,60 @@ function App(){
     return spaces.map(s=>({space:s,items:relevant.filter(x=>x.space===s.id)})).filter(g=>g.items.length>0);
   },[items,spaces]);
 
+  // --- ホーム再設計用の集計 ---
+  // ③ 直近の"爆弾"（放置するとヤバいもの）と ① 今日やること（最大3件）
+  const homeData=useMemo(()=>{
+    const bombs=[];
+    items.forEach(x=>{
+      if(x.done||!x.dueDate)return;
+      const d=daysUntil(x.dueDate);
+      const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);          // ワクチン・薬・通院など
+      const isBigEvent=x.type==="event"||x.careKind==="event"||x.careKind==="school";
+      if((isHigh&&d<=7)||(isBigEvent&&d>=0&&d<=2))bombs.push({item:x,d});
+    });
+    bombs.sort((a,b)=>a.d-b.d);
+    const bombSet=new Set(bombs.map(b=>b.item.id));
+    // ① 今日やること：今日のケア/予定（爆弾以外）＋未完了の今日のルーティン＋直近の予定1つ
+    const todos=[];
+    items.forEach(x=>{
+      if(x.done)return;
+      if(x.type==="routine"){if(x.doneDate!==todayIso)todos.push({key:x.id,emoji:x.emoji||"⏰",title:x.title,space:x.space,time:x.time,tag:x.time||"今日",pri:2});return;}
+      if(x.dueDate&&!bombSet.has(x.id)){const d=daysUntil(x.dueDate);if(d<=0)todos.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,time:x.time,tag:d<0?"やり残し":"今日",pri:d<0?0:1});}
+    });
+    // 期限が近いもの1つ（今日以降・爆弾以外）
+    let nearest=null;
+    items.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id))return;const d=daysUntil(x.dueDate);if(d>0&&d<=7&&(!nearest||d<nearest.d))nearest={item:x,d};});
+    if(nearest)todos.push({key:nearest.item.id,emoji:nearest.item.emoji||"•",title:nearest.item.title,space:nearest.item.space,time:nearest.item.time,tag:nearest.d===1?"明日":`あと${nearest.d}日`,pri:3});
+    todos.sort((a,b)=>a.pri-b.pri||((a.time||"99")<(b.time||"99")?-1:1));
+    return{bombs,todos};
+  },[items,todayIso]);
+
+  // ② 安心ステータス：各メンバーのレベルと一言
+  const spaceLevel=(spaceId)=>{
+    let overdue=0,soon=0;
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(d<0)overdue++;else if(d<=3)soon++;});
+    const sup=lowSupplies.filter(o=>o.item.space===spaceId);
+    if(overdue>0||sup.some(o=>o.st.tone==="out"))return"alert";
+    if(soon>0||sup.some(o=>o.st.tone==="low"))return"warn";
+    return"ok";
+  };
+  const spaceConcern=(spaceId)=>{
+    let overdue=null,soon=null;
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(d<0){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(d<=3){if(!soon||d<soon.d)soon={item:x,d};}});
+    const sup=lowSupplies.filter(o=>o.item.space===spaceId).sort((a,b)=>a.st.left-b.st.left)[0];
+    if(sup&&sup.st.tone==="out")return`${sup.item.title}が切れているかも`;
+    if(overdue)return`${overdue.item.title}が期限切れ`;
+    if(sup&&sup.st.tone==="low")return`${sup.item.title} 残りわずか`;
+    if(soon)return`${soon.item.title}・${soon.d===0?"今日":"あと"+soon.d+"日"}`;
+    return null;
+  };
+  // ⑤ 小さなふりかえり（軽め）
+  const weekDone=useMemo(()=>items.filter(x=>x.completedAt&&(Date.now()-x.completedAt)<7*86400000).length,[items]);
+  const allRoutines=useMemo(()=>items.filter(x=>x.type==="routine"),[items]);
+  const routineDoneToday=allRoutines.filter(x=>x.doneDate===todayIso).length;
+  // ⑥ 何もない日：すべて落ち着いているか
+  const allClear=homeData.todos.length===0&&homeData.bombs.length===0&&lowSupplies.length===0;
+
   const exportCalendar=()=>{
     const content=generateIcal(items,members,meEmoji);
     downloadIcal(content);
@@ -967,51 +1023,90 @@ function App(){
               </section>
             )}
 
-            {/* Status dashboard grouped by person */}
-            {groupedDashboard.length===0?(
-              <section className="yl-hero">
-                <div className="yl-hero-emoji">✨</div>
-                <p className="yl-hero-title">今後1週間、予定はありません</p>
-                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":members.length===1?`${members[0].emoji} ${members[0].name}は今日も元気です`:`${members.map(m=>m.emoji).join("")} みんな今日も元気です`}</p>
+            {/* ① 今日やること（最大3件）／⑥ 何もない日 */}
+            {allClear?(
+              <section className="yl-hero calm">
+                <div className="yl-hero-emoji">☀️</div>
+                <p className="yl-hero-title">今日は安心です</p>
+                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は平和です`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
               </section>
-            ):(
-              <section className="yl-dashboard">
+            ):homeData.todos.length>0&&(
+              <section className="yl-todo">
                 <div className="yl-dash-head">
-                  <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
-                  <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 エクスポート</button>
+                  <h2 className="yl-sec-title" style={{marginBottom:0}}>☑️ 今日やること</h2>
+                  <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 出力</button>
                 </div>
-                {groupedDashboard.map(({space:s,items:gItems})=>(
-                  <div key={s.id} className="yl-dash-group">
-                    <button className="yl-dash-group-head" onClick={()=>setTab(s.id)}>
-                      <span className="yl-dash-emoji">{s.emoji}</span>
-                      <span className="yl-dash-name">{s.name}</span>
-                    </button>
-                    <ul className="yl-dash-list">
-                      {gItems.map(it=>{
-                        const d=daysUntil(it.dueDate);
-                        const tag=d<0?"期限切れ":d===0?"今日":d===1?"明日":`あと${d}日`;
-                        const tone=d<0?"over":d===0?"today":d<=2?"soon":"normal";
-                        const calUrl=gcalLink(it,s.name,s.emoji);
-                        return(
-                          <li key={it.id} className="yl-dash-item">
-                            <span className="yl-dash-item-emoji">{it.emoji||"•"}</span>
-                            <span className="yl-dash-item-text">{it.title}{it.time&&<span className="yl-dash-item-time"> {it.time}</span>}</span>
-                            <span className={"yl-dash-tag "+tone}>{tag}</span>
-                            <button className="yl-cal-add" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ))}
+                <ul className="yl-todo-list">
+                  {homeData.todos.slice(0,3).map(t=>(
+                    <li key={t.key} className="yl-todo-item" onClick={()=>setTab(t.space)}>
+                      <span className="yl-todo-emoji">{t.emoji}</span>
+                      <span className="yl-todo-body"><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span><span className="yl-todo-who">{nameOf(t.space)}</span></span>
+                      <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
+                    </li>
+                  ))}
+                </ul>
+                {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
               </section>
             )}
 
-            <h2 className="yl-sec-title" style={{marginTop:18}}>みんなの状態</h2>
-            <div className="yl-statusgrid">{spaces.map(s=>{const st=statusFor(s.id);const sup=lowSupplies.filter(o=>o.item.space===s.id).sort((a,b)=>a.st.left-b.st.left);const worst=sup[0];const alert=st.over>0||(worst&&worst.st.tone==="out");let line,sub=null;if(st.over>0)line=`🔴 期限切れ ${st.over}件`;else if(st.next){line=s.kind==="pet"?"今日は安心して過ごせます":"順調です";sub=`次の予定：${st.next.title}・${st.nextDays===0?"今日":"あと"+st.nextDays+"日"}`;}else line=s.kind==="pet"?"今日も元気です":"予定はありません";const supText=worst?`${worst.item.emoji} ${worst.item.title}：${worst.st.tone==="out"?"切れているかも":"あと"+worst.st.left+"日で切れそう"}`:null;return<button key={s.id} className={"yl-statuscard "+(alert?"alert":"")} onClick={()=>setTab(s.id)}><span className="yl-status-emoji">{s.emoji}</span><span className="yl-status-body"><span className="yl-status-name">{s.name}</span><span className="yl-status-line">{line}</span>{supText?<span className={"yl-status-supply "+worst.st.tone}>{supText}</span>:sub&&<span className="yl-status-sub">{sub}</span>}</span><span className="yl-status-dot" style={{background:alert?"#E5484D":"#2FC9A8"}}/></button>;})}
-            </div>
+            {/* ② 見逃せないこと（"爆弾"）── 放置の損害が最大なので最上位に近い位置へ */}
+            {homeData.bombs.length>0&&(
+              <section className="yl-bombs">
+                <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
+                <ul className="yl-bomb-list">
+                  {homeData.bombs.slice(0,4).map(({item,d})=>(
+                    <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
+                      <span className="yl-bomb-emoji">{item.emoji||"⚠️"}</span>
+                      <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
+                      <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-            <section className="yl-summary"><h2 className="yl-sec-title light">これまでの記録</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{summary.dreams}</span><span className="yl-stat-l">達成したこと</span></div><div className="yl-stat"><span className="yl-stat-n">{summary.careOverdue}</span><span className="yl-stat-l">対応が必要なこと</span></div><div className="yl-stat"><span className="yl-stat-n">{summary.family}</span><span className="yl-stat-l">家族メンバー</span></div></div></section>
+            {/* ③ 安心ステータス */}
+            <section>
+              <h2 className="yl-sec-title">😊 安心ステータス</h2>
+              <div className="yl-statusgrid">{spaces.map(s=>{
+                const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
+                const okMsg=s.kind==="pet"?`${s.name}は平和です`:s.kind==="me"?"順調です":"順調です";
+                return(
+                  <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
+                    <span className="yl-status-emoji">{s.emoji}</span>
+                    <span className="yl-status-body">
+                      <span className="yl-status-name">{s.name}</span>
+                      <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
+                    </span>
+                    <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
+                  </button>
+                );
+              })}</div>
+            </section>
+
+            {/* ④ フード・消耗品の残量 */}
+            {lowSupplies.length>0&&(
+              <section className="yl-supply">
+                <h2 className="yl-sec-title">📦 そろそろ買い足し</h2>
+                <ul className="yl-supply-list">
+                  {[...lowSupplies].sort((a,b)=>a.st.left-b.st.left).map(({item,st})=>(
+                    <li key={item.id} className={"yl-supply-item "+st.tone}>
+                      <button className="yl-supply-main" onClick={()=>setTab(item.space)}>
+                        <span className="yl-supply-emoji">{item.emoji}</span>
+                        <span className="yl-supply-info">
+                          <span className="yl-supply-name">{item.title}<span className="yl-supply-who"> ・{nameOf(item.space)}</span></span>
+                          <span className={"yl-supply-line "+st.tone}>{supplyLine(item)}</span>
+                        </span>
+                      </button>
+                      <button className="yl-supply-bought" onClick={()=>markBought(item.id)}>買った</button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* ⑤ 小さなふりかえり（操作実績だけに純化：達成演出はしない） */}
+            <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
             <button className="yl-reset" onClick={resetApp}>⟳ サンプルを消して最初から</button>
           </div>
         ):(
