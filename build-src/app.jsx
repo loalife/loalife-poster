@@ -9,8 +9,11 @@ import {
   collection, onSnapshot, serverTimestamp,
   arrayUnion, writeBatch, getDocs, query, where
 } from "firebase/firestore";
-
-const STORAGE_KEY = "patty-yaritai-v3";
+// データ永続性・スキーマ移行レイヤー（生活インフラの安全装置）。詳細は schema.js のヘッダ参照。
+import {
+  SCHEMA_VERSION, STORAGE_KEY, LEGACY_STORAGE_KEYS,
+  migrateState, serializeState, normalizeMember, normalizeItem, withSchemaMeta
+} from "./schema";
 const iso = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; };
 const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return iso(d); };
 const daysUntil = (s) => { if(!s)return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
@@ -335,7 +338,43 @@ function App(){
   const[supplyEdit,setSupplyEdit]=useState(null); // {id?,title,emoji,cycleDays,lastBought,space}
 
   // Load local data
-  useEffect(()=>{(async()=>{try{const res=await storage.get(STORAGE_KEY);if(res&&res.value){const v=JSON.parse(res.value);setMembers(v.members||[]);setItems(v.items||[]);setUsage(v.usage||{});if(v.meEmoji)setMeEmoji(v.meEmoji);if(v.meBirthday)setMeBirthday(v.meBirthday);setLoaded(true);return;}}catch(e){}setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);})();},[]);
+  useEffect(()=>{(async()=>{
+    // データ読み込み: 現行キー → 旧キー の順で探し、見つかったら migrate して引き継ぐ。
+    // ユーザーデータは絶対に破棄しない（旧キー・破損データも消さず退避＝自動バックアップ）。
+    const tryParse=(s)=>{try{return JSON.parse(s);}catch(e){return null;}};
+    let raw=null,fromLegacy=false;
+    try{
+      const res=await storage.get(STORAGE_KEY);
+      if(res&&res.value)raw=res.value;
+      else{
+        for(const k of LEGACY_STORAGE_KEYS){
+          const r=await storage.get(k);
+          if(r&&r.value){raw=r.value;fromLegacy=true;break;}
+        }
+      }
+    }catch(e){}
+    const parsed=raw?tryParse(raw):null;
+    if(parsed){
+      // 移行は非破壊（未知フィールド温存・欠損補完）。旧データでも UI が壊れない。
+      const state=migrateState(parsed);
+      setMembers(state.members);setItems(state.items);setUsage(state.usage);
+      if(state.meEmoji)setMeEmoji(state.meEmoji);
+      if(state.meBirthday)setMeBirthday(state.meBirthday);
+      setLoaded(true);
+      // 旧キー由来 / バージョンが古い場合のみ現行キーへ保存（旧キーは残す＝バックアップ）。
+      try{
+        const needWrite=fromLegacy||parsed.version!==SCHEMA_VERSION;
+        if(needWrite){
+          if(!fromLegacy)await storage.set(STORAGE_KEY+".bak",raw); // 念のため移行前の生データを退避
+          await storage.set(STORAGE_KEY,serializeState({members:state.members,items:state.items,usage:state.usage,meEmoji:state.meEmoji,meBirthday:state.meBirthday}));
+        }
+      }catch(e){}
+      return;
+    }
+    // パース不能な破損データは絶対に消さず .corrupt に退避（手動復旧の余地を残す）。
+    if(raw){try{await storage.set(STORAGE_KEY+".corrupt",raw);}catch(e){}}
+    setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);
+  })();},[]);
 
   // Firebase Auth state
   useEffect(()=>{
@@ -373,14 +412,15 @@ function App(){
     const hid=household.id;
     const q=collection(fbDb,"households",hid,"members");
     const unsub=onSnapshot(q,(snap)=>{
+      // Firestore 読み取り時に lazy 正規化（旧スキーマでも UI が壊れないよう default 補完）
       const firestoreMembers=snap.docs
-        .map(d=>({id:d.id,...d.data()}))
-        .filter(m=>m.visibility==="household"||m.ownerUid===fireUser.uid);
+        .map(d=>normalizeMember({id:d.id,...d.data()}))
+        .filter(m=>m&&(m.visibility==="household"||m.ownerUid===fireUser.uid));
       setMembers(firestoreMembers);
       // Also load items for each member from Firestore
       Promise.all(firestoreMembers.map(async m=>{
         const iSnap=await getDocs(collection(fbDb,"households",hid,"members",m.id,"items"));
-        return iSnap.docs.map(d=>({id:d.id,...d.data(),space:m.id}));
+        return iSnap.docs.map(d=>normalizeItem({id:d.id,...d.data(),space:m.id})).filter(Boolean);
       })).then(allItems=>{
         const flat=allItems.flat();
         // Merge with local "me" items
@@ -415,7 +455,7 @@ function App(){
   const persist=async(m,it,u=usage)=>{
     setMembers(m);setItems(it);setUsage(u);
     if(!household){
-      try{await storage.set(STORAGE_KEY,JSON.stringify({members:m,items:it,usage:u,meEmoji,meBirthday}));}catch(e){}
+      try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday}));}catch(e){}
     }
   };
 
@@ -424,7 +464,7 @@ function App(){
     if(!household||!fireUser)return;
     const hid=household.id;
     const{id,...rest}=member;
-    await setDoc(doc(fbDb,"households",hid,"members",id),{...rest,ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
+    await setDoc(doc(fbDb,"households",hid,"members",id),{...withSchemaMeta(rest),ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
   };
 
   // Firestore: save item
@@ -433,7 +473,7 @@ function App(){
     if(item.space==="me")return; // Me items stay local
     const hid=household.id;
     const{id,space,...rest}=item;
-    await setDoc(doc(fbDb,"households",hid,"members",space,"items",id),{...rest,ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
+    await setDoc(doc(fbDb,"households",hid,"members",space,"items",id),{...withSchemaMeta(rest),ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
   };
 
   // Firestore: delete item
@@ -458,12 +498,12 @@ function App(){
 
   const persistMeEmoji=(emo)=>{
     setMeEmoji(emo);
-    try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji:emo,meBirthday})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:emo,meBirthday})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:emo},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeBirthday=(bday)=>{
     setMeBirthday(bday);
-    try{storage.set(STORAGE_KEY,JSON.stringify({members,items,usage,meEmoji,meBirthday:bday})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday:bday})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meBirthday:bday},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
@@ -508,7 +548,7 @@ function App(){
       const hid="hh_"+Date.now();
       const batch=writeBatch(fbDb);
       // Create household doc
-      batch.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp()});
+      batch.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp(),version:SCHEMA_VERSION});
       // Create invite code lookup
       batch.set(doc(fbDb,"inviteCodes",code),{householdId:hid});
       // Update user profile
@@ -603,7 +643,7 @@ function App(){
       catch(e){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
       try{storage.set(`photo:${id}`,dataUrl).catch(()=>{});}catch(er){}
-      setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,JSON.stringify({members,items:next})).catch(()=>{});}catch(er){}return next;});
+      setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,serializeState({members,items:next,usage,meEmoji,meBirthday})).catch(()=>{});}catch(er){}return next;});
       showFlash("証明書を保存しました 📷");
     }catch(err){showFlash("保存できませんでした。別の画像でお試しください");}
   };
