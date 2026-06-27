@@ -71,6 +71,31 @@ function supplyLine(item){
   if(s.tone==="low")return`あと${s.left}日で切れそう`;
   return`在庫OK（あと${s.left}日分）`;
 }
+
+// --- 逆算リマインド（在庫切れ・期限が迫ったものを1日1回まとめて通知）---
+const DIGEST_KEY="loalife-digest-date";   // 「最後にダイジェスト通知した日」を保存し1日1回に制限
+const SUPPLY_NOTIFY_LEFT=3;               // 残りこの日数以下で通知対象
+const CARE_NOTIFY_DAYS=3;                 // 重要ケア期限のこの日数前から通知対象
+// 通知すべき緊急アイテムを集めて [{emoji,text,sort}] を残量/期限の近い順で返す
+function buildDigest(items){
+  const urgent=[];
+  (items||[]).forEach(x=>{
+    if(!x||x.done)return;
+    if(x.type==="supply"){
+      const s=supplyStatus(x);
+      if(s&&(s.tone==="out"||s.left<=SUPPLY_NOTIFY_LEFT))
+        urgent.push({emoji:x.emoji||"📦",text:`${x.title}：${s.tone==="out"?"そろそろ切れそう":"あと"+s.left+"日"}`,sort:s.left});
+      return;
+    }
+    if(x.dueDate){
+      const d=daysUntil(x.dueDate);
+      const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);
+      if(isHigh&&d!==null&&d<=CARE_NOTIFY_DAYS)
+        urgent.push({emoji:x.emoji||"⚠️",text:`${x.title}：${d<0?"期限切れ":d===0?"今日":"あと"+d+"日"}`,sort:d});
+    }
+  });
+  return urgent.sort((a,b)=>a.sort-b.sort);
+}
 const REMINDER_OPTS=[{key:0,label:"開始時"},{key:5,label:"5分前"},{key:30,label:"30分前"},{key:60,label:"1時間前"},{key:1440,label:"前日"}];
 const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${mins}分前`;
 
@@ -454,6 +479,24 @@ function App(){
       if(d===3) setTimeout(()=>fireNotif(`🎂 ${m.name}の誕生日まであと3日`,`お祝いの準備はできてますか？`),2000);
     });
   },[loaded,notifPerm]);
+
+  // 逆算リマインド：アプリを開いた時、その日まだ通知していなければ
+  // 「在庫切れ・期限が近いもの」を1日1回まとめて端末通知する。
+  // ※ アプリ完全クローズ中の配信は別途バックエンド(FCM)が必要。ここは開いた時の確実な一発。
+  useEffect(()=>{
+    if(!loaded||notifPerm!=="granted")return;
+    let last=null;try{last=localStorage.getItem(DIGEST_KEY);}catch(e){}
+    const today=iso(new Date());
+    if(last===today)return; // 今日はもう通知済み
+    const urgent=buildDigest(items);
+    if(urgent.length===0)return;
+    const body=urgent.slice(0,3).map(u=>`${u.emoji} ${u.text}`).join(" / ")+(urgent.length>3?` ほか${urgent.length-3}件`:"");
+    const id=setTimeout(()=>{
+      fireNotif("🔔 今日の見守り",body);
+      try{localStorage.setItem(DIGEST_KEY,today);}catch(e){}
+    },1800);
+    return()=>clearTimeout(id);
+  },[loaded,notifPerm,items]);
 
   // Local persist (used when no household)
   const persist=async(m,it,u=usage)=>{
