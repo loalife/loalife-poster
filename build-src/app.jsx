@@ -167,6 +167,66 @@ function guessEmoji(title,fallback){const t=(title||"").toLowerCase();for(const[
 
 const storage={get:k=>Promise.resolve().then(()=>{const v=localStorage.getItem(k);return v!=null?{value:v}:null;}),set:(k,v)=>Promise.resolve().then(()=>localStorage.setItem(k,v)),delete:k=>Promise.resolve().then(()=>localStorage.removeItem(k))};
 
+// ---------------------------------------------------------------------------
+// 写真ストレージ（IndexedDB）。
+// 写真は容量が大きく localStorage(約5MB) を圧迫し、コアデータの保存失敗＝消失を招く。
+// そこで写真だけ大容量の IndexedDB に保存する。IDB が使えない環境は localStorage に自動フォールバック。
+// get は生の文字列(dataURL)または null を返す。
+// ---------------------------------------------------------------------------
+const IDB_AVAILABLE = typeof indexedDB !== "undefined";
+const PHOTO_DB = "loalife-photos", PHOTO_STORE = "photos";
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    try{
+      const req=indexedDB.open(PHOTO_DB,1);
+      req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(PHOTO_STORE))db.createObjectStore(PHOTO_STORE);};
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error);
+    }catch(e){reject(e);}
+  });
+}
+function idbReq(mode,fn){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(PHOTO_STORE,mode);
+    const rq=fn(tx.objectStore(PHOTO_STORE));
+    tx.oncomplete=()=>resolve(rq&&rq.result);
+    tx.onerror=()=>reject(tx.error);
+    tx.onabort=()=>reject(tx.error);
+  }));
+}
+const photoStorage={
+  async get(k){
+    if(IDB_AVAILABLE){try{const v=await idbReq("readonly",s=>s.get(k));if(v!=null)return v;}catch(e){}}
+    try{return localStorage.getItem(k);}catch(e){return null;} // 旧データ・フォールバック
+  },
+  async set(k,v){
+    if(IDB_AVAILABLE){try{await idbReq("readwrite",s=>s.put(v,k));return true;}catch(e){}}
+    try{localStorage.setItem(k,v);return true;}catch(e){return false;}
+  },
+  async delete(k){
+    if(IDB_AVAILABLE){try{await idbReq("readwrite",s=>s.delete(k));}catch(e){}}
+    try{localStorage.removeItem(k);}catch(e){}
+  },
+};
+// 既存の localStorage 内の写真を IndexedDB へ移行（コピー成功後に localStorage 側を削除して枠を解放）。
+// 非破壊：IDB へ確実に入ったことを確認してからのみ localStorage を消す。
+async function migratePhotosToIDB(){
+  if(!IDB_AVAILABLE)return;
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf("photo:")===0)keys.push(k);}
+    for(const k of keys){
+      const val=localStorage.getItem(k);if(val==null)continue;
+      try{
+        const existing=await idbReq("readonly",s=>s.get(k));
+        if(existing==null)await idbReq("readwrite",s=>s.put(val,k));
+        const check=await idbReq("readonly",s=>s.get(k));
+        if(check!=null)localStorage.removeItem(k); // IDB に入ったのを確認してから解放
+      }catch(e){/* この1枚はそのまま localStorage に残す（消さない） */}
+    }
+  }catch(e){}
+}
+
 // 体験用のサンプルデータ。個人情報を含まない一般的な内容にし、
 // 今日やること/安心ステータス/爆弾/消耗品の各機能が一通り見えるようにしている。
 function makeSeed(){
@@ -459,9 +519,10 @@ function App(){
     setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);
   })();},[]);
 
-  // データ永続化の要求＋「ホーム画面に追加」案内（iOS等の自動削除リスク低減）
+  // データ永続化の要求＋写真をIDBへ移行＋「ホーム画面に追加」案内（iOS等の自動削除リスク低減）
   useEffect(()=>{
     try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
+    migratePhotosToIDB(); // 既存のlocalStorage写真をIDBへ移してlocalStorage枠を解放
     try{
       const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone;
       const dismissed=localStorage.getItem("loalife-a2hs")==="1";
@@ -746,7 +807,7 @@ function App(){
 
   const remove=(id)=>{
     const it=items.find(x=>x.id===id);
-    if(it&&it.photo){try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}}
+    if(it&&it.photo){try{photoStorage.delete(`photo:${id}`);}catch(e){}}
     deleteItemFromFs(it).catch(()=>{});
     persist(members,items.filter(x=>x.id!==id));
   };
@@ -756,31 +817,29 @@ function App(){
     if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
     try{
       const dataUrl=await downscaleImage(file);
-      try{localStorage.setItem("__test__",dataUrl);localStorage.removeItem("__test__");}
-      catch(e){showFlash("ストレージ容量が不足しています");return;}
+      const ok=await photoStorage.set(`photo:${id}`,dataUrl);
+      if(!ok){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
-      try{storage.set(`photo:${id}`,dataUrl).catch(()=>{});}catch(er){}
       setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,serializeState({members,items:next,usage,meEmoji,meBirthday})).catch(()=>{});}catch(er){}return next;});
       showFlash("証明書を保存しました 📷");
     }catch(err){showFlash("保存できませんでした。別の画像でお試しください");}
   };
 
-  const viewPhoto=async(id)=>{if(photos[id]){setViewer({id,src:photos[id]});return;}setViewer({id,loading:true});try{const res=await storage.get(`photo:${id}`);setViewer({id,src:res&&res.value});}catch(e){setViewer({id,src:null});}};
-  const removePhoto=(id)=>{try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});persist(members,items.map(x=>x.id===id?{...x,photo:false}:x));setViewer(null);showFlash("証明書を削除しました");};
+  const viewPhoto=async(id)=>{if(photos[id]){setViewer({id,src:photos[id]});return;}setViewer({id,loading:true});try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src});}catch(e){setViewer({id,src:null});}};
+  const removePhoto=(id)=>{try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});persist(members,items.map(x=>x.id===id?{...x,photo:false}:x));setViewer(null);showFlash("証明書を削除しました");};
 
   // --- 思い出（記録を思い出に変える）---
   // 既存アクション（散歩などのルーティン）から写真1枚で思い出を残す。入力は写真選択だけ。
-  // type:"memory" の追記型ログ（上書きしない）。写真は既存と同じく photo:<id> にローカル保存。
+  // type:"memory" の追記型ログ（上書きしない）。写真は IndexedDB(photo:<id>) に保存。
   const addMemory=async(e,{space,title,emoji})=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
     if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
     try{
       const dataUrl=await downscaleImage(file);
-      try{localStorage.setItem("__test__",dataUrl);localStorage.removeItem("__test__");}
-      catch(er){showFlash("ストレージ容量が不足しています");return;}
       const id="mem"+Date.now();
+      const ok=await photoStorage.set(`photo:${id}`,dataUrl);
+      if(!ok){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
-      try{storage.set(`photo:${id}`,dataUrl).catch(()=>{});}catch(er){}
       const mem={id,space,type:"memory",date:todayIso,title:title||"思い出",emoji:emoji||"📸",photo:true,createdAt:Date.now()};
       persist(members,[...items,mem]);
       saveItemToFs(mem).catch(()=>{});
@@ -791,9 +850,9 @@ function App(){
     const cached=photos[id];
     if(cached){setViewer({id,src:cached,isMemory:true});return;}
     setViewer({id,loading:true,isMemory:true});
-    try{const res=await storage.get(`photo:${id}`);setViewer({id,src:res&&res.value,isMemory:true});}catch(e){setViewer({id,src:null,isMemory:true});}
+    try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src,isMemory:true});}catch(e){setViewer({id,src:null,isMemory:true});}
   };
-  const removeMemory=(id)=>{try{storage.delete(`photo:${id}`).catch(()=>{});}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setViewer(null);showFlash("思い出を削除しました");};
+  const removeMemory=(id)=>{try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setViewer(null);showFlash("思い出を削除しました");};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("明日へ送りました");};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
   const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);};
@@ -942,7 +1001,7 @@ function App(){
     const missing=items.filter(x=>x.type==="memory"&&x.photo&&!photos[x.id]);
     if(missing.length===0)return;
     let cancelled=false;
-    (async()=>{for(const m of missing){try{const res=await storage.get(`photo:${m.id}`);if(!cancelled&&res&&res.value)setPhotos(p=>({...p,[m.id]:res.value}));}catch(e){}}})();
+    (async()=>{for(const m of missing){try{const v=await photoStorage.get(`photo:${m.id}`);if(!cancelled&&v)setPhotos(p=>({...p,[m.id]:v}));}catch(e){}}})();
     return()=>{cancelled=true;};
   },[items]);
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
@@ -1359,7 +1418,7 @@ function App(){
                   {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                 </div>
                 {routines.length===0?(
-                  <p className="yl-routine-empty">毎日くりかえすお世話を、下のテンプレから追加できます</p>
+                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のテンプレから追加できます":curKind==="me"?"毎日の習慣を、下のテンプレから追加できます":"毎日くりかえすことを、下のテンプレから追加できます"}</p>
                 ):(
                   <ul className="yl-timeline">
                     {routines.map(r=>{
