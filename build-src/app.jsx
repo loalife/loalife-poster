@@ -574,6 +574,8 @@ function App(){
   const[belongDow,setBelongDow]=useState(()=>{const d=new Date();return(d.getDay()+1)%7;}); // 既定=明日の曜日
   // 大切な情報トレイの開閉
   const[trayOpen,setTrayOpen]=useState(false);
+  // ホーム「記録」層の開閉（低頻度の情報は既定で畳む）
+  const[recOpen,setRecOpen]=useState(false);
   // 思い出アルバムのタグ絞り込み
   const[albumTag,setAlbumTag]=useState("");
   // 思い出に付けるタグ入力（ライフエディタ）
@@ -1698,121 +1700,140 @@ function App(){
               </div>
             )}
 
-            {upcomingAnniv.length>0&&(
-              <section className="yl-bday-section">
-                <h2 className="yl-sec-title">もうすぐの記念日 🎉</h2>
-                {upcomingAnniv.map(a=>(
-                  <div key={a.key} className="yl-bday-row">
-                    <span className="yl-bday-emoji">{a.emoji}</span>
-                    <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
-                    <span className="yl-bday-date">{fmtBirthday(a.date)}</span>
-                    <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.kind==="gotcha"&&a.years?`迎えて${a.years}年！`:"今日！"):`あと${a.daysUntil}日`}</span>
-                  </div>
-                ))}
-              </section>
-            )}
-
-            {/* ① 今日やること（最大3件）／⑥ 何もない日 */}
-            {allClear?(
-              <section className="yl-hero calm">
-                <div className="yl-hero-emoji">☀️</div>
-                <p className="yl-hero-title">今日は安心です</p>
-                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は穏やかです`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
-              </section>
-            ):homeData.todos.length>0&&(
-              <section className="yl-todo">
-                <div className="yl-dash-head">
-                  <h2 className="yl-sec-title" style={{marginBottom:0}}>☑️ 今日やること</h2>
-                  <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 出力</button>
-                </div>
-                <ul className="yl-todo-list">
-                  {homeData.todos.slice(0,3).map(t=>(
-                    <li key={t.key} className="yl-todo-item" onClick={()=>setTab(t.space)}>
-                      <span className="yl-todo-emoji">{t.emoji}</span>
-                      <span className="yl-todo-body"><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span><span className="yl-todo-who">{nameOf(t.space)}</span></span>
-                      <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
-                    </li>
+            {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
+            {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
+            <div className="yl-layer">
+              <span className="yl-layer-label">今日</span>
+              {upcomingAnniv.length>0&&(
+                <section className="yl-bday-section compact">
+                  {upcomingAnniv.slice(0,3).map(a=>(
+                    <div key={a.key} className="yl-bday-row">
+                      <span className="yl-bday-emoji">{a.emoji}</span>
+                      <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
+                      <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.kind==="gotcha"&&a.years?`迎えて${a.years}年！`:"今日！"):`あと${a.daysUntil}日`}</span>
+                    </div>
                   ))}
-                </ul>
-                {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
-              </section>
-            )}
-
-            {/* ② 見逃せないこと（"爆弾"）── 放置の損害が最大なので最上位に近い位置へ */}
-            {homeData.bombs.length>0&&(
-              <section className="yl-bombs">
-                <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
-                <ul className="yl-bomb-list">
-                  {homeData.bombs.slice(0,4).map(({item,d})=>(
-                    <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
-                      <span className="yl-bomb-emoji">{item.emoji||"⚠️"}</span>
-                      <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
-                      <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* ③ 安心ステータス */}
-            <section>
-              <h2 className="yl-sec-title">😊 安心ステータス</h2>
-              <div className="yl-statusgrid">{spaces.map(s=>{
-                const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
-                const okMsg=s.kind==="pet"?`${s.name}は順調です`:"順調です";
-                return(
-                  <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
-                    <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
-                    <span className="yl-status-body">
-                      <span className="yl-status-name">{s.name}</span>
-                      <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
-                    </span>
-                    <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
-                  </button>
-                );
-              })}</div>
-            </section>
-
-            {/* ④ フード・消耗品の残量 */}
-            {lowSupplies.length>0&&(
-              <section className="yl-supply">
-                <h2 className="yl-sec-title">📦 そろそろ買い足し</h2>
-                <ul className="yl-supply-list">
-                  {[...lowSupplies].sort((a,b)=>a.st.left-b.st.left).map(({item,st})=>(
-                    <li key={item.id} className={"yl-supply-item "+st.tone}>
-                      <button className="yl-supply-main" onClick={()=>setTab(item.space)}>
-                        <span className="yl-supply-emoji">{item.emoji}</span>
-                        <span className="yl-supply-info">
-                          <span className="yl-supply-name">{item.title}<span className="yl-supply-who"> ・{nameOf(item.space)}</span></span>
-                          <span className={"yl-supply-line "+st.tone}>{supplyLine(item)}</span>
-                        </span>
-                      </button>
-                      <button className="yl-supply-bought" onClick={()=>markBought(item.id)}>買った</button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* 💰 今月の支出（安心の場：総額＋メンバー別の簡易比較＋急増のみ。詳細は各メンバー画面で） */}
-            {homeExpense.total>0&&(
-              <section className="yl-hexp">
-                <div className="yl-hexp-top"><span className="yl-hexp-label">💰 今月の支出</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
-                {homeExpense.rows.length>1&&(
-                  <ul className="yl-hexp-rows">
-                    {homeExpense.rows.slice(0,4).map(r=>(
-                      <li key={r.space}><button className="yl-hexp-row" onClick={()=>setTab(r.space)}>
-                        <span className="yl-hexp-name">{r.name}{r.spike&&<span className="yl-hexp-spike">⚠️ 先月より増</span>}</span>
-                        <span className="yl-hexp-amt">{fmtYen(r.amount)}</span>
-                      </button></li>
+                </section>
+              )}
+              {/* 緊急（見逃せないこと）を先頭に */}
+              {homeData.bombs.length>0&&(
+                <section className="yl-bombs">
+                  <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
+                  <ul className="yl-bomb-list">
+                    {homeData.bombs.slice(0,3).map(({item,d})=>(
+                      <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
+                        <span className="yl-bomb-emoji">{item.emoji||"⚠️"}</span>
+                        <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
+                        <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
+                      </li>
                     ))}
                   </ul>
-                )}
-              </section>
-            )}
+                </section>
+              )}
+              {todayClear?(
+                <section className="yl-hero calm">
+                  <div className="yl-hero-emoji">☀️</div>
+                  <p className="yl-hero-title">今日は安心です</p>
+                  <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は穏やかです`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
+                </section>
+              ):homeData.todos.length>0&&(
+                <section className="yl-todo">
+                  <div className="yl-dash-head">
+                    <h2 className="yl-sec-title" style={{marginBottom:0}}>☑️ 今日やること</h2>
+                    <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 出力</button>
+                  </div>
+                  <ul className="yl-todo-list">
+                    {homeData.todos.slice(0,3).map(t=>(
+                      <li key={t.key} className="yl-todo-item" onClick={()=>setTab(t.space)}>
+                        <span className="yl-todo-emoji">{t.emoji}</span>
+                        <span className="yl-todo-body"><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span><span className="yl-todo-who">{nameOf(t.space)}</span></span>
+                        <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
+                </section>
+              )}
+            </div>
+            );})()}
 
-            {/* ⑤ 小さなふりかえり（操作実績だけに純化：達成演出はしない） */}
-            <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
+            {/* ━━ 第2層「コンディション」：みんなの様子と習慣の軽チェック ━━ */}
+            <div className="yl-layer">
+              <span className="yl-layer-label">コンディション</span>
+              <section>
+                <h2 className="yl-sec-title">😊 安心ステータス</h2>
+                <div className="yl-statusgrid">{spaces.map(s=>{
+                  const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
+                  const okMsg=s.kind==="pet"?`${s.name}は順調です`:"順調です";
+                  return(
+                    <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
+                      <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
+                      <span className="yl-status-body">
+                        <span className="yl-status-name">{s.name}</span>
+                        <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
+                      </span>
+                      <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
+                    </button>
+                  );
+                })}</div>
+              </section>
+              {allRoutines.length>0&&(
+                <section className="yl-habit">
+                  <span className="yl-habit-label">🔁 今日の習慣</span>
+                  <span className="yl-habit-bar"><span className="yl-habit-fill" style={{width:Math.round(routineDoneToday/allRoutines.length*100)+"%"}}/></span>
+                  <span className="yl-habit-count">{routineDoneToday}/{allRoutines.length}</span>
+                </section>
+              )}
+            </div>
+
+            {/* ━━ 第3層「記録」：低頻度。既定で畳んで安心の場を守る ━━ */}
+            <div className="yl-layer">
+              <button className="yl-layer-toggle" onClick={()=>setRecOpen(o=>!o)}>
+                <span className="yl-layer-label rec">記録</span>
+                {lowSupplies.length>0&&<span className="yl-layer-badge">買い足し {lowSupplies.length}</span>}
+                <span className="yl-layer-arrow">{recOpen?"▲":"▼"}</span>
+              </button>
+              {recOpen&&(
+                <div className="yl-layer-body">
+                  {homeExpense.total>0&&(
+                    <section className="yl-hexp">
+                      <div className="yl-hexp-top"><span className="yl-hexp-label">💰 今月の支出</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
+                      {homeExpense.rows.length>1&&(
+                        <ul className="yl-hexp-rows">
+                          {homeExpense.rows.slice(0,4).map(r=>(
+                            <li key={r.space}><button className="yl-hexp-row" onClick={()=>setTab(r.space)}>
+                              <span className="yl-hexp-name">{r.name}{r.spike&&<span className="yl-hexp-spike">⚠️ 先月より増</span>}</span>
+                              <span className="yl-hexp-amt">{fmtYen(r.amount)}</span>
+                            </button></li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  )}
+                  {lowSupplies.length>0&&(
+                    <section className="yl-supply">
+                      <h2 className="yl-sec-title">📦 そろそろ買い足し</h2>
+                      <ul className="yl-supply-list">
+                        {[...lowSupplies].sort((a,b)=>a.st.left-b.st.left).map(({item,st})=>(
+                          <li key={item.id} className={"yl-supply-item "+st.tone}>
+                            <button className="yl-supply-main" onClick={()=>setTab(item.space)}>
+                              <span className="yl-supply-emoji">{item.emoji}</span>
+                              <span className="yl-supply-info">
+                                <span className="yl-supply-name">{item.title}<span className="yl-supply-who"> ・{nameOf(item.space)}</span></span>
+                                <span className={"yl-supply-line "+st.tone}>{supplyLine(item)}</span>
+                              </span>
+                            </button>
+                            <button className="yl-supply-bought" onClick={()=>markBought(item.id)}>買った</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
+                  {homeExpense.total===0&&lowSupplies.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>支出やストックを記録すると、ここにまとまります。</p>}
+                </div>
+              )}
+            </div>
             <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ サンプルを消して最初から</button>
           </div>
         ):tab==="cal"?(
