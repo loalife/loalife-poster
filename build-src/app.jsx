@@ -1500,7 +1500,7 @@ function App(){
                   {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                 </div>
                 {routines.length===0?(
-                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のテンプレから追加できます":curKind==="me"?"毎日の習慣を、下のテンプレから追加できます":"毎日くりかえすことを、下のテンプレから追加できます"}</p>
+                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のテンプレから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のテンプレから追加できます"}</p>
                 ):(
                   <ul className="yl-timeline">
                     {routines.map(r=>{
@@ -1536,7 +1536,7 @@ function App(){
                   {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
                 </div>
                 {supplies.length===0?(
-                  <p className="yl-routine-empty">{tab==="me"?"サプリ・コンタクト・日用品など、自分の消耗品を登録できます":"フードなどの消耗品を登録すると、残量を自動で見守ります"}</p>
+                  <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残量を自動で見守ります"}</p>
                 ):(
                   <ul className="yl-supply-list">
                     {supplies.map(s=>{
@@ -1590,7 +1590,7 @@ function App(){
               {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
               <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
               <div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
-              <div className="yl-notify"><span className="yl-notify-label">🔔 通知（任意・複数OK）{notifPerm==="denied"&&<span style={{color:"#E5484D",marginLeft:6,fontWeight:600,fontSize:10}}>端末の設定で通知がオフです</span>}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div></div>
+              <div className="yl-notify"><span className="yl-notify-label">🔔 通知（何件でも設定できます）{notifPerm==="denied"&&<span style={{color:"#E5484D",marginLeft:6,fontWeight:600,fontSize:10}}>端末の設定で通知がオフです</span>}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div></div>
             </div>
 
             <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
@@ -1636,7 +1636,7 @@ function App(){
                   <button className="yl-album-add" onClick={()=>setMemoryDraft({space:tab,title:""})}>＋ 追加</button>
                 </div>
                 {memories.length===0?(
-                  <p className="yl-routine-empty">{curKind==="pet"?"散歩などの📷ボタンや「＋追加」で、写真の思い出を残せます":"「＋追加」で、できた記念日や日々の写真を残せます"}</p>
+                  <p className="yl-routine-empty">{curKind==="pet"?"散歩などの📷ボタンや「＋追加」で、写真の思い出を残せます":"写真とひとことで、大切な思い出を残せます。"}</p>
                 ):(
                   <div className="yl-album-grid">
                     {memories.map(mem=>(
