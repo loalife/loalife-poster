@@ -456,6 +456,9 @@ function App(){
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
+  const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
+  const askDelete=(label,fn)=>setConfirmAct({label,fn});
+  const[memberSel,setMemberSel]=useState("me"); // メンバーモードで選択中の人
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
@@ -841,6 +844,7 @@ function App(){
   // --- Main app state derived ---
   const activeMember=members.find(m=>m.id===tab);
   const isMemberTab=!!activeMember;
+  const isPersonMode=tab==="me"||isMemberTab; // 人/ペットの詳細を見ているモード
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
@@ -979,14 +983,14 @@ function App(){
     if(newKind==="pet")member.species=newSpecies;
     persist([...members,member],items);
     saveMemberToFs(member).catch(()=>{});
-    setNewName("");setNewBirthday("");setNewVisibility("household");setAdding(false);setTab(id);
+    setNewName("");setNewBirthday("");setNewVisibility("household");setAdding(false);setTab(id);setMemberSel(id);
   };
 
   const removeMember=(id)=>{
     const m=members.find(x=>x.id===id);
     persist(members.filter(x=>x.id!==id),items.filter(x=>x.space!==id));
     deleteMemberFromFs(id).catch(()=>{});
-    setTab("me");setConfirmDel(null);
+    setTab("me");setMemberSel("me");setConfirmDel(null);
     if(m)showFlash(`${m.name} を削除しました`);
   };
 
@@ -1413,14 +1417,21 @@ function App(){
           </div>
         )}
 
+        {/* 上段＝見方（モード）。人の選択とは分離 */}
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
           <button className={"yl-tab"+(tab==="cal"?" on":"")} onClick={()=>setTab("cal")}>📅 カレンダー</button>
           <button className={"yl-tab"+(tab==="album"?" on":"")} onClick={()=>setTab("album")}>📸 思い出</button>
-          <button className={"yl-tab"+(tab==="me"?" on":"")} onClick={()=>setTab("me")}>{meEmoji} わたし</button>
-          {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-tab"+(tab===m.id?" on":"")} onClick={()=>setTab(m.id)}>{m.emoji} {m.name}{bd===0?" 🎂":bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
-          <button className="yl-tab add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
+          <button className={"yl-tab"+(isPersonMode?" on":"")} onClick={()=>setTab(members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me")}>👨‍👩‍👧 メンバー</button>
         </nav>
+        {/* 下段＝対象（人/ペット）。メンバーを見ているときだけ表示 */}
+        {isPersonMode&&(
+          <nav className="yl-people">
+            <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meEmoji} わたし</button>
+            {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-people-chip"+(tab===m.id?" on":"")} onClick={()=>{setTab(m.id);setMemberSel(m.id);}}>{m.emoji} {m.name}{bd===0||bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
+            <button className="yl-people-chip add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
+          </nav>
+        )}
 
         {adding&&(
           <div className="yl-petform">
@@ -1661,7 +1672,7 @@ function App(){
                         <span className="yl-meup-emoji">{u.emoji}</span>
                         <span className="yl-meup-text">{u.title}</span>
                         <span className={"yl-meup-tag"+(u.daysUntil===0?" today":"")}>{u.daysUntil===0?(u.kind==="bday"?"今日 🎂":"今日"):u.daysUntil===1?"明日":`あと${u.daysUntil}日`}</span>
-                        {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>remove(u.id)} aria-label="削除">×</button>}
+                        {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>askDelete(u.title,()=>remove(u.id))} aria-label="削除">×</button>}
                       </li>
                     ))}
                   </ul>
@@ -1823,7 +1834,7 @@ function App(){
                         )}
                       </div>
                       <button className={"yl-check"+(it.done?" on":"")} onClick={()=>toggle(it.id)} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-                      <button className="yl-del" onClick={e=>{e.stopPropagation();remove(it.id);}} aria-label="削除">×</button>
+                      <button className="yl-del" onClick={e=>{e.stopPropagation();askDelete(it.title,()=>remove(it.id));}} aria-label="削除">×</button>
                     </li>
                   );
                 })}
@@ -1884,13 +1895,14 @@ function App(){
             <div className="yl-optrow"><label className="yl-opt">日付<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">時間<TimeInput value={lifeDraft.time} onChange={t=>setLifeDraft(p=>({...p,time:t}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">繰り返し<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label>}</div>
             <div className="yl-notify"><span className="yl-notify-label">🔔 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div></div>
             <div className="yl-modal-btns">
-              {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>removeLife(lifeDraft.id)}>削除</button>}
+              {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>削除</button>}
               <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>閉じる</button>
               <button className="yl-addbtn modal" onClick={saveLife}>保存</button>
             </div>
           </div>
         </div>
       )}
+      {confirmAct&&<div className="yl-overlay" onClick={()=>setConfirmAct(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">🗑️</div><h3 className="yl-modal-title">本当に削除しますか？</h3>{confirmAct.label?<p className="yl-modal-body">「{confirmAct.label}」を削除します。この操作は元に戻せません。</p>:<p className="yl-modal-body">この操作は元に戻せません。</p>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmAct(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{const f=confirmAct.fn;setConfirmAct(null);f&&f();}}>削除する</button></div></div></div>}
       {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">⚠️</div><h3 className="yl-modal-title">本当に消して良いですか？</h3><p className="yl-modal-body">登録した予定・ケア・消耗品・家族の情報がすべて消えて、最初の状態に戻ります。この操作は元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{setConfirmReset(false);resetApp();}}>消して最初から</button></div></div></div>}
       {calPicker&&(()=>{
         const it=calPicker.item;
@@ -1950,7 +1962,7 @@ function App(){
             <div className="yl-optrow"><label className="yl-opt">時間<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
             <div className="yl-notify"><span className="yl-notify-label">🔔 リマインド（複数OK）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div></div>
             <div className="yl-modal-btns">
-              {routineEdit.id&&<button className="yl-modal-cancel" onClick={()=>removeRoutine(routineEdit.id)}>削除</button>}
+              {routineEdit.id&&<button className="yl-modal-cancel" onClick={()=>askDelete(routineEdit.title,()=>removeRoutine(routineEdit.id))}>削除</button>}
               <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>閉じる</button>
               <button className="yl-addbtn modal" onClick={saveRoutine}>保存</button>
             </div>
@@ -1969,7 +1981,7 @@ function App(){
             </div>
             {supplyEdit.lastBought&&<p className="yl-supply-preview">{supplyLine({lastBought:supplyEdit.lastBought,cycleDays:Number(supplyEdit.cycleDays)})}</p>}
             <div className="yl-modal-btns">
-              {supplyEdit.id&&<button className="yl-modal-cancel" onClick={()=>removeSupply(supplyEdit.id)}>削除</button>}
+              {supplyEdit.id&&<button className="yl-modal-cancel" onClick={()=>askDelete(supplyEdit.title,()=>removeSupply(supplyEdit.id))}>削除</button>}
               <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>閉じる</button>
               <button className="yl-addbtn modal" onClick={saveSupply}>保存</button>
             </div>
