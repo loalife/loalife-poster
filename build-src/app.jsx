@@ -491,6 +491,8 @@ function App(){
   const[editName,setEditName]=useState("");
   const[editBirthday,setEditBirthday]=useState("");
   const[editGotcha,setEditGotcha]=useState(""); // うちの子記念日（ペットのみ）
+  const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
+  const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
@@ -1042,12 +1044,21 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",visibility:editVisibility}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",avatar:editAvatar||"",visibility:editVisibility}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
     setEditingId(null);
   };
+  // 写真アイコンを選ぶ（編集フォーム内）。IDBに保存して editAvatar にセット
+  const pickAvatar=async(e)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
+    try{const dataUrl=await downscaleImage(file,400,0.8);const pid="av"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,dataUrl);if(!ok){showFlash("ストレージ容量が不足しています");return;}setPhotos(p=>({...p,[pid]:dataUrl}));setEditAvatar(pid);}
+    catch(er){showFlash("画像を読み込めませんでした");}
+  };
+  // メンバーのアイコン表示（写真があれば写真、無ければ絵文字）
+  const avatarNode=(m,cls)=>{const src=m&&m.avatar&&photos[m.avatar];return src?<img className={"yl-avatar "+(cls||"")} src={src} alt=""/>:<span className={cls}>{m?m.emoji:""}</span>;};
 
   // --- Quick-add functions ---
   const openQuickAdd=(kind,emoji,title,space,lastDate,repeat)=>{
@@ -1145,15 +1156,18 @@ function App(){
   const memories=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // からだの記録（体重・身長・体調）
   const healthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="health").sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
-  const weightPts=useMemo(()=>healthRecords.filter(r=>r.weight!=null).map(r=>({date:r.date,value:r.weight})),[healthRecords]);
+  const weightPts=useMemo(()=>healthRecords.filter(r=>r.weight!=null).map(r=>({date:r.date,value:r.weight,unit:r.wunit||"kg"})),[healthRecords]);
   const heightPts=useMemo(()=>healthRecords.filter(r=>r.height!=null).map(r=>({date:r.date,value:r.height})),[healthRecords]);
+  // 体重の単位（メンバーごと。小動物はg）。自分はkg固定
+  const weightUnit=isMemberTab?(activeMember.weightUnit||"kg"):"kg";
+  const setMemberWeightUnit=(u)=>{if(!activeMember)return;const next=members.map(m=>m.id===activeMember.id?{...m,weightUnit:u}:m);persist(next,items);const upd=next.find(m=>m.id===activeMember.id);if(upd)saveMemberToFs(upd).catch(()=>{});};
   const saveHealth=()=>{
     const w=healthW.trim()===""?null:Number(healthW);const h=healthH.trim()===""?null:Number(healthH);
     if(w==null&&h==null&&!healthCond){showFlash("体重などを入力してください");return;}
     if(w!=null&&(isNaN(w)||w<=0)){showFlash("体重は数字で入力してください");return;}
     if(h!=null&&(isNaN(h)||h<=0)){showFlash("身長は数字で入力してください");return;}
     const rec={id:"hl"+Date.now(),space:tab,type:"health",date:todayIso,createdAt:Date.now()};
-    if(w!=null)rec.weight=w;if(h!=null)rec.height=h;if(healthCond)rec.condition=healthCond;
+    if(w!=null){rec.weight=w;rec.wunit=weightUnit;}if(h!=null)rec.height=h;if(healthCond)rec.condition=healthCond;
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     setHealthW("");setHealthH("");setHealthCond("");
     showFlash("からだの記録を保存しました 📈");
@@ -1163,11 +1177,12 @@ function App(){
   useEffect(()=>{
     const missing=[];const seen={};
     items.forEach(x=>photoIdsOf(x).forEach(pid=>{if(!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}}));
+    members.forEach(m=>{if(m.avatar&&!photos[m.avatar]&&!seen[m.avatar]){seen[m.avatar]=1;missing.push(m.avatar);}});
     if(missing.length===0)return;
     let cancelled=false;
     (async()=>{for(const pid of missing){try{const v=await photoStorage.get(`photo:${pid}`);if(!cancelled&&v)setPhotos(p=>({...p,[pid]:v}));}catch(e){}}})();
     return()=>{cancelled=true;};
-  },[items]);
+  },[items,members]);
   // 証明書（ワクチン等）：写真付きのケアを上部に出してすぐ見られるように
   const certs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="care"&&x.photo).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
@@ -1212,6 +1227,8 @@ function App(){
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
   const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:meEmoji,kind:"me"},...members],[members,meEmoji]);
+  // フォルダ分け（多頭飼い）：未分類を先頭、その後グループ順
+  const groupedMembers=useMemo(()=>{const order=[];const map={};members.forEach(m=>{const g=m.group||"";if(!(g in map)){map[g]=[];order.push(g);}map[g].push(m);});order.sort((a,b)=>a===""?-1:b===""?1:0);return order.map(g=>({group:g,members:map[g]}));},[members]);
   const statusFor=(spaceId)=>{const arr=items.filter(x=>x.space===spaceId&&!x.done&&x.dueDate);let over=0,next=null,nextDays=Infinity;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(isOverdue(x))over++;else if(d>=0&&d<nextDays){nextDays=d;next=x;}});return{over,next,nextDays};};
   const todayList=useMemo(()=>items.filter(x=>!x.done&&x.dueDate&&daysUntil(x.dueDate)<=0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[items]);
   const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&isOverdue(x)).length,family:members.length}),[items,members]);
@@ -1491,7 +1508,12 @@ function App(){
         {isPersonMode&&(
           <nav className="yl-people">
             <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meEmoji} わたし</button>
-            {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-people-chip"+(tab===m.id?" on":"")} onClick={()=>{setTab(m.id);setMemberSel(m.id);}}>{m.emoji} {m.name}{bd===0||bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
+            {groupedMembers.map(g=>(
+              <span key={g.group||"_"} className="yl-people-grp">
+                {g.group&&<span className="yl-people-grp-label">🗂 {g.group}</span>}
+                {g.members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-people-chip"+(tab===m.id?" on":"")} onClick={()=>{setTab(m.id);setMemberSel(m.id);}}>{avatarNode(m,"xs")} {m.name}{bd===0||bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
+              </span>
+            ))}
             <button className="yl-people-chip add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
           </nav>
         )}
@@ -1580,7 +1602,7 @@ function App(){
                 const okMsg=s.kind==="pet"?`${s.name}は順調です`:"順調です";
                 return(
                   <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
-                    <span className="yl-status-emoji">{s.emoji}</span>
+                    <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
                     <span className="yl-status-body">
                       <span className="yl-status-name">{s.name}</span>
                       <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
@@ -1700,7 +1722,13 @@ function App(){
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
                     <div className="yl-rename">
-                      <input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} autoFocus/>
+                      <div className="yl-editavatar">
+                        {editAvatar&&photos[editAvatar]?<img className="yl-avatar lg" src={photos[editAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{activeMember.emoji}</span>}
+                        <label className="yl-editavatar-btn">📷 写真にする<input type="file" accept="image/*" style={{display:"none"}} onChange={pickAvatar}/></label>
+                        {editAvatar&&<button className="yl-editavatar-clear" onClick={()=>setEditAvatar("")}>絵文字に戻す</button>}
+                      </div>
+                      <input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
+                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🗂 フォルダ（多頭飼いの分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder="例：犬たち / ハムスター / 2階の子"/></label>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日<input type="date" className="yl-date" style={{marginLeft:6}} value={editGotcha} onChange={e=>setEditGotcha(e.target.value)}/></label>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
@@ -1708,8 +1736,8 @@ function App(){
                     </div>
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
-                      {activeMember.emoji} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditVisibility(activeMember.visibility||"household");}}>✏️</button>
+                      {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");}}>✏️</button>
                     </span>
                   )}
                 </div>
@@ -1909,9 +1937,10 @@ function App(){
               <section className="yl-health">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
                 <div className="yl-health-input">
-                  <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">kg</span></span></label>
+                  <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step={weightUnit==="g"?"0.1":"0.1"} className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/>{isMemberTab?<span className="yl-health-uswitch"><button className={"yl-health-ubtn"+(weightUnit==="kg"?" on":"")} onClick={()=>setMemberWeightUnit("kg")}>kg</button><button className={"yl-health-ubtn"+(weightUnit==="g"?" on":"")} onClick={()=>setMemberWeightUnit("g")}>g</button></span>:<span className="yl-health-unit">kg</span>}</span></label>
                   {isMemberTab&&<label className="yl-opt">身長<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
                 </div>
+                {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">小動物向け：0.1g単位で記録できます</p>}
                 {isMemberTab&&(
                   <div className="yl-health-conds">
                     <span className="yl-health-clabel">体調</span>
@@ -1919,14 +1948,14 @@ function App(){
                   </div>
                 )}
                 <button className="yl-addbtn sm" style={{width:"100%",marginTop:4}} onClick={saveHealth}>📈 記録する</button>
-                {weightPts.length>0&&<MiniChart points={weightPts} unit="kg" color="#FF4D8D" label="体重"/>}
+                {weightPts.length>0&&<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>}
                 {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
                 {healthRecords.length>0&&(
                   <ul className="yl-health-list">
                     {[...healthRecords].reverse().slice(0,6).map(r=>(
                       <li key={r.id} className="yl-health-item">
                         <span className="yl-health-date">{fmtDate(r.date)}</span>
-                        <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}kg</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                        <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
                         <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
                       </li>
                     ))}
