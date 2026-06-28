@@ -2269,8 +2269,8 @@ function App(){
               </section>
             )}
 
-            {/* 📋 明日の準備（今日タブ・抽出ビュー）：持ち物データから前日分を抽出して表示 */}
-            {isPersonalTab&&personSeg==="today"&&tomorrowBelongings.length>0&&(
+            {/* 📋 明日の準備（今日タブ・抽出ビュー）：学校など人（家族）向け。わたし・ペットには出さない */}
+            {isPersonalTab&&curKind==="person"&&personSeg==="today"&&tomorrowBelongings.length>0&&(
               <section className="yl-belong">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
                 <div className="yl-prep">
@@ -2286,8 +2286,8 @@ function App(){
               </section>
             )}
 
-            {/* 🎒 持ち物（曜日ごと・情報タブ＝データ本体）：忘れ物防止 */}
-            {isPersonalTab&&personSeg==="info"&&(
+            {/* 🎒 持ち物（曜日ごと・情報タブ＝データ本体）：学校など人（家族）向け。わたし・ペットには出さない */}
+            {isPersonalTab&&curKind==="person"&&personSeg==="info"&&(
               <section className="yl-belong">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
                 <div className="yl-belong-add">
