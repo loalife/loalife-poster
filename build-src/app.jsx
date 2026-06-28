@@ -1464,7 +1464,7 @@ function App(){
                     ))}
                   </ul>
                 ):(
-                  <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>友達の誕生日やイベントを入れると、楽しみが見える化されます</p>
+                  <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>誕生日やイベントを登録して、楽しみな予定をひと目で。</p>
                 )}
                 <div className="yl-bday-add">
                   <input className="yl-input sm" value={friendBdayName} onChange={e=>setFriendBdayName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFriendBday()} placeholder="名前・予定（例：ゆいの誕生日）"/>
