@@ -1,6 +1,6 @@
 {
-  "name": "わたしと家族のリスト",
-  "short_name": "LOALIFE",
+  "name": "LoaLife",
+  "short_name": "LoaLife",
   "description": "家族みんなの状態をひと目で",
   "start_url": "/",
   "display": "standalone",
