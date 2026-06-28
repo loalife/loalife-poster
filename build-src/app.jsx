@@ -161,6 +161,31 @@ function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resol
 
 const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
 
+// ライフログ・カレンダー用：各アイテムが「どの日に紐づくか」を1つに正規化する。
+//  予定/ケア=dueDate、ストック=購入日(lastBought)、思い出=date、ルーティン=実施日(doneDate)。
+//  誕生日(bday)は毎年くりかえしなので日付軸では別扱い（null）。
+function itemDate(it){
+  if(!it)return null;
+  if(it.type==="memory")return it.date||null;
+  if(it.type==="supply")return it.lastBought||null;
+  if(it.type==="routine")return it.doneDate||null;
+  if(it.type==="bday")return null;
+  return it.dueDate||null;
+}
+// カレンダー区分（色・アイコン）。予定/ケア/ストック/思い出。
+function calCategory(it){
+  if(!it)return"event";
+  if(it.type==="memory")return"memory";
+  if(it.type==="supply")return"supply";
+  if(it.type==="care")return"care";
+  if(it.type==="routine")return"routine";
+  return"event";
+}
+const WEEKDAYS_JA=["日","月","火","水","木","金","土"];
+const fmtMonthDay=(s)=>{if(!s)return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
+const mmdd=(s)=>s?s.slice(5):""; // "MM-DD"
+const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d).getDay();};
+
 const EMOJI_RULES=[[["目","眼","メガネ","視力","コンタクト"],"👁️"],[["マラソン","ラン","走","ジョギング","駅伝"],"🏃"],[["ジム","筋トレ","トレーニング","クロスフィット","crossfit","筋"],"🏋️"],[["自転車","サイクリング","ロングライド","ライド","ロード"],"🚴"],[["泳","スイミング","プール","水泳"],"🏊"],[["ヨガ","ストレッチ","瞑想"],"🧘"],[["ピアノ","ジャズ","鍵盤","セッション"],"🎹"],[["ギター","楽器","音楽","バンド"],"🎸"],[["ライブ","コンサート","歌","カラオケ"],"🎤"],[["映画","シネマ"],"🎬"],[["本","読書","読む"],"📚"],[["試験","資格","勉強","検定","TOEIC","G検定","学習"],"🎓"],[["面接","転職","仕事","キャリア","案件","副業"],"💼"],[["会議","打ち合わせ","打合せ","MTG","ミーティング","商談"],"📊"],[["飲み","飲み会","会食","宴会","パーティ","ランチ会","歓迎会","送別会","二次会"],"🍻"],[["旅","旅行","海外","訪ね","観光","ステイ"],"✈️"],[["海","ビーチ","南国"],"🏖️"],[["山","登山","富士","ハイキング","トレッキング"],"⛰️"],[["語","スペイン語","英語","中国語","会話"],"🗣️"],[["写真","カメラ","撮"],"📷"],[["料理","ごはん","ご飯","レストラン","食","クッキング"],"🍳"],[["コーヒー","カフェ","珈琲"],"☕"],[["貯金","お金","投資","iDeCo","ふるさと納税","資産","NISA"],"💰"],[["病院","通院","受診","健診","健康診断","診察"],"🏥"],[["ワクチン","予防接種","注射","接種"],"💉"],[["フィラリア","蚊","ノミ","ダニ"],"🦟"],[["狂犬病"],"🐕"],[["歯","歯科","デンタル"],"🦷"],[["美容","トリミング","カット","ヘア","サロン"],"✂️"],[["散歩","お散歩","ウォーキング"],"🦮"],[["習い事","レッスン","塾","スクール"],"🎒"],[["誕生","記念","バースデー"],"🎂"],[["結婚","プロポーズ","婚"],"💍"],[["掃除","片付","そうじ"],"🧹"],[["引っ越","引越","移住"],"📦"],[["占い","星","運勢"],"✨"]];
 const PICKER_EMOJIS=["✨","🌈","💪","🏃","🚴","🏋️","🧘","🎹","🎸","🎤","🎬","📚","🎓","💼","✈️","🏖️","⛰️","📷","🍳","☕","💰","🏥","💉","🦷","✂️","🦮","🐶","🐱","🎂","💍","🧸","🧹","📦","🗣️","👁️","🦟","❤️","⭐","🎯","🌷"];
 function guessEmoji(title,fallback){const t=(title||"").toLowerCase();for(const[keys,emo]of EMOJI_RULES){if(keys.some(k=>t.includes(k.toLowerCase())))return emo;}return fallback;}
@@ -433,7 +458,13 @@ function App(){
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
   const[photos,setPhotos]=useState({});
-  const[memoryDraft,setMemoryDraft]=useState(null); // {space,title} 思い出追加モーダル
+  const[memoryDraft,setMemoryDraft]=useState(null); // {space,title} 思い出追加モーダル（旧）
+  // カレンダー（ライフログ）
+  const[calCursor,setCalCursor]=useState(()=>{const d=new Date();return{y:d.getFullYear(),m:d.getMonth()};}); // m:0-11
+  const[calDay,setCalDay]=useState(null); // 選択日(ISO)
+  const[calFilter,setCalFilter]=useState("all"); // all | me | memberId
+  // ライフイベント統合エディタ（カレンダーからの登録・編集の単一入力）
+  const[lifeDraft,setLifeDraft]=useState(null); // {id?,space,category,title,date,time,note,photoDataUrl,photoChanged,reminders,repeat}
   const[usage,setUsage]=useState({});
   const[editItemId,setEditItemId]=useState(null);
   const[eTitle,setETitle]=useState("");
@@ -870,6 +901,48 @@ function App(){
     try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src,isMemory:true});}catch(e){setViewer({id,src:null,isMemory:true});}
   };
   const removeMemory=(id)=>{try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setViewer(null);showFlash("思い出を削除しました");};
+
+  // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
+  const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
+  const openLifeNew=(date,space)=>setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",note:"",photoDataUrl:null,photoChanged:false,reminders:[],repeat:"none"});
+  const openLifeEdit=async(it)=>{
+    let src=photos[it.id]||null;
+    if(!src&&it.photo){try{src=await photoStorage.get(`photo:${it.id}`);}catch(e){}}
+    const category=it.type==="memory"?"memory":"event";
+    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",note:it.note||"",photoDataUrl:src,photoChanged:false,reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind});
+  };
+  const pickLifePhoto=async(e)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
+    try{const dataUrl=await downscaleImage(file);setLifeDraft(p=>p?{...p,photoDataUrl:dataUrl,photoChanged:true}:p);}
+    catch(er){showFlash("画像を読み込めませんでした");}
+  };
+  const toggleLifeReminder=(mins)=>setLifeDraft(p=>p?{...p,reminders:p.reminders.includes(mins)?p.reminders.filter(m=>m!==mins):[...p.reminders,mins].sort((a,b)=>a-b)}:p);
+  const saveLife=async()=>{
+    if(!lifeDraft)return;
+    const d=lifeDraft;const title=(d.title||"").trim(),note=(d.note||"").trim(),hasPhoto=!!d.photoDataUrl;
+    if(d.category==="event"&&!title){showFlash("タイトルを入力してください");return;}
+    if(d.category==="memory"&&!title&&!note&&!hasPhoto){showFlash("写真・ひとこと・日記のどれかを入れてください");return;}
+    const id=d.id||((d.category==="memory"?"mem":"x")+Date.now());
+    if(d.photoChanged&&hasPhoto){const ok=await photoStorage.set(`photo:${id}`,d.photoDataUrl);if(!ok){showFlash("ストレージ容量が不足しています");return;}setPhotos(p=>({...p,[id]:d.photoDataUrl}));}
+    const rem=d.reminders.length?d.reminders:undefined;
+    let base;
+    if(d.category==="memory"){
+      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,title:title||"思い出",note:note||undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined};
+    }else{
+      // 予定（編集時に元がcareならcareを維持）
+      const keepCare=d.origType==="care";
+      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined};
+      if(keepCare)base.careKind=d.careKind;
+    }
+    let next;
+    if(d.id)next=items.map(x=>x.id===d.id?{...x,...base}:x);
+    else next=[...items,base];
+    persist(members,next);
+    const saved=next.find(x=>x.id===id);if(saved)saveItemToFs(saved).catch(()=>{});
+    setLifeDraft(null);showFlash("記録しました ✏️");
+  };
+  const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it&&it.photo){try{photoStorage.delete(`photo:${id}`);}catch(e){}}deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash("削除しました");};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("明日へ送りました");};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
   const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);};
@@ -1069,6 +1142,48 @@ function App(){
   const todayList=useMemo(()=>items.filter(x=>!x.done&&x.dueDate&&daysUntil(x.dueDate)<=0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[items]);
   const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&!x.done&&x.dueDate&&daysUntil(x.dueDate)<0).length,family:members.length}),[items,members]);
   const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
+
+  // --- カレンダー（ライフログ）の集計 ---
+  const calSpaceItems=useMemo(()=>items.filter(x=>calFilter==="all"||x.space===calFilter),[items,calFilter]);
+  const annivAll=useMemo(()=>{
+    const list=[];
+    members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:m.emoji,label:`${m.name}の誕生日`,space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:`${m.name} うちの子記念日`,space:m.id});});
+    if(meBirthday)list.push({mmdd:mmdd(meBirthday),emoji:meEmoji,label:"わたしの誕生日",space:"me"});
+    items.forEach(x=>{if(x.type==="bday"&&x.birthday)list.push({mmdd:mmdd(x.birthday),emoji:x.emoji||"🎂",label:x.title,space:"me"});});
+    return list;
+  },[members,meBirthday,meEmoji,items]);
+  const annivOn=(dateIso)=>{const md=mmdd(dateIso);return annivAll.filter(a=>a.mmdd===md&&(calFilter==="all"||a.space===calFilter));};
+  const calGrid=useMemo(()=>{
+    const{y,m}=calCursor;
+    const startDow=new Date(y,m,1).getDay();
+    const daysInMonth=new Date(y,m+1,0).getDate();
+    const cells=[];
+    for(let i=0;i<startDow;i++)cells.push(null);
+    for(let d=1;d<=daysInMonth;d++){
+      const dIso=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const di=calSpaceItems.filter(x=>itemDate(x)===dIso);
+      cells.push({d,iso:dIso,count:di.length,ind:{
+        photo:di.some(x=>x.photo),
+        memory:di.some(x=>x.type==="memory"),
+        care:di.some(x=>x.type==="care"),
+        supply:di.some(x=>x.type==="supply"),
+        event:di.filter(x=>x.type==="event"||x.type==="routine").length,
+        anniv:annivOn(dIso).length>0,
+      }});
+    }
+    while(cells.length%7!==0)cells.push(null);
+    return cells;
+  },[calCursor,calSpaceItems,annivAll,calFilter]);
+  const dayTimeline=useMemo(()=>{
+    if(!calDay)return[];
+    const list=calSpaceItems.filter(x=>itemDate(x)===calDay).map(x=>({item:x,time:x.time||""}));
+    const anniv=annivOn(calDay).map(a=>({anniv:a,time:""}));
+    return[...anniv,...list].sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
+  },[calDay,calSpaceItems,annivAll,calFilter]);
+  // 思い出アルバム（全スペース・新しい順）
+  const albumItems=useMemo(()=>items.filter(x=>x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items]);
+  const monthLabel=`${calCursor.y}年${calCursor.m+1}月`;
+  const moveMonth=(delta)=>setCalCursor(c=>{const d=new Date(c.y,c.m+delta,1);return{y:d.getFullYear(),m:d.getMonth()};});
 
   // もうすぐの記念日：誕生日＋うちの子記念日（ペット）を7日以内で集約
   const upcomingAnniv=useMemo(()=>{
@@ -1292,6 +1407,8 @@ function App(){
 
         <nav className="yl-tabs">
           <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
+          <button className={"yl-tab"+(tab==="cal"?" on":"")} onClick={()=>setTab("cal")}>📅 カレンダー</button>
+          <button className={"yl-tab"+(tab==="album"?" on":"")} onClick={()=>setTab("album")}>📸 思い出</button>
           <button className={"yl-tab"+(tab==="me"?" on":"")} onClick={()=>setTab("me")}>{meEmoji} わたし</button>
           {members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-tab"+(tab===m.id?" on":"")} onClick={()=>setTab(m.id)}>{m.emoji} {m.name}{bd===0?" 🎂":bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
           <button className="yl-tab add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
@@ -1416,6 +1533,83 @@ function App(){
             {/* ⑤ 小さなふりかえり（操作実績だけに純化：達成演出はしない） */}
             <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
             <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ サンプルを消して最初から</button>
+          </div>
+        ):tab==="cal"?(
+          <div className="yl-cal">
+            <div className="yl-cal-filter">
+              <button className={"yl-cal-fchip"+(calFilter==="all"?" on":"")} onClick={()=>setCalFilter("all")}>すべて</button>
+              {spaces.map(s=><button key={s.id} className={"yl-cal-fchip"+(calFilter===s.id?" on":"")} onClick={()=>setCalFilter(s.id)}>{s.emoji} {s.name}</button>)}
+            </div>
+            <div className="yl-cal-head">
+              <button className="yl-cal-nav" onClick={()=>moveMonth(-1)} aria-label="前の月">‹</button>
+              <span className="yl-cal-month">{monthLabel}</span>
+              <button className="yl-cal-nav" onClick={()=>moveMonth(1)} aria-label="次の月">›</button>
+            </div>
+            <div className="yl-cal-dow">{WEEKDAYS_JA.map((w,i)=><span key={w} className={"yl-cal-dowc"+(i===0?" sun":i===6?" sat":"")}>{w}</span>)}</div>
+            <div className="yl-cal-grid">
+              {calGrid.map((c,i)=>c?(
+                <button key={c.iso} className={"yl-cal-cell"+(c.iso===todayIso?" today":"")+(c.iso===calDay?" sel":"")} onClick={()=>setCalDay(c.iso===calDay?null:c.iso)}>
+                  <span className={"yl-cal-dnum"+(dowOf(c.iso)===0?" sun":dowOf(c.iso)===6?" sat":"")}>{c.d}</span>
+                  <span className="yl-cal-marks">
+                    {c.ind.anniv&&<span className="yl-cal-em">🎂</span>}
+                    {c.ind.photo?<span className="yl-cal-em">📷</span>:c.ind.memory?<span className="yl-cal-em">📝</span>:null}
+                    <span className="yl-cal-dots">
+                      {c.ind.care&&<span className="yl-cal-dot care"/>}
+                      {c.ind.supply&&<span className="yl-cal-dot supply"/>}
+                      {c.ind.event>0&&<span className="yl-cal-dot event"/>}
+                    </span>
+                  </span>
+                </button>
+              ):<span key={"e"+i} className="yl-cal-cell empty"/>)}
+            </div>
+            {calDay&&(
+              <section className="yl-cal-day">
+                <div className="yl-cal-day-head">
+                  <h3 className="yl-cal-day-title">{fmtMonthDay(calDay)}（{WEEKDAYS_JA[dowOf(calDay)]}）</h3>
+                  <button className="yl-cal-add" onClick={()=>openLifeNew(calDay,calFilter==="all"?"me":calFilter)}>＋ 記録</button>
+                </div>
+                {dayTimeline.length===0?(
+                  <p className="yl-routine-empty" style={{padding:"8px 0 4px"}}>この日の記録はまだありません</p>
+                ):(
+                  <ul className="yl-tlday">
+                    {dayTimeline.map((e,idx)=>e.anniv?(
+                      <li key={"a"+idx} className="yl-tlday-item anniv">
+                        <span className="yl-tlday-time">🎉</span>
+                        <span className="yl-tlday-emoji">{e.anniv.emoji}</span>
+                        <span className="yl-tlday-body"><span className="yl-tlday-text">{e.anniv.label}</span></span>
+                      </li>
+                    ):(
+                      <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"))?" tap":"")} onClick={()=>(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")?openLifeEdit(e.item):null}>
+                        <span className="yl-tlday-time">{e.item.time||"—"}</span>
+                        {e.item.type==="memory"&&e.item.photo&&photos[e.item.id]?<img className="yl-tlday-thumb" src={photos[e.item.id]} alt=""/>:<span className="yl-tlday-emoji">{e.item.emoji||"•"}</span>}
+                        <span className="yl-tlday-body">
+                          <span className="yl-tlday-text">{e.item.title}{nameOf(e.item.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.item.space)}</span>:null}</span>
+                          {e.item.note&&<span className="yl-tlday-note">{e.item.note}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+            <p className="yl-foot" style={{marginTop:8}}>日付をタップして、その日の暮らしを記録・ふりかえり</p>
+          </div>
+        ):tab==="album"?(
+          <div className="yl-albumtab">
+            <h2 className="yl-sec-title" style={{marginBottom:4}}>📸 思い出</h2>
+            <p className="yl-album-hint">カレンダーに残した写真・日記をふりかえる場所です</p>
+            {albumItems.length===0?(
+              <p className="yl-routine-empty" style={{padding:"24px 0"}}>カレンダーで写真や日記を残すと、ここに並びます</p>
+            ):(
+              <div className="yl-album-grid">
+                {albumItems.map(mem=>(
+                  <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
+                    {photos[mem.id]?<img className="yl-album-img" src={photos[mem.id]} alt=""/>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
+                    <span className="yl-album-cap">{fmtMonthDay(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ):(
           <>
@@ -1633,14 +1827,14 @@ function App(){
               <section className="yl-album">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">📸 思い出</h2>
-                  <button className="yl-album-add" onClick={()=>setMemoryDraft({space:tab,title:""})}>＋ 追加</button>
+                  <button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>
                 </div>
                 {memories.length===0?(
                   <p className="yl-routine-empty">{curKind==="pet"?"散歩などの📷ボタンや「＋追加」で、写真の思い出を残せます":"写真とひとことで、大切な思い出を残せます。"}</p>
                 ):(
                   <div className="yl-album-grid">
                     {memories.map(mem=>(
-                      <button key={mem.id} className="yl-album-cell" onClick={()=>viewMemory(mem.id)}>
+                      <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
                         {photos[mem.id]?<img className="yl-album-img" src={photos[mem.id]} alt=""/>:<span className="yl-album-ph">{mem.emoji||"📸"}</span>}
                         <span className="yl-album-cap">{fmtDate(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
                       </button>
@@ -1659,7 +1853,32 @@ function App(){
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMePicker(false);}}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
-      {memoryDraft&&<div className="yl-overlay" onClick={()=>setMemoryDraft(null)}><div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">📸 思い出を残す</h3><input className="yl-input" value={memoryDraft.title} onChange={e=>setMemoryDraft(p=>({...p,title:e.target.value}))} placeholder="ひとこと（例：はじめてのトリミング／逆上がりできた！）" autoFocus/><label className="yl-addbtn modal" style={{display:"block",textAlign:"center",marginTop:12,cursor:"pointer"}}>📷 写真を選んで保存<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const d=memoryDraft;setMemoryDraft(null);addMemory(e,{space:d.space,title:d.title.trim(),emoji:"📸"});}}/></label><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMemoryDraft(null)}>キャンセル</button></div></div></div>}
+      {lifeDraft&&(
+        <div className="yl-overlay" onClick={()=>setLifeDraft(null)}>
+          <div className="yl-modal edit life" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">{lifeDraft.mode==="edit"?"記録を編集":"この日を記録"}</h3>
+            {/* カテゴリ */}
+            <div className="yl-typerow" style={{marginBottom:10}}>{CAL_CATS.map(c=><button key={c.key} className={"yl-chip"+(lifeDraft.category===c.key?" on":"")} style={lifeDraft.category===c.key?{background:"#FF4D8D",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,category:c.key}))}>{c.emoji} {c.label}</button>)}</div>
+            {/* 誰の */}
+            <div className="yl-typerow" style={{marginBottom:10}}>{spaces.map(s=><button key={s.id} className={"yl-chip"+(lifeDraft.space===s.id?" on":"")} style={lifeDraft.space===s.id?{background:"#9B6DFF",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,space:s.id}))}>{s.emoji} {s.name}</button>)}</div>
+            <input className="yl-input" value={lifeDraft.title} onChange={e=>setLifeDraft(p=>({...p,title:e.target.value}))} placeholder={lifeDraft.category==="event"?"予定のタイトル（例：病院）":"ひとこと（任意・例：はじめて海へ）"}/>
+            {/* 写真 */}
+            <div className="yl-life-photo">
+              {lifeDraft.photoDataUrl?<img className="yl-life-img" src={lifeDraft.photoDataUrl} alt=""/>:null}
+              <label className="yl-life-photobtn">{lifeDraft.photoDataUrl?"写真を変更":"📷 写真を追加（任意）"}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickLifePhoto}/></label>
+              {lifeDraft.photoDataUrl&&<button className="yl-life-photodel" onClick={()=>setLifeDraft(p=>({...p,photoDataUrl:null,photoChanged:true}))}>写真を外す</button>}
+            </div>
+            <textarea className="yl-life-note" value={lifeDraft.note} onChange={e=>setLifeDraft(p=>({...p,note:e.target.value}))} placeholder="日記（長文・任意）" rows={3}/>
+            <div className="yl-optrow"><label className="yl-opt">日付<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">時間<TimeInput value={lifeDraft.time} onChange={t=>setLifeDraft(p=>({...p,time:t}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">繰り返し<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label>}</div>
+            <div className="yl-notify"><span className="yl-notify-label">🔔 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div></div>
+            <div className="yl-modal-btns">
+              {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>removeLife(lifeDraft.id)}>削除</button>}
+              <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>閉じる</button>
+              <button className="yl-addbtn modal" onClick={saveLife}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">⚠️</div><h3 className="yl-modal-title">本当に消して良いですか？</h3><p className="yl-modal-body">登録した予定・ケア・消耗品・家族の情報がすべて消えて、最初の状態に戻ります。この操作は元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{setConfirmReset(false);resetApp();}}>消して最初から</button></div></div></div>}
       {calPicker&&(()=>{
         const it=calPicker.item;
