@@ -32,6 +32,14 @@ const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"g
 const PERSON_KINDS=[{key:"lesson",label:"習い事",emoji:"🎒"},{key:"event",label:"予定",emoji:"📅"},{key:"school",label:"学校行事",emoji:"🏫"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"dental",label:"歯科",emoji:"🦷"},{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
 const SPECIES=[{key:"dog",label:"犬",emoji:"🐶"},{key:"cat",label:"猫",emoji:"🐱"},{key:"other",label:"その他",emoji:"🐹"}];
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
+// ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
+// none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
+const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
+// 実効周期：明示の repeat を優先、無ければケア種別の既定周期。
+function effRepeat(x){if(!x)return"none";if(x.repeat&&x.repeat!=="none")return x.repeat;if(x.type==="care")return CARE_CYCLE[x.careKind]||"none";return"none";}
+const isCyclic=(x)=>effRepeat(x)!=="none";
+// 「期限切れ(赤)」は、周期があり・未完了・前回(期限)を過ぎたものだけ。状態として持たず毎回計算する。
+function isOverdue(x){return !!(x&&!x.done&&isCyclic(x)&&x.dueDate&&daysUntil(x.dueDate)<0);}
 const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐦","🐢"];
 const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
@@ -90,7 +98,8 @@ function buildDigest(items){
     if(x.dueDate){
       const d=daysUntil(x.dueDate);
       const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);
-      if(isHigh&&d!==null&&d<=CARE_NOTIFY_DAYS)
+      // 期限切れは「周期あり」のみ通知。直近(0〜3日)はそのまま
+      if(isHigh&&d!==null&&d<=CARE_NOTIFY_DAYS&&(d>=0||isCyclic(x)))
         urgent.push({emoji:x.emoji||"⚠️",text:`${x.title}：${d<0?"期限切れ":d===0?"今日":"あと"+d+"日"}`,sort:d});
     }
   });
@@ -292,7 +301,7 @@ function makeSeed(){
   };
 }
 
-function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(item.careKind&&HIGH_KINDS.has(item.careKind))return{label:"期限切れ",tone:"careOver"};return{label:`${-d}日過ぎています`,tone:"gentleOver"};}
+function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(isCyclic(item))return{label:"期限切れ",tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
 
 function daysUntilBirthday(birthday) {
   if (!birthday) return null;
@@ -853,7 +862,13 @@ function App(){
 
   const toggle=(id)=>{
     const it=items.find(x=>x.id===id);if(!it)return;let next;
-    if(!it.done&&it.repeat&&it.repeat!=="none"){const base=it.dueDate||iso(new Date());const newDue=addInterval(base,it.repeat);next=items.map(x=>x.id===id?{...x,dueDate:newDue,done:false}:x);showFlash(`完了！次回 ${fmtDate(newDue)} に更新`);}
+    const cyc=effRepeat(it); // ケア種別の既定周期も含めて判定
+    if(!it.done&&cyc!=="none"){
+      // 記録＝前回を今日に更新し、次回を周期ぶん先へ自動セット（赤が消えて静かに次へ）
+      const today=iso(new Date());const newDue=addInterval(today,cyc);
+      next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false}:x);
+      showFlash(`✓ 記録しました。次は ${fmtDate(newDue)} ごろ 🗓`);
+    }
     else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);}
     persist(members,next);
     const updated=next.find(x=>x.id===id);
@@ -1147,12 +1162,12 @@ function App(){
     });
     return list.sort((a,b)=>a.daysUntil-b.daysUntil);
   },[items]);
-  const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab);let soon=0,over=0;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(d===null)return;if(d<0)over++;else if(d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
+  const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
   const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:meEmoji,kind:"me"},...members],[members,meEmoji]);
-  const statusFor=(spaceId)=>{const arr=items.filter(x=>x.space===spaceId&&!x.done&&x.dueDate);let over=0,next=null,nextDays=Infinity;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(d<0)over++;else if(d<nextDays){nextDays=d;next=x;}});return{over,next,nextDays};};
+  const statusFor=(spaceId)=>{const arr=items.filter(x=>x.space===spaceId&&!x.done&&x.dueDate);let over=0,next=null,nextDays=Infinity;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(isOverdue(x))over++;else if(d>=0&&d<nextDays){nextDays=d;next=x;}});return{over,next,nextDays};};
   const todayList=useMemo(()=>items.filter(x=>!x.done&&x.dueDate&&daysUntil(x.dueDate)<=0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[items]);
-  const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&!x.done&&x.dueDate&&daysUntil(x.dueDate)<0).length,family:members.length}),[items,members]);
+  const summary=useMemo(()=>({dreams:items.filter(x=>x.type==="dream"&&x.done).length,careOverdue:items.filter(x=>x.type==="care"&&isOverdue(x)).length,family:members.length}),[items,members]);
   const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
 
   // --- カレンダー（ライフログ）の集計 ---
@@ -1229,7 +1244,8 @@ function App(){
       const d=daysUntil(x.dueDate);
       const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);          // ワクチン・薬・通院など
       const isBigEvent=x.type==="event"||x.careKind==="event"||x.careKind==="school";
-      if((isHigh&&d<=7)||(isBigEvent&&d>=0&&d<=2))bombs.push({item:x,d});
+      // 直近(0〜7日)は出す。期限切れ(d<0)は「周期あり」のみ（単発の過ぎた予定は赤にしない）
+      if((isHigh&&d<=7&&(d>=0||isCyclic(x)))||(isBigEvent&&d>=0&&d<=2))bombs.push({item:x,d});
     });
     bombs.sort((a,b)=>a.d-b.d);
     const bombSet=new Set(bombs.map(b=>b.item.id));
@@ -1251,7 +1267,7 @@ function App(){
   // ② 安心ステータス：各メンバーのレベルと一言
   const spaceLevel=(spaceId)=>{
     let overdue=0,soon=0;
-    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(d<0)overdue++;else if(d<=3)soon++;});
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x))overdue++;else if(d>=0&&d<=3)soon++;});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId);
     if(overdue>0||sup.some(o=>o.st.tone==="out"))return"alert";
     if(soon>0||sup.some(o=>o.st.tone==="low"))return"warn";
@@ -1259,7 +1275,7 @@ function App(){
   };
   const spaceConcern=(spaceId)=>{
     let overdue=null,soon=null;
-    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(d<0){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(d<=3){if(!soon||d<soon.d)soon={item:x,d};}});
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x)){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(d>=0&&d<=3){if(!soon||d<soon.d)soon={item:x,d};}});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId).sort((a,b)=>a.st.left-b.st.left)[0];
     if(sup&&sup.st.tone==="out")return`${sup.item.title}が切れているかも`;
     if(overdue)return`${overdue.item.title}が期限切れ`;
