@@ -519,16 +519,25 @@ function App(){
     setMembers([]);setItems([]);setOnboarding(true);setLoaded(true);
   })();},[]);
 
-  // データ永続化の要求＋写真をIDBへ移行＋「ホーム画面に追加」案内（iOS等の自動削除リスク低減）
+  // データ永続化の要求＋写真をIDBへ移行（iOS等の自動削除リスク低減）
   useEffect(()=>{
     try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
     migratePhotosToIDB(); // 既存のlocalStorage写真をIDBへ移してlocalStorage枠を解放
+  },[]);
+
+  // 「ホーム画面に追加」案内の出し分け：
+  //  - 守るデータがある人（メンバー/項目を登録済み）にだけ出す
+  //  - ホーム画面に追加済み（standalone起動）なら出さない
+  //  - 「OK」は永久非表示ではなくスヌーズ（数日）。未追加なら時々リマインド
+  useEffect(()=>{
+    if(!loaded){setA2hsHint(false);return;}
     try{
       const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone;
-      const dismissed=localStorage.getItem("loalife-a2hs")==="1";
-      if(!standalone&&!dismissed)setA2hsHint(true);
-    }catch(e){}
-  },[]);
+      const hasData=members.length>0||items.length>0;
+      const snoozeUntil=Number(localStorage.getItem("loalife-a2hs-snooze")||0);
+      setA2hsHint(!standalone&&hasData&&Date.now()>=snoozeUntil);
+    }catch(e){setA2hsHint(false);}
+  },[loaded,members,items]);
 
   // Firebase Auth state
   useEffect(()=>{
@@ -1250,7 +1259,7 @@ function App(){
         {a2hsHint&&(
           <div className="yl-notif-banner">
             <span>📲 ホーム画面に追加すると、データが消えにくく安心です</span>
-            <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs","1");}catch(e){}}}>OK</button>
+            <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>あとで</button>
           </div>
         )}
 
