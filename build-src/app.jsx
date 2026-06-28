@@ -185,6 +185,9 @@ const WEEKDAYS_JA=["日","月","火","水","木","金","土"];
 const fmtMonthDay=(s)=>{if(!s)return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
 const mmdd=(s)=>s?s.slice(5):""; // "MM-DD"
 const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d).getDay();};
+// 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
+const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
+const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
 
 const EMOJI_RULES=[[["目","眼","メガネ","視力","コンタクト"],"👁️"],[["マラソン","ラン","走","ジョギング","駅伝"],"🏃"],[["ジム","筋トレ","トレーニング","クロスフィット","crossfit","筋"],"🏋️"],[["自転車","サイクリング","ロングライド","ライド","ロード"],"🚴"],[["泳","スイミング","プール","水泳"],"🏊"],[["ヨガ","ストレッチ","瞑想"],"🧘"],[["ピアノ","ジャズ","鍵盤","セッション"],"🎹"],[["ギター","楽器","音楽","バンド"],"🎸"],[["ライブ","コンサート","歌","カラオケ"],"🎤"],[["映画","シネマ"],"🎬"],[["本","読書","読む"],"📚"],[["試験","資格","勉強","検定","TOEIC","G検定","学習"],"🎓"],[["面接","転職","仕事","キャリア","案件","副業"],"💼"],[["会議","打ち合わせ","打合せ","MTG","ミーティング","商談"],"📊"],[["飲み","飲み会","会食","宴会","パーティ","ランチ会","歓迎会","送別会","二次会"],"🍻"],[["旅","旅行","海外","訪ね","観光","ステイ"],"✈️"],[["海","ビーチ","南国"],"🏖️"],[["山","登山","富士","ハイキング","トレッキング"],"⛰️"],[["語","スペイン語","英語","中国語","会話"],"🗣️"],[["写真","カメラ","撮"],"📷"],[["料理","ごはん","ご飯","レストラン","食","クッキング"],"🍳"],[["コーヒー","カフェ","珈琲"],"☕"],[["貯金","お金","投資","iDeCo","ふるさと納税","資産","NISA"],"💰"],[["病院","通院","受診","健診","健康診断","診察"],"🏥"],[["ワクチン","予防接種","注射","接種"],"💉"],[["フィラリア","蚊","ノミ","ダニ"],"🦟"],[["狂犬病"],"🐕"],[["歯","歯科","デンタル"],"🦷"],[["美容","トリミング","カット","ヘア","サロン"],"✂️"],[["散歩","お散歩","ウォーキング"],"🦮"],[["習い事","レッスン","塾","スクール"],"🎒"],[["誕生","記念","バースデー"],"🎂"],[["結婚","プロポーズ","婚"],"💍"],[["掃除","片付","そうじ"],"🧹"],[["引っ越","引越","移住"],"📦"],[["占い","星","運勢"],"✨"]];
 const PICKER_EMOJIS=["✨","🌈","💪","🏃","🚴","🏋️","🧘","🎹","🎸","🎤","🎬","📚","🎓","💼","✈️","🏖️","⛰️","📷","🍳","☕","💰","🏥","💉","🦷","✂️","🦮","🐶","🐱","🎂","💍","🧸","🧹","📦","🗣️","👁️","🦟","❤️","⭐","🎯","🌷"];
@@ -904,35 +907,39 @@ function App(){
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
   const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
-  const openLifeNew=(date,space)=>setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",note:"",photoDataUrl:null,photoChanged:false,reminders:[],repeat:"none"});
+  const openLifeNew=(date,space)=>setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",note:"",photos:[],reminders:[],repeat:"none"});
   const openLifeEdit=async(it)=>{
-    let src=photos[it.id]||null;
-    if(!src&&it.photo){try{src=await photoStorage.get(`photo:${it.id}`);}catch(e){}}
+    const ids=photoIdsOf(it);
+    const ph=await Promise.all(ids.map(async id=>{let dataUrl=photos[id]||null;if(!dataUrl){try{dataUrl=await photoStorage.get(`photo:${id}`);}catch(e){}}return{id,dataUrl,isNew:false};}));
     const category=it.type==="memory"?"memory":"event";
-    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",note:it.note||"",photoDataUrl:src,photoChanged:false,reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind});
+    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",note:it.note||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind});
   };
   const pickLifePhoto=async(e)=>{
-    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
-    if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
-    try{const dataUrl=await downscaleImage(file);setLifeDraft(p=>p?{...p,photoDataUrl:dataUrl,photoChanged:true}:p);}
-    catch(er){showFlash("画像を読み込めませんでした");}
+    const files=Array.from(e.target.files||[]);e.target.value="";if(!files.length)return;
+    for(const file of files){
+      if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");continue;}
+      try{const dataUrl=await downscaleImage(file);const pid="p"+Date.now()+Math.random().toString(36).slice(2,6);setLifeDraft(p=>p?{...p,photos:[...p.photos,{id:pid,dataUrl,isNew:true}]}:p);}
+      catch(er){showFlash("画像を読み込めませんでした");}
+    }
   };
+  const removeLifePhoto=(pid)=>setLifeDraft(p=>p?{...p,photos:p.photos.filter(x=>x.id!==pid)}:p);
   const toggleLifeReminder=(mins)=>setLifeDraft(p=>p?{...p,reminders:p.reminders.includes(mins)?p.reminders.filter(m=>m!==mins):[...p.reminders,mins].sort((a,b)=>a-b)}:p);
   const saveLife=async()=>{
     if(!lifeDraft)return;
-    const d=lifeDraft;const title=(d.title||"").trim(),note=(d.note||"").trim(),hasPhoto=!!d.photoDataUrl;
+    const d=lifeDraft;const title=(d.title||"").trim(),note=(d.note||"").trim();const ph=d.photos||[];const hasPhoto=ph.length>0;
     if(d.category==="event"&&!title){showFlash("タイトルを入力してください");return;}
     if(d.category==="memory"&&!title&&!note&&!hasPhoto){showFlash("写真・ひとこと・日記のどれかを入れてください");return;}
     const id=d.id||((d.category==="memory"?"mem":"x")+Date.now());
-    if(d.photoChanged&&hasPhoto){const ok=await photoStorage.set(`photo:${id}`,d.photoDataUrl);if(!ok){showFlash("ストレージ容量が不足しています");return;}setPhotos(p=>({...p,[id]:d.photoDataUrl}));}
+    // 新規写真をIDBへ保存
+    for(const p of ph){if(p.isNew&&p.dataUrl){const ok=await photoStorage.set(`photo:${p.id}`,p.dataUrl);if(!ok){showFlash("ストレージ容量が不足しています");return;}setPhotos(prev=>({...prev,[p.id]:p.dataUrl}));}}
+    const photoIds=ph.map(p=>p.id);
     const rem=d.reminders.length?d.reminders:undefined;
     let base;
     if(d.category==="memory"){
-      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,title:title||"思い出",note:note||undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined};
+      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,title:title||"思い出",note:note||undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined};
     }else{
-      // 予定（編集時に元がcareならcareを維持）
       const keepCare=d.origType==="care";
-      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined};
+      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined};
       if(keepCare)base.careKind=d.careKind;
     }
     let next;
@@ -942,7 +949,7 @@ function App(){
     const saved=next.find(x=>x.id===id);if(saved)saveItemToFs(saved).catch(()=>{});
     setLifeDraft(null);showFlash("記録しました ✏️");
   };
-  const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it&&it.photo){try{photoStorage.delete(`photo:${id}`);}catch(e){}}deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash("削除しました");};
+  const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash("削除しました");};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("明日へ送りました");};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
   const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);};
@@ -1086,12 +1093,13 @@ function App(){
   const supplies=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="supply").sort((a,b)=>{const la=(supplyStatus(a)||{}).left??999,lb=(supplyStatus(b)||{}).left??999;return la-lb;}),[items,tab]);
   // 思い出（新しい順）
   const memories=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
-  // サムネイルの遅延読み込み（思い出・証明書など写真を持つ全アイテム。未ロードのみ取得）
+  // サムネイルの遅延読み込み（複数写真対応。各 photoId を未ロードのみ取得）
   useEffect(()=>{
-    const missing=items.filter(x=>x.photo&&!photos[x.id]);
+    const missing=[];const seen={};
+    items.forEach(x=>photoIdsOf(x).forEach(pid=>{if(!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}}));
     if(missing.length===0)return;
     let cancelled=false;
-    (async()=>{for(const m of missing){try{const v=await photoStorage.get(`photo:${m.id}`);if(!cancelled&&v)setPhotos(p=>({...p,[m.id]:v}));}catch(e){}}})();
+    (async()=>{for(const pid of missing){try{const v=await photoStorage.get(`photo:${pid}`);if(!cancelled&&v)setPhotos(p=>({...p,[pid]:v}));}catch(e){}}})();
     return()=>{cancelled=true;};
   },[items]);
   // 証明書（ワクチン等）：写真付きのケアを上部に出してすぐ見られるように
@@ -1581,7 +1589,7 @@ function App(){
                     ):(
                       <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"))?" tap":"")} onClick={()=>(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")?openLifeEdit(e.item):null}>
                         <span className="yl-tlday-time">{e.item.time||"—"}</span>
-                        {e.item.type==="memory"&&e.item.photo&&photos[e.item.id]?<img className="yl-tlday-thumb" src={photos[e.item.id]} alt=""/>:<span className="yl-tlday-emoji">{e.item.emoji||"•"}</span>}
+                        {firstPhotoId(e.item)&&photos[firstPhotoId(e.item)]?<span className="yl-tlday-thumbwrap"><img className="yl-tlday-thumb" src={photos[firstPhotoId(e.item)]} alt=""/>{photoIdsOf(e.item).length>1&&<span className="yl-photo-badge">+{photoIdsOf(e.item).length-1}</span>}</span>:<span className="yl-tlday-emoji">{e.item.emoji||"•"}</span>}
                         <span className="yl-tlday-body">
                           <span className="yl-tlday-text">{e.item.title}{nameOf(e.item.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.item.space)}</span>:null}</span>
                           {e.item.note&&<span className="yl-tlday-note">{e.item.note}</span>}
@@ -1604,7 +1612,7 @@ function App(){
               <div className="yl-album-grid">
                 {albumItems.map(mem=>(
                   <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
-                    {photos[mem.id]?<img className="yl-album-img" src={photos[mem.id]} alt=""/>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
+                    {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
                     <span className="yl-album-cap">{fmtMonthDay(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
                   </button>
                 ))}
@@ -1676,8 +1684,8 @@ function App(){
                   {certs.map(c=>{
                     const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
                     return(
-                      <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(c.id)}>
-                        {photos[c.id]?<img className="yl-cert-img" src={photos[c.id]} alt=""/>:<span className="yl-cert-ph">📄</span>}
+                      <button key={c.id} className="yl-cert-cell" onClick={()=>openLifeEdit(c)}>
+                        {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
                         <span className="yl-cert-cap">{c.emoji} {label}</span>
                       </button>
                     );
@@ -1835,7 +1843,7 @@ function App(){
                   <div className="yl-album-grid">
                     {memories.map(mem=>(
                       <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
-                        {photos[mem.id]?<img className="yl-album-img" src={photos[mem.id]} alt=""/>:<span className="yl-album-ph">{mem.emoji||"📸"}</span>}
+                        {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
                         <span className="yl-album-cap">{fmtDate(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
                       </button>
                     ))}
@@ -1862,11 +1870,15 @@ function App(){
             {/* 誰の */}
             <div className="yl-typerow" style={{marginBottom:10}}>{spaces.map(s=><button key={s.id} className={"yl-chip"+(lifeDraft.space===s.id?" on":"")} style={lifeDraft.space===s.id?{background:"#9B6DFF",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,space:s.id}))}>{s.emoji} {s.name}</button>)}</div>
             <input className="yl-input" value={lifeDraft.title} onChange={e=>setLifeDraft(p=>({...p,title:e.target.value}))} placeholder={lifeDraft.category==="event"?"予定のタイトル（例：病院）":"ひとこと（任意・例：はじめて海へ）"}/>
-            {/* 写真 */}
-            <div className="yl-life-photo">
-              {lifeDraft.photoDataUrl?<img className="yl-life-img" src={lifeDraft.photoDataUrl} alt=""/>:null}
-              <label className="yl-life-photobtn">{lifeDraft.photoDataUrl?"写真を変更":"📷 写真を追加（任意）"}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickLifePhoto}/></label>
-              {lifeDraft.photoDataUrl&&<button className="yl-life-photodel" onClick={()=>setLifeDraft(p=>({...p,photoDataUrl:null,photoChanged:true}))}>写真を外す</button>}
+            {/* 写真（複数可・証明書/処方箋もここに） */}
+            <div className="yl-life-photos">
+              {lifeDraft.photos.map(p=>(
+                <div key={p.id} className="yl-life-thumb">
+                  <img src={p.dataUrl} alt=""/>
+                  <button className="yl-life-thumb-del" onClick={()=>removeLifePhoto(p.id)} aria-label="削除">×</button>
+                </div>
+              ))}
+              <label className="yl-life-addphoto">＋<span>写真</span><input type="file" accept="image/*" multiple style={{display:"none"}} onChange={pickLifePhoto}/></label>
             </div>
             <textarea className="yl-life-note" value={lifeDraft.note} onChange={e=>setLifeDraft(p=>({...p,note:e.target.value}))} placeholder="日記（長文・任意）" rows={3}/>
             <div className="yl-optrow"><label className="yl-opt">日付<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">時間<TimeInput value={lifeDraft.time} onChange={t=>setLifeDraft(p=>({...p,time:t}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">繰り返し<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label>}</div>
