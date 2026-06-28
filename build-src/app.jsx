@@ -428,6 +428,8 @@ function App(){
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
+  const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
+  const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
   const[photos,setPhotos]=useState({});
@@ -614,6 +616,12 @@ function App(){
       // うちの子記念日（おうちに来た日）
       const g=daysUntilAnniv(m.gotchaDay);
       if(g===0){const y=yearsSinceAnniv(m.gotchaDay);setTimeout(()=>fireNotif(`🎉 ${m.name} うちの子記念日！`,y?`今日で迎えて${y}年。おめでとう！`:`今日は${m.name}をおうちに迎えた記念日です`),1500);}
+    });
+    // 友達の誕生日・記念日（自分タブに登録したもの）
+    items.filter(x=>x.space==="me"&&x.type==="bday"&&x.birthday).forEach(x=>{
+      const d=daysUntilAnniv(x.birthday);
+      if(d===0)setTimeout(()=>fireNotif(`🎂 ${x.title}`,`今日は「${x.title}」です`),1200);
+      if(d===3)setTimeout(()=>fireNotif(`🎂 ${x.title}まであと3日`,`お祝いの準備はできてますか？`),2200);
     });
   },[loaded,notifPerm]);
 
@@ -1030,12 +1038,30 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
-  const meItems=items.filter(x=>x.space==="me");
+  const meItems=items.filter(x=>x.space==="me"&&x.type!=="bday"); // 誕生日(繰り返し)はメーターに数えない
   const doneCount=meItems.filter(x=>x.done).length;
   const pct=meItems.length?Math.round((doneCount/meItems.length)*100):0;
+  // 友達の誕生日・記念日を追加（毎年くりかえし。わくわくメーターには数えない）
+  const addFriendBday=()=>{
+    const t=friendBdayName.trim();if(!t||!friendBdayDate)return;
+    const item={id:"b"+Date.now(),space:"me",type:"bday",title:t,emoji:guessEmoji(t,"🎂"),birthday:friendBdayDate,createdAt:Date.now()};
+    persist(members,[...items,item]);
+    setFriendBdayName("");setFriendBdayDate("");
+    showFlash("追加しました 🎂");
+  };
+  // 「もうすぐ・楽しみ」：自分の誕生日記念日＋予定（日付あり）を近い順に
+  const meUpcoming=useMemo(()=>{
+    const list=[];
+    items.forEach(x=>{
+      if(x.space!=="me")return;
+      if(x.type==="bday"&&x.birthday){const d=daysUntilAnniv(x.birthday);if(d!==null&&d<=60)list.push({id:x.id,emoji:x.emoji||"🎂",title:x.title,daysUntil:d,kind:"bday"});}
+      else if(!x.done&&x.dueDate){const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=60)list.push({id:x.id,emoji:x.emoji||"📅",title:x.title,daysUntil:d,kind:"event"});}
+    });
+    return list.sort((a,b)=>a.daysUntil-b.daysUntil);
+  },[items]);
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab);let soon=0,over=0;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(d===null)return;if(d<0)over++;else if(d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
   const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:meEmoji,kind:"me"},...members],[members,meEmoji]);
@@ -1050,8 +1076,9 @@ function App(){
     const add=(id,name,emoji,date,kind)=>{const dd=daysUntilAnniv(date);if(dd!==null&&dd<=7)list.push({key:id+":"+kind,name,emoji,date,kind,daysUntil:dd,years:yearsSinceAnniv(date)});};
     members.forEach(m=>{if(m.birthday)add(m.id,m.name,m.emoji,m.birthday,"birthday");if(m.gotchaDay)add(m.id,m.name,m.emoji,m.gotchaDay,"gotcha");});
     if(meBirthday)add("me","わたし",meEmoji,meBirthday,"birthday");
+    items.forEach(x=>{if(x.space==="me"&&x.type==="bday"&&x.birthday)add(x.id,x.title,x.emoji||"🎂",x.birthday,"self");});
     return list.sort((a,b)=>a.daysUntil-b.daysUntil);
-  },[members,meBirthday,meEmoji]);
+  },[members,meBirthday,meEmoji,items]);
 
   const showNotifBanner=notifSupported&&notifPerm==="default";
   const hasReminders=items.some(x=>x.reminders?.length);
@@ -1296,7 +1323,7 @@ function App(){
                 {upcomingAnniv.map(a=>(
                   <div key={a.key} className="yl-bday-row">
                     <span className="yl-bday-emoji">{a.emoji}</span>
-                    <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":"・誕生日"}</span></span>
+                    <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
                     <span className="yl-bday-date">{fmtBirthday(a.date)}</span>
                     <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.kind==="gotcha"&&a.years?`迎えて${a.years}年！`:"今日！"):`あと${a.daysUntil}日`}</span>
                   </div>
@@ -1417,6 +1444,32 @@ function App(){
                   {activeMember.gotchaDay&&<span className="yl-pill gotcha">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}`;})()}</span>}
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                   <button className="yl-pet-del" onClick={()=>setConfirmDel(activeMember)}>削除</button>
+                </div>
+              </section>
+            )}
+
+            {/* 🎉 もうすぐ・楽しみ（自分タブ）：友達の誕生日・記念日・イベントを見える化 */}
+            {!isMemberTab&&(
+              <section className="yl-meup">
+                <h2 className="yl-routine-title" style={{marginBottom:10}}>🎉 もうすぐ・楽しみ</h2>
+                {meUpcoming.length>0?(
+                  <ul className="yl-meup-list">
+                    {meUpcoming.map(u=>(
+                      <li key={u.id} className="yl-meup-item">
+                        <span className="yl-meup-emoji">{u.emoji}</span>
+                        <span className="yl-meup-text">{u.title}</span>
+                        <span className={"yl-meup-tag"+(u.daysUntil===0?" today":"")}>{u.daysUntil===0?(u.kind==="bday"?"今日 🎂":"今日"):u.daysUntil===1?"明日":`あと${u.daysUntil}日`}</span>
+                        {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>remove(u.id)} aria-label="削除">×</button>}
+                      </li>
+                    ))}
+                  </ul>
+                ):(
+                  <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>友達の誕生日やイベントを入れると、楽しみが見える化されます</p>
+                )}
+                <div className="yl-bday-add">
+                  <input className="yl-input sm" value={friendBdayName} onChange={e=>setFriendBdayName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFriendBday()} placeholder="名前・予定（例：ゆいの誕生日）"/>
+                  <input type="date" className="yl-date" value={friendBdayDate} onChange={e=>setFriendBdayDate(e.target.value)}/>
+                  <button className="yl-addbtn sm" onClick={addFriendBday}>🎂 追加</button>
                 </div>
               </section>
             )}
