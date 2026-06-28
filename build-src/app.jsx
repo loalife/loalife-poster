@@ -292,7 +292,7 @@ function makeSeed(){
   };
 }
 
-function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(item.careKind&&HIGH_KINDS.has(item.careKind))return{label:"期限を過ぎています",tone:"careOver"};return{label:`${-d}日すぎてます`,tone:"gentleOver"};}
+function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(item.careKind&&HIGH_KINDS.has(item.careKind))return{label:"期限切れ",tone:"careOver"};return{label:`${-d}日過ぎています`,tone:"gentleOver"};}
 
 function daysUntilBirthday(birthday) {
   if (!birthday) return null;
@@ -1472,7 +1472,7 @@ function App(){
               <section className="yl-hero calm">
                 <div className="yl-hero-emoji">☀️</div>
                 <p className="yl-hero-title">今日は安心です</p>
-                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は平和です`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
+                <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は穏やかです`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
               </section>
             ):homeData.todos.length>0&&(
               <section className="yl-todo">
@@ -1514,7 +1514,7 @@ function App(){
               <h2 className="yl-sec-title">😊 安心ステータス</h2>
               <div className="yl-statusgrid">{spaces.map(s=>{
                 const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
-                const okMsg=s.kind==="pet"?`${s.name}は平和です`:s.kind==="me"?"順調です":"順調です";
+                const okMsg=s.kind==="pet"?`${s.name}は順調です`:"順調です";
                 return(
                   <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
                     <span className="yl-status-emoji">{s.emoji}</span>
@@ -1713,7 +1713,7 @@ function App(){
                   {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                 </div>
                 {routines.length===0?(
-                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のテンプレから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のテンプレから追加できます"}</p>
+                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のボタンから追加できます"}</p>
                 ):(
                   <ul className="yl-timeline">
                     {routines.map(r=>{
@@ -1749,7 +1749,7 @@ function App(){
                   {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
                 </div>
                 {supplies.length===0?(
-                  <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残量を自動で見守ります"}</p>
+                  <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残りを自動でお知らせします"}</p>
                 ):(
                   <ul className="yl-supply-list">
                     {supplies.map(s=>{
