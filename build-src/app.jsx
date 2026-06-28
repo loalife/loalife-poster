@@ -576,6 +576,8 @@ function App(){
   const[trayOpen,setTrayOpen]=useState(false);
   // ホーム「記録」層の開閉（低頻度の情報は既定で畳む）
   const[recOpen,setRecOpen]=useState(false);
+  // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
+  const[personSeg,setPersonSeg]=useState("today");
   // 思い出アルバムのタグ絞り込み
   const[albumTag,setAlbumTag]=useState("");
   // 思い出に付けるタグ入力（ライフエディタ）
@@ -945,7 +947,7 @@ function App(){
   const curKind=activeMember?activeMember.kind:"me";
   const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
 
-  useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
+  useEffect(()=>{setFilter("all");setPersonSeg("today");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
     const it=items.find(x=>x.id===id);if(!it)return;let next;
@@ -1955,8 +1957,15 @@ function App(){
               </section>
             )}
 
+            {/* セグメント切替（見せ方だけ：今日／記録／情報）。データ・機能は共通 */}
+            <div className="yl-seg">
+              {[{k:"today",label:"今日"},{k:"record",label:"記録"},{k:"info",label:"情報"}].map(s=>(
+                <button key={s.k} className={"yl-seg-btn"+(personSeg===s.k?" on":"")} onClick={()=>setPersonSeg(s.k)}>{s.label}</button>
+              ))}
+            </div>
+
             {/* 🎉 もうすぐ・楽しみ（自分タブ）：友達の誕生日・記念日・イベントを見える化 */}
-            {!isMemberTab&&(
+            {!isMemberTab&&personSeg==="today"&&(
               <section className="yl-meup">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>🎉 もうすぐ・楽しみ</h2>
                 {meUpcoming.length>0?(
@@ -1982,7 +1991,7 @@ function App(){
             )}
 
             {/* 📄 証明書：ワクチン等の写真を一番上ですぐ見られるように */}
-            {isMemberTab&&certs.length>0&&(
+            {isMemberTab&&personSeg==="record"&&certs.length>0&&(
               <section className="yl-certs">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
                 <div className="yl-certs-row">
@@ -2000,7 +2009,7 @@ function App(){
             )}
 
             {/* 1日のタイムライン（ルーティン）わたし＋各メンバー */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="today"&&(
               <section className="yl-routine">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
@@ -2036,7 +2045,7 @@ function App(){
             )}
 
             {/* 消耗品ストック（わたし＋各メンバー）買った日だけ入れれば残量を自動表示 */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="record"&&(
               <section className="yl-supply">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">📦 ストック</h2>
@@ -2070,6 +2079,7 @@ function App(){
               </section>
             )}
 
+            {personSeg==="today"&&(<>
             {/* 1タップ追加パネル（メンバータブのみ） */}
             {isMemberTab&&(
               <div className="yl-quickbar">
@@ -2141,9 +2151,10 @@ function App(){
                 })}
               </ul>
             )}
+            </>)}
 
             {/* 📈 からだの記録：体重（全員）／身長・体調（メンバー）。記録はグラフ化 */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="record"&&(
               <section className="yl-health">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
                 <div className="yl-health-input">
@@ -2181,7 +2192,7 @@ function App(){
             )}
 
             {/* 📝 今日のようす（日記）：元気・食欲・うんち・さんぽ・病院・ひとことを記録 */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="record"&&(
               <section className="yl-diary">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
                 <div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
@@ -2219,7 +2230,7 @@ function App(){
             )}
 
             {/* 💰 支出：病院代・餌代などをカテゴリ別に記録し、費用を可視化 */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="record"&&(
               <section className="yl-exp">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
                 <div className="yl-exp-input">
@@ -2258,23 +2269,27 @@ function App(){
               </section>
             )}
 
-            {/* 🎒 持ち物（曜日ごと）：明日の準備チェックリストで忘れ物防止 */}
-            {isPersonalTab&&(
+            {/* 📋 明日の準備（今日タブ・抽出ビュー）：持ち物データから前日分を抽出して表示 */}
+            {isPersonalTab&&personSeg==="today"&&tomorrowBelongings.length>0&&(
+              <section className="yl-belong">
+                <h2 className="yl-routine-title" style={{marginBottom:10}}>📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
+                <div className="yl-prep">
+                  <ul className="yl-prep-list">
+                    {tomorrowBelongings.map(b=>(
+                      <li key={b.id} className={"yl-prep-item"+(b.prepDate===tomorrowIso?" done":"")} onClick={()=>toggleBelongPrep(b.id)}>
+                        <span className={"yl-prep-check"+(b.prepDate===tomorrowIso?" on":"")}>{b.prepDate===tomorrowIso?"✓":""}</span>
+                        <span className="yl-prep-text">{b.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            {/* 🎒 持ち物（曜日ごと・情報タブ＝データ本体）：忘れ物防止 */}
+            {isPersonalTab&&personSeg==="info"&&(
               <section className="yl-belong">
                 <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
-                {tomorrowBelongings.length>0&&(
-                  <div className="yl-prep">
-                    <p className="yl-prep-title">📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</p>
-                    <ul className="yl-prep-list">
-                      {tomorrowBelongings.map(b=>(
-                        <li key={b.id} className={"yl-prep-item"+(b.prepDate===tomorrowIso?" done":"")} onClick={()=>toggleBelongPrep(b.id)}>
-                          <span className={"yl-prep-check"+(b.prepDate===tomorrowIso?" on":"")}>{b.prepDate===tomorrowIso?"✓":""}</span>
-                          <span className="yl-prep-text">{b.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
                 <div className="yl-belong-add">
                   <select className="yl-select" value={belongDow} onChange={e=>setBelongDow(Number(e.target.value))}>{WEEKDAYS_JA.map((w,i)=><option key={i} value={i}>{w}曜</option>)}</select>
                   <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder="例：体操服 / 図書の本 / 習字道具"/>
@@ -2294,8 +2309,8 @@ function App(){
               </section>
             )}
 
-            {/* 📌 大切な情報（隠しトレイ）：緊急連絡先・アレルギー/禁忌・病院メモ */}
-            {isPersonalTab&&(
+            {/* 📌 大切な情報（情報タブ）：緊急連絡先・アレルギー/禁忌・病院メモ */}
+            {isPersonalTab&&personSeg==="info"&&(
               <section className="yl-tray">
                 <button className="yl-tray-head" onClick={()=>setTrayOpen(o=>!o)}>
                   <span className="yl-tray-title">📌 大切な情報{cards.length>0?`（${cards.length}）`:""}</span>
@@ -2318,7 +2333,7 @@ function App(){
             )}
 
             {/* 📸 思い出：記録を思い出に変える。書かせず、写真1枚で残す（わたし＋家族＋ペット） */}
-            {isPersonalTab&&(
+            {isPersonalTab&&personSeg==="record"&&(
               <section className="yl-album">
                 <div className="yl-routine-head">
                   <h2 className="yl-routine-title">📸 思い出</h2>
