@@ -197,6 +197,9 @@ const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);ret
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
 const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
+// からだの記録（体重・身長・体調）
+const HEALTH_CONDS=[{key:"good",label:"元気",emoji:"😊"},{key:"ok",label:"ふつう",emoji:"😐"},{key:"bad",label:"元気ない",emoji:"😟"}];
+const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 
 const EMOJI_RULES=[[["目","眼","メガネ","視力","コンタクト"],"👁️"],[["マラソン","ラン","走","ジョギング","駅伝"],"🏃"],[["ジム","筋トレ","トレーニング","クロスフィット","crossfit","筋"],"🏋️"],[["自転車","サイクリング","ロングライド","ライド","ロード"],"🚴"],[["泳","スイミング","プール","水泳"],"🏊"],[["ヨガ","ストレッチ","瞑想"],"🧘"],[["ピアノ","ジャズ","鍵盤","セッション"],"🎹"],[["ギター","楽器","音楽","バンド"],"🎸"],[["ライブ","コンサート","歌","カラオケ"],"🎤"],[["映画","シネマ"],"🎬"],[["本","読書","読む"],"📚"],[["試験","資格","勉強","検定","TOEIC","G検定","学習"],"🎓"],[["面接","転職","仕事","キャリア","案件","副業"],"💼"],[["会議","打ち合わせ","打合せ","MTG","ミーティング","商談"],"📊"],[["飲み","飲み会","会食","宴会","パーティ","ランチ会","歓迎会","送別会","二次会"],"🍻"],[["旅","旅行","海外","訪ね","観光","ステイ"],"✈️"],[["海","ビーチ","南国"],"🏖️"],[["山","登山","富士","ハイキング","トレッキング"],"⛰️"],[["語","スペイン語","英語","中国語","会話"],"🗣️"],[["写真","カメラ","撮"],"📷"],[["料理","ごはん","ご飯","レストラン","食","クッキング"],"🍳"],[["コーヒー","カフェ","珈琲"],"☕"],[["貯金","お金","投資","iDeCo","ふるさと納税","資産","NISA"],"💰"],[["病院","通院","受診","健診","健康診断","診察"],"🏥"],[["ワクチン","予防接種","注射","接種"],"💉"],[["フィラリア","蚊","ノミ","ダニ"],"🦟"],[["狂犬病"],"🐕"],[["歯","歯科","デンタル"],"🦷"],[["美容","トリミング","カット","ヘア","サロン"],"✂️"],[["散歩","お散歩","ウォーキング"],"🦮"],[["習い事","レッスン","塾","スクール"],"🎒"],[["誕生","記念","バースデー"],"🎂"],[["結婚","プロポーズ","婚"],"💍"],[["掃除","片付","そうじ"],"🧹"],[["引っ越","引越","移住"],"📦"],[["占い","星","運勢"],"✨"]];
 const PICKER_EMOJIS=["✨","🌈","💪","🏃","🚴","🏋️","🧘","🎹","🎸","🎤","🎬","📚","🎓","💼","✈️","🏖️","⛰️","📷","🍳","☕","💰","🏥","💉","🦷","✂️","🦮","🐶","🐱","🎂","💍","🧸","🧹","📦","🗣️","👁️","🦟","❤️","⭐","🎯","🌷"];
@@ -421,6 +424,33 @@ function TimeInput({value,onChange}){
   return(<div className="yl-timepick"><select className="yl-tsel" value={curH} onChange={e=>upd(e.target.value===""?"":Number(e.target.value),curM)}><option value="">--</option>{HOURS.map(h=><option key={h} value={h}>{String(h).padStart(2,"0")}</option>)}</select><span className="yl-tcolon">:</span><select className="yl-tsel" value={curM} onChange={e=>upd(curH===""?9:curH,Number(e.target.value))}>{MINS.map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}</option>)}</select></div>);
 }
 
+// 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
+function MiniChart({points,unit,color,label}){
+  if(!points||points.length===0)return null;
+  const W=300,H=120,padX=10,padTop=22,padBot=22;
+  const vals=points.map(p=>p.value);
+  let min=Math.min(...vals),max=Math.max(...vals);
+  if(min===max){min=min-1;max=max+1;}
+  const n=points.length;
+  const xAt=(i)=>n===1?W/2:padX+(i*(W-2*padX))/(n-1);
+  const yAt=(v)=>padTop+(1-(v-min)/(max-min))*(H-padTop-padBot);
+  const line=points.map((p,i)=>`${i===0?"M":"L"}${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ");
+  const latest=points[n-1],first=points[0];
+  return(
+    <div className="yl-chart-wrap">
+      <div className="yl-chart-head"><span className="yl-chart-label">{label}</span><span className="yl-chart-latest" style={{color}}>{latest.value}{unit}</span></div>
+      <svg className="yl-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <polyline points={points.map((p,i)=>`${xAt(i)},${yAt(p.value)}`).join(" ")} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
+        {points.map((p,i)=><circle key={i} cx={xAt(i)} cy={yAt(p.value)} r="3" fill={color}/>)}
+        <text x={padX} y="12" className="yl-chart-ax">{max}</text>
+        <text x={padX} y={H-6} className="yl-chart-ax">{min}{unit}</text>
+        <text x={W-padX} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(latest.date)}</text>
+        {n>1&&<text x={padX+18} y={H-6} className="yl-chart-ax">{fmtDate(first.date)}</text>}
+      </svg>
+    </div>
+  );
+}
+
 // Visibility toggle component
 function VisibilityToggle({value, onChange}) {
   const isHousehold = value === "household";
@@ -469,6 +499,7 @@ function App(){
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
   const[memberSel,setMemberSel]=useState("me"); // メンバーモードで選択中の人
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
+  const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -1112,6 +1143,22 @@ function App(){
   const supplies=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="supply").sort((a,b)=>{const la=(supplyStatus(a)||{}).left??999,lb=(supplyStatus(b)||{}).left??999;return la-lb;}),[items,tab]);
   // 思い出（新しい順）
   const memories=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  // からだの記録（体重・身長・体調）
+  const healthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="health").sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
+  const weightPts=useMemo(()=>healthRecords.filter(r=>r.weight!=null).map(r=>({date:r.date,value:r.weight})),[healthRecords]);
+  const heightPts=useMemo(()=>healthRecords.filter(r=>r.height!=null).map(r=>({date:r.date,value:r.height})),[healthRecords]);
+  const saveHealth=()=>{
+    const w=healthW.trim()===""?null:Number(healthW);const h=healthH.trim()===""?null:Number(healthH);
+    if(w==null&&h==null&&!healthCond){showFlash("体重などを入力してください");return;}
+    if(w!=null&&(isNaN(w)||w<=0)){showFlash("体重は数字で入力してください");return;}
+    if(h!=null&&(isNaN(h)||h<=0)){showFlash("身長は数字で入力してください");return;}
+    const rec={id:"hl"+Date.now(),space:tab,type:"health",date:todayIso,createdAt:Date.now()};
+    if(w!=null)rec.weight=w;if(h!=null)rec.height=h;if(healthCond)rec.condition=healthCond;
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    setHealthW("");setHealthH("");setHealthCond("");
+    showFlash("からだの記録を保存しました 📈");
+  };
+  const removeHealth=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // サムネイルの遅延読み込み（複数写真対応。各 photoId を未ロードのみ取得）
   useEffect(()=>{
     const missing=[];const seen={};
@@ -1138,7 +1185,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   const meItems=items.filter(x=>x.space==="me"&&x.type!=="bday"); // 誕生日(繰り返し)はメーターに数えない
@@ -1855,6 +1902,37 @@ function App(){
                   );
                 })}
               </ul>
+            )}
+
+            {/* 📈 からだの記録：体重（全員）／身長・体調（メンバー）。記録はグラフ化 */}
+            {isPersonalTab&&(
+              <section className="yl-health">
+                <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
+                <div className="yl-health-input">
+                  <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">kg</span></span></label>
+                  {isMemberTab&&<label className="yl-opt">身長<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
+                </div>
+                {isMemberTab&&(
+                  <div className="yl-health-conds">
+                    <span className="yl-health-clabel">体調</span>
+                    {HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}
+                  </div>
+                )}
+                <button className="yl-addbtn sm" style={{width:"100%",marginTop:4}} onClick={saveHealth}>📈 記録する</button>
+                {weightPts.length>0&&<MiniChart points={weightPts} unit="kg" color="#FF4D8D" label="体重"/>}
+                {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
+                {healthRecords.length>0&&(
+                  <ul className="yl-health-list">
+                    {[...healthRecords].reverse().slice(0,6).map(r=>(
+                      <li key={r.id} className="yl-health-item">
+                        <span className="yl-health-date">{fmtDate(r.date)}</span>
+                        <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}kg</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                        <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             )}
 
             {/* 📸 思い出：記録を思い出に変える。書かせず、写真1枚で残す（わたし＋家族＋ペット） */}
