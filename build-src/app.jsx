@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
+import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { FB_READY, fbAuth, fbDb } from "./firebase";
 import {
   GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
@@ -476,6 +479,14 @@ function VisibilityToggle({value, onChange}) {
       {isHousehold ? "👨‍👩‍👧 家族に見せる" : "🔒 自分のみ"}
     </button>
   );
+}
+
+// 並び替え用カード（長押し/ドラッグでD&D）。ドラッグ中は拡大・影・半透明。
+function SortableCard({id,className,children}){
+  const {attributes,listeners,setNodeRef,transform,transition,isDragging}=useSortable({id});
+  const base=CSS.Transform.toString(transform);
+  const style={transform:isDragging&&base?`${base} scale(1.03)`:base,transition,touchAction:"manipulation",...(isDragging?{opacity:.65,boxShadow:"0 12px 28px rgba(120,80,160,.28)",zIndex:20,position:"relative"}:{})};
+  return <li ref={setNodeRef} style={style} className={className} {...attributes} {...listeners}>{children}</li>;
 }
 
 function App(){
@@ -1375,19 +1386,51 @@ function App(){
   },[items,activeMember]);
 
   const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
-  // 並び替え（手動で優先順位を入れ替え）。表示中の未完了タスクにだけ order を振り直す。
-  const moveItem=(id,dir)=>{
-    const active=visible.filter(x=>!x.done);
-    const idx=active.findIndex(x=>x.id===id);if(idx<0)return;
-    const j=idx+dir;if(j<0||j>=active.length)return;
-    const arr=[...active];const t=arr[idx];arr[idx]=arr[j];arr[j]=t;
-    const orderMap={};arr.forEach((x,i)=>{orderMap[x.id]=i;});
+  // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
+  const dndSensors=useSensors(
+    useSensor(MouseSensor,{activationConstraint:{distance:6}}),
+    useSensor(TouchSensor,{activationConstraint:{delay:250,tolerance:8}})
+  );
+  const onCardDragEnd=(e)=>{
+    const{active,over}=e;if(!over||active.id===over.id)return;
+    const ids=visible.filter(x=>!x.done).map(x=>x.id);
+    const oldI=ids.indexOf(active.id),newI=ids.indexOf(over.id);
+    if(oldI<0||newI<0)return;
+    const arr=arrayMove(ids,oldI,newI);
+    const orderMap={};arr.forEach((id,i)=>{orderMap[id]=i;});
     const next=items.map(x=>orderMap[x.id]!=null?{...x,order:orderMap[x.id]}:x);
     persist(members,next);
-    arr.forEach(x=>{const u=next.find(y=>y.id===x.id);if(u)saveItemToFs(u).catch(()=>{});});
+    arr.forEach(id=>{const u=next.find(y=>y.id===id);if(u)saveItemToFs(u).catch(()=>{});});
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
+  // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
+  const cardInner=(it)=>{
+    let meta,label;
+    if(isMemberTab){meta=KIND_STYLE[activeMember.kind];label=(careKindsFor(activeMember).find(k=>k.key===it.careKind)||{}).label||"ケア";}
+    else{meta=TYPE_META[it.type]||TYPE_META.dream;label=meta.label;}
+    const ds=dueStatus(it);
+    return(<>
+      <button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} onPointerDown={e=>e.stopPropagation()} title="タップで絵文字を変更">{it.emoji}</button>
+      <div className="yl-body" onClick={()=>openEdit(it)}>
+        <div className="yl-row1"><span className="yl-badge" style={{background:meta.bg,color:meta.fg}}>{label}</span><span className="yl-text">{it.title}</span></div>
+        {(ds||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
+          <div className="yl-meta">
+            {ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
+            {it.time&&<span className="yl-time">🕐 {it.time}</span>}
+            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat">🔁 {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
+            {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
+            {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
+            {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
+            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>}
+            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
+          </div>
+        )}
+      </div>
+      <button className={"yl-check"+(it.done?" on":"")} onClick={()=>toggle(it.id)} onPointerDown={e=>e.stopPropagation()} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+      <button className="yl-del" onClick={e=>{e.stopPropagation();askDelete(it.title,()=>remove(it.id));}} onPointerDown={e=>e.stopPropagation()} aria-label="削除">×</button>
+    </>);
+  };
   const meItems=items.filter(x=>x.space==="me"&&x.type!=="bday"); // 誕生日(繰り返し)はメーターに数えない
   const doneCount=meItems.filter(x=>x.done).length;
   const pct=meItems.length?Math.round((doneCount/meItems.length)*100):0;
@@ -2098,45 +2141,20 @@ function App(){
 
             <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
 
-            {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(
-              <ul className="yl-list">
-                {visible.map(it=>{
-                  let meta,label;
-                  if(isMemberTab){meta=KIND_STYLE[activeMember.kind];label=(careKindsFor(activeMember).find(k=>k.key===it.careKind)||{}).label||"ケア";}
-                  else{meta=TYPE_META[it.type]||TYPE_META.dream;label=meta.label;}
-                  const ds=dueStatus(it);
-                  const actList=visible.filter(x=>!x.done);const pos=it.done?-1:actList.findIndex(x=>x.id===it.id);
-                  return(
-                    <li key={it.id} className={"yl-card"+(it.done?" is-done":"")}>
-                      <button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} title="タップで絵文字を変更">{it.emoji}</button>
-                      <div className="yl-body" onClick={()=>openEdit(it)}>
-                        <div className="yl-row1"><span className="yl-badge" style={{background:meta.bg,color:meta.fg}}>{label}</span><span className="yl-text">{it.title}</span></div>
-                        {(ds||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
-                          <div className="yl-meta">
-                            {ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
-                            {it.time&&<span className="yl-time">🕐 {it.time}</span>}
-                            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat">🔁 {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
-                            {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
-                            {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
-                            {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
-                            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>}
-                            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
-                          </div>
-                        )}
-                      </div>
-                      {!it.done&&actList.length>1&&(
-                        <span className="yl-reorder">
-                          <button className="yl-reorder-btn" disabled={pos<=0} onClick={e=>{e.stopPropagation();moveItem(it.id,-1);}} aria-label="上へ">▲</button>
-                          <button className="yl-reorder-btn" disabled={pos>=actList.length-1} onClick={e=>{e.stopPropagation();moveItem(it.id,1);}} aria-label="下へ">▼</button>
-                        </span>
-                      )}
-                      <button className={"yl-check"+(it.done?" on":"")} onClick={()=>toggle(it.id)} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-                      <button className="yl-del" onClick={e=>{e.stopPropagation();askDelete(it.title,()=>remove(it.id));}} aria-label="削除">×</button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(()=>{
+              const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
+              return(
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
+                  <SortableContext items={actList.map(x=>x.id)} strategy={verticalListSortingStrategy}>
+                    <ul className="yl-list">
+                      {actList.map(it=><SortableCard key={it.id} id={it.id} className="yl-card">{cardInner(it)}</SortableCard>)}
+                      {doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
+              );
+            })()}
+            {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>長押しでドラッグして並び替えできます</p>}
             </>)}
 
             {/* 📈 からだの記録（記録タブ＝閲覧）。入力は＋ハブから */}
