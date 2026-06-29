@@ -140,12 +140,14 @@ export function migrateState(raw) {
     meEmoji: migrated.meEmoji ?? null,
     meBirthday: migrated.meBirthday ?? null,
     meColor: migrated.meColor ?? null,
+    meName: migrated.meName ?? null,
+    meAvatar: migrated.meAvatar ?? null,
     version: SCHEMA_VERSION,
   };
 }
 
 // localStorage へ書き出す 1 ブロブを組み立てる（必ず version を埋め込む）。
-export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor }) {
+export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar }) {
   return JSON.stringify({
     version: SCHEMA_VERSION,
     members: members || [],
@@ -154,6 +156,8 @@ export function serializeState({ members, items, usage, meEmoji, meBirthday, meC
     meEmoji: meEmoji ?? null,
     meBirthday: meBirthday ?? null,
     meColor: meColor ?? null,
+    meName: meName ?? null,
+    meAvatar: meAvatar ?? null,
   });
 }
 

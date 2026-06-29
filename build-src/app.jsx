@@ -382,12 +382,13 @@ function generateIcal(items, members, meEmoji) {
   const emojiOf=(sid)=>sid==="me"?meEmoji:(members.find(m=>m.id===sid)?.emoji||"");
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}T${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}00Z`;
+  const esc=(s)=>String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
   const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LOALIFE//Family//JA","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LOALIFE家族カレンダー"];
   items.filter(it=>it.dueDate&&!it.done).forEach(item=>{
     const [y,m,d]=item.dueDate.split("-").map(Number);
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:loalife-${item.id}@loalife`);
-    lines.push(`SUMMARY:${item.emoji||""} ${item.title} [${emojiOf(item.space)}${nameOf(item.space)}]`);
+    lines.push(`SUMMARY:${esc(`${item.emoji||""} ${item.title} [${emojiOf(item.space)}${nameOf(item.space)}]`)}`);
     lines.push(`DTSTAMP:${stamp}`);
     if(item.time){
       const [h,mn]=item.time.split(":").map(Number);
@@ -558,6 +559,9 @@ function App(){
   const[meBdayDraft,setMeBdayDraft]=useState("");
   const[mePicker,setMePicker]=useState(false);
   const[meColor,setMeColor]=useState("");
+  const[meName,setMeName]=useState("");   // わたしの表示名（任意・空なら「わたし」）
+  const[meAvatar,setMeAvatar]=useState(""); // わたしの写真アイコン（IDBの photo:<id>）
+  const[meNameDraft,setMeNameDraft]=useState("");
   // 今日のようす（日記）入力（症状・写真も。お薬手帳/体調メモ兼用）
   const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
   // 支出入力（記録は常に今日の日付で即記録。日付変更は編集画面のみ＝例外用途）
@@ -636,13 +640,15 @@ function App(){
       if(state.meEmoji)setMeEmoji(state.meEmoji);
       if(state.meBirthday)setMeBirthday(state.meBirthday);
       if(state.meColor)setMeColor(state.meColor);
+      if(state.meName)setMeName(state.meName);
+      if(state.meAvatar)setMeAvatar(state.meAvatar);
       setLoaded(true);
       // 旧キー由来 / バージョンが古い場合のみ現行キーへ保存（旧キーは残す＝バックアップ）。
       try{
         const needWrite=fromLegacy||parsed.version!==SCHEMA_VERSION;
         if(needWrite){
           if(!fromLegacy)await storage.set(STORAGE_KEY+".bak",raw); // 念のため移行前の生データを退避
-          await storage.set(STORAGE_KEY,serializeState({members:state.members,items:state.items,usage:state.usage,meEmoji:state.meEmoji,meBirthday:state.meBirthday,meColor:state.meColor}));
+          await storage.set(STORAGE_KEY,serializeState({members:state.members,items:state.items,usage:state.usage,meEmoji:state.meEmoji,meBirthday:state.meBirthday,meColor:state.meColor,meName:state.meName,meAvatar:state.meAvatar}));
         }
       }catch(e){}
       return;
@@ -686,6 +692,8 @@ function App(){
             if(ud.meEmoji)setMeEmoji(ud.meEmoji);
             if(ud.meBirthday)setMeBirthday(ud.meBirthday);
             if(ud.meColor)setMeColor(ud.meColor);
+            if(ud.meName)setMeName(ud.meName);
+            if(ud.meAvatar)setMeAvatar(ud.meAvatar);
             if(ud.householdId){
               const hhSnap=await getDoc(doc(fbDb,"households",ud.householdId));
               if(hhSnap.exists()){
@@ -779,7 +787,7 @@ function App(){
   const persist=async(m,it,u=usage)=>{
     setMembers(m);setItems(it);setUsage(u);
     if(!household){
-      try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor}));}catch(e){}
+      try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar}));}catch(e){}
     }
   };
 
@@ -822,19 +830,45 @@ function App(){
 
   const persistMeEmoji=(emo)=>{
     setMeEmoji(emo);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:emo,meBirthday,meColor})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:emo,meBirthday,meColor,meName,meAvatar})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:emo},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeBirthday=(bday)=>{
     setMeBirthday(bday);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday:bday,meColor})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday:bday,meColor,meName,meAvatar})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meBirthday:bday},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeColor=(c)=>{
     setMeColor(c);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor:c})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor:c,meName,meAvatar})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meColor:c},{merge:true}).catch(()=>{});}catch(e){}}
   };
+  const persistMeName=(nm)=>{
+    setMeName(nm);
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName:nm,meAvatar})).catch(()=>{});}catch(e){}
+    if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meName:nm},{merge:true}).catch(()=>{});}catch(e){}}
+  };
+  const persistMeAvatar=(pid)=>{
+    setMeAvatar(pid);
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar:pid})).catch(()=>{});}catch(e){}
+    if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meAvatar:pid},{merge:true}).catch(()=>{});}catch(e){}}
+  };
+  // わたしの写真アイコン取り込み（軽量リサイズ→IDB保存→丸型はCSSで適用）
+  const pickMeAvatar=async(e)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
+    try{
+      const dataUrl=await downscaleImage(file,400,0.8);
+      const pid="meav"+Date.now();
+      const ok=await photoStorage.set(`photo:${pid}`,dataUrl);
+      if(!ok){showFlash("ストレージ容量が不足しています");return;}
+      setPhotos(p=>({...p,[pid]:dataUrl}));
+      if(meAvatar){try{photoStorage.delete(`photo:${meAvatar}`);}catch(er){}}
+      persistMeAvatar(pid);
+      showFlash("アイコンを設定しました 📷");
+    }catch(err){showFlash("画像を読み込めませんでした");}
+  };
+  const clearMeAvatar=()=>{if(meAvatar){try{photoStorage.delete(`photo:${meAvatar}`);}catch(e){}}persistMeAvatar("");};
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
@@ -845,7 +879,7 @@ function App(){
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
-  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
+  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
 
   const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
 
@@ -948,7 +982,7 @@ function App(){
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
-  const nameOf=(spaceId)=>spaceId==="me"?"わたし":(members.find(m=>m.id===spaceId)||{}).name||"";
+  const nameOf=(spaceId)=>spaceId==="me"?(meName||"わたし"):(members.find(m=>m.id===spaceId)||{}).name||"";
 
   useEffect(()=>{setFilter("all");setPersonSeg("today");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
@@ -982,7 +1016,7 @@ function App(){
       const ok=await photoStorage.set(`photo:${id}`,dataUrl);
       if(!ok){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
-      setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,serializeState({members,items:next,usage,meEmoji,meBirthday,meColor})).catch(()=>{});}catch(er){}return next;});
+      setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,serializeState({members,items:next,usage,meEmoji,meBirthday,meColor,meName,meAvatar})).catch(()=>{});}catch(er){}return next;});
       showFlash("証明書を保存しました 📷");
     }catch(err){showFlash("保存できませんでした。別の画像でお試しください");}
   };
@@ -1319,11 +1353,12 @@ function App(){
     const missing=[];const seen={};
     items.forEach(x=>photoIdsOf(x).forEach(pid=>{if(!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}}));
     members.forEach(m=>{if(m.avatar&&!photos[m.avatar]&&!seen[m.avatar]){seen[m.avatar]=1;missing.push(m.avatar);}});
+    if(meAvatar&&!photos[meAvatar]&&!seen[meAvatar]){seen[meAvatar]=1;missing.push(meAvatar);}
     if(missing.length===0)return;
     let cancelled=false;
     (async()=>{for(const pid of missing){try{const v=await photoStorage.get(`photo:${pid}`);if(!cancelled&&v)setPhotos(p=>({...p,[pid]:v}));}catch(e){}}})();
     return()=>{cancelled=true;};
-  },[items,members]);
+  },[items,members,meAvatar]);
   // 証明書（ワクチン等）：写真付きのケアを上部に出してすぐ見られるように
   const certs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="care"&&x.photo).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
@@ -1387,7 +1422,7 @@ function App(){
   },[items]);
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
-  const spaces=useMemo(()=>[{id:"me",name:"わたし",emoji:meEmoji,kind:"me"},...members],[members,meEmoji]);
+  const spaces=useMemo(()=>[{id:"me",name:meName||"わたし",emoji:meEmoji,avatar:meAvatar||"",kind:"me"},...members],[members,meEmoji,meName,meAvatar]);
   // フォルダ分け（多頭飼い）：未分類を先頭、その後グループ順
   const groupedMembers=useMemo(()=>{const order=[];const map={};members.forEach(m=>{const g=m.group||"";if(!(g in map)){map[g]=[];order.push(g);}map[g].push(m);});order.sort((a,b)=>a===""?-1:b===""?1:0);return order.map(g=>({group:g,members:map[g]}));},[members]);
   // スペース（自分/メンバー）の色（カレンダーの色別管理。自分で選べる）
@@ -1897,6 +1932,7 @@ function App(){
                 )}
               </section>
             )}
+            <button className="yl-cal-exportall" onClick={()=>setCalPicker({bulk:true})}>📅 予定をカレンダーアプリに出力（.ics）</button>
             <p className="yl-foot" style={{marginTop:8}}>日付をタップして、その日の暮らしを記録・ふりかえり</p>
           </div>
         ):tab==="album"?(
@@ -1924,7 +1960,7 @@ function App(){
           </div>
         ):(
           <>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>setMePicker(true)} title="絵文字を変更">{meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meUpcoming.length>0?`これからの楽しみが ${meUpcoming.length}件 🎉`:"楽しみな予定を入れてみませんか？ 🌱"}</p><p className="yl-melead-sub">{meUpcoming.length>0?`${meUpcoming[0].title}まで ${meUpcoming[0].daysUntil===0?"今日！":"あと"+meUpcoming[0].daysUntil+"日"}`:"下から誕生日やイベントを追加できます"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meUpcoming.length>0?`これからの楽しみが ${meUpcoming.length}件 🎉`:"楽しみな予定を入れてみませんか？ 🌱"}</p><p className="yl-melead-sub">{meUpcoming.length>0?`${meUpcoming[0].title}まで ${meUpcoming[0].daysUntil===0?"今日！":"あと"+meUpcoming[0].daysUntil+"日"}`:"下から誕生日やイベントを追加できます"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -1996,7 +2032,7 @@ function App(){
                   {certs.map(c=>{
                     const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
                     return(
-                      <button key={c.id} className="yl-cert-cell" onClick={()=>openLifeEdit(c)}>
+                      <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
                         {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
                         <span className="yl-cert-cap">{c.emoji} {label}</span>
                       </button>
@@ -2095,7 +2131,7 @@ function App(){
                             {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
                             {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
                             {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>}
-                            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(it.id);}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
+                            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
                           </div>
                         )}
                       </div>
@@ -2325,7 +2361,16 @@ function App(){
       {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label">🔔 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>閉じる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
       {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?"思い出":"証明書"}</h3>{viewer.loading?<p className="yl-loading">読み込み中…</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?"思い出":"証明書"}/>:<p className="yl-empty">画像が見つかりませんでした</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>この写真を削除しますか？元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>やめる</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>削除する</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>削除</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>閉じる</button></div>}</div></div>}
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
-      {mePicker&&<div className="yl-overlay" onClick={()=>setMePicker(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたの絵文字を選ぶ</h3><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);}}>{e}</button>)}</div><p className="yl-modal-body" style={{margin:"0 0 8px"}}>🎨 カレンダーの色</p><div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((meColor||"#FF4D8D")===col?" on":"")} style={{background:col}} onClick={()=>persistMeColor(col)} aria-label="色を選ぶ"/>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMePicker(false)}>閉じる</button></div></div></div>}
+      {mePicker&&<div className="yl-overlay" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたのアイコン・名前</h3>
+        <div className="yl-editavatar">
+          {meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{meEmoji}</span>}
+          <label className="yl-editavatar-btn">📷 写真にする<input type="file" accept="image/*" style={{display:"none"}} onChange={pickMeAvatar}/></label>
+          {meAvatar&&<button className="yl-editavatar-clear" onClick={clearMeAvatar}>絵文字に戻す</button>}
+        </div>
+        <label className="yl-opt" style={{width:"100%",marginBottom:12}}>名前（任意）<input className="yl-input sm" style={{marginTop:4}} value={meNameDraft} onChange={e=>setMeNameDraft(e.target.value)} placeholder="わたし"/></label>
+        {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ</p><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);}}>{e}</button>)}</div></>}
+        <p className="yl-modal-body" style={{margin:"4px 0 8px"}}>🎨 カレンダーの色</p><div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((meColor||"#FF4D8D")===col?" on":"")} style={{background:col}} onClick={()=>persistMeColor(col)} aria-label="色を選ぶ"/>)}</div>
+        <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
       {lifeDraft&&(
         <div className="yl-overlay" onClick={()=>setLifeDraft(null)}>
@@ -2534,13 +2579,15 @@ function App(){
           <div className="yl-overlay" onClick={()=>setCalPicker(null)}>
             <div className="yl-modal cal-picker" onClick={e=>e.stopPropagation()}>
               <h3 className="yl-modal-title">📅 カレンダーに追加</h3>
-              {it&&<p className="yl-cal-picker-sub">{it.emoji} {it.title}</p>}
-              <a className="yl-cal-choice-btn google" href={gcal||"#"} target="_blank" rel="noopener noreferrer" onClick={()=>setCalPicker(null)}>
-                <svg width="18" height="18" viewBox="0 0 48 48" style={{flexShrink:0}}><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
-                Googleカレンダー
-              </a>
+              {it?<p className="yl-cal-picker-sub">{it.emoji} {it.title}</p>:<p className="yl-cal-picker-sub">これからの予定をまとめて出力します</p>}
+              {it&&gcal&&(
+                <a className="yl-cal-choice-btn google" href={gcal} target="_blank" rel="noopener noreferrer" onClick={()=>setCalPicker(null)}>
+                  <svg width="18" height="18" viewBox="0 0 48 48" style={{flexShrink:0}}><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+                  Googleカレンダー
+                </a>
+              )}
               <button className="yl-cal-choice-btn apple" onClick={()=>{downloadIcal(icsContent,icsName);setCalPicker(null);}}>
-                🍎 Appleカレンダー（.ics）
+                🍎 {it?"Appleカレンダー（.ics）":"カレンダーアプリに出力（.ics）"}
               </button>
               <p className="yl-cal-note">
                 💡 iPhoneでAppleカレンダーに追加するには：<br/>
