@@ -481,6 +481,17 @@ function VisibilityToggle({value, onChange}) {
   );
 }
 
+// 大項目（セクション）並び替え用ラッパー。ドラッグは見出しのハンドル(⠿)のみ。
+function SortableSection({id,children}){
+  const {attributes,listeners,setNodeRef,transform,transition,isDragging}=useSortable({id});
+  const style={transform:CSS.Transform.toString(transform),transition,position:"relative",...(isDragging?{opacity:.7,zIndex:30,boxShadow:"0 12px 28px rgba(120,80,160,.28)",borderRadius:18}:{})};
+  return(
+    <div ref={setNodeRef} style={style} className="yl-sec-wrap">
+      <button className="yl-sec-handle" {...attributes} {...listeners} aria-label="セクションを並び替え" title="ドラッグで並び替え">⠿</button>
+      {children}
+    </div>
+  );
+}
 // 並び替え用カード（長押し/ドラッグでD&D）。ドラッグ中は拡大・影・半透明。
 function SortableCard({id,className,children}){
   const {attributes,listeners,setNodeRef,transform,transition,isDragging}=useSortable({id});
@@ -582,6 +593,8 @@ function App(){
   const[recOpen,setRecOpen]=useState(false);
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("today");
+  // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
+  const[secOrder,setSecOrder]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&s.today&&s.record&&s.info)return s;}catch(e){}return{today:["meup","routine","list","prep"],record:["certs","supply","health","diary","expense","album"],info:["belong","cards"]};});
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -1402,6 +1415,20 @@ function App(){
     persist(members,next);
     arr.forEach(id=>{const u=next.find(y=>y.id===id);if(u)saveItemToFs(u).catch(()=>{});});
   };
+  // 大項目セクションの並び替え（タブ単位）。順序は localStorage に保存。
+  const reorderSec=(seg,e)=>{const{active,over}=e;if(!over||active.id===over.id)return;setSecOrder(prev=>{const cur=prev[seg]||[];const oi=cur.indexOf(active.id),ni=cur.indexOf(over.id);if(oi<0||ni<0)return prev;const next={...prev,[seg]:arrayMove(cur,oi,ni)};try{localStorage.setItem("loalife-secorder",JSON.stringify(next));}catch(_){}return next;});};
+  const renderSecs=(seg,defs)=>{
+    const order=secOrder[seg]||[];
+    const od=[...defs].sort((a,b)=>{const ia=order.indexOf(a.key),ib=order.indexOf(b.key);return(ia<0?99:ia)-(ib<0?99:ib);});
+    if(od.length===0)return null;
+    return(
+      <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e)=>reorderSec(seg,e)}>
+        <SortableContext items={od.map(d=>d.key)} strategy={verticalListSortingStrategy}>
+          {od.map(d=><SortableSection key={d.key} id={d.key}>{d.el}</SortableSection>)}
+        </SortableContext>
+      </DndContext>
+    );
+  };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
@@ -2035,292 +2062,281 @@ function App(){
               ))}
             </div>
 
-            {/* 🎉 もうすぐ・楽しみ（自分タブ）：友達の誕生日・記念日・イベントを見える化 */}
-            {!isMemberTab&&personSeg==="today"&&(
-              <section className="yl-meup">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>🎉 もうすぐ・楽しみ</h2>
-                {meUpcoming.length>0?(
-                  <ul className="yl-meup-list">
-                    {meUpcoming.map(u=>(
-                      <li key={u.id} className="yl-meup-item">
-                        <span className="yl-meup-emoji">{u.emoji}</span>
-                        <span className="yl-meup-text">{u.title}</span>
-                        <span className={"yl-meup-tag"+(u.daysUntil===0?" today":"")}>{u.daysUntil===0?(u.kind==="bday"?"今日 🎂":"今日"):u.daysUntil===1?"明日":`あと${u.daysUntil}日`}</span>
-                        {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>askDelete(u.title,()=>remove(u.id))} aria-label="削除">×</button>}
-                      </li>
-                    ))}
-                  </ul>
-                ):(
-                  <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>右下の＋から、誕生日やイベントを登録できます。</p>
-                )}
-              </section>
-            )}
-
-            {/* 📄 証明書：ワクチン等の写真を一番上ですぐ見られるように */}
-            {isMemberTab&&personSeg==="record"&&certs.length>0&&(
-              <section className="yl-certs">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
-                <div className="yl-certs-row">
-                  {certs.map(c=>{
-                    const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
-                    return(
-                      <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
-                        {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
-                        <span className="yl-cert-cap">{c.emoji} {label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* 1日のタイムライン（ルーティン）わたし＋各メンバー */}
-            {isPersonalTab&&personSeg==="today"&&(
-              <section className="yl-routine">
-                <div className="yl-routine-head">
-                  <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
-                  {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
-                </div>
-                {routines.length===0?(
-                  <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のボタンから追加できます"}</p>
-                ):(
-                  <ul className="yl-timeline">
-                    {routines.map(r=>{
-                      const done=r.doneDate===todayIso;
-                      return(
-                        <li key={r.id} className={"yl-tl-item"+(done?" done":"")}>
-                          <span className="yl-tl-time">{r.time||"--:--"}</span>
-                          <span className="yl-tl-dot"/>
-                          <button className="yl-tl-body" onClick={()=>openRoutineEdit(r)}>
-                            <span className="yl-tl-emoji">{r.emoji}</span>
-                            <span className="yl-tl-text">{r.title}</span>
-                            {r.reminders&&r.reminders.length>0&&<span className="yl-tl-bell">🔔</span>}
-                          </button>
-                          <label className="yl-tl-photo" title="写真で思い出に残す" onClick={e=>e.stopPropagation()}>📷<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addMemory(e,{space:r.space,title:r.title,emoji:r.emoji})}/></label>
-                          <button className={"yl-check"+(done?" on":"")} onClick={()=>toggleRoutine(r.id)} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+            {personSeg==="today"&&(()=>{const defs=[];
+              if(!isMemberTab)defs.push({key:"meup",el:(
+                <section className="yl-meup">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🎉 もうすぐ・楽しみ</h2>
+                  {meUpcoming.length>0?(
+                    <ul className="yl-meup-list">
+                      {meUpcoming.map(u=>(
+                        <li key={u.id} className="yl-meup-item">
+                          <span className="yl-meup-emoji">{u.emoji}</span>
+                          <span className="yl-meup-text">{u.title}</span>
+                          <span className={"yl-meup-tag"+(u.daysUntil===0?" today":"")}>{u.daysUntil===0?(u.kind==="bday"?"今日 🎂":"今日"):u.daysUntil===1?"明日":`あと${u.daysUntil}日`}</span>
+                          {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>askDelete(u.title,()=>remove(u.id))} aria-label="削除">×</button>}
                         </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {/* 消耗品ストック（わたし＋各メンバー）買った日だけ入れれば残量を自動表示 */}
-            {isPersonalTab&&personSeg==="record"&&(
-              <section className="yl-supply">
-                <div className="yl-routine-head">
-                  <h2 className="yl-routine-title">📦 ストック</h2>
-                  {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
-                </div>
-                {supplies.length===0?(
-                  <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残りを自動でお知らせします"}</p>
-                ):(
-                  <ul className="yl-supply-list">
-                    {supplies.map(s=>{
-                      const st=supplyStatus(s)||{tone:"ok",left:0};
-                      return(
-                        <li key={s.id} className={"yl-supply-item "+st.tone}>
-                          <button className="yl-supply-main" onClick={()=>openSupplyEdit(s)}>
-                            <span className="yl-supply-emoji">{s.emoji}</span>
-                            <span className="yl-supply-info">
-                              <span className="yl-supply-name">{s.title}</span>
-                              <span className={"yl-supply-line "+st.tone}>{supplyLine(s)}</span>
-                            </span>
-                          </button>
-                          <button className="yl-supply-bought" onClick={()=>markBought(s.id)}>買った</button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {personSeg==="today"&&(<>
-
-            <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
-
-            {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(()=>{
-              const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
-              return(
-                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
-                  <SortableContext items={actList.map(x=>x.id)} strategy={verticalListSortingStrategy}>
-                    <ul className="yl-list">
-                      {actList.map(it=><SortableCard key={it.id} id={it.id} className="yl-card">{cardInner(it)}</SortableCard>)}
-                      {doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}
+                      ))}
                     </ul>
-                  </SortableContext>
-                </DndContext>
-              );
-            })()}
-            {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>長押しでドラッグして並び替えできます</p>}
-            </>)}
-
-            {/* 📈 からだの記録（記録タブ＝閲覧）。入力は＋ハブから */}
-            {isPersonalTab&&personSeg==="record"&&(
-              <section className="yl-health">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
-                {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?`目標まで あと −${Math.abs(weightDiff).toFixed(1)}${weightUnit}（食べすぎ・運動量に気をつけて）`:`目標まで あと +${Math.abs(weightDiff).toFixed(1)}${weightUnit}`}</p>)}
-                {weightPts.length>0?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>:<p className="yl-routine-empty">右下の＋から体重などを記録できます。</p>}
-                {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
-                {healthRecords.length>0&&(
-                  <ul className="yl-health-list">
-                    {[...healthRecords].reverse().slice(0,6).map(r=>(
-                      <li key={r.id} className="yl-health-item">
-                        <span className="yl-health-date">{fmtDate(r.date)}</span>
-                        <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
-                        <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {/* 📝 今日のようす（記録タブ＝閲覧）。入力は＋ハブから */}
-            {isPersonalTab&&personSeg==="record"&&(
-              <section className="yl-diary">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
-                {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#16A34A" label="元気の推移（5段階）"/>}
-                {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
-                {diaryRecords.length>0&&(
-                  <ul className="yl-diary-list">
-                    {diaryRecords.slice(0,8).map(r=>(
-                      <li key={r.id} className="yl-diary-item">
-                        <span className="yl-diary-date">{fmtDate(r.date)}</span>
-                        <span className="yl-diary-vals">
-                          {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span title="元気">{diaryMeta(DIARY_ENERGY,r.energy).emoji}</span>}
-                          {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span title="食欲">{diaryMeta(DIARY_APPETITE,r.appetite).emoji}</span>}
-                          {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span title="うんち">{diaryMeta(DIARY_POOP,r.poop).emoji}{diaryMeta(DIARY_POOP,r.poop).label}</span>}
-                          {r.walk&&<span>🦮</span>}
-                          {r.hospital&&<span>🏥</span>}
-                          {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className="yl-diary-sym">{symptomMeta(sk).emoji}{symptomMeta(sk).label}</span>)}
-                          {r.note&&<span className="yl-diary-note">{r.note}</span>}
-                          {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false})}/>}
-                        </span>
-                        <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}のようす`,()=>removeDiary(r.id))} aria-label="削除">×</button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-
-            {/* 💰 支出（記録タブ＝閲覧）。入力は＋ハブから。日付変更は明細タップの編集で */}
-            {isPersonalTab&&personSeg==="record"&&(
-              <section className="yl-exp">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
-                {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の＋から、病院代・ごはん代などを記録できます。</p>}
-                {expenseMonth.total>0&&(
-                  <div className="yl-exp-viz">
-                    <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
-                    <ul className="yl-exp-bars">
-                      {expenseMonth.cats.map(c=>(
-                        <li key={c.key} className="yl-exp-bar">
-                          <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
-                          <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
-                          <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
+                  ):(
+                    <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>右下の＋から、誕生日やイベントを登録できます。</p>
+                  )}
+                </section>
+              )});
+              defs.push({key:"routine",el:(
+                <section className="yl-routine">
+                  <div className="yl-routine-head">
+                    <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
+                    {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
+                  </div>
+                  {routines.length===0?(
+                    <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のボタンから追加できます"}</p>
+                  ):(
+                    <ul className="yl-timeline">
+                      {routines.map(r=>{
+                        const done=r.doneDate===todayIso;
+                        return(
+                          <li key={r.id} className={"yl-tl-item"+(done?" done":"")}>
+                            <span className="yl-tl-time">{r.time||"--:--"}</span>
+                            <span className="yl-tl-dot"/>
+                            <button className="yl-tl-body" onClick={()=>openRoutineEdit(r)}>
+                              <span className="yl-tl-emoji">{r.emoji}</span>
+                              <span className="yl-tl-text">{r.title}</span>
+                              {r.reminders&&r.reminders.length>0&&<span className="yl-tl-bell">🔔</span>}
+                            </button>
+                            <label className="yl-tl-photo" title="写真で思い出に残す" onClick={e=>e.stopPropagation()}>📷<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addMemory(e,{space:r.space,title:r.title,emoji:r.emoji})}/></label>
+                            <button className={"yl-check"+(done?" on":"")} onClick={()=>toggleRoutine(r.id)} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              )});
+              defs.push({key:"list",el:(
+                <section className="yl-listsec">
+                  <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
+                  {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(()=>{
+                    const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
+                    return(
+                      <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
+                        <SortableContext items={actList.map(x=>x.id)} strategy={verticalListSortingStrategy}>
+                          <ul className="yl-list">
+                            {actList.map(it=><SortableCard key={it.id} id={it.id} className="yl-card">{cardInner(it)}</SortableCard>)}
+                            {doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}
+                          </ul>
+                        </SortableContext>
+                      </DndContext>
+                    );
+                  })()}
+                  {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>長押しでドラッグして並び替えできます</p>}
+                </section>
+              )});
+              if(curKind==="person"&&tomorrowBelongings.length>0)defs.push({key:"prep",el:(
+                <section className="yl-belong">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
+                  <div className="yl-prep">
+                    <ul className="yl-prep-list">
+                      {tomorrowBelongings.map(b=>(
+                        <li key={b.id} className={"yl-prep-item"+(b.prepDate===tomorrowIso?" done":"")} onClick={()=>toggleBelongPrep(b.id)}>
+                          <span className={"yl-prep-check"+(b.prepDate===tomorrowIso?" on":"")}>{b.prepDate===tomorrowIso?"✓":""}</span>
+                          <span className="yl-prep-text">{b.title}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )}
-                {expenseRecords.length>0&&(
-                  <ul className="yl-exp-list">
-                    {expenseRecords.slice(0,8).map(r=>(
-                      <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
-                        <span className="yl-exp-idate">{fmtDate(r.date)}</span>
-                        <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
-                        {r.note&&<span className="yl-exp-inote">{r.note}</span>}
-                        <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
-                        <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
+                </section>
+              )});
+              return renderSecs("today",defs);
+            })()}
 
-            {/* 📋 明日の準備（今日タブ・抽出ビュー）：学校など人（家族）向け。わたし・ペットには出さない */}
-            {isPersonalTab&&curKind==="person"&&personSeg==="today"&&tomorrowBelongings.length>0&&(
-              <section className="yl-belong">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
-                <div className="yl-prep">
-                  <ul className="yl-prep-list">
-                    {tomorrowBelongings.map(b=>(
-                      <li key={b.id} className={"yl-prep-item"+(b.prepDate===tomorrowIso?" done":"")} onClick={()=>toggleBelongPrep(b.id)}>
-                        <span className={"yl-prep-check"+(b.prepDate===tomorrowIso?" on":"")}>{b.prepDate===tomorrowIso?"✓":""}</span>
-                        <span className="yl-prep-text">{b.title}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-            )}
-
-            {/* 🎒 持ち物（曜日ごと・情報タブ＝データ本体）：学校など人（家族）向け。わたし・ペットには出さない */}
-            {isPersonalTab&&curKind==="person"&&personSeg==="info"&&(
-              <section className="yl-belong">
-                <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
-                {belongings.length>0&&(
-                  <div className="yl-belong-week">
-                    {WEEKDAYS_JA.map((w,i)=>{const list=belongings.filter(b=>b.dow===i);if(!list.length)return null;return(
-                      <div key={i} className="yl-belong-day">
-                        <span className={"yl-belong-dow"+(i===0?" sun":i===6?" sat":"")}>{w}</span>
-                        <span className="yl-belong-items">{list.map(b=><span key={b.id} className="yl-belong-chip">{b.title}<button className="yl-belong-del" onClick={()=>removeBelonging(b.id)} aria-label="削除">×</button></span>)}</span>
-                      </div>
-                    );})}
+            {personSeg==="record"&&(()=>{const defs=[];
+              if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
+                <section className="yl-certs">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
+                  <div className="yl-certs-row">
+                    {certs.map(c=>{
+                      const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
+                      return(
+                        <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
+                          {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
+                          <span className="yl-cert-cap">{c.emoji} {label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-                {belongings.length===0&&<p className="yl-routine-empty">右下の＋から曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出ます。</p>}
-              </section>
-            )}
-
-            {/* 📌 大切な情報（情報タブ）：緊急連絡先・アレルギー/禁忌・病院メモ */}
-            {isPersonalTab&&personSeg==="info"&&(
-              <section className="yl-tray">
-                <button className="yl-tray-head" onClick={()=>setTrayOpen(o=>!o)}>
-                  <span className="yl-tray-title">📌 大切な情報{cards.length>0?`（${cards.length}）`:""}</span>
-                  <span className="yl-tray-arrow">{trayOpen?"▲":"▼"}</span>
-                </button>
-                {trayOpen&&(
-                  <div className="yl-tray-body">
-                    <p className="yl-tray-hint">緊急連絡先・アレルギー・かかりつけ病院など、いざという時の情報をカードで保存。写真も貼れます。</p>
-                    {cards.map(c=>(
-                      <button key={c.id} className="yl-infocard" onClick={()=>openCardEdit(c)}>
-                        <span className="yl-infocard-emoji">{cardMeta(c.kind).emoji}</span>
-                        <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}</span>
-                        {firstPhotoId(c)&&photos[firstPhotoId(c)]&&<img className="yl-infocard-thumb" src={photos[firstPhotoId(c)]} alt=""/>}
-                      </button>
-                    ))}
-                    <div className="yl-tray-add">{CARD_PRESETS.map(p=><button key={p.key} className="yl-tray-addbtn" onClick={()=>openCardNew(p.key)}>{p.emoji} {p.label}</button>)}</div>
+                </section>
+              )});
+              defs.push({key:"supply",el:(
+                <section className="yl-supply">
+                  <div className="yl-routine-head">
+                    <h2 className="yl-routine-title">📦 ストック</h2>
+                    {supplies.length>0&&<span className="yl-supply-hint">買った時だけタップ</span>}
                   </div>
-                )}
-              </section>
-            )}
-
-            {/* 📸 思い出：記録を思い出に変える。書かせず、写真1枚で残す（わたし＋家族＋ペット） */}
-            {isPersonalTab&&personSeg==="record"&&(
-              <section className="yl-album">
-                <div className="yl-routine-head">
-                  <h2 className="yl-routine-title">📸 思い出</h2>
-                  <button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>
-                </div>
-                {memories.length===0?(
-                  <p className="yl-routine-empty">{curKind==="pet"?"散歩などの📷ボタンや「＋追加」で、写真の思い出を残せます":"写真とひとことで、大切な思い出を残せます。"}</p>
-                ):(
-                  <div className="yl-album-grid">
-                    {memories.map(mem=>(
-                      <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
-                        {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
-                        <span className="yl-album-cap">{fmtDate(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
-                      </button>
-                    ))}
+                  {supplies.length===0?(
+                    <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残りを自動でお知らせします"}</p>
+                  ):(
+                    <ul className="yl-supply-list">
+                      {supplies.map(s=>{
+                        const st=supplyStatus(s)||{tone:"ok",left:0};
+                        return(
+                          <li key={s.id} className={"yl-supply-item "+st.tone}>
+                            <button className="yl-supply-main" onClick={()=>openSupplyEdit(s)}>
+                              <span className="yl-supply-emoji">{s.emoji}</span>
+                              <span className="yl-supply-info">
+                                <span className="yl-supply-name">{s.title}</span>
+                                <span className={"yl-supply-line "+st.tone}>{supplyLine(s)}</span>
+                              </span>
+                            </button>
+                            <button className="yl-supply-bought" onClick={()=>markBought(s.id)}>買った</button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+              )});
+              defs.push({key:"health",el:(
+                <section className="yl-health">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
+                  {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?`目標まで あと −${Math.abs(weightDiff).toFixed(1)}${weightUnit}（食べすぎ・運動量に気をつけて）`:`目標まで あと +${Math.abs(weightDiff).toFixed(1)}${weightUnit}`}</p>)}
+                  {weightPts.length>0?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>:<p className="yl-routine-empty">右下の＋から体重などを記録できます。</p>}
+                  {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
+                  {healthRecords.length>0&&(
+                    <ul className="yl-health-list">
+                      {[...healthRecords].reverse().slice(0,6).map(r=>(
+                        <li key={r.id} className="yl-health-item">
+                          <span className="yl-health-date">{fmtDate(r.date)}</span>
+                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )});
+              defs.push({key:"diary",el:(
+                <section className="yl-diary">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
+                  {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#16A34A" label="元気の推移（5段階）"/>}
+                  {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
+                  {diaryRecords.length>0&&(
+                    <ul className="yl-diary-list">
+                      {diaryRecords.slice(0,8).map(r=>(
+                        <li key={r.id} className="yl-diary-item">
+                          <span className="yl-diary-date">{fmtDate(r.date)}</span>
+                          <span className="yl-diary-vals">
+                            {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span title="元気">{diaryMeta(DIARY_ENERGY,r.energy).emoji}</span>}
+                            {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span title="食欲">{diaryMeta(DIARY_APPETITE,r.appetite).emoji}</span>}
+                            {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span title="うんち">{diaryMeta(DIARY_POOP,r.poop).emoji}{diaryMeta(DIARY_POOP,r.poop).label}</span>}
+                            {r.walk&&<span>🦮</span>}
+                            {r.hospital&&<span>🏥</span>}
+                            {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className="yl-diary-sym">{symptomMeta(sk).emoji}{symptomMeta(sk).label}</span>)}
+                            {r.note&&<span className="yl-diary-note">{r.note}</span>}
+                            {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false})}/>}
+                          </span>
+                          <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}のようす`,()=>removeDiary(r.id))} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )});
+              defs.push({key:"expense",el:(
+                <section className="yl-exp">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
+                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の＋から、病院代・ごはん代などを記録できます。</p>}
+                  {expenseMonth.total>0&&(
+                    <div className="yl-exp-viz">
+                      <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
+                      <ul className="yl-exp-bars">
+                        {expenseMonth.cats.map(c=>(
+                          <li key={c.key} className="yl-exp-bar">
+                            <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
+                            <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
+                            <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {expenseRecords.length>0&&(
+                    <ul className="yl-exp-list">
+                      {expenseRecords.slice(0,8).map(r=>(
+                        <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
+                          <span className="yl-exp-idate">{fmtDate(r.date)}</span>
+                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
+                          {r.note&&<span className="yl-exp-inote">{r.note}</span>}
+                          <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
+                          <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )});
+              defs.push({key:"album",el:(
+                <section className="yl-album">
+                  <div className="yl-routine-head">
+                    <h2 className="yl-routine-title">📸 思い出</h2>
+                    <button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>
                   </div>
-                )}
-              </section>
-            )}
+                  {memories.length===0?(
+                    <p className="yl-routine-empty">{curKind==="pet"?"散歩などの📷ボタンや「＋追加」で、写真の思い出を残せます":"写真とひとことで、大切な思い出を残せます。"}</p>
+                  ):(
+                    <div className="yl-album-grid">
+                      {memories.map(mem=>(
+                        <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
+                          {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
+                          <span className="yl-album-cap">{fmtDate(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )});
+              return renderSecs("record",defs);
+            })()}
+
+            {personSeg==="info"&&(()=>{const defs=[];
+              if(curKind==="person")defs.push({key:"belong",el:(
+                <section className="yl-belong">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
+                  {belongings.length>0&&(
+                    <div className="yl-belong-week">
+                      {WEEKDAYS_JA.map((w,i)=>{const list=belongings.filter(b=>b.dow===i);if(!list.length)return null;return(
+                        <div key={i} className="yl-belong-day">
+                          <span className={"yl-belong-dow"+(i===0?" sun":i===6?" sat":"")}>{w}</span>
+                          <span className="yl-belong-items">{list.map(b=><span key={b.id} className="yl-belong-chip">{b.title}<button className="yl-belong-del" onClick={()=>removeBelonging(b.id)} aria-label="削除">×</button></span>)}</span>
+                        </div>
+                      );})}
+                    </div>
+                  )}
+                  {belongings.length===0&&<p className="yl-routine-empty">右下の＋から曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出ます。</p>}
+                </section>
+              )});
+              defs.push({key:"cards",el:(
+                <section className="yl-tray">
+                  <button className="yl-tray-head" onClick={()=>setTrayOpen(o=>!o)}>
+                    <span className="yl-tray-title">📌 大切な情報{cards.length>0?`（${cards.length}）`:""}</span>
+                    <span className="yl-tray-arrow">{trayOpen?"▲":"▼"}</span>
+                  </button>
+                  {trayOpen&&(
+                    <div className="yl-tray-body">
+                      <p className="yl-tray-hint">緊急連絡先・アレルギー・かかりつけ病院など、いざという時の情報をカードで保存。写真も貼れます。</p>
+                      {cards.map(c=>(
+                        <button key={c.id} className="yl-infocard" onClick={()=>openCardEdit(c)}>
+                          <span className="yl-infocard-emoji">{cardMeta(c.kind).emoji}</span>
+                          <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}</span>
+                          {firstPhotoId(c)&&photos[firstPhotoId(c)]&&<img className="yl-infocard-thumb" src={photos[firstPhotoId(c)]} alt=""/>}
+                        </button>
+                      ))}
+                      <div className="yl-tray-add">{CARD_PRESETS.map(p=><button key={p.key} className="yl-tray-addbtn" onClick={()=>openCardNew(p.key)}>{p.emoji} {p.label}</button>)}</div>
+                    </div>
+                  )}
+                </section>
+              )});
+              return renderSecs("info",defs);
+            })()}
           </>
         )}
         <div className="yl-help-foot"><button className="yl-help-btn" onClick={()=>setHelpOpen(true)}>📖 つかい方・機能紹介</button></div>
@@ -2345,7 +2361,7 @@ function App(){
               {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップして記録・ふりかえり。"},
               {emoji:"📸",title:"思い出",desc:"カレンダーに残した写真や日記が、アルバムとして並びます。うちの子記念日や「できた！」の瞬間を写真で残せます。"},
               {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・フィラリア・トリミング・通院・投薬などを登録。周期のあるケアは、記録すると次回へ自動でスライドします。"},
-              {emoji:"↕️",title:"並び替え",desc:"項目の▲▼ボタンで、大切な順に並び替えられます。優先順位は人それぞれ。"},
+              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目は長押しでドラッグして並び替え。大項目（もうすぐ・楽しみ／タイムライン／からだの記録など）も右上の⠿ハンドルをドラッグして好きな順に並べ替えられます。"},
               {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・身長・体調をグラフで管理。小動物は0.1g単位。目標体重を決めると差分の目安も表示します。"},
               {emoji:"📝",title:"今日のようす（お薬手帳・体調メモ）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを記録。お薬手帳や通院前のメモに。"},
               {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出て忘れ物を防ぎます。"},
