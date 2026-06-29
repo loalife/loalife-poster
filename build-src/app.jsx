@@ -377,8 +377,8 @@ function gcalLink(item, memberName, memberEmoji) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}`;
 }
 
-function generateIcal(items, members, meEmoji) {
-  const nameOf=(sid)=>sid==="me"?"わたし":(members.find(m=>m.id===sid)?.name||"");
+function generateIcal(items, members, meEmoji, meName) {
+  const nameOf=(sid)=>sid==="me"?(meName||"わたし"):(members.find(m=>m.id===sid)?.name||"");
   const emojiOf=(sid)=>sid==="me"?meEmoji:(members.find(m=>m.id===sid)?.emoji||"");
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}T${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}00Z`;
@@ -413,29 +413,18 @@ function generateIcal(items, members, meEmoji) {
 }
 
 function downloadIcal(content, filename="loalife-calendar.ics"){
-  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
-  if(isIOS){
-    // iOS: フォームをPOSTで/api/icalに送り、サーバーがtext/calendarで返す
-    // → iOSがHTTPヘッダーを見てAppleカレンダーに渡す
-    const form=document.createElement("form");
-    form.method="POST";
-    form.action="/api/ical";
-    form.target="_blank"; // 新しいSafariタブで開く → iOSがカレンダーと認識
-    const input=document.createElement("input");
-    input.type="hidden";input.name="content";
-    input.value=encodeURIComponent(content);
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-  }else{
-    // PC/Android: 通常のblob URLダウンロード
+  // Blob ダウンロードに統一。以前の iOS 用 form POST(target=_blank) は
+  // PWAスタンドアロンで空白タブ（白い画面）になり進めなくなるため廃止。
+  try{
     const blob=new Blob([content],{type:"text/calendar;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    a.href=url;a.download=filename;
+    a.href=url;a.download=filename;a.rel="noopener";
     document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }catch(e){
+    // 最終フォールバック：同一タブでデータURLを開く（白い別タブは作らない）
+    try{window.location.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(content);}catch(_){}
   }
 }
 
@@ -1709,7 +1698,7 @@ function App(){
         {/* 下段＝対象（人/ペット）。メンバーを見ているときだけ表示 */}
         {isPersonMode&&(
           <nav className="yl-people">
-            <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meEmoji} わたし</button>
+            <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meAvatar&&photos[meAvatar]?<img className="yl-avatar xs" src={photos[meAvatar]} alt=""/>:meEmoji} {meName||"わたし"}</button>
             {groupedMembers.map(g=>(
               <span key={g.group||"_"} className="yl-people-grp">
                 {g.group&&<span className="yl-people-grp-label">🗂 {g.group}</span>}
@@ -2573,7 +2562,7 @@ function App(){
         const memberName=it?nameOf(it.space):"";
         const memberEmoji=it?(it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||"")):"";
         const gcal=it?gcalLink(it,memberName,memberEmoji):null;
-        const icsContent=it?generateIcal([it],members,meEmoji):generateIcal(items,members,meEmoji);
+        const icsContent=it?generateIcal([it],members,meEmoji,meName):generateIcal(items,members,meEmoji,meName);
         const icsName=it?`${it.title}.ics`:"loalife-calendar.ics";
         return(
           <div className="yl-overlay" onClick={()=>setCalPicker(null)}>
