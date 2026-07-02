@@ -2217,11 +2217,7 @@ function App(){
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
                   <div className="yl-routine-head">
-<<<<<<< HEAD
                     <h2 className="yl-routine-title">🔁 今日のルーティン</h2>
-=======
-                    <h2 className="yl-routine-title">🔁 今日のルーティン<span className="yl-chore-hint">毎日くりかえす習慣を時間順に</span></h2>
->>>>>>> origin/main
                     {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                   </div>
                   {routines.length===0?(
