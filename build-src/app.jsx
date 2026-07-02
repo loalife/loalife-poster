@@ -1375,6 +1375,16 @@ function App(){
     showFlash("今日のようすを記録しました 📝");
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- ワンタップ記録：迷わず「今日も元気👌」の1タップで当日の体調記録を完了 ---
+  // 一度入れたら二度と入れさせない：当日すでに体調（diaryのenergy / healthのcondition）があれば重複させない。
+  const todayHasCond=(sp)=>items.some(x=>x.space===sp&&x.date===todayIso&&((x.type==="diary"&&x.energy)||(x.type==="health"&&x.condition)));
+  const quickHealthy=(spaceId)=>{
+    const sp=spaceId||tab;
+    if(todayHasCond(sp)){showFlash("今日はもう記録ずみです 👌");return;}
+    const rec={id:"dy"+Date.now(),space:sp,type:"diary",date:todayIso,energy:"genki",createdAt:Date.now()};
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    showFlash("今日も元気、記録しました 👌");
+  };
   // --- 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモ）。写真も保存可 ---
   const cards=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="card").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const openCardNew=(kind)=>{const m=cardMeta(kind);setCardEdit({space:tab,kind,title:m.label,body:"",photo:null,photoId:null});};
@@ -1938,6 +1948,21 @@ function App(){
                   </ul>
                 </section>
               )}
+              {/* ワンタップ記録：今日まだ体調記録が無いメンバーを、押すだけで完了できる導線 */}
+              {(()=>{const need=spaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
+                <section className="yl-quickcond">
+                  <p className="yl-quickcond-label">📝 今日の記録、まだ？</p>
+                  <ul className="yl-quickcond-list">
+                    {need.map(s=>(
+                      <li key={s.id} className="yl-quickcond-item">
+                        <span className="yl-quickcond-emoji">{avatarNode(s,"sm")}</span>
+                        <span className="yl-quickcond-name">{s.name}</span>
+                        <button className="yl-quickcond-btn" onClick={()=>quickHealthy(s.id)}>👌 今日も元気</button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );})()}
             </div>
             );})()}
 
@@ -2349,6 +2374,11 @@ function App(){
               defs.push({key:"diary",el:(
                 <section className="yl-diary">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
+                  {todayHasCond(tab)?(
+                    <p className="yl-quick-done">✓ 今日の体調は記録ずみ 👌</p>
+                  ):(
+                    <button className="yl-quick-big" onClick={()=>quickHealthy(tab)}>👌 今日も元気（ワンタップ記録）</button>
+                  )}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#16A34A" label="元気の推移（5段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
                   {diaryRecords.length>0&&(
@@ -2630,6 +2660,8 @@ function App(){
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">📝 今日のようす</h3>
+            {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}>👌 今日も元気（ワンタップで完了）</button>}
+            <p className="yl-diary-hint">くわしく残したいときだけ、下から選べます（すべて任意）。</p>
             <div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
             <div className="yl-diary-row"><span className="yl-diary-label">食欲</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
             <div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
