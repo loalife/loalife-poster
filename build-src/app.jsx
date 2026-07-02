@@ -459,25 +459,30 @@ function TimeInput({value,onChange}){
 // 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
 function MiniChart({points,unit,color,label}){
   if(!points||points.length===0)return null;
-  const W=300,H=120,padX=10,padTop=22,padBot=22;
+  // 描画エリアを分離：左＝Y軸ラベルの余白、下＝X軸ラベルの余白。折れ線はその内側だけに描く。
+  const W=300,H=120,padL=40,padR=14,padTop=14,padBot=22;
+  const plotB=H-padBot; // プロット領域の下端（X軸ラベルはこれより下に描く）
   const vals=points.map(p=>p.value);
   let min=Math.min(...vals),max=Math.max(...vals);
   if(min===max){min=min-1;max=max+1;}
   const n=points.length;
-  const xAt=(i)=>n===1?W/2:padX+(i*(W-2*padX))/(n-1);
-  const yAt=(v)=>padTop+(1-(v-min)/(max-min))*(H-padTop-padBot);
-  const line=points.map((p,i)=>`${i===0?"M":"L"}${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ");
+  const xAt=(i)=>n===1?(padL+(W-padR))/2:padL+(i*(W-padL-padR))/(n-1);
+  const yAt=(v)=>padTop+(1-(v-min)/(max-min))*(plotB-padTop);
   const latest=points[n-1],first=points[0];
   return(
     <div className="yl-chart-wrap">
       <div className="yl-chart-head"><span className="yl-chart-label">{label}</span><span className="yl-chart-latest" style={{color}}>{latest.value}{unit}</span></div>
-      <svg className="yl-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <polyline points={points.map((p,i)=>`${xAt(i)},${yAt(p.value)}`).join(" ")} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
-        {points.map((p,i)=><circle key={i} cx={xAt(i)} cy={yAt(p.value)} r="3" fill={color}/>)}
-        <text x={padX} y="12" className="yl-chart-ax">{max}</text>
-        <text x={padX} y={H-6} className="yl-chart-ax">{min}{unit}</text>
-        <text x={W-padX} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(latest.date)}</text>
-        {n>1&&<text x={padX+18} y={H-6} className="yl-chart-ax">{fmtDate(first.date)}</text>}
+      <svg className="yl-chart" viewBox={`0 0 ${W} ${H}`}>
+        {/* プロット領域の枠（下端の基準線） */}
+        <line x1={padL} y1={plotB} x2={W-padR} y2={plotB} stroke="#EFE7F3" strokeWidth="1"/>
+        <polyline points={points.map((p,i)=>`${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ")} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+        {points.map((p,i)=><circle key={i} cx={xAt(i).toFixed(1)} cy={yAt(p.value).toFixed(1)} r="3" fill={color}/>)}
+        {/* Y軸：左の余白に上＝max・下＝min（右寄せ） */}
+        <text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{max}{unit}</text>
+        <text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{min}{unit}</text>
+        {/* X軸：下の余白に起点（左寄せ）と最新（右寄せ） */}
+        {n>1&&<text x={padL} y={H-6} textAnchor="start" className="yl-chart-ax">{fmtDate(first.date)}</text>}
+        <text x={W-padR} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(latest.date)}</text>
       </svg>
     </div>
   );
