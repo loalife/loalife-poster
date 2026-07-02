@@ -567,6 +567,7 @@ function App(){
   const[confirmReset,setConfirmReset]=useState(false);
   const[confirmRestore,setConfirmRestore]=useState(false);
   const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
+  const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -1469,6 +1470,8 @@ function App(){
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
+  // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
+  const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash("同じ項目があります");setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash("追加しました ✓");};
   const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
@@ -2269,6 +2272,10 @@ function App(){
                   )}
                   <div className="yl-chore-tpl">
                     {choreTemplatesFor(curKind).filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ {t.emoji} {t.title}</button>)}
+                  </div>
+                  <div className="yl-chore-custom">
+                    <input className="yl-input sm" value={choreDraft} onChange={e=>setChoreDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomChore()} placeholder="自分で追加（例：水そうじ）"/>
+                    <button className="yl-addbtn sm" onClick={addCustomChore}>＋ 追加</button>
                   </div>
                 </section>
               )});
