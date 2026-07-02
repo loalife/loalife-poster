@@ -28,7 +28,7 @@ const TYPE_META={dream:{label:"夢",emoji:"🌈",bg:"#FFE0EC",fg:"#FF2D7E"},work
 const ME_TYPES=["dream","work","event","social","habit"];
 const KIND_STYLE={pet:{bg:"#DBF6F1",fg:"#0E9E8E",word:"ケア"},person:{bg:"#E3EEFF",fg:"#3B7BF6",word:"予定"}};
 // 安心ステータスのレベル：OK / 注意 / 要対応
-const LEVEL_META={ok:{label:"OK",dot:"#2FC9A8"},warn:{label:"注意",dot:"#F0A500"},alert:{label:"要対応",dot:"#E5484D"}};
+const LEVEL_META={ok:{label:"順調",dot:"#2FC9A8"},warn:{label:"注意",dot:"#F0A500"},alert:{label:"要対応",dot:"#E5484D"},none:{label:"記録なし",dot:"#B9B9C6"}};
 const DOG_KINDS=[{key:"daycare",label:"保育園",emoji:"🏫"},{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"rabies",label:"狂犬病",emoji:"🐕"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"med",label:"投薬",emoji:"💊"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const CAT_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"med",label:"投薬",emoji:"💊"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"med",label:"投薬",emoji:"💊"},{key:"groom",label:"お手入れ",emoji:"🧼"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
@@ -346,7 +346,7 @@ function makeSeed(){
   };
 }
 
-function dueStatus(item){if(!item.dueDate)return null;const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(isCyclic(item))return{label:"期限切れ",tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
+function dueStatus(item){if(!item.dueDate)return null;if(item.done)return{label:"完了",tone:"doneChip"};const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(isCyclic(item))return{label:"期限切れ",tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
 
 function daysUntilBirthday(birthday) {
   if (!birthday) return null;
@@ -547,6 +547,7 @@ function App(){
   const[editVisibility,setEditVisibility]=useState("household");
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
+  const[confirmRestore,setConfirmRestore]=useState(false);
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -899,16 +900,49 @@ function App(){
   };
   const clearMeAvatar=()=>{if(meAvatar){try{photoStorage.delete(`photo:${meAvatar}`);}catch(e){}}persistMeAvatar("");};
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
-  // 設定：データのバックアップ書き出し（本体データのみ。写真はIDBのため対象外）
-  const exportData=()=>{
+  // 設定：データのバックアップ書き出し（本体データ＋写真をまとめて1ファイルに）。
+  // 端末が変わっても復元できるよう、証明書・思い出・アイコンの写真も同梱する。
+  const exportData=async()=>{
     try{
-      const blob=new Blob([serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar})],{type:"application/json"});
+      const ids=new Set();
+      items.forEach(it=>photoIdsOf(it).forEach(pid=>ids.add(pid)));
+      members.forEach(m=>{if(m.avatar)ids.add(m.avatar);});
+      if(meAvatar)ids.add(meAvatar);
+      const photoMap={};
+      for(const pid of ids){let d=photos[pid];if(!d){try{d=await photoStorage.get(`photo:${pid}`);}catch(e){}}if(d)photoMap[pid]=d;}
+      const state=JSON.parse(serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar}));
+      const backup={__loalife_backup:1,exportedAt:Date.now(),state,photos:photoMap};
+      const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
       const url=URL.createObjectURL(blob);const a=document.createElement("a");
       a.href=url;a.download=`loalife-backup-${iso(new Date())}.json`;
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(()=>URL.revokeObjectURL(url),2000);
-      showFlash("バックアップを書き出しました 💾");
+      const n=Object.keys(photoMap).length;
+      showFlash(n?`バックアップを書き出しました 💾（写真${n}枚ふくむ）`:"バックアップを書き出しました 💾");
     }catch(e){showFlash("書き出せませんでした");}
+  };
+  // バックアップの読み込み（復元）。写真同梱の新形式・本体のみの旧形式どちらも受ける。既存データは上書き。
+  const importData=async(e)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    try{
+      const text=await file.text();
+      const parsed=JSON.parse(text);
+      const isWrapped=parsed&&parsed.__loalife_backup;
+      const rawState=isWrapped?parsed.state:parsed;
+      const photoMap=isWrapped&&parsed.photos?parsed.photos:{};
+      const st=migrateState(rawState);
+      if(!st||!Array.isArray(st.members)||!Array.isArray(st.items)){showFlash("このファイルは読み込めませんでした");return;}
+      // 写真をIDBへ復元
+      const restored={};
+      for(const pid of Object.keys(photoMap)){try{const ok=await photoStorage.set(`photo:${pid}`,photoMap[pid]);if(ok)restored[pid]=photoMap[pid];}catch(er){}}
+      setMembers(st.members);setItems(st.items);setUsage(st.usage||{});
+      setMeEmoji(st.meEmoji||"🙂");setMeBirthday(st.meBirthday||"");setMeColor(st.meColor||"");setMeName(st.meName||"");setMeAvatar(st.meAvatar||"");
+      setPhotos(p=>({...p,...restored}));
+      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar}));}catch(er){}
+      setConfirmRestore(false);setOnboarding(false);setTab("home");
+      const n=Object.keys(restored).length;
+      showFlash(n?`復元しました 💾（写真${n}枚）`:"復元しました 💾");
+    }catch(err){showFlash("このファイルは読み込めませんでした");}
   };
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
@@ -1626,12 +1660,15 @@ function App(){
   // ② 安心ステータス：各メンバーのレベルと一言
   // 「注意」は本当のケア漏れだけに絞る：期限切れ・在庫切れ＝要対応、重要ケアが迫る/在庫少＝注意。
   // 楽しみな予定（イベント等）は注意にしない（アラート疲れ防止）。
+  // 見守るデータが1件も無い時は「順調(緑)」ではなく「記録なし(グレー)」＝偽の安心を出さない。
+  const spaceTracked=(spaceId)=>items.some(x=>x.space===spaceId&&(x.type==="supply"||x.type==="routine"||x.type==="care"||!!x.dueDate));
   const spaceLevel=(spaceId)=>{
     let overdue=0,soonCare=0;
     items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x))overdue++;else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3)soonCare++;});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId);
     if(overdue>0||sup.some(o=>o.st.tone==="out"))return"alert";
     if(soonCare>0||sup.some(o=>o.st.tone==="low"))return"warn";
+    if(!spaceTracked(spaceId))return"none";
     return"ok";
   };
   const spaceConcern=(spaceId)=>{
@@ -1906,7 +1943,7 @@ function App(){
                 <h2 className="yl-sec-title">😊 安心ステータス</h2>
                 <div className="yl-statusgrid">{spaces.map(s=>{
                   const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
-                  const okMsg=s.kind==="pet"?`${s.name}は順調です`:"順調です";
+                  const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
                   return(
                     <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
                       <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
@@ -2047,8 +2084,17 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title">💾 バックアップ</h3>
-              <p className="yl-set-desc">データはこの端末に保存されます。ホーム画面に追加すると消えにくく安心です。下のボタンでバックアップ（.json・写真は除く）を書き出せます。</p>
-              <button className="yl-addbtn sm" onClick={exportData}>💾 データを書き出す</button>
+              <p className="yl-set-desc">データはこの端末に保存されます。機種変更や端末の故障に備えて、ときどきバックアップ（.json）を書き出しておくと安心です。証明書・思い出・アイコンの写真も一緒に保存されます。</p>
+              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}>💾 データを書き出す（写真ふくむ）</button>
+              {confirmRestore?(
+                <div className="yl-restore-confirm">
+                  <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
+                  <label className="yl-addbtn sm" style={{display:"inline-block",cursor:"pointer"}}>📂 ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
+                  <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
+                </div>
+              ):(
+                <button className="yl-reset" onClick={()=>setConfirmRestore(true)}>📂 バックアップから復元する</button>
+              )}
             </section>
             {FB_READY&&(
               <section className="yl-set-sec">
@@ -2428,27 +2474,27 @@ function App(){
             <p className="yl-help-lead">家族みんな・ペット・自分の毎日を、ひとつのアプリでまとめて見守れます。主な機能を紹介します。</p>
             {[
               {emoji:"🏠",title:"ホーム",desc:"家族みんなの「今日やること」や、気にかけたいこと（期限切れ・もうすぐ）をひと目で確認できます。"},
-              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・お子さま・ペットを追加して、それぞれの予定やケアを管理。アイコンは絵文字でも写真でもOK。多頭飼いはフォルダで分類できます。"},
-              {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップして記録・ふりかえり。"},
-              {emoji:"📸",title:"思い出",desc:"カレンダーに残した写真や日記が、アルバムとして並びます。うちの子記念日や「できた！」の瞬間を写真で残せます。"},
+              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・お子さま・ペットを追加して、それぞれの予定やケアをまとめられます。アイコンは絵文字でも写真でもOK。多頭飼いはフォルダで分類できます。"},
+              {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップしてふりかえりも。"},
+              {emoji:"📝",title:"今日のようす（お薬手帳・体調メモ）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを残せます。お薬手帳や通院前のメモに。"},
               {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・フィラリア・トリミング・通院・投薬などを登録。周期のあるケアは、記録すると次回へ自動でスライドします。"},
-              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目は長押しでドラッグして並び替え。大項目（もうすぐ・楽しみ／タイムライン／からだの記録など）も右上の⠿ハンドルをドラッグして好きな順に並べ替えられます。"},
-              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・身長・体調をグラフで管理。小動物は0.1g単位。目標体重を決めると差分の目安も表示します。"},
-              {emoji:"📝",title:"今日のようす（お薬手帳・体調メモ）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを記録。お薬手帳や通院前のメモに。"},
-              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出て忘れ物を防ぎます。"},
-              {emoji:"🧹",title:"お世話ログ",desc:"トイレ掃除・シャンプーなどを「やった」でタップ記録。前回からの経過（○週間前など）がひと目で分かり、やり忘れを防げます。管理タブに。"},
-              {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー/禁忌・かかりつけ病院などを、写真付きカードで保存（隠しトレイでスッキリ）。"},
+              {emoji:"🧹",title:"お世話ログ",desc:"トイレ掃除やシャンプーなどを「やった」で記録。前回からの経過（○週間前など）がひと目で分かり、やり忘れを防げます。"},
+              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・身長・体調をグラフでチェック。小動物は0.1g単位。目標体重を決めると差分の目安も表示します。"},
+              {emoji:"📸",title:"思い出",desc:"カレンダーに残した写真や日記がアルバムとして並びます。記念日や「できた！」の瞬間を、あとからいつでも振り返れます。"},
               {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"思い出に #発表会 などのタグや「はじめて」を付けて、成長をあとから振り返れます。"},
-              {emoji:"💰",title:"支出",desc:"病院代や餌代などをカテゴリ別に記録。今月いくら使ったかをグラフで可視化します。"},
-              {emoji:"🔔",title:"通知・リマインド",desc:"予定に通知を設定（何件でもOK）。ホーム画面に追加すると、より便利に使えます。"},
-              {emoji:"🛍",title:"ストック管理",desc:"フード・トイレ用品・サプリなどの在庫を管理。なくなりそうな頃にお知らせします。"},
+              {emoji:"💰",title:"支出",desc:"病院代や餌代などをカテゴリ別に記録。今月いくら使ったかをグラフで見える化します。"},
+              {emoji:"🛍",title:"ストック管理",desc:"フード・トイレ用品・サプリなどの在庫を登録。なくなりそうな頃にお知らせします。"},
+              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出て忘れ物を防ぎます。"},
+              {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー/禁忌・かかりつけ病院などを、写真付きカードで保存（隠しトレイでスッキリ）。"},
+              {emoji:"🔔",title:"通知・リマインド",desc:"予定ごとに通知を設定できます（何件でもOK）。"},
+              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目は長押しでドラッグして並び替え。大項目（もうすぐ・楽しみ／タイムライン／からだの記録など）も右上の⠿ハンドルをドラッグして好きな順に並べ替えられます。"},
             ].map((f,i)=>(
               <div key={i} className="yl-help-item">
                 <span className="yl-help-emoji">{f.emoji}</span>
                 <div className="yl-help-body"><span className="yl-help-itemtitle">{f.title}</span><span className="yl-help-desc">{f.desc}</span></div>
               </div>
             ))}
-            <p className="yl-help-note">データはこの端末に保存されます。ホーム画面に追加すると消えにくく安心です。</p>
+            <p className="yl-help-note">データはこの端末に保存されます。ホーム画面に追加して使うと、より快適で安心です。</p>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setHelpOpen(false)}>とじる</button>
           </div>
         </div>
