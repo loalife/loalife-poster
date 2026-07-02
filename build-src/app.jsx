@@ -592,9 +592,9 @@ function App(){
   // ホーム「記録」層の開閉（低頻度の情報は既定で畳む）
   const[recOpen,setRecOpen]=useState(false);
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
-  const[personSeg,setPersonSeg]=useState("today");
+  const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&s.today&&s.record&&s.info)return s;}catch(e){}return{today:["meup","routine","list","prep"],record:["certs","supply","health","diary","expense","album"],info:["belong","cards"]};});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -883,6 +883,17 @@ function App(){
   };
   const clearMeAvatar=()=>{if(meAvatar){try{photoStorage.delete(`photo:${meAvatar}`);}catch(e){}}persistMeAvatar("");};
   const showFlash=(msg)=>{setFlash(msg);setTimeout(()=>setFlash(""),2200);};
+  // 設定：データのバックアップ書き出し（本体データのみ。写真はIDBのため対象外）
+  const exportData=()=>{
+    try{
+      const blob=new Blob([serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar})],{type:"application/json"});
+      const url=URL.createObjectURL(blob);const a=document.createElement("a");
+      a.href=url;a.download=`loalife-backup-${iso(new Date())}.json`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+      showFlash("バックアップを書き出しました 💾");
+    }catch(e){showFlash("書き出せませんでした");}
+  };
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
   const finishOnboarding=()=>{
@@ -997,7 +1008,7 @@ function App(){
   const curKind=activeMember?activeMember.kind:"me";
   const nameOf=(spaceId)=>spaceId==="me"?(meName||"わたし"):(members.find(m=>m.id===spaceId)||{}).name||"";
 
-  useEffect(()=>{setFilter("all");setPersonSeg("today");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
+  useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
     const it=items.find(x=>x.id===id);if(!it)return;let next;
@@ -1738,7 +1749,7 @@ function App(){
 
       <div className="yl-wrap">
         <header className="yl-head">
-          <h1 className="yl-title">🏠 ホーム</h1>
+          <h1 className="yl-title">{tab==="home"?"🏠 ホーム":tab==="cal"?"📅 カレンダー":tab==="settings"?"⚙️ 設定":personSeg==="manage"?"🗂 管理":"📝 記録"}</h1>
           {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
           {FB_READY&&(
             <button
@@ -1758,14 +1769,7 @@ function App(){
           </div>
         )}
 
-        {/* 上段＝見方（モード）。人の選択とは分離 */}
-        <nav className="yl-tabs">
-          <button className={"yl-tab"+(tab==="home"?" on":"")} onClick={()=>setTab("home")}>ホーム</button>
-          <button className={"yl-tab"+(tab==="cal"?" on":"")} onClick={()=>setTab("cal")}>📅 カレンダー</button>
-          <button className={"yl-tab"+(tab==="album"?" on":"")} onClick={()=>setTab("album")}>📸 思い出</button>
-          <button className={"yl-tab"+(isPersonMode?" on":"")} onClick={()=>setTab(members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me")}>👨‍👩‍👧 メンバー</button>
-        </nav>
-        {/* 下段＝対象（人/ペット）。メンバーを見ているときだけ表示 */}
+        {/* 対象（人/ペット）セレクタ。記録・管理タブで表示 */}
         {isPersonMode&&(
           <nav className="yl-people">
             <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meAvatar&&photos[meAvatar]?<img className="yl-avatar xs" src={photos[meAvatar]} alt=""/>:meEmoji} {meName||"わたし"}</button>
@@ -1994,28 +1998,31 @@ function App(){
             <button className="yl-cal-exportall" onClick={()=>setCalPicker({bulk:true})}>📅 予定をカレンダーアプリに出力（.ics）</button>
             <p className="yl-foot" style={{marginTop:8}}>日付をタップして、その日の暮らしを記録・ふりかえり</p>
           </div>
-        ):tab==="album"?(
-          <div className="yl-albumtab">
-            <h2 className="yl-sec-title" style={{marginBottom:4}}>📸 思い出</h2>
-            <p className="yl-album-hint">カレンダーに残した写真・日記をふりかえる場所です</p>
-            {albumTags.length>0&&(
-              <div className="yl-tagfilter">
-                <button className={"yl-tagchip"+(albumTag===""?" on":"")} onClick={()=>setAlbumTag("")}>すべて</button>
-                {albumTags.map(t=><button key={t} className={"yl-tagchip"+(albumTag===t?" on":"")} onClick={()=>setAlbumTag(albumTag===t?"":t)}>#{t}</button>)}
-              </div>
+        ):tab==="settings"?(
+          <div className="yl-settings">
+            <h2 className="yl-sec-title" style={{marginBottom:12}}>⚙️ 設定</h2>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title">🔔 通知</h3>
+              <p className="yl-set-desc">予定やリマインド・誕生日をお知らせします。</p>
+              {notifPerm==="granted"?<p className="yl-set-ok">✓ 通知は許可されています</p>:notifPerm==="denied"?<p className="yl-set-warn">端末の設定で通知がオフになっています</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>通知を許可する</button>}
+            </section>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title">💾 バックアップ</h3>
+              <p className="yl-set-desc">データはこの端末に保存されます。ホーム画面に追加すると消えにくく安心です。下のボタンでバックアップ（.json・写真は除く）を書き出せます。</p>
+              <button className="yl-addbtn sm" onClick={exportData}>💾 データを書き出す</button>
+            </section>
+            {FB_READY&&(
+              <section className="yl-set-sec">
+                <h3 className="yl-set-title">👨‍👩‍👧 家族で共有</h3>
+                <button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button>
+              </section>
             )}
-            {albumItems.length===0?(
-              <p className="yl-routine-empty" style={{padding:"24px 0"}}>{albumTag?`#${albumTag} の思い出はまだありません`:"カレンダーで写真や日記を残すと、ここに並びます"}</p>
-            ):(
-              <div className="yl-album-grid">
-                {albumItems.map(mem=>(
-                  <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
-                    {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
-                    <span className="yl-album-cap">{fmtMonthDay(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title">📖 アプリについて</h3>
+              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
+              <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+            </section>
+            <p className="yl-foot">試作版・データはこの端末に保存されます</p>
           </div>
         ):(
           <>
@@ -2055,33 +2062,7 @@ function App(){
               </section>
             )}
 
-            {/* セグメント切替（見せ方だけ：今日／記録／情報）。データ・機能は共通 */}
-            <div className="yl-seg">
-              {[{k:"today",label:"今日"},{k:"record",label:"記録"},{k:"info",label:"情報"}].map(s=>(
-                <button key={s.k} className={"yl-seg-btn"+(personSeg===s.k?" on":"")} onClick={()=>setPersonSeg(s.k)}>{s.label}</button>
-              ))}
-            </div>
-
-            {personSeg==="today"&&(()=>{const defs=[];
-              if(!isMemberTab)defs.push({key:"meup",el:(
-                <section className="yl-meup">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🎉 もうすぐ・楽しみ</h2>
-                  {meUpcoming.length>0?(
-                    <ul className="yl-meup-list">
-                      {meUpcoming.map(u=>(
-                        <li key={u.id} className="yl-meup-item">
-                          <span className="yl-meup-emoji">{u.emoji}</span>
-                          <span className="yl-meup-text">{u.title}</span>
-                          <span className={"yl-meup-tag"+(u.daysUntil===0?" today":"")}>{u.daysUntil===0?(u.kind==="bday"?"今日 🎂":"今日"):u.daysUntil===1?"明日":`あと${u.daysUntil}日`}</span>
-                          {u.kind==="bday"&&<button className="yl-meup-del" onClick={()=>askDelete(u.title,()=>remove(u.id))} aria-label="削除">×</button>}
-                        </li>
-                      ))}
-                    </ul>
-                  ):(
-                    <p className="yl-routine-empty" style={{padding:"4px 0 12px"}}>右下の＋から、誕生日やイベントを登録できます。</p>
-                  )}
-                </section>
-              )});
+            {personSeg==="manage"&&(()=>{const defs=[];
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
                   <div className="yl-routine-head">
@@ -2146,26 +2127,6 @@ function App(){
                   </div>
                 </section>
               )});
-              return renderSecs("today",defs);
-            })()}
-
-            {personSeg==="record"&&(()=>{const defs=[];
-              if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
-                <section className="yl-certs">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
-                  <div className="yl-certs-row">
-                    {certs.map(c=>{
-                      const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
-                      return(
-                        <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
-                          {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
-                          <span className="yl-cert-cap">{c.emoji} {label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              )});
               defs.push({key:"supply",el:(
                 <section className="yl-supply">
                   <div className="yl-routine-head">
@@ -2193,6 +2154,59 @@ function App(){
                       })}
                     </ul>
                   )}
+                </section>
+              )});
+              defs.push({key:"expense",el:(
+                <section className="yl-exp">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
+                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の＋から、病院代・ごはん代などを記録できます。</p>}
+                  {expenseMonth.total>0&&(
+                    <div className="yl-exp-viz">
+                      <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
+                      <ul className="yl-exp-bars">
+                        {expenseMonth.cats.map(c=>(
+                          <li key={c.key} className="yl-exp-bar">
+                            <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
+                            <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
+                            <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {expenseRecords.length>0&&(
+                    <ul className="yl-exp-list">
+                      {expenseRecords.slice(0,8).map(r=>(
+                        <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
+                          <span className="yl-exp-idate">{fmtDate(r.date)}</span>
+                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
+                          {r.note&&<span className="yl-exp-inote">{r.note}</span>}
+                          <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
+                          <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )});
+              return renderSecs("manage",defs);
+            })()}
+
+            {personSeg==="record"&&(()=>{const defs=[];
+              if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
+                <section className="yl-certs">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
+                  <div className="yl-certs-row">
+                    {certs.map(c=>{
+                      const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
+                      return(
+                        <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
+                          {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
+                          <span className="yl-cert-cap">{c.emoji} {label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </section>
               )});
               defs.push({key:"health",el:(
@@ -2241,39 +2255,6 @@ function App(){
                   )}
                 </section>
               )});
-              defs.push({key:"expense",el:(
-                <section className="yl-exp">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
-                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の＋から、病院代・ごはん代などを記録できます。</p>}
-                  {expenseMonth.total>0&&(
-                    <div className="yl-exp-viz">
-                      <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
-                      <ul className="yl-exp-bars">
-                        {expenseMonth.cats.map(c=>(
-                          <li key={c.key} className="yl-exp-bar">
-                            <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
-                            <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
-                            <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {expenseRecords.length>0&&(
-                    <ul className="yl-exp-list">
-                      {expenseRecords.slice(0,8).map(r=>(
-                        <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
-                          <span className="yl-exp-idate">{fmtDate(r.date)}</span>
-                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
-                          {r.note&&<span className="yl-exp-inote">{r.note}</span>}
-                          <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
-                          <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              )});
               defs.push({key:"album",el:(
                 <section className="yl-album">
                   <div className="yl-routine-head">
@@ -2297,7 +2278,7 @@ function App(){
               return renderSecs("record",defs);
             })()}
 
-            {personSeg==="info"&&(()=>{const defs=[];
+            {personSeg==="manage"&&(()=>{const defs=[];
               if(curKind==="person")defs.push({key:"belong",el:(
                 <section className="yl-belong">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
@@ -2335,7 +2316,7 @@ function App(){
                   )}
                 </section>
               )});
-              return renderSecs("info",defs);
+              return renderSecs("manage",defs);
             })()}
           </>
         )}
@@ -2346,6 +2327,29 @@ function App(){
       {isPersonMode&&!hubOpen&&!inputSheet&&(
         <button className="yl-fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加">＋</button>
       )}
+
+      {/* 下部タブナビゲーション（常時表示・行動で分類） */}
+      {!onboarding&&(()=>{
+        const personTarget=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";
+        const goSeg=(seg)=>{setTab(personTarget);setPersonSeg(seg);};
+        const items=[
+          {key:"home",icon:"🏠",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
+          {key:"cal",icon:"📅",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
+          {key:"record",icon:"📝",label:"記録",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
+          {key:"manage",icon:"🗂",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
+          {key:"settings",icon:"⚙️",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
+        ];
+        return(
+          <nav className="yl-bottomnav">
+            {items.map(it=>(
+              <button key={it.key} className={"yl-bnav-item"+(it.on?" on":"")} onClick={it.act}>
+                <span className="yl-bnav-ico">{it.icon}</span>
+                <span className="yl-bnav-label">{it.label}</span>
+              </button>
+            ))}
+          </nav>
+        );
+      })()}
 
       {helpOpen&&(
         <div className="yl-help-ov" onClick={()=>setHelpOpen(false)}>
