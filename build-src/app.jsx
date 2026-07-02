@@ -200,8 +200,11 @@ const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);ret
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
 const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
-// お世話ログ（やった履歴・前回からの経過）
-const CHORE_TEMPLATES=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプー",emoji:"🛁"},{title:"爪切り",emoji:"✂️"},{title:"歯みがき",emoji:"🦷"},{title:"ブラッシング",emoji:"🪮"},{title:"耳そうじ",emoji:"👂"},{title:"シーツ交換",emoji:"🛏️"}];
+// お世話ログ（やった履歴・前回からの経過）。対象（自分/ペット/家族）で出し分け
+const CHORE_TPL_PET=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプー",emoji:"🛁"},{title:"爪切り",emoji:"✂️"},{title:"ブラッシング",emoji:"🪮"},{title:"耳そうじ",emoji:"👂"},{title:"歯みがき",emoji:"🦷"},{title:"トイレ砂替え",emoji:"🐾"}];
+const CHORE_TPL_PERSON=[{title:"歯みがき仕上げ",emoji:"🦷"},{title:"爪切り",emoji:"✂️"},{title:"髪カット",emoji:"💇"},{title:"耳そうじ",emoji:"👂"},{title:"上履き洗い",emoji:"👟"},{title:"シーツ交換",emoji:"🛏️"}];
+const CHORE_TPL_ME=[{title:"掃除",emoji:"🧹"},{title:"洗濯",emoji:"🧺"},{title:"シーツ交換",emoji:"🛏️"},{title:"換気",emoji:"🪟"},{title:"水やり",emoji:"🪴"},{title:"ゴミ出し",emoji:"🗑️"}];
+const choreTemplatesFor=(kind)=>kind==="pet"?CHORE_TPL_PET:kind==="person"?CHORE_TPL_PERSON:CHORE_TPL_ME;
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
 function elapsedLabel(dateStr){
   if(!dateStr)return{txt:"まだ記録なし",tone:"none"};
@@ -2132,7 +2135,7 @@ function App(){
                     </ul>
                   )}
                   <div className="yl-chore-tpl">
-                    {CHORE_TEMPLATES.filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ {t.emoji} {t.title}</button>)}
+                    {choreTemplatesFor(curKind).filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ {t.emoji} {t.title}</button>)}
                   </div>
                 </section>
               )});
