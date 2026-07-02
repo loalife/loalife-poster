@@ -347,6 +347,13 @@ function makeSeed(){
 }
 
 function dueStatus(item){if(!item.dueDate)return null;if(item.done)return{label:"完了",tone:"doneChip"};const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(isCyclic(item))return{label:"期限切れ",tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
+// ケアの3状態：未対応(赤)／予定済み(黄)／完了(緑)。打ち消し線＋期限切れの読めない状態を1目で。
+function careState(item){
+  if(item.done)return{label:"✅ 完了",tone:"done"};
+  if(isOverdue(item)){const d=-daysUntil(item.dueDate);return{label:`🔴 未対応・${d}日超過`,tone:"todo"};}
+  if(item.dueDate){const d=daysUntil(item.dueDate);if(d<0)return{label:`予定日 ${fmtDate(item.dueDate)}`,tone:"planned"};return{label:d===0?"🟡 今日やる":`🟡 予定・あと${d}日`,tone:"planned"};}
+  return{label:"🟡 予定済み",tone:"planned"};
+}
 
 function daysUntilBirthday(birthday) {
   if (!birthday) return null;
@@ -1520,17 +1527,22 @@ function App(){
     if(isMemberTab){meta=KIND_STYLE[activeMember.kind];label=(careKindsFor(activeMember).find(k=>k.key===it.careKind)||{}).label||"ケア";}
     else{meta=TYPE_META[it.type]||TYPE_META.dream;label=meta.label;}
     const ds=dueStatus(it);
+    // 会員タブのケアは3状態バッジ（未対応/予定済み/完了）で状態を1目に。それ以外は従来の期日チップ。
+    const isCare=isMemberTab&&it.type==="care";
+    const cst=isCare?careState(it):null;
+    const actionable=isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0; // 期限切れ/今日＝その場でワンタップ解消
     return(<>
       <button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} onPointerDown={e=>e.stopPropagation()} title="タップで絵文字を変更">{it.emoji}</button>
       <div className="yl-body" onClick={()=>openEdit(it)}>
         <div className="yl-row1"><span className="yl-badge" style={{background:meta.bg,color:meta.fg}}>{label}</span><span className="yl-text">{it.title}</span></div>
-        {(ds||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
+        {(ds||cst||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
           <div className="yl-meta">
-            {ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
+            {cst?<span className={"yl-cstate "+cst.tone}>{cst.label}</span>:ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
             {it.time&&<span className="yl-time">🕐 {it.time}</span>}
             {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat">🔁 {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge">🔔 {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
-            {!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
+            {actionable&&<button className="yl-resolve" onClick={e=>{e.stopPropagation();toggle(it.id);}} title="記録すると次回予定へ自動で進みます">✓ 完了にして次回へ</button>}
+            {!isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
             {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
             {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加">📅</button>}
             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}>📷 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}>📎 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
