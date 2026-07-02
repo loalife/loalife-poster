@@ -566,6 +566,8 @@ function App(){
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[confirmRestore,setConfirmRestore]=useState(false);
+  const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
+  const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -1468,8 +1470,17 @@ function App(){
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
+  // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
+  const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash("同じ項目があります");setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash("追加しました ✓");};
   const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
+  const saveChoreDate=(id,newDate)=>{
+    if(!newDate){setChoreDateEdit(null);return;}
+    const next=items.map(x=>{if(x.id!==id)return x;const rest=(x.history||[]).slice(1);const hist=[...new Set([newDate,...rest])].sort((a,b)=>b.localeCompare(a)).slice(0,30);return{...x,history:hist,lastDone:hist[0]||newDate};});
+    persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});
+    setChoreDateEdit(null);showFlash("日付を修正しました ✓");
+  };
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
   const lowSupplies=useMemo(()=>items.filter(x=>x.type==="supply").map(x=>({item:x,st:supplyStatus(x)})).filter(o=>o.st&&o.st.tone!=="ok"),[items]);
   // ホームの支出サマリー（安心の場：総額＋メンバー別簡易比較＋急増のみ。詳細一覧は出さない）
@@ -2206,7 +2217,7 @@ function App(){
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">🗓 今日のタイムライン</h2>
+                    <h2 className="yl-routine-title">🔁 今日のルーティン<span className="yl-chore-hint">毎日くりかえす習慣を時間順に</span></h2>
                     {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                   </div>
                   {routines.length===0?(
@@ -2238,12 +2249,20 @@ function App(){
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>🧹 お世話ログ<span className="yl-chore-hint">前回いつ？がひと目で</span></h2>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
-                      {chores.map(c=>{const el=elapsedLabel(c.lastDone);return(
+                      {chores.map(c=>{const el=elapsedLabel(c.lastDone);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
                         <li key={c.id} className="yl-chore-item">
                           <span className="yl-chore-emoji">{c.emoji}</span>
                           <span className="yl-chore-body">
                             <span className="yl-chore-name">{c.title}</span>
-                            <span className={"yl-chore-since "+el.tone}>{c.lastDone?`前回 ${fmtDate(c.lastDone)}・${el.txt}`:el.txt}{(c.history||[]).length>1?`（計${c.history.length}回）`:""}</span>
+                            {editing?(
+                              <span className="yl-chore-dateedit">
+                                <input type="date" className="yl-date" value={choreDateEdit.date} onChange={e=>setChoreDateEdit({id:c.id,date:e.target.value})}/>
+                                <button className="yl-addbtn sm" onClick={()=>saveChoreDate(c.id,choreDateEdit.date)}>保存</button>
+                                <button className="yl-chore-cancel" onClick={()=>setChoreDateEdit(null)}>やめる</button>
+                              </span>
+                            ):(
+                              <button className={"yl-chore-since "+el.tone} onClick={()=>c.lastDone&&setChoreDateEdit({id:c.id,date:c.lastDone})} title={c.lastDone?"タップで日付を修正":""}>{c.lastDone?`前回 ${fmtDate(c.lastDone)}・${el.txt}`:el.txt}{(c.history||[]).length>1?`（計${c.history.length}回）`:""}{c.lastDone?" ✎":""}</button>
+                            )}
                           </span>
                           <button className="yl-chore-did" onClick={()=>logChore(c.id)}>やった</button>
                           <button className="yl-chore-del" onClick={()=>askDelete(c.title,()=>removeChore(c.id))} aria-label="削除">×</button>
@@ -2253,6 +2272,10 @@ function App(){
                   )}
                   <div className="yl-chore-tpl">
                     {choreTemplatesFor(curKind).filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ {t.emoji} {t.title}</button>)}
+                  </div>
+                  <div className="yl-chore-custom">
+                    <input className="yl-input sm" value={choreDraft} onChange={e=>setChoreDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomChore()} placeholder="自分で追加（例：水そうじ）"/>
+                    <button className="yl-addbtn sm" onClick={addCustomChore}>＋ 追加</button>
                   </div>
                 </section>
               )});
