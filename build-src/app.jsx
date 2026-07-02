@@ -2686,7 +2686,7 @@ function App(){
             <div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
             <div className="yl-notify"><span className="yl-notify-label">🔔 通知（何件でも設定できます）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと通知に慣れて見落としがち。本当に必要なぶんだけがおすすめです。</p>}</div>
             {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">1タップ追加（前回コピー）</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico">{k.emoji}</span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{k.label}</span><span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
-            <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
       )}
@@ -2700,9 +2700,10 @@ function App(){
             </div>
             {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">小動物向け：0.1g単位で記録できます</p>}
             {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">体調</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
-            <button className="yl-addbtn sm" style={{width:"100%",marginTop:4}} onClick={saveHealth}>📈 記録する</button>
-            {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:12}}>🎯 目標体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder="ダイエット手帳"/><span className="yl-health-unit">{weightUnit}</span></span></label>}
-            <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}>📈 記録する</button>
+            {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}>🎯 目標体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
+            {isMemberTab&&<p className="yl-health-hint" style={{marginTop:4}}>設定すると、目標との差（ダイエット手帳）を表示します。</p>}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
       )}
@@ -2719,8 +2720,8 @@ function App(){
             <div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{DIARY_SYMPTOMS.map(s=><button key={s.key} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(s.key)?" on sym":"")} onClick={()=>toggleSymptom(s.key)}>{s.emoji} {s.label}</button>)}</span></div>
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:4}} value={diaryDraft.note} onChange={e=>setDiary({note:e.target.value})} placeholder="日々の様子・病院でのこと・ひとこと…"/>
             <div className="yl-diary-photorow">{diaryDraft.photo?<span className="yl-diary-thumb"><img src={diaryDraft.photo} alt=""/><button className="yl-diary-thumbdel" onClick={()=>setDiary({photo:null})} aria-label="写真を削除">×</button></span>:<label className="yl-diary-addphoto">📷 写真を追加（お薬・症状など）<input type="file" accept="image/*" style={{display:"none"}} onChange={pickDiaryPhoto}/></label>}</div>
-            <button className="yl-addbtn sm" style={{width:"100%",marginTop:8}} onClick={saveDiary}>📝 今日のようすを記録</button>
-            <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveDiary}>📝 今日のようすを記録</button>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
       )}
@@ -2731,8 +2732,8 @@ function App(){
             <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder="金額"/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}</select></div>
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:6}} value={expNote} onChange={e=>setExpNote(e.target.value)} placeholder="メモ（任意）"/>
             <p className="yl-foot" style={{margin:"8px 0 0",textAlign:"left"}}>今日の日付で記録します。日付の修正は明細をタップ。</p>
-            <button className="yl-addbtn sm" style={{width:"100%",marginTop:8}} onClick={saveExpense}>💰 支出を記録</button>
-            <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>💰 支出を記録</button>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
       )}
@@ -2745,7 +2746,7 @@ function App(){
               <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder="例：体操服 / 図書の本 / 習字道具"/>
               <button className="yl-addbtn sm" onClick={addBelonging}>追加</button>
             </div>
-            <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
       )}
