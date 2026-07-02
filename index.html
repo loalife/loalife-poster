@@ -406,6 +406,8 @@ body{background:#FFF0F6;}
 .yl-quickcond-name{flex:1 1 auto;font-size:13.5px;font-weight:700;color:#4A3F58;}
 .yl-quickcond-btn{flex:0 0 auto;border:none;border-radius:99px;background:#2FC9A8;color:#fff;font-size:12.5px;font-weight:800;font-family:inherit;padding:8px 14px;cursor:pointer;}
 .yl-quickcond-btn:active{transform:translateY(1px);}
+/* 削除×はカード外にはみ出さず内側の角に置く（隣のカード/セクションと重ならない） */
+.yl-del{top:5px;right:5px;}
 /* ケア帯：折り返して見切れ防止。順調時は緑1個に畳む。誕生日/記念日は別帯へ */
 .yl-petstatus-chips{flex-wrap:wrap;}
 .yl-pill.ok{background:#DBF6F1;color:#0E9E8E;}
@@ -569,7 +571,8 @@ body{background:#FFF0F6;}
 .yl-seg-btn{flex:1;border:none;background:transparent;border-radius:11px;padding:9px 0;font-size:13.5px;font-weight:800;font-family:inherit;color:#9A86A8;cursor:pointer;transition:all .15s ease;}
 .yl-seg-btn.on{background:#fff;color:#3A2E3F;box-shadow:0 2px 7px rgba(120,80,160,.14);}
 /* 大項目セクションの並び替え（ハンドル） */
-.yl-sec-wrap{position:relative;}
+.yl-sec-wrap{position:relative;margin-bottom:14px;}
+.yl-sec-wrap>section{margin-bottom:0;}
 .yl-sec-handle{position:absolute;top:6px;right:6px;z-index:5;border:none;background:transparent;color:#D6C7E6;width:22px;height:20px;border-radius:7px;font-size:12px;line-height:1;cursor:grab;touch-action:none;display:flex;align-items:center;justify-content:center;padding:0;}
 .yl-sec-handle:active{cursor:grabbing;color:#9B6DFF;}
 /* ハンドルと右寄せヘッダー要素が重ならないよう余白を確保 */
