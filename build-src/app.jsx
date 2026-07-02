@@ -2167,13 +2167,20 @@ function App(){
                     </span>
                   )}
                 </div>
+                {/* ケア帯＝緊急度。異常が無い時は「順調 ✅」1個に畳み、数字が立った時だけ目立たせる */}
                 <div className="yl-petstatus-chips">
-                  <span className="yl-pill soon">⏰ 期限近 {memberStats?.soon||0}</span>
-                  <span className="yl-pill over">🔴 期限切れ {memberStats?.over||0}</span>
-                  {activeMember.birthday&&<span className="yl-pill bday">🎂 {fmtBirthday(activeMember.birthday)}</span>}
-                  {activeMember.gotchaDay&&<span className="yl-pill gotcha">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}`;})()}</span>}
+                  {(memberStats?.over||0)>0&&<span className="yl-pill over">🔴 期限切れ {memberStats.over}</span>}
+                  {(memberStats?.soon||0)>0&&<span className="yl-pill soon">⏰ 期限近 {memberStats.soon}</span>}
+                  {!(memberStats?.over)&&!(memberStats?.soon)&&<span className="yl-pill ok">✅ ケアは順調</span>}
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                 </div>
+                {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
+                {(activeMember.birthday||activeMember.gotchaDay)&&(
+                  <div className="yl-petstatus-fun">
+                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}</span>}
+                    {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}`;})()}</span>}
+                  </div>
+                )}
               </section>
             )}
 
