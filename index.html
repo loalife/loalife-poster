@@ -415,6 +415,12 @@ body{background:#FFF0F6;}
 .yl-chore-cancel{border:none;background:transparent;color:#B0A0BD;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
 .yl-chore-custom{display:flex;gap:7px;margin-top:8px;}
 .yl-chore-custom .yl-input{flex:1;min-width:0;}
+/* 入力シートの「記録」ボタンと「とじる」がくっつくのを防ぐ */
+.yl-modal-btns{margin-top:10px;}
+/* 支出：金額と分類を縦積みにして、長い分類名（おもちゃ・その他等）が枠からはみ出さないように */
+.yl-exp-input{flex-wrap:wrap;}
+.yl-exp-amt{flex:1 1 100%;}
+.yl-exp-input .yl-select{flex:1 1 100%;min-width:0;box-sizing:border-box;}
 /* 削除×はカード外にはみ出さず内側の角に置く（隣のカード/セクションと重ならない） */
 .yl-del{top:5px;right:5px;}
 /* ケア3状態バッジ：未対応(赤)/予定済み(黄)/完了(緑) */
