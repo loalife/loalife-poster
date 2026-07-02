@@ -2210,7 +2210,7 @@ function App(){
                     {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                   </div>
                   {routines.length===0?(
-                    <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、下のボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、かんたんに追加できます。":"毎日くりかえすことを、下のボタンから追加できます"}</p>
+                    <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、右下の ＋ ボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、右下の ＋ ボタンから追加できます":"毎日くりかえすことを、右下の ＋ ボタンから追加できます"}</p>
                   ):(
                     <ul className="yl-timeline">
                       {routines.map(r=>{
