@@ -1537,6 +1537,8 @@ function App(){
     );
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
+  // 絞り込みチップは中身がある時だけ出す（空なら押しても変わらず不要なので隠す。追加は右下＋）
+  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"),[items,tab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
   const cardInner=(it)=>{
@@ -2281,7 +2283,7 @@ function App(){
               )});
               defs.push({key:"list",el:(
                 <section className="yl-listsec">
-                  <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
+                  {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>}
                   {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(()=>{
                     const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
                     return(
