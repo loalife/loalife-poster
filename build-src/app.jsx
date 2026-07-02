@@ -464,17 +464,23 @@ function TimeInput({value,onChange}){
 }
 
 // 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
+// 2点以上でのみ折れ線を描く（1点以下は呼び出し側で空状態メッセージ）。
 function MiniChart({points,unit,color,label}){
-  if(!points||points.length===0)return null;
+  if(!points||points.length<2)return null;
   // 描画エリアを分離：左＝Y軸ラベルの余白、下＝X軸ラベルの余白。折れ線はその内側だけに描く。
   const W=300,H=120,padL=40,padR=14,padTop=14,padBot=22;
   const plotB=H-padBot; // プロット領域の下端（X軸ラベルはこれより下に描く）
   const vals=points.map(p=>p.value);
-  let min=Math.min(...vals),max=Math.max(...vals);
-  if(min===max){min=min-1;max=max+1;}
+  const dataMin=Math.min(...vals),dataMax=Math.max(...vals);
+  // Y軸に余白：最小レンジと上下パディングを確保し、0.1kg差が画面端から端まで振れないように。
+  let min=dataMin,max=dataMax,span=max-min;
+  const floor=Math.max((Math.abs(max)||1)*0.12,unit==="cm"?2:(unit==="kg"?1:0.4));
+  if(span<floor){const c=(min+max)/2;min=c-floor/2;max=c+floor/2;span=floor;}
+  const padv=span*0.2;min-=padv;max+=padv;span=max-min;
   const n=points.length;
-  const xAt=(i)=>n===1?(padL+(W-padR))/2:padL+(i*(W-padL-padR))/(n-1);
-  const yAt=(v)=>padTop+(1-(v-min)/(max-min))*(plotB-padTop);
+  const xAt=(i)=>padL+(i*(W-padL-padR))/(n-1);
+  const yAt=(v)=>padTop+(1-(v-min)/span)*(plotB-padTop);
+  const fmtV=(v)=>Number.isInteger(v)?v:v.toFixed(1);
   const latest=points[n-1],first=points[0];
   return(
     <div className="yl-chart-wrap">
@@ -484,9 +490,9 @@ function MiniChart({points,unit,color,label}){
         <line x1={padL} y1={plotB} x2={W-padR} y2={plotB} stroke="#EFE7F3" strokeWidth="1"/>
         <polyline points={points.map((p,i)=>`${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ")} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
         {points.map((p,i)=><circle key={i} cx={xAt(i).toFixed(1)} cy={yAt(p.value).toFixed(1)} r="3" fill={color}/>)}
-        {/* Y軸：左の余白に上＝max・下＝min（右寄せ） */}
-        <text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{max}{unit}</text>
-        <text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{min}{unit}</text>
+        {/* Y軸：左の余白に上＝データ最大・下＝データ最小（右寄せ） */}
+        <text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{fmtV(dataMax)}{unit}</text>
+        <text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{fmtV(dataMin)}{unit}</text>
         {/* X軸：下の余白に起点（左寄せ）と最新（右寄せ） */}
         {n>1&&<text x={padL} y={H-6} textAnchor="start" className="yl-chart-ax">{fmtDate(first.date)}</text>}
         <text x={W-padR} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(latest.date)}</text>
@@ -2375,8 +2381,8 @@ function App(){
                 <section className="yl-health">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
                   {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?`目標を ${Math.abs(weightDiff).toFixed(1)}${weightUnit} 超えています（食べすぎ・運動量に気をつけて）`:`目標まで あと ${Math.abs(weightDiff).toFixed(1)}${weightUnit}`}</p>)}
-                  {weightPts.length>0?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>:<p className="yl-routine-empty">右下の＋から体重などを記録できます。</p>}
-                  {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
+                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の＋から体重などを記録できます。"}</p>}
+                  {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
                   {healthRecords.length>0&&(
                     <ul className="yl-health-list">
                       {[...healthRecords].reverse().slice(0,6).map(r=>(
