@@ -1608,38 +1608,40 @@ function App(){
     });
     bombs.sort((a,b)=>a.d-b.d);
     const bombSet=new Set(bombs.map(b=>b.item.id));
-    // ① 今日やること：今日のケア/予定（爆弾以外）＋未完了の今日のルーティン＋直近の予定1つ
+    // ① 今日やること：今日=今日だけ（今日のケア/予定＋未完了の今日のルーティン）。未来は混ぜない。
     const todos=[];
     items.forEach(x=>{
       if(x.done)return;
       if(x.type==="routine"){if(x.doneDate!==todayIso)todos.push({key:x.id,emoji:x.emoji||"⏰",title:x.title,space:x.space,time:x.time,tag:x.time||"今日",pri:2});return;}
       if(x.dueDate&&!bombSet.has(x.id)){const d=daysUntil(x.dueDate);if(d<=0)todos.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,time:x.time,tag:d<0?"やり残し":"今日",pri:d<0?0:1});}
     });
-    // 期限が近いもの1つ（今日以降・爆弾以外）
-    let nearest=null;
-    items.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id))return;const d=daysUntil(x.dueDate);if(d>0&&d<=7&&(!nearest||d<nearest.d))nearest={item:x,d};});
-    if(nearest)todos.push({key:nearest.item.id,emoji:nearest.item.emoji||"•",title:nearest.item.title,space:nearest.item.space,time:nearest.item.time,tag:nearest.d===1?"明日":`あと${nearest.d}日`,pri:3});
     todos.sort((a,b)=>a.pri-b.pri||((a.time||"99")<(b.time||"99")?-1:1));
-    return{bombs,todos};
+    // 直近の予定（明日〜7日・爆弾/ルーティン除く）は別枠で薄く表示。今日リストには混ぜない。
+    const upcoming=[];
+    items.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id)||x.type==="routine")return;const d=daysUntil(x.dueDate);if(d>=1&&d<=7)upcoming.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,d,tag:d===1?"明日":`あと${d}日`});});
+    upcoming.sort((a,b)=>a.d-b.d);
+    return{bombs,todos,upcoming};
   },[items,todayIso]);
 
   // ② 安心ステータス：各メンバーのレベルと一言
+  // 「注意」は本当のケア漏れだけに絞る：期限切れ・在庫切れ＝要対応、重要ケアが迫る/在庫少＝注意。
+  // 楽しみな予定（イベント等）は注意にしない（アラート疲れ防止）。
   const spaceLevel=(spaceId)=>{
-    let overdue=0,soon=0;
-    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x))overdue++;else if(d>=0&&d<=3)soon++;});
+    let overdue=0,soonCare=0;
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x))overdue++;else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3)soonCare++;});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId);
     if(overdue>0||sup.some(o=>o.st.tone==="out"))return"alert";
-    if(soon>0||sup.some(o=>o.st.tone==="low"))return"warn";
+    if(soonCare>0||sup.some(o=>o.st.tone==="low"))return"warn";
     return"ok";
   };
   const spaceConcern=(spaceId)=>{
-    let overdue=null,soon=null;
-    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x)){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(d>=0&&d<=3){if(!soon||d<soon.d)soon={item:x,d};}});
+    let overdue=null,soonCare=null;
+    items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x)){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3){if(!soonCare||d<soonCare.d)soonCare={item:x,d};}});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId).sort((a,b)=>a.st.left-b.st.left)[0];
     if(sup&&sup.st.tone==="out")return`${sup.item.title}が切れているかも`;
     if(overdue)return`${overdue.item.title}が期限切れ`;
     if(sup&&sup.st.tone==="low")return`${sup.item.title} 残りわずか`;
-    if(soon)return`${soon.item.title}・${soon.d===0?"今日":"あと"+soon.d+"日"}`;
+    if(soonCare)return`${soonCare.item.title}・${soonCare.d===0?"今日":"あと"+soonCare.d+"日"}`;
     return null;
   };
   // ⑤ 小さなふりかえり（軽め）
@@ -1880,6 +1882,20 @@ function App(){
                   {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
                 </section>
               )}
+              {homeData.upcoming.length>0&&(
+                <section className="yl-upcoming">
+                  <p className="yl-upcoming-label">🗓 直近の予定</p>
+                  <ul className="yl-upcoming-list">
+                    {homeData.upcoming.slice(0,4).map(u=>(
+                      <li key={u.key} className="yl-upcoming-item" onClick={()=>setTab(u.space)}>
+                        <span className="yl-upcoming-emoji">{u.emoji}</span>
+                        <span className="yl-upcoming-text">{u.title}<span className="yl-upcoming-who"> ・{nameOf(u.space)}</span></span>
+                        <span className="yl-upcoming-tag">{u.tag}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
             );})()}
 
@@ -2049,7 +2065,7 @@ function App(){
           </div>
         ):(
           <>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meUpcoming.length>0?`これからの楽しみが ${meUpcoming.length}件 🎉`:"楽しみな予定を入れてみませんか？ 🌱"}</p><p className="yl-melead-sub">{meUpcoming.length>0?`${meUpcoming[0].title}まで ${meUpcoming[0].daysUntil===0?"今日！":"あと"+meUpcoming[0].daysUntil+"日"}`:"下から誕生日やイベントを追加できます"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -2066,6 +2082,7 @@ function App(){
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日<input type="date" className="yl-date" style={{marginLeft:6}} value={editGotcha} onChange={e=>setEditGotcha(e.target.value)}/></label>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
+                      <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>🗑 このメンバーを削除</button>
                     </div>
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
@@ -2075,12 +2092,11 @@ function App(){
                   )}
                 </div>
                 <div className="yl-petstatus-chips">
-                  <span className="yl-pill soon">⏰ 近い {memberStats?.soon||0}</span>
+                  <span className="yl-pill soon">⏰ 期限近 {memberStats?.soon||0}</span>
                   <span className="yl-pill over">🔴 期限切れ {memberStats?.over||0}</span>
                   {activeMember.birthday&&<span className="yl-pill bday">🎂 {fmtBirthday(activeMember.birthday)}</span>}
                   {activeMember.gotchaDay&&<span className="yl-pill gotcha">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}`;})()}</span>}
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
-                  <button className="yl-pet-del" onClick={()=>setConfirmDel(activeMember)}>削除</button>
                 </div>
               </section>
             )}
@@ -2263,7 +2279,7 @@ function App(){
               defs.push({key:"health",el:(
                 <section className="yl-health">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
-                  {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?`目標まで あと −${Math.abs(weightDiff).toFixed(1)}${weightUnit}（食べすぎ・運動量に気をつけて）`:`目標まで あと +${Math.abs(weightDiff).toFixed(1)}${weightUnit}`}</p>)}
+                  {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?`目標を ${Math.abs(weightDiff).toFixed(1)}${weightUnit} 超えています（食べすぎ・運動量に気をつけて）`:`目標まで あと ${Math.abs(weightDiff).toFixed(1)}${weightUnit}`}</p>)}
                   {weightPts.length>0?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#FF4D8D" label="体重"/>:<p className="yl-routine-empty">右下の＋から体重などを記録できます。</p>}
                   {isMemberTab&&heightPts.length>0&&<MiniChart points={heightPts} unit="cm" color="#9B6DFF" label="身長"/>}
                   {healthRecords.length>0&&(
