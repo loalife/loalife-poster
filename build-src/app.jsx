@@ -200,6 +200,19 @@ const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);ret
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
 const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
+// お世話ログ（やった履歴・前回からの経過）
+const CHORE_TEMPLATES=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプー",emoji:"🛁"},{title:"爪切り",emoji:"✂️"},{title:"歯みがき",emoji:"🦷"},{title:"ブラッシング",emoji:"🪮"},{title:"耳そうじ",emoji:"👂"},{title:"シーツ交換",emoji:"🛏️"}];
+// 前回実施日からの経過ラベル（前回いつ？をひと目で）
+function elapsedLabel(dateStr){
+  if(!dateStr)return{txt:"まだ記録なし",tone:"none"};
+  const d=daysUntil(dateStr);if(d==null)return{txt:"—",tone:"none"};
+  const ago=-d;
+  if(ago<=0)return{txt:"今日やりました",tone:"fresh"};
+  if(ago===1)return{txt:"昨日",tone:"fresh"};
+  if(ago<7)return{txt:`${ago}日前`,tone:"ok"};
+  if(ago<28){const w=Math.floor(ago/7);return{txt:`${w}週間前`,tone:ago>=21?"warn":"ok"};}
+  const mo=Math.floor(ago/30);return{txt:`約${mo}か月前`,tone:"warn"};
+}
 // からだの記録（体重・身長・体調）
 const HEALTH_CONDS=[{key:"good",label:"元気",emoji:"😊"},{key:"ok",label:"ふつう",emoji:"😐"},{key:"bad",label:"元気ない",emoji:"😟"}];
 const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
@@ -594,7 +607,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -1385,6 +1398,13 @@ function App(){
   },[items,members,meAvatar]);
   // 証明書（ワクチン等）：写真付きのケアを上部に出してすぐ見られるように
   const certs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="care"&&x.photo).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  // 証明書を年ごとにまとめる（何年度ぶん、が分かるように）
+  const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
+  // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
+  const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
+  const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
+  const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
+  const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
   const lowSupplies=useMemo(()=>items.filter(x=>x.type==="supply").map(x=>({item:x,st:supplyStatus(x)})).filter(o=>o.st&&o.st.tone!=="ok"),[items]);
   // ホームの支出サマリー（安心の場：総額＋メンバー別簡易比較＋急増のみ。詳細一覧は出さない）
@@ -1409,7 +1429,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
   const dndSensors=useSensors(
     useSensor(MouseSensor,{activationConstraint:{distance:6}}),
@@ -2093,6 +2113,29 @@ function App(){
                   )}
                 </section>
               )});
+              defs.push({key:"chore",el:(
+                <section className="yl-chore">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🧹 お世話ログ<span className="yl-chore-hint">前回いつ？がひと目で</span></h2>
+                  {chores.length>0&&(
+                    <ul className="yl-chore-list">
+                      {chores.map(c=>{const el=elapsedLabel(c.lastDone);return(
+                        <li key={c.id} className="yl-chore-item">
+                          <span className="yl-chore-emoji">{c.emoji}</span>
+                          <span className="yl-chore-body">
+                            <span className="yl-chore-name">{c.title}</span>
+                            <span className={"yl-chore-since "+el.tone}>{c.lastDone?`前回 ${fmtDate(c.lastDone)}・${el.txt}`:el.txt}{(c.history||[]).length>1?`（計${c.history.length}回）`:""}</span>
+                          </span>
+                          <button className="yl-chore-did" onClick={()=>logChore(c.id)}>やった</button>
+                          <button className="yl-chore-del" onClick={()=>askDelete(c.title,()=>removeChore(c.id))} aria-label="削除">×</button>
+                        </li>
+                      );})}
+                    </ul>
+                  )}
+                  <div className="yl-chore-tpl">
+                    {CHORE_TEMPLATES.filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ {t.emoji} {t.title}</button>)}
+                  </div>
+                </section>
+              )});
               defs.push({key:"list",el:(
                 <section className="yl-listsec">
                   <div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>
@@ -2196,17 +2239,22 @@ function App(){
               if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
                 <section className="yl-certs">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
-                  <div className="yl-certs-row">
-                    {certs.map(c=>{
-                      const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
-                      return(
-                        <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
-                          {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
-                          <span className="yl-cert-cap">{c.emoji} {label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {certsByYear.map(g=>(
+                    <div key={g.year} className="yl-cert-year">
+                      <span className="yl-cert-yearlabel">{g.year==="----"?"日付なし":`${g.year}年`}</span>
+                      <div className="yl-certs-row">
+                        {g.items.map(c=>{
+                          const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
+                          return(
+                            <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
+                              {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph">📄</span>}
+                              <span className="yl-cert-cap">{c.emoji} {label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </section>
               )});
               defs.push({key:"health",el:(
@@ -2369,6 +2417,7 @@ function App(){
               {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・身長・体調をグラフで管理。小動物は0.1g単位。目標体重を決めると差分の目安も表示します。"},
               {emoji:"📝",title:"今日のようす（お薬手帳・体調メモ）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを記録。お薬手帳や通院前のメモに。"},
               {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出て忘れ物を防ぎます。"},
+              {emoji:"🧹",title:"お世話ログ",desc:"トイレ掃除・シャンプーなどを「やった」でタップ記録。前回からの経過（○週間前など）がひと目で分かり、やり忘れを防げます。管理タブに。"},
               {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー/禁忌・かかりつけ病院などを、写真付きカードで保存（隠しトレイでスッキリ）。"},
               {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"思い出に #発表会 などのタグや「はじめて」を付けて、成長をあとから振り返れます。"},
               {emoji:"💰",title:"支出",desc:"病院代や餌代などをカテゴリ別に記録。今月いくら使ったかをグラフで可視化します。"},
