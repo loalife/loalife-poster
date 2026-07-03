@@ -746,7 +746,7 @@ function App(){
   },[loaded,members,items]);
 
   // Firebase Auth state
-  useEffect(()=>{setMemListOpen(false);},[tab,personSeg]); // 画面切替でメンバー一覧を閉じる
+  useEffect(()=>{setMemListOpen(false);setAdding(false);},[tab,personSeg]); // 画面切替でメンバー一覧・追加フォームを閉じる
   useEffect(()=>{
     if(!FB_READY){setFireLoading(false);return;}
     return onAuthStateChanged(fbAuth,async(user)=>{
@@ -2584,7 +2584,7 @@ function App(){
       {!onboarding&&(tab==="cal"||isPersonMode)&&(()=>{
         const curId=tab==="cal"?calFilter:tab;
         const cur=curId==="all"?null:(spaces.find(s=>s.id===curId)||spaces[0]);
-        const select=(id)=>{if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
+        const select=(id)=>{setAdding(false);if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
         return(<>
           {memListOpen&&<div className="yl-mscrim" onClick={()=>setMemListOpen(false)}/>}
           {memListOpen&&(
