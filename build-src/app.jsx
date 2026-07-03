@@ -1407,10 +1407,28 @@ function App(){
     showFlash("今日のようすを記録しました 📝");
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+<<<<<<< HEAD
   // --- 生理：入力はモーダルの症状タグ「🩸生理」に一本化。センシティブなので private フラグ（本人のみ）。---
   // 共有機能は未実装だが、将来 private 項目を共有対象から除外できるようフラグを持たせておく（漏れ防止）。
   const isSharable=(it)=>!it.private; // 共有可否。家族共有実装時にこの判定でセンシティブ項目を除外する。
   const periodDates=(sp)=>{const set=new Set();items.forEach(x=>{if(x.space!==sp)return;if(x.type==="period"&&x.date)set.add(x.date);else if(x.type==="diary"&&(x.symptoms||[]).includes("period")&&x.date)set.add(x.date);});return[...set].sort();};
+=======
+  // --- 生理記録（大人・任意）：ワンタップで当日を記録。センシティブなので private フラグ（本人のみ）。---
+  // 共有機能は未実装だが、将来 private 項目を共有対象から除外できるようフラグを持たせておく（漏れ防止）。
+  const isSharable=(it)=>!it.private; // 共有可否。家族共有実装時にこの判定でセンシティブ項目を除外する。
+  const periodDates=(sp)=>{const set=new Set();items.forEach(x=>{if(x.space!==sp)return;if(x.type==="period"&&x.date)set.add(x.date);else if(x.type==="diary"&&(x.symptoms||[]).includes("period")&&x.date)set.add(x.date);});return[...set].sort();};
+  const todayHasPeriod=(sp)=>periodDates(sp).includes(todayIso);
+  const logPeriod=(sp)=>{
+    const space=sp||tab;
+    if(todayHasPeriod(space)){ // 誤タップ取消：当日の period 記録と diary の period 症状を外す
+      const next=items.filter(x=>!(x.space===space&&x.type==="period"&&x.date===todayIso)).map(x=>(x.space===space&&x.type==="diary"&&x.date===todayIso&&(x.symptoms||[]).includes("period"))?{...x,symptoms:x.symptoms.filter(s=>s!=="period")}:x);
+      persist(members,next);showFlash("記録を取り消しました");return;
+    }
+    const rec={id:"pd"+Date.now(),space,type:"period",date:todayIso,private:true,createdAt:Date.now()};
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    showFlash("🩸 生理を記録しました");
+  };
+>>>>>>> origin/main
   // やさしい周期予測：period 日を「かたまり（開始日）」に分け、開始間隔の平均から次回目安を出す。医療精度は主張しない。
   const periodForecast=(sp)=>{
     const ds=periodDates(sp);if(ds.length===0)return null;
@@ -2461,6 +2479,13 @@ function App(){
                   ):(
                     <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}>📝 体調を記録</button>
                   )}
+                  {diaryTypeOf(tab)==="adult"&&(()=>{const fc=periodForecast(tab);const done=todayHasPeriod(tab);return(
+                    <div className="yl-period">
+                      <button className={"yl-period-btn"+(done?" on":"")} onClick={()=>logPeriod(tab)}>🩸 {done?"生理を記録中（取り消す）":"生理を記録"}</button>
+                      {fc&&<p className="yl-period-note">{fc.next?`前回 ${fmtDate(fc.last)}・次はそろそろ ${fmtDate(fc.next)}ごろ（約${fc.avg}日周期）`:`前回 ${fmtDate(fc.last)}・記録がたまると次回の目安を表示します`}</p>}
+                      <p className="yl-period-priv">🔒 生理の記録は本人のみ（将来の共有でも対象外）</p>
+                    </div>
+                  );})()}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
                   {diaryRecords.length>0&&(
