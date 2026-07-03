@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { createRoot } from "react-dom/client";
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -2585,15 +2585,23 @@ function App(){
         const curId=tab==="cal"?calFilter:tab;
         const cur=curId==="all"?null:(spaces.find(s=>s.id===curId)||spaces[0]);
         const select=(id)=>{setAdding(false);if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
+        const meSpace=spaces[0];
+        const memRow=(s)=>{const sel=curId===s.id;return(
+          <button key={s.id} className={"yl-mrow"+(sel?" on":"")} onClick={()=>select(s.id)}>
+            <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mrow-name">{s.name}</span>{sel&&<span className="yl-mrow-check">✓</span>}
+          </button>);};
         return(<>
           {memListOpen&&<div className="yl-mscrim" onClick={()=>setMemListOpen(false)}/>}
           {memListOpen&&(
             <div className="yl-mdropup" role="listbox">
               {tab==="cal"&&<button className={"yl-mrow"+(calFilter==="all"?" on":"")} onClick={()=>select("all")}><span className="yl-mrow-ico">👥</span><span className="yl-mrow-name">すべて（全員の予定を重ねる）</span>{calFilter==="all"&&<span className="yl-mrow-check">✓</span>}</button>}
-              {spaces.map(s=>{const sel=curId===s.id;return(
-                <button key={s.id} className={"yl-mrow"+(sel?" on":"")} onClick={()=>select(s.id)}>
-                  <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mrow-name">{s.name}</span>{sel&&<span className="yl-mrow-check">✓</span>}
-                </button>);})}
+              {memRow(meSpace)}
+              {groupedMembers.map(g=>(
+                <Fragment key={g.group||"__ungrouped"}>
+                  {g.group&&<div className="yl-mgroup-h">🗂 {g.group}</div>}
+                  {g.members.map(m=>memRow(m))}
+                </Fragment>
+              ))}
               <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ メンバーを追加</button>
             </div>
           )}
