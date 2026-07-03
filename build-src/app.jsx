@@ -2080,7 +2080,7 @@ function App(){
           <div className="yl-cal">
             <div className="yl-cal-filter">
               <button className={"yl-cal-fchip"+(calFilter==="all"?" on":"")} onClick={()=>setCalFilter("all")}>すべて</button>
-              {spaces.map(s=><button key={s.id} className={"yl-cal-fchip"+(calFilter===s.id?" on":"")} onClick={()=>setCalFilter(s.id)}><span className="yl-cal-fdot" style={{background:colorOf(s.id)}}/>{s.emoji} {s.name}</button>)}
+              {spaces.map(s=><button key={s.id} className={"yl-cal-fchip"+(calFilter===s.id?" on":"")} onClick={()=>setCalFilter(s.id)}><span className="yl-cal-fdot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")} {s.name}</button>)}
             </div>
             <div className="yl-cal-head">
               <button className="yl-cal-nav" onClick={()=>moveMonth(-1)} aria-label="前の月">‹</button>
