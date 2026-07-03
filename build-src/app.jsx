@@ -1407,21 +1407,10 @@ function App(){
     showFlash("今日のようすを記録しました 📝");
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
-  // --- 生理記録（大人・任意）：ワンタップで当日を記録。センシティブなので private フラグ（本人のみ）。---
+  // --- 生理：入力はモーダルの症状タグ「🩸生理」に一本化。センシティブなので private フラグ（本人のみ）。---
   // 共有機能は未実装だが、将来 private 項目を共有対象から除外できるようフラグを持たせておく（漏れ防止）。
   const isSharable=(it)=>!it.private; // 共有可否。家族共有実装時にこの判定でセンシティブ項目を除外する。
   const periodDates=(sp)=>{const set=new Set();items.forEach(x=>{if(x.space!==sp)return;if(x.type==="period"&&x.date)set.add(x.date);else if(x.type==="diary"&&(x.symptoms||[]).includes("period")&&x.date)set.add(x.date);});return[...set].sort();};
-  const todayHasPeriod=(sp)=>periodDates(sp).includes(todayIso);
-  const logPeriod=(sp)=>{
-    const space=sp||tab;
-    if(todayHasPeriod(space)){ // 誤タップ取消：当日の period 記録と diary の period 症状を外す
-      const next=items.filter(x=>!(x.space===space&&x.type==="period"&&x.date===todayIso)).map(x=>(x.space===space&&x.type==="diary"&&x.date===todayIso&&(x.symptoms||[]).includes("period"))?{...x,symptoms:x.symptoms.filter(s=>s!=="period")}:x);
-      persist(members,next);showFlash("記録を取り消しました");return;
-    }
-    const rec={id:"pd"+Date.now(),space,type:"period",date:todayIso,private:true,createdAt:Date.now()};
-    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
-    showFlash("🩸 生理を記録しました");
-  };
   // やさしい周期予測：period 日を「かたまり（開始日）」に分け、開始間隔の平均から次回目安を出す。医療精度は主張しない。
   const periodForecast=(sp)=>{
     const ds=periodDates(sp);if(ds.length===0)return null;
@@ -2468,17 +2457,10 @@ function App(){
                 <section className="yl-diary">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
                   {todayHasCond(tab)?(
-                    <p className="yl-quick-done">✓ 今日の体調は記録ずみ 👌</p>
+                    <button className="yl-quick-done tap" onClick={()=>setInputSheet("diary")}>✓ 今日の体調は記録ずみ 👌<span className="yl-quick-edit">追記・編集</span></button>
                   ):(
-                    <button className="yl-quick-big" onClick={()=>quickHealthy(tab)}>👌 今日も元気（ワンタップ記録）</button>
+                    <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}>📝 体調を記録</button>
                   )}
-                  {diaryTypeOf(tab)==="adult"&&(()=>{const fc=periodForecast(tab);const done=todayHasPeriod(tab);return(
-                    <div className="yl-period">
-                      <button className={"yl-period-btn"+(done?" on":"")} onClick={()=>logPeriod(tab)}>🩸 {done?"生理を記録中（取り消す）":"生理を記録"}</button>
-                      {fc&&<p className="yl-period-note">{fc.next?`前回 ${fmtDate(fc.last)}・次はそろそろ ${fmtDate(fc.next)}ごろ（約${fc.avg}日周期）`:`前回 ${fmtDate(fc.last)}・記録がたまると次回の目安を表示します`}</p>}
-                      <p className="yl-period-priv">🔒 生理の記録は本人のみ（将来の共有でも対象外）</p>
-                    </div>
-                  );})()}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
                   {diaryRecords.length>0&&(
@@ -2769,6 +2751,10 @@ function App(){
             {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">その他</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}>🦮 さんぽ・おでかけ</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}>🏥 病院に行った</button>}</span></div>}
             {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}>{s.emoji} {s.label}</button>;})}</span></div>}
+            {dcfg.symptoms.includes("period")&&(()=>{const fc=periodForecast(tab);return(<div className="yl-period-inline">
+              <p className="yl-period-priv">🔒 「🩸 生理」の記録は本人のみ（将来の共有でも対象外）</p>
+              {fc&&fc.next&&<p className="yl-period-note">🩸 前回 {fmtDate(fc.last)}・次はそろそろ {fmtDate(fc.next)}ごろ（約{fc.avg}日周期）</p>}
+            </div>);})()}
             </>);})()}
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:4}} value={diaryDraft.note} onChange={e=>setDiary({note:e.target.value})} placeholder="日々の様子・病院でのこと・ひとこと…"/>
             <div className="yl-diary-photorow">{diaryDraft.photo?<span className="yl-diary-thumb"><img src={diaryDraft.photo} alt=""/><button className="yl-diary-thumbdel" onClick={()=>setDiary({photo:null})} aria-label="写真を削除">×</button></span>:<label className="yl-diary-addphoto">📷 写真を追加（お薬・症状など）<input type="file" accept="image/*" style={{display:"none"}} onChange={pickDiaryPhoto}/></label>}</div>
