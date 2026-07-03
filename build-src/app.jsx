@@ -2260,7 +2260,7 @@ function App(){
                     {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                   </div>
                   {routines.length===0?(
-                    <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、右下の ＋ ボタンから追加できます":curKind==="me"?"毎日の予定や習慣を、右下の ＋ ボタンから追加できます":"毎日くりかえすことを、右下の ＋ ボタンから追加できます"}</p>
+                    <p className="yl-routine-empty">{curKind==="pet"?"毎日くりかえすお世話を、右下の ＋ から追加できます":curKind==="me"?"毎日の予定や習慣を、右下の ＋ から追加できます":"毎日くりかえすことを、右下の ＋ から追加できます"}</p>
                   ):(
                     <ul className="yl-timeline">
                       {routines.map(r=>{
@@ -2321,7 +2321,7 @@ function App(){
               defs.push({key:"list",el:(
                 <section className="yl-listsec">
                   {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>}
-                  {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の＋から追加できます。</p>:(()=>{
+                  {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の ＋ から追加できます。</p>:(()=>{
                     const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
                     return(
                       <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
@@ -2384,7 +2384,7 @@ function App(){
               defs.push({key:"expense",el:(
                 <section className="yl-exp">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
-                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の＋から、病院代・ごはん代などを記録できます。</p>}
+                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の ＋ から、病院代・ごはん代などを記録できます。</p>}
                   {expenseMonth.total>0&&(
                     <div className="yl-exp-viz">
                       <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
@@ -2443,7 +2443,7 @@ function App(){
                 <section className="yl-health">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
                   {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
-                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の＋から体重などを記録できます。"}</p>}
+                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の ＋ から体重などを記録できます。"}</p>}
                   {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label="身長"/>}
                   {healthRecords.length>0&&(
                     <ul className="yl-health-list">
@@ -2551,7 +2551,7 @@ function App(){
                       );})}
                     </div>
                   )}
-                  {belongings.length===0&&<p className="yl-routine-empty">右下の＋から曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出ます。</p>}
+                  {belongings.length===0&&<p className="yl-routine-empty">右下の ＋ から曜日ごとの持ち物を登録すると、前日に「明日の準備」チェックリストが出ます。</p>}
                 </section>
               )});
               defs.push({key:"cards",el:(
@@ -2622,7 +2622,7 @@ function App(){
               {emoji:"🏠",title:"ホーム",desc:"家族みんなの「今日やること」や、気にかけたいこと（期限切れ・もうすぐ）をひと目で確認できます。"},
               {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・お子さま・ペットを追加して、それぞれの予定やケアをまとめられます。アイコンは絵文字でも写真でもOK。多頭飼いはフォルダで分類できます。"},
               {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップしてふりかえりも。"},
-              {emoji:"📝",title:"今日のようす（お薬手帳・体調メモ）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを残せます。お薬手帳や通院前のメモに。"},
+              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを残せます。お薬手帳や通院前のメモに。"},
               {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・フィラリア・トリミング・通院・投薬などを登録。周期のあるケアは、記録すると次回へ自動でスライドします。"},
               {emoji:"🧹",title:"お世話ログ",desc:"トイレ掃除やシャンプーなどを「やった」で記録。前回からの経過（○週間前など）がひと目で分かり、やり忘れを防げます。"},
               {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・身長・体調をグラフでチェック。小動物は0.1g単位。目標体重を決めると差分の目安も表示します。"},
@@ -2761,7 +2761,7 @@ function App(){
             </div>
             {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">小動物向け：0.1g単位で記録できます</p>}
             {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">体調</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}>📈 記録する</button>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}>📈 からだを記録</button>
             {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}>🎯 目標体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
             {isMemberTab&&<p className="yl-health-hint" style={{marginTop:4}}>設定すると、目標との差（ダイエット手帳）を表示します。</p>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
