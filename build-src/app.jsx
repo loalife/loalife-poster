@@ -626,6 +626,7 @@ function App(){
   const[meNameDraft,setMeNameDraft]=useState("");
   // 今日のようす（日記）入力（症状・写真も。お薬手帳/体調メモ兼用）
   const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
+  const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
   // 支出入力（記録は常に今日の日付で即記録。日付変更は編集画面のみ＝例外用途）
   const[expAmount,setExpAmount]=useState("");
   const[expCat,setExpCat]=useState("hospital");
@@ -1384,6 +1385,10 @@ function App(){
   const removeHealth=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // --- 今日のようす（日記）：元気・食欲・うんち・さんぽ・病院・症状・写真・ひとことを追記型で記録 ---
   const diaryRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  // 1日=1カード：同じ日付でグルーピング（日降順、カード内は時系列昇順）。レコードは束ねるだけで消さない。
+  const diaryByDate=useMemo(()=>{const map={};diaryRecords.forEach(r=>{(map[r.date]=map[r.date]||[]).push(r);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(date=>({date,recs:map[date].slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}));},[diaryRecords]);
+  // その日のカードをまるごと削除（写真も掃除）
+  const removeDiaryDay=(date)=>{const del=diaryRecords.filter(r=>r.date===date);del.forEach(r=>{photoIdsOf(r).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(r).catch(()=>{});});persist(members,items.filter(r=>!(r.type==="diary"&&r.space===tab&&r.date===date)));};
   // 元気の推移グラフ（5段階を score 化。古い順）
   const energyPts=useMemo(()=>[...diaryRecords].reverse().filter(r=>r.energy&&diaryMeta(DIARY_ENERGY,r.energy)).map(r=>({date:r.date,value:diaryMeta(DIARY_ENERGY,r.energy).score})),[diaryRecords]);
   const setDiary=(patch)=>setDiaryDraft(d=>({...d,...patch}));
@@ -2462,25 +2467,49 @@ function App(){
                     <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}>📝 体調を記録</button>
                   )}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
-                  {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
-                  {diaryRecords.length>0&&(
-                    <ul className="yl-diary-list">
-                      {diaryRecords.slice(0,8).map(r=>(
-                        <li key={r.id} className="yl-diary-item">
-                          <span className="yl-diary-date">{fmtDate(r.date)}</span>
-                          <span className="yl-diary-vals">
-                            {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span title="元気">{diaryMeta(DIARY_ENERGY,r.energy).emoji}</span>}
-                            {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span title="食欲">{diaryMeta(DIARY_APPETITE,r.appetite).emoji}</span>}
-                            {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span title="うんち">{diaryMeta(DIARY_POOP,r.poop).emoji}{diaryMeta(DIARY_POOP,r.poop).label}</span>}
-                            {r.walk&&<span>🦮</span>}
-                            {r.hospital&&<span>🏥</span>}
-                            {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className="yl-diary-sym">{symptomMeta(sk).emoji}{symptomMeta(sk).label}</span>)}
-                            {r.note&&<span className="yl-diary-note">{r.note}</span>}
-                            {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false})}/>}
-                          </span>
-                          <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}のようす`,()=>removeDiary(r.id))} aria-label="削除">×</button>
-                        </li>
-                      ))}
+                  {diaryRecords.length===0&&<p className="yl-routine-empty">上の「体調を記録」から、元気・食欲・症状・写真などを残せます。</p>}
+                  {diaryByDate.length>0&&(
+                    <ul className="yl-daycards">
+                      {diaryByDate.slice(0,31).map(({date,recs})=>{
+                        const open=(date in diaryOpen)?diaryOpen[date]:date===todayIso;
+                        const energyRecs=recs.filter(r=>r.energy&&diaryMeta(DIARY_ENERGY,r.energy));
+                        const rep=energyRecs.length?diaryMeta(DIARY_ENERGY,energyRecs[energyRecs.length-1].energy):null;
+                        const daySyms=[...new Set(recs.flatMap(r=>r.symptoms||[]))];
+                        const sumLabel=recs.length===1?(rep?rep.label:(recs[0].note?recs[0].note.slice(0,14):"記録")):`${rep?rep.label:"記録"}・ほか${recs.length-1}件`;
+                        return(
+                          <li key={date} className={"yl-daycard"+(open?" open":"")}>
+                            <div className="yl-daycard-head">
+                              <button className="yl-daycard-toggle" onClick={()=>setDiaryOpen(o=>({...o,[date]:!open}))}>
+                                <span className="yl-daycard-caret">{open?"▾":"▸"}</span>
+                                <span className="yl-daycard-date">{fmtDate(date)}{date===todayIso?"（今日）":""}</span>
+                                <span className="yl-daycard-rep">{rep?rep.emoji:"📝"} {sumLabel}</span>
+                                {!open&&daySyms.length>0&&<span className="yl-daycard-symbadges">{daySyms.slice(0,3).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-symbadge"+(sk==="period"?" period":"")}>{symptomMeta(sk).emoji}</span>)}</span>}
+                              </button>
+                              <button className="yl-daycard-del" onClick={()=>askDelete(`${fmtDate(date)}の記録すべて`,()=>removeDiaryDay(date))} aria-label="この日をすべて削除">×</button>
+                            </div>
+                            {open&&(
+                              <ul className="yl-dayrecs">
+                                {recs.map(r=>{const tod=recs.length>1&&r.createdAt?(()=>{const h=new Date(r.createdAt).getHours();return h<11?"朝":h<17?"昼":"夜";})():"";return(
+                                  <li key={r.id} className="yl-dayrec">
+                                    <span className="yl-dayrec-vals">
+                                      {tod&&<span className="yl-dayrec-tod">{tod}</span>}
+                                      {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span className="yl-dayrec-chip">{diaryMeta(DIARY_ENERGY,r.energy).emoji} {diaryMeta(DIARY_ENERGY,r.energy).label}</span>}
+                                      {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span className="yl-dayrec-chip">{diaryMeta(DIARY_APPETITE,r.appetite).emoji} {diaryMeta(DIARY_APPETITE,r.appetite).label}</span>}
+                                      {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip">💩 {diaryMeta(DIARY_POOP,r.poop).label}</span>}
+                                      {r.walk&&<span className="yl-dayrec-chip">🦮 さんぽ</span>}
+                                      {r.hospital&&<span className="yl-dayrec-chip">🏥 病院</span>}
+                                      {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}>{symptomMeta(sk).emoji} {symptomMeta(sk).label}</span>)}
+                                      {r.note&&<span className="yl-dayrec-note">{r.note}</span>}
+                                      {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false})}/>}
+                                    </span>
+                                    <button className="yl-dayrec-del" onClick={()=>askDelete("この記録",()=>removeDiary(r.id))} aria-label="この記録を削除">×</button>
+                                  </li>
+                                );})}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </section>
