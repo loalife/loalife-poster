@@ -22,6 +22,8 @@ const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return i
 const daysUntil = (s) => { if(!s)return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
 const addInterval = (s,rep) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); if(rep==="daily")dt.setDate(dt.getDate()+1); else if(rep==="weekly")dt.setDate(dt.getDate()+7); else if(rep==="monthly")dt.setMonth(dt.getMonth()+1); else if(rep==="yearly")dt.setFullYear(dt.getFullYear()+1); return iso(dt); };
 const fmtDate = (s) => { if(!s)return""; const[,m,d]=s.split("-").map(Number); return`${m}/${d}`; };
+const daysBetween = (a,b) => { const[ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
+const addDays = (s,n) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return iso(dt); };
 const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Number); return`${mo}月${d}日`; };
 
 const TYPE_META={dream:{label:"夢",emoji:"🌈",bg:"#F5EAD8",fg:"#B23A48"},work:{label:"仕事",emoji:"💼",bg:"#E7E9EF",fg:"#5B6B9E"},event:{label:"予定",emoji:"📅",bg:"#ECE6F1",fg:"#8A6D9E"},social:{label:"飲み会",emoji:"🍻",bg:"#F3E7D6",fg:"#C77A2E"},habit:{label:"習慣",emoji:"💪",bg:"#F5EAD2",fg:"#C99A2E"}};
@@ -1398,12 +1400,38 @@ function App(){
     const rec={id,space:tab,type:"diary",date:todayIso,createdAt:Date.now()};
     if(d.energy)rec.energy=d.energy;if(d.appetite)rec.appetite=d.appetite;if(d.poop)rec.poop=d.poop;
     if(d.walk)rec.walk=true;if(d.hospital)rec.hospital=true;if(note)rec.note=note;if(syms.length)rec.symptoms=syms;
+    if(syms.includes("period"))rec.private=true; // 生理を含む記録はセンシティブ＝本人のみ
     if(d.photo){const pid="dyp"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,d.photo);if(ok){setPhotos(p=>({...p,[pid]:d.photo}));rec.photo=true;rec.photos=[pid];}}
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     setDiaryDraft({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
     showFlash("今日のようすを記録しました 📝");
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- 生理記録（大人・任意）：ワンタップで当日を記録。センシティブなので private フラグ（本人のみ）。---
+  // 共有機能は未実装だが、将来 private 項目を共有対象から除外できるようフラグを持たせておく（漏れ防止）。
+  const isSharable=(it)=>!it.private; // 共有可否。家族共有実装時にこの判定でセンシティブ項目を除外する。
+  const periodDates=(sp)=>{const set=new Set();items.forEach(x=>{if(x.space!==sp)return;if(x.type==="period"&&x.date)set.add(x.date);else if(x.type==="diary"&&(x.symptoms||[]).includes("period")&&x.date)set.add(x.date);});return[...set].sort();};
+  const todayHasPeriod=(sp)=>periodDates(sp).includes(todayIso);
+  const logPeriod=(sp)=>{
+    const space=sp||tab;
+    if(todayHasPeriod(space)){ // 誤タップ取消：当日の period 記録と diary の period 症状を外す
+      const next=items.filter(x=>!(x.space===space&&x.type==="period"&&x.date===todayIso)).map(x=>(x.space===space&&x.type==="diary"&&x.date===todayIso&&(x.symptoms||[]).includes("period"))?{...x,symptoms:x.symptoms.filter(s=>s!=="period")}:x);
+      persist(members,next);showFlash("記録を取り消しました");return;
+    }
+    const rec={id:"pd"+Date.now(),space,type:"period",date:todayIso,private:true,createdAt:Date.now()};
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    showFlash("🩸 生理を記録しました");
+  };
+  // やさしい周期予測：period 日を「かたまり（開始日）」に分け、開始間隔の平均から次回目安を出す。医療精度は主張しない。
+  const periodForecast=(sp)=>{
+    const ds=periodDates(sp);if(ds.length===0)return null;
+    const starts=[];let prev=null;ds.forEach(d=>{if(prev===null||daysBetween(prev,d)>10)starts.push(d);prev=d;});
+    const last=starts[starts.length-1];
+    if(starts.length<2)return{last,next:null};
+    const iv=[];for(let i=1;i<starts.length;i++)iv.push(daysBetween(starts[i-1],starts[i]));
+    const avg=Math.round(iv.reduce((a,b)=>a+b,0)/iv.length);
+    return{last,next:addDays(last,avg),avg};
+  };
   // --- ワンタップ記録：迷わず「今日も元気👌」の1タップで当日の体調記録を完了 ---
   // 一度入れたら二度と入れさせない：当日すでに体調（diaryのenergy / healthのcondition）があれば重複させない。
   const todayHasCond=(sp)=>items.some(x=>x.space===sp&&x.date===todayIso&&((x.type==="diary"&&x.energy)||(x.type==="health"&&x.condition)));
@@ -2444,6 +2472,13 @@ function App(){
                   ):(
                     <button className="yl-quick-big" onClick={()=>quickHealthy(tab)}>👌 今日も元気（ワンタップ記録）</button>
                   )}
+                  {diaryTypeOf(tab)==="adult"&&(()=>{const fc=periodForecast(tab);const done=todayHasPeriod(tab);return(
+                    <div className="yl-period">
+                      <button className={"yl-period-btn"+(done?" on":"")} onClick={()=>logPeriod(tab)}>🩸 {done?"生理を記録中（取り消す）":"生理を記録"}</button>
+                      {fc&&<p className="yl-period-note">{fc.next?`前回 ${fmtDate(fc.last)}・次はそろそろ ${fmtDate(fc.next)}ごろ（約${fc.avg}日周期）`:`前回 ${fmtDate(fc.last)}・記録がたまると次回の目安を表示します`}</p>}
+                      <p className="yl-period-priv">🔒 生理の記録は本人のみ（将来の共有でも対象外）</p>
+                    </div>
+                  );})()}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">右下の＋から、元気・食欲・症状・写真などを記録できます。</p>}
                   {diaryRecords.length>0&&(
