@@ -628,6 +628,7 @@ function App(){
   const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
   const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
   const[profileOpen,setProfileOpen]=useState(false); // プロフィール詳細（顔写真・説明・誕生日・編集）の開閉。既定=畳む
+  const[memListOpen,setMemListOpen]=useState(false); // メンバー切替のドロップアップ一覧の開閉
   // 支出入力（記録は常に今日の日付で即記録。日付変更は編集画面のみ＝例外用途）
   const[expAmount,setExpAmount]=useState("");
   const[expCat,setExpCat]=useState("hospital");
@@ -745,6 +746,7 @@ function App(){
   },[loaded,members,items]);
 
   // Firebase Auth state
+  useEffect(()=>{setMemListOpen(false);},[tab,personSeg]); // 画面切替でメンバー一覧を閉じる
   useEffect(()=>{
     if(!FB_READY){setFireLoading(false);return;}
     return onAuthStateChanged(fbAuth,async(user)=>{
@@ -2578,17 +2580,31 @@ function App(){
 
       {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
       <div className="yl-btmstack">
-      {/* 共通メンバー切り替えバー。カレンダー・記録・管理で表示。すべてはカレンダーのみ。 */}
-      {!onboarding&&(tab==="cal"||isPersonMode)&&(
-        <nav className="yl-membar">
-          {tab==="cal"&&<button className={"yl-mchip"+(calFilter==="all"?" on":"")} onClick={()=>setCalFilter("all")}>すべて</button>}
-          {spaces.map(s=>{const sel=tab==="cal"?calFilter===s.id:tab===s.id;return(
-            <button key={s.id} className={"yl-mchip"+(sel?" on":"")} onClick={()=>{if(tab==="cal"){setCalFilter(s.id);setMemberSel(s.id);}else{setTab(s.id);setMemberSel(s.id);}}}>
-              <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mchip-name">{s.name}</span>
-            </button>);})}
-          <button className="yl-mchip add" onClick={()=>setAdding(v=>!v)} aria-label="メンバーを追加">＋</button>
-        </nav>
-      )}
+      {/* 共通メンバー切り替え：ドロップアップ（通常は選択中1件、タップで上方向に一覧を展開）。すべてはカレンダーのみ。 */}
+      {!onboarding&&(tab==="cal"||isPersonMode)&&(()=>{
+        const curId=tab==="cal"?calFilter:tab;
+        const cur=curId==="all"?null:(spaces.find(s=>s.id===curId)||spaces[0]);
+        const select=(id)=>{if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
+        return(<>
+          {memListOpen&&<div className="yl-mscrim" onClick={()=>setMemListOpen(false)}/>}
+          {memListOpen&&(
+            <div className="yl-mdropup" role="listbox">
+              {tab==="cal"&&<button className={"yl-mrow"+(calFilter==="all"?" on":"")} onClick={()=>select("all")}><span className="yl-mrow-ico">👥</span><span className="yl-mrow-name">すべて（全員の予定を重ねる）</span>{calFilter==="all"&&<span className="yl-mrow-check">✓</span>}</button>}
+              {spaces.map(s=>{const sel=curId===s.id;return(
+                <button key={s.id} className={"yl-mrow"+(sel?" on":"")} onClick={()=>select(s.id)}>
+                  <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mrow-name">{s.name}</span>{sel&&<span className="yl-mrow-check">✓</span>}
+                </button>);})}
+              <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ メンバーを追加</button>
+            </div>
+          )}
+          <button className="yl-membar" onClick={()=>setMemListOpen(o=>!o)} aria-expanded={memListOpen} aria-label="メンバーを切り替え">
+            {curId==="all"
+              ?<><span className="yl-mrow-ico">👥</span><span className="yl-mbar-name">すべて</span></>
+              :<><span className="yl-mchip-dot" style={{background:colorOf(cur.id)}}/>{avatarNode(cur,"xs")}<span className="yl-mbar-name">{cur.name}</span></>}
+            <span className="yl-mbar-caret">{memListOpen?"▼":"▲"}</span>
+          </button>
+        </>);
+      })()}
 
       {/* 下部タブナビゲーション（常時表示・行動で分類） */}
       {!onboarding&&(()=>{
