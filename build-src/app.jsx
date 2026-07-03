@@ -627,6 +627,7 @@ function App(){
   // 今日のようす（日記）入力（症状・写真も。お薬手帳/体調メモ兼用）
   const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
   const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
+  const[profileOpen,setProfileOpen]=useState(false); // プロフィール詳細（顔写真・説明・誕生日・編集）の開閉。既定=畳む
   // 支出入力（記録は常に今日の日付で即記録。日付変更は編集画面のみ＝例外用途）
   const[expAmount,setExpAmount]=useState("");
   const[expCat,setExpCat]=useState("hospital");
@@ -1913,20 +1914,6 @@ function App(){
           </div>
         )}
 
-        {/* 対象（人/ペット）セレクタ。記録・管理タブで表示 */}
-        {isPersonMode&&(
-          <nav className="yl-people">
-            <button className={"yl-people-chip"+(tab==="me"?" on":"")} onClick={()=>{setTab("me");setMemberSel("me");}}>{meAvatar&&photos[meAvatar]?<img className="yl-avatar xs" src={photos[meAvatar]} alt=""/>:meEmoji} {meName||"わたし"}</button>
-            {groupedMembers.map(g=>(
-              <span key={g.group||"_"} className="yl-people-grp">
-                {g.group&&<span className="yl-people-grp-label">🗂 {g.group}</span>}
-                {g.members.map(m=>{const bd=daysUntilBirthday(m.birthday);return<button key={m.id} className={"yl-people-chip"+(tab===m.id?" on":"")} onClick={()=>{setTab(m.id);setMemberSel(m.id);}}>{avatarNode(m,"xs")} {m.name}{bd===0||bd===1?" 🎂":""}{m.visibility==="private"&&inHousehold?" 🔒":""}</button>;})}
-              </span>
-            ))}
-            <button className="yl-people-chip add" onClick={()=>setAdding(v=>!v)}>＋追加</button>
-          </nav>
-        )}
-
         {adding&&(
           <div className="yl-petform">
             <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);}}>👤 家族（人）</button></div>
@@ -2114,10 +2101,6 @@ function App(){
           </div>
         ):tab==="cal"?(
           <div className="yl-cal">
-            <div className="yl-cal-filter">
-              <button className={"yl-cal-fchip"+(calFilter==="all"?" on":"")} onClick={()=>setCalFilter("all")}>すべて</button>
-              {spaces.map(s=><button key={s.id} className={"yl-cal-fchip"+(calFilter===s.id?" on":"")} onClick={()=>setCalFilter(s.id)}><span className="yl-cal-fdot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")} {s.name}</button>)}
-            </div>
             <div className="yl-cal-head">
               <button className="yl-cal-nav" onClick={()=>moveMonth(-1)} aria-label="前の月">‹</button>
               <span className="yl-cal-month">{monthLabel}</span>
@@ -2208,6 +2191,12 @@ function App(){
           </div>
         ):(
           <>
+            {/* プロフィールは畳む：細いバー＋ⓘで開閉。ケア状態だけは常時表示（見守りの安心） */}
+            <div className="yl-profbar">
+              {isMemberTab&&(()=>{const over=memberStats?.over||0,soon=memberStats?.soon||0;return over>0?<span className="yl-pill over">🔴 期限切れ {over}</span>:soon>0?<span className="yl-pill soon">⏰ 期限近 {soon}</span>:<span className="yl-pill ok">✅ ケアは順調</span>;})()}
+              <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>ⓘ {isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
+            </div>
+            {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
             {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
@@ -2250,7 +2239,7 @@ function App(){
                   </div>
                 )}
               </section>
-            )}
+            )}</>)}
 
             {personSeg==="manage"&&(()=>{const defs=[];
               defs.push({key:"routine",el:(
@@ -2587,6 +2576,20 @@ function App(){
         <button className="yl-fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加">＋</button>
       )}
 
+      {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
+      <div className="yl-btmstack">
+      {/* 共通メンバー切り替えバー。カレンダー・記録・管理で表示。すべてはカレンダーのみ。 */}
+      {!onboarding&&(tab==="cal"||isPersonMode)&&(
+        <nav className="yl-membar">
+          {tab==="cal"&&<button className={"yl-mchip"+(calFilter==="all"?" on":"")} onClick={()=>setCalFilter("all")}>すべて</button>}
+          {spaces.map(s=>{const sel=tab==="cal"?calFilter===s.id:tab===s.id;return(
+            <button key={s.id} className={"yl-mchip"+(sel?" on":"")} onClick={()=>{if(tab==="cal"){setCalFilter(s.id);setMemberSel(s.id);}else{setTab(s.id);setMemberSel(s.id);}}}>
+              <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mchip-name">{s.name}</span>
+            </button>);})}
+          <button className="yl-mchip add" onClick={()=>setAdding(v=>!v)} aria-label="メンバーを追加">＋</button>
+        </nav>
+      )}
+
       {/* 下部タブナビゲーション（常時表示・行動で分類） */}
       {!onboarding&&(()=>{
         const personTarget=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";
@@ -2609,6 +2612,7 @@ function App(){
           </nav>
         );
       })()}
+      </div>
 
       {helpOpen&&(
         <div className="yl-help-ov" onClick={()=>setHelpOpen(false)}>
