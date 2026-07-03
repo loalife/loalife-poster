@@ -228,8 +228,19 @@ const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},
 const DIARY_POOP=[{key:"good",label:"good",emoji:"💩"},{key:"loose",label:"ゆるい",emoji:"💧"},{key:"none",label:"なし",emoji:"🚫"}];
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
-const DIARY_SYMPTOMS=[{key:"fever",label:"熱",emoji:"🌡️"},{key:"cough",label:"咳",emoji:"😮‍💨"},{key:"sneeze",label:"くしゃみ",emoji:"🤧"},{key:"nose",label:"鼻水",emoji:"💧"},{key:"diarrhea",label:"下痢",emoji:"🚽"},{key:"vomit",label:"嘔吐",emoji:"🤮"},{key:"noappetite",label:"食欲不振",emoji:"🥄"},{key:"itch",label:"かゆみ",emoji:"🐾"},{key:"limp",label:"元気がない",emoji:"😣"}];
-const symptomMeta=(k)=>DIARY_SYMPTOMS.find(s=>s.key===k)||null;
+// 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
+const SYMPTOMS={
+  fever:{label:"熱",emoji:"🌡️"},cough:{label:"咳",emoji:"😮‍💨"},sneeze:{label:"くしゃみ",emoji:"🤧"},nose:{label:"鼻水",emoji:"💧"},throat:{label:"喉の痛み",emoji:"😷"},headache:{label:"頭痛",emoji:"🤕"},fatigue:{label:"だるさ",emoji:"🥱"},diarrhea:{label:"下痢",emoji:"🚽"},vomit:{label:"嘔吐",emoji:"🤮"},noappetite:{label:"食欲不振",emoji:"🥄"},itch:{label:"かゆがる",emoji:"🐾"},rash:{label:"発疹",emoji:"🔴"},mood:{label:"機嫌がわるい",emoji:"😤"},period:{label:"生理",emoji:"🩸",sensitive:true},limp:{label:"元気がない",emoji:"😣"}
+};
+const symptomMeta=(k)=>SYMPTOMS[k]||null;
+// 種別 → 今日のようすの表示行・症状。ハードコードせずここで一元管理（将来項目を足しやすい）。
+// rows: energy(元気) / appetite(食欲) / poop(うんち) / walk(さんぽ) / hospital(病院)
+const DIARY_CONFIG={
+  pet:{rows:["energy","appetite","poop","walk","hospital"],symptoms:["cough","sneeze","diarrhea","vomit","noappetite","itch"]},
+  adult:{rows:["energy","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
+  child:{rows:["energy","appetite","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
+};
+const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモなど）
 const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"other",label:"メモ",emoji:"📝"}];
 const cardMeta=(k)=>CARD_PRESETS.find(c=>c.key===k)||CARD_PRESETS[CARD_PRESETS.length-1];
@@ -563,6 +574,7 @@ function App(){
   const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
+  const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[confirmRestore,setConfirmRestore]=useState(false);
@@ -1076,6 +1088,8 @@ function App(){
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
+  // 今日のようすの種別：自分=大人／ペット=pet／人=personType(既定child)。生理は大人のみに出す安全側。
+  const diaryTypeOf=(space)=>{if(space==="me")return"adult";const m=members.find(x=>x.id===space);if(!m)return"adult";if(m.kind==="pet")return"pet";return m.personType||"child";};
   const nameOf=(spaceId)=>spaceId==="me"?(meName||"わたし"):(members.find(m=>m.id===spaceId)||{}).name||"";
 
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
@@ -1232,7 +1246,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",avatar:editAvatar||"",visibility:editVisibility}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -2187,6 +2201,7 @@ function App(){
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日<input type="date" className="yl-date" style={{marginLeft:6}} value={editGotcha} onChange={e=>setEditGotcha(e.target.value)}/></label>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>🧑 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
                       <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>🗑 このメンバーを削除</button>
@@ -2194,7 +2209,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");}}>✏️</button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
                     </span>
                   )}
                 </div>
@@ -2713,11 +2728,13 @@ function App(){
             <h3 className="yl-modal-title">📝 今日のようす</h3>
             {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}>👌 今日も元気（ワンタップで完了）</button>}
             <p className="yl-diary-hint">くわしく残したいときだけ、下から選べます（すべて任意）。</p>
-            <div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
-            <div className="yl-diary-row"><span className="yl-diary-label">食欲</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
-            <div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>
-            <div className="yl-diary-row"><span className="yl-diary-label">その他</span><span className="yl-diary-chips"><button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}>🦮 さんぽ・おでかけ</button><button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}>🏥 病院に行った</button></span></div>
-            <div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{DIARY_SYMPTOMS.map(s=><button key={s.key} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(s.key)?" on sym":"")} onClick={()=>toggleSymptom(s.key)}>{s.emoji} {s.label}</button>)}</span></div>
+            {(()=>{const dcfg=diaryConfigFor(diaryTypeOf(tab));const has=k=>dcfg.rows.includes(k);return(<>
+            {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
+            {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">食欲</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
+            {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
+            {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">その他</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}>🦮 さんぽ・おでかけ</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}>🏥 病院に行った</button>}</span></div>}
+            {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}>{s.emoji} {s.label}</button>;})}</span></div>}
+            </>);})()}
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:4}} value={diaryDraft.note} onChange={e=>setDiary({note:e.target.value})} placeholder="日々の様子・病院でのこと・ひとこと…"/>
             <div className="yl-diary-photorow">{diaryDraft.photo?<span className="yl-diary-thumb"><img src={diaryDraft.photo} alt=""/><button className="yl-diary-thumbdel" onClick={()=>setDiary({photo:null})} aria-label="写真を削除">×</button></span>:<label className="yl-diary-addphoto">📷 写真を追加（お薬・症状など）<input type="file" accept="image/*" style={{display:"none"}} onChange={pickDiaryPhoto}/></label>}</div>
             <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveDiary}>📝 今日のようすを記録</button>
