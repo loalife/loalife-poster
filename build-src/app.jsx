@@ -2811,9 +2811,9 @@ function App(){
             {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">その他</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}>🦮 さんぽ・おでかけ</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}>🏥 病院に行った</button>}</span></div>}
             {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}>{s.emoji} {s.label}</button>;})}</span></div>}
-            {dcfg.symptoms.includes("period")&&(()=>{const fc=periodForecast(tab);return(<div className="yl-period-inline">
-              <p className="yl-period-priv">🔒 「🩸 生理」の記録は本人のみ（将来の共有でも対象外）</p>
-              {fc&&fc.next&&<p className="yl-period-note">🩸 前回 {fmtDate(fc.last)}・次はそろそろ {fmtDate(fc.next)}ごろ（約{fc.avg}日周期）</p>}
+            {dcfg.symptoms.includes("period")&&(()=>{const periodSel=(diaryDraft.symptoms||[]).includes("period");const fc=periodForecast(tab);const showFc=fc&&fc.next;if(!periodSel&&!showFc)return null;return(<div className="yl-period-inline">
+              {periodSel&&<p className="yl-period-priv">🔒 本人だけの記録です</p>}
+              {showFc&&<p className="yl-period-note">🩸 前回 {fmtDate(fc.last)}・次はそろそろ {fmtDate(fc.next)}ごろ（約{fc.avg}日周期）</p>}
             </div>);})()}
             </>);})()}
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:4}} value={diaryDraft.note} onChange={e=>setDiary({note:e.target.value})} placeholder="日々の様子・病院でのこと・ひとこと…"/>
