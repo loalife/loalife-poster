@@ -2010,7 +2010,7 @@ function App(){
               {/* ワンタップ記録：今日まだ体調記録が無いメンバーを、押すだけで完了できる導線 */}
               {(()=>{const need=spaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
                 <section className="yl-quickcond">
-                  <p className="yl-quickcond-label">📝 今日の記録、まだ？</p>
+                  <p className="yl-quickcond-label">📝 今日のみんなの調子は？</p>
                   <ul className="yl-quickcond-list">
                     {need.map(s=>(
                       <li key={s.id} className="yl-quickcond-item">
