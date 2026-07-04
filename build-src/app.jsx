@@ -2027,9 +2027,8 @@ function App(){
 
             {/* ━━ 第2層「コンディション」：みんなの様子と習慣の軽チェック ━━ */}
             <div className="yl-layer">
-              <span className="yl-layer-label">コンディション</span>
               <section>
-                <h2 className="yl-sec-title">😊 安心ステータス</h2>
+                <h2 className="yl-sec-title">{spaces.some(s=>{const l=spaceLevel(s.id);return l==="warn"||l==="alert";})?"⚠️":"😊"} みんなの様子</h2>
                 <div className="yl-statusgrid">{spaces.map(s=>{
                   const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
                   const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
