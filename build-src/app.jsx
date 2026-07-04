@@ -1537,8 +1537,9 @@ function App(){
   },[items,members,meAvatar]);
   // 証明書（ワクチン等）：写真付きのケアを上部に出してすぐ見られるように
   const certs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="care"&&x.photo).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
-  // 証明書を年ごとにまとめる（何年度ぶん、が分かるように）
-  const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
+  // 証明書を年ごとにまとめる（何年度ぶん、が分かるように）。
+  // 対応済みにすると dueDate は次回（翌年）へ進むため、実施日 lastDone を優先して「その証明書が実際にいつのものか」で分類する。
+  const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=c.lastDone||itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
