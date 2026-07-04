@@ -394,6 +394,17 @@ function yearsSinceAnniv(dateStr) {
   if (thisYear < today) years += 1; // 既に過ぎた→次回は+1年
   return years;
 }
+// 満年齢／経過周年（西暦がある場合のみ。年不明＝"0000"や未入力は null）
+function ageNow(dateStr){
+  if(!dateStr)return null;
+  const[y,m,d]=dateStr.split("-").map(Number);
+  if(!y||y<1900)return null;
+  const now=new Date();
+  let a=now.getFullYear()-y;
+  const passed=(now.getMonth()+1>m)||(now.getMonth()+1===m&&now.getDate()>=d);
+  if(!passed)a-=1;
+  return a<0?null:a;
+}
 
 function genCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -476,6 +487,25 @@ function TimeInput({value,onChange}){
   const curM=value?Math.round(Number(value.split(":")[1])/5)*5%60:0;
   const upd=(h,m)=>{if(h===""){onChange("");return;}const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");onChange(hh+":"+mm);};
   return(<div className="yl-timepick"><select className="yl-tsel" value={curH} onChange={e=>upd(e.target.value===""?"":Number(e.target.value),curM)}><option value="">--</option>{HOURS.map(h=><option key={h} value={h}>{String(h).padStart(2,"0")}</option>)}</select><span className="yl-tcolon">:</span><select className="yl-tsel" value={curM} onChange={e=>upd(curH===""?9:curH,Number(e.target.value))}>{MINS.map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}</option>)}</select></div>);
+}
+
+// 誕生日・記念日の入力：月・日は必須、年（西暦）は任意。毎年くりかえす前提で、
+// 年が空のときは内部的に "0000-MM-DD" で保存し、年齢/周年は表示しない。
+const BMONTHS=Array.from({length:12},(_,i)=>i+1);
+const dimOf=(mm)=>mm?new Date(2001,Number(mm),0).getDate():31; // 2001=平年。年不明でも月末日を安全側で算出
+function BdayInput({value,onChange}){
+  const[y,setY]=useState("");const[m,setM]=useState("");const[d,setD]=useState("");
+  // 外から値が渡された時に同期。年は実在年のときだけ反映し、"0000"では上書きしない（入力中の桁を消さないため）。
+  useEffect(()=>{const p=(value||"").split("-");if(p.length===3){setM(String(Number(p[1])));setD(String(Number(p[2])));if(p[0]!=="0000")setY(p[0]);}else{setM("");setD("");setY("");}},[value]);
+  const emit=(yy,mm,dd)=>{if(!mm||!dd){onChange("");return;}const yr=/^\d{4}$/.test(yy)?yy:"0000";onChange(`${yr}-${String(Number(mm)).padStart(2,"0")}-${String(Number(dd)).padStart(2,"0")}`);};
+  const onMonth=e=>{const nm=e.target.value;let nd=d;if(nm&&d&&Number(d)>dimOf(nm))nd=String(dimOf(nm));setM(nm);setD(nd);emit(y,nm,nd);};
+  const onDay=e=>{const nd=e.target.value;setD(nd);emit(y,m,nd);};
+  const onYear=e=>{const v=e.target.value.replace(/[^0-9]/g,"").slice(0,4);setY(v);emit(v,m,d);};
+  return(<span className="yl-bdaypick">
+    <select className="yl-bsel" value={m} onChange={onMonth}><option value="">月</option>{BMONTHS.map(mm=><option key={mm} value={mm}>{mm}月</option>)}</select>
+    <select className="yl-bsel" value={d} onChange={onDay}><option value="">日</option>{Array.from({length:dimOf(m)},(_,i)=>i+1).map(dd=><option key={dd} value={dd}>{dd}日</option>)}</select>
+    <input className="yl-byear" type="text" inputMode="numeric" maxLength={4} placeholder="年（任意）" value={y} onChange={onYear}/>
+  </span>);
 }
 
 // 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
@@ -1893,7 +1923,7 @@ function App(){
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">わたしと、大切な家族を、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
           {obStep===1&&<div className="yl-ob-inner"><p className="yl-ob-step">1 / 2</p><h2 className="yl-ob-h2">まず、あなたの「やりたいこと」を1つ</h2><p className="yl-ob-sub">あとから、いつでも追加できます</p><div className="yl-ob-chips">{["海外旅行に行く","副業・スキルアップ","毎日運動する","語学を身につける"].map(ex=><button key={ex} className="yl-ob-chip" onClick={()=>setObWish(ex)}>{ex}</button>)}</div><input className="yl-input" value={obWish} onChange={e=>setObWish(e.target.value)} onKeyDown={e=>e.key==="Enter"&&setObStep(2)} placeholder="やりたいこと…" autoFocus/><button className="yl-ob-btn" onClick={()=>setObStep(2)}>次へ</button><button className="yl-ob-link" onClick={()=>{setObWish("");setObStep(2);}}>スキップ</button></div>}
-          {obStep===2&&<div className="yl-ob-inner"><p className="yl-ob-step">2 / 2</p><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:PET_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><input className="yl-input" value={obName} onChange={e=>setObName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（任意）<input type="date" className="yl-date" style={{width:"100%"}} value={obBirthday} onChange={e=>setObBirthday(e.target.value)}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===2&&<div className="yl-ob-inner"><p className="yl-ob-step">2 / 2</p><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:PET_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><input className="yl-input" value={obName} onChange={e=>setObName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -1925,7 +1955,7 @@ function App(){
             {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(newEmoji===e?" on":"")} onClick={()=>setNewEmoji(e)}>{e}</button>)}</div>
             <div className="yl-petform-row"><input className="yl-input" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
-            <label className="yl-opt" style={{marginTop:10}}>誕生日（任意）<input type="date" className="yl-date" value={newBirthday} onChange={e=>setNewBirthday(e.target.value)}/></label>
+            <label className="yl-opt" style={{marginTop:10}}>誕生日（年は任意）<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
             {inHousehold&&<div style={{marginTop:10}}><VisibilityToggle value={newVisibility} onChange={setNewVisibility}/></div>}
           </div>
         )}
@@ -1949,7 +1979,7 @@ function App(){
                     <div key={a.key} className="yl-bday-row">
                       <span className="yl-bday-emoji">{a.emoji}</span>
                       <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
-                      <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.kind==="gotcha"&&a.years?`迎えて${a.years}年！`:"今日！"):`あと${a.daysUntil}日`}</span>
+                      <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.years?(a.kind==="gotcha"?`迎えて${a.years}年！`:`${a.years}歳！`):"今日！"):`あと${a.daysUntil}日`}</span>
                     </div>
                   ))}
                 </section>
@@ -2201,7 +2231,7 @@ function App(){
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>ⓘ {isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><input type="date" className="yl-date" value={meBdayDraft} onChange={e=>setMeBdayDraft(e.target.value)} autoFocus/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageNow(meBirthday)!=null?`（${ageNow(meBirthday)}歳）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -2214,8 +2244,8 @@ function App(){
                       <input className="yl-input sm" value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🗂 フォルダ（多頭飼いの分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder="例：犬たち / ハムスター / 2階の子"/></label>
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
-                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日<input type="date" className="yl-date" style={{marginLeft:6}} value={editBirthday} onChange={e=>setEditBirthday(e.target.value)}/></label>
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日<input type="date" className="yl-date" style={{marginLeft:6}} value={editGotcha} onChange={e=>setEditGotcha(e.target.value)}/></label>}
+                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>🧑 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
@@ -2238,8 +2268,8 @@ function App(){
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
                 {(activeMember.birthday||activeMember.gotchaDay)&&(
                   <div className="yl-petstatus-fun">
-                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}</span>}
-                    {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}`;})()}</span>}
+                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageNow(activeMember.birthday)!=null?`（${ageNow(activeMember.birthday)}歳）`:""}</span>}
+                    {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
                   </div>
                 )}
               </section>
@@ -2853,7 +2883,7 @@ function App(){
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">🎂 誕生日・記念日を追加</h3>
             <input className="yl-input" value={friendBdayName} onChange={e=>setFriendBdayName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFriendBday()} placeholder="名前・予定（例：ゆいの誕生日）"/>
-            <label className="yl-opt" style={{marginTop:10}}>日付<input type="date" className="yl-date" value={friendBdayDate} onChange={e=>setFriendBdayDate(e.target.value)}/></label>
+            <label className="yl-opt" style={{marginTop:10}}>日付（年は任意）<BdayInput value={friendBdayDate} onChange={setFriendBdayDate}/></label>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button><button className="yl-addbtn modal" onClick={addFriendBday}>🎂 追加</button></div>
           </div>
         </div>
