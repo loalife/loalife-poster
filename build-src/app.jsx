@@ -1688,6 +1688,9 @@ function App(){
     return list;
   },[members,meBirthday,meEmoji,items]);
   const annivOn=(dateIso)=>{const md=mmdd(dateIso);return annivAll.filter(a=>a.mmdd===md&&(calFilter==="all"||a.space===calFilter));};
+  // お世話ログ（chore）の実施履歴をカレンダーに反映：日付→[{space,title,emoji}]
+  const choreEventsAll=useMemo(()=>{const map={};items.forEach(x=>{if(x.type!=="chore")return;(x.history||[]).forEach(d=>{if(!d)return;(map[d]=map[d]||[]).push({space:x.space,title:x.title,emoji:x.emoji||"🧹"});});});return map;},[items]);
+  const choreOn=(dateIso)=>{const arr=choreEventsAll[dateIso]||[];return calFilter==="all"?arr:arr.filter(e=>e.space===calFilter);};
   const calGrid=useMemo(()=>{
     const{y,m}=calCursor;
     const startDow=new Date(y,m,1).getDay();
@@ -1697,26 +1700,30 @@ function App(){
     for(let d=1;d<=daysInMonth;d++){
       const dIso=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
       const di=calSpaceItems.filter(x=>itemDate(x)===dIso);
+      const ch=choreOn(dIso);
       const colors=[];const seenSp={};di.forEach(x=>{if(!seenSp[x.space]){seenSp[x.space]=1;colors.push(colorOf(x.space));}});
-      cells.push({d,iso:dIso,count:di.length,ind:{
+      ch.forEach(e=>{if(!seenSp[e.space]){seenSp[e.space]=1;colors.push(colorOf(e.space));}});
+      cells.push({d,iso:dIso,count:di.length+ch.length,ind:{
         photo:di.some(x=>x.photo),
         memory:di.some(x=>x.type==="memory"),
         care:di.some(x=>x.type==="care"),
         supply:di.some(x=>x.type==="supply"),
         event:di.filter(x=>x.type==="event"||x.type==="routine").length,
         anniv:annivOn(dIso).length>0,
+        chore:ch.length>0,
         colors,
       }});
     }
     while(cells.length%7!==0)cells.push(null);
     return cells;
-  },[calCursor,calSpaceItems,annivAll,calFilter]);
+  },[calCursor,calSpaceItems,annivAll,choreEventsAll,calFilter]);
   const dayTimeline=useMemo(()=>{
     if(!calDay)return[];
     const list=calSpaceItems.filter(x=>itemDate(x)===calDay).map(x=>({item:x,time:x.time||""}));
     const anniv=annivOn(calDay).map(a=>({anniv:a,time:""}));
-    return[...anniv,...list].sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
-  },[calDay,calSpaceItems,annivAll,calFilter]);
+    const chore=choreOn(calDay).map(c=>({chore:c,time:""}));
+    return[...anniv,...chore,...list].sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
+  },[calDay,calSpaceItems,annivAll,choreEventsAll,calFilter]);
   // 思い出アルバム（全スペース・新しい順）。タグで絞り込み可能
   const albumAll=useMemo(()=>items.filter(x=>x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items]);
   const albumTags=useMemo(()=>{const set=[];albumAll.forEach(m=>(m.tags||[]).forEach(t=>{if(t&&!set.includes(t))set.push(t);}));return set;},[albumAll]);
@@ -2148,7 +2155,7 @@ function App(){
                   <span className={"yl-cal-dnum"+(dowOf(c.iso)===0?" sun":dowOf(c.iso)===6?" sat":"")}>{c.d}</span>
                   <span className="yl-cal-marks">
                     {c.ind.anniv&&<span className="yl-cal-em">🎂</span>}
-                    {c.ind.photo?<span className="yl-cal-em">📷</span>:c.ind.memory?<span className="yl-cal-em">📝</span>:null}
+                    {c.ind.photo?<span className="yl-cal-em">📷</span>:c.ind.memory?<span className="yl-cal-em">📝</span>:c.ind.chore?<span className="yl-cal-em">🧹</span>:null}
                     <span className="yl-cal-dots">
                       {c.ind.colors.slice(0,4).map((col,ci)=><span key={ci} className="yl-cal-dot" style={{background:col}}/>)}
                     </span>
@@ -2171,6 +2178,12 @@ function App(){
                         <span className="yl-tlday-time">🎉</span>
                         <span className="yl-tlday-emoji">{e.anniv.emoji}</span>
                         <span className="yl-tlday-body"><span className="yl-tlday-text">{e.anniv.label}</span></span>
+                      </li>
+                    ):e.chore?(
+                      <li key={"c"+idx} className="yl-tlday-item chore" style={{borderLeftColor:colorOf(e.chore.space)}}>
+                        <span className="yl-tlday-time">🧹</span>
+                        <span className="yl-tlday-emoji">{e.chore.emoji}</span>
+                        <span className="yl-tlday-body"><span className="yl-tlday-text">{e.chore.title}{nameOf(e.chore.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.chore.space)}</span>:null}</span></span>
                       </li>
                     ):(
                       <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"))?" tap":"")} style={{borderLeftColor:colorOf(e.item.space)}} onClick={()=>(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")?openLifeEdit(e.item):null}>
