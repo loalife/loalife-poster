@@ -209,6 +209,8 @@ const CHORE_TPL_PET=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプ
 const CHORE_TPL_PERSON=[{title:"歯みがき仕上げ",emoji:"🦷"},{title:"爪切り",emoji:"✂️"},{title:"髪カット",emoji:"💇"},{title:"耳そうじ",emoji:"👂"},{title:"上履き洗い",emoji:"👟"},{title:"シーツ交換",emoji:"🛏️"}];
 const CHORE_TPL_ME=[{title:"掃除",emoji:"🧹"},{title:"洗濯",emoji:"🧺"},{title:"シーツ交換",emoji:"🛏️"},{title:"換気",emoji:"🪟"},{title:"水やり",emoji:"🪴"},{title:"ゴミ出し",emoji:"🗑️"}];
 const choreTemplatesFor=(kind)=>kind==="pet"?CHORE_TPL_PET:kind==="person"?CHORE_TPL_PERSON:CHORE_TPL_ME;
+// まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
+const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
 function elapsedLabel(dateStr){
   if(!dateStr)return{txt:"まだ記録なし",tone:"none"};
@@ -614,6 +616,7 @@ function App(){
   const[confirmRestore,setConfirmRestore]=useState(false);
   const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
   const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
+  const[batchSel,setBatchSel]=useState(null); // まとめて記録：選択中の子（null=全ペット既定）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -1542,10 +1545,24 @@ function App(){
   const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=c.lastDone||itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
+  const petMembers=useMemo(()=>members.filter(m=>m.kind==="pet"),[members]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
   // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
   const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash("同じ項目があります");setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash("追加しました ✓");};
   const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
+  // まとめて記録：選択中の子（複数）に、日課（ご飯/お薬/散歩/トイレ）を一括でお世話ログに記録。
+  const batchLog=(action,ids)=>{
+    const sel=ids.filter(id=>members.some(m=>m.id===id&&m.kind==="pet"));
+    if(sel.length===0){showFlash("記録する子を選んでください");return;}
+    let next=[...items];const touched=[];
+    sel.forEach(sp=>{
+      const idx=next.findIndex(x=>x.space===sp&&x.type==="chore"&&x.title===action.title);
+      if(idx>=0){const x=next[idx];const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);next[idx]={...x,lastDone:todayIso,history:hist};touched.push(next[idx]);}
+      else{const rec={id:"ch"+Date.now()+"-"+sp,space:sp,type:"chore",title:action.title,emoji:action.emoji,lastDone:todayIso,history:[todayIso],createdAt:Date.now()};next.push(rec);touched.push(rec);}
+    });
+    persist(members,next);touched.forEach(it=>saveItemToFs(it).catch(()=>{}));
+    showFlash(`${sel.length}匹に「${action.emoji} ${action.title}」を記録 ✓`);
+  };
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
   const saveChoreDate=(id,newDate)=>{
@@ -2082,6 +2099,14 @@ function App(){
                   );
                 })}</div>
               </section>
+              {petMembers.length>0&&(()=>{const selIds=batchSel===null?petMembers.map(m=>m.id):batchSel.filter(id=>petMembers.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?petMembers.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
+                <section className="yl-batch">
+                  <div className="yl-batch-head"><span className="yl-batch-title">🐾 まとめてお世話記録</span><span className="yl-batch-hint">選んだ子にワンタップで記録</span></div>
+                  <div className="yl-batch-pets">{petMembers.map(m=>{const on=selIds.includes(m.id);return(
+                    <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
+                  </div>
+                  <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji">{a.emoji}</span>{a.title}</button>)}</div>
+                </section>);})()}
               {allRoutines.length>0&&(
                 <section className="yl-habit">
                   <span className="yl-habit-label">🔁 今日の習慣</span>
