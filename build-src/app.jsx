@@ -267,26 +267,52 @@ function walkAdvice(w){
     return{level:"warn",emoji:"❄️",label:"寒さ注意",msg:"路面凍結や冷えに注意。防寒して短めに。"};
   return{level:"ok",emoji:"🐾",label:"お散歩日和",msg:"いまは比較的お散歩に向いています。"};
 }
-// お散歩指数：気温・天気・風から0〜100で採点（5段階の星も）。快適さの目安。
+// お散歩指数：気温・蒸し暑さ・路面・雨・寒さ・風・紫外線・乾燥から0〜100で採点。
+// 各要因の減点（内訳）と主因も返す。
 function walkIndex(w){
   if(!w||w.error||typeof w.temp!=="number")return null;
-  const t=w.temp,code=w.code,wind=(typeof w.wind==="number")?w.wind:null;
-  let score=100;const reasons=[];
-  // 気温：12〜22℃が快適。暑い/寒いほど減点。
-  let tp;if(t>=35)tp=85;else if(t>=30)tp=62;else if(t>=26)tp=35;else if(t>=22)tp=12;else if(t>=12)tp=0;else if(t>=5)tp=12;else if(t>=0)tp=28;else tp=48;
-  if(tp>=28)reasons.push(t>=26?"気温が高い":"気温が低い");
-  score-=tp;
-  // 天気：雨・雪・雷は大きく減点。
-  let wp;if([0,1,2].includes(code))wp=0;else if(code===3)wp=6;else if([45,48].includes(code))wp=15;else if([51,53,55,56,57].includes(code))wp=25;else if([61,63,65,66,67,80,81,82].includes(code))wp=45;else if([71,73,75,77,85,86].includes(code))wp=42;else if([95,96,99].includes(code))wp=70;else wp=0;
-  if(wp>=25)reasons.push([95,96,99].includes(code)?"雷雨":([71,73,75,77,85,86].includes(code)?"雪":"雨"));
-  score-=wp;
-  // 風（m/s）：強風ほど減点。
-  if(wind!=null){let vp;if(wind<3)vp=0;else if(wind<5)vp=6;else if(wind<8)vp=16;else if(wind<12)vp=32;else vp=52;if(vp>=16)reasons.push("風が強い");score-=vp;}
-  score=Math.max(0,Math.min(100,Math.round(score)));
+  const t=w.temp,code=w.code;
+  const wind=(typeof w.wind==="number")?w.wind:null;
+  const h=(typeof w.humidity==="number")?w.humidity:null;
+  const road=(typeof w.roadTemp==="number")?w.roadTemp:null;
+  const uv=(typeof w.uv==="number")?w.uv:null;
+  const F=[];const add=(key,label,emoji,pen)=>{if(pen>0)F.push({key,label,emoji,penalty:Math.round(pen)});};
+  // 暑さ（気温）
+  let heat=0;if(t>=35)heat=85;else if(t>=30)heat=60;else if(t>=28)heat=42;else if(t>=26)heat=28;else if(t>=24)heat=14;
+  add("heat","暑さ","☀️",heat);
+  // 寒さ（気温）
+  let cold=0;if(t<0)cold=48;else if(t<3)cold=32;else if(t<7)cold=18;else if(t<11)cold=8;
+  add("cold","寒さ","❄️",cold);
+  // 蒸し暑さ（気温高め＋多湿）
+  let mug=0;if(h!=null&&t>=23){const over=Math.max(0,h-65);mug=Math.min(28,over*0.4+(t>=28?8:0));}
+  add("mug","蒸し暑さ","🥵",mug);
+  // 路面の暑さ
+  let rh=0;if(road!=null){if(road>=55)rh=40;else if(road>=50)rh=30;else if(road>=45)rh=20;else if(road>=40)rh=10;}
+  add("road","路面の暑さ","🐾",rh);
+  // 雨・雪・雷・霧
+  let wx=0,wxl="雨",wxe="🌧";
+  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";}
+  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";}
+  else if([71,73,75,77,85,86].includes(code)){wx=42;wxl="雪";wxe="🌨";}
+  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";wxe="⛈";}
+  else if([45,48].includes(code)){wx=14;wxl="霧";wxe="🌫";}
+  add("wx",wxl,wxe,wx);
+  // 風
+  let vp=0;if(wind!=null){if(wind>=12)vp=52;else if(wind>=8)vp=32;else if(wind>=5)vp=16;else if(wind>=3.5)vp=6;}
+  add("wind","風","💨",vp);
+  // 紫外線
+  let uvp=0;if(uv!=null){if(uv>=11)uvp=26;else if(uv>=8)uvp=18;else if(uv>=6)uvp=10;else if(uv>=3)uvp=4;}
+  add("uv","紫外線","🕶",uvp);
+  // 乾燥
+  let dry=0;if(h!=null){if(h<20)dry=12;else if(h<30)dry=6;}
+  add("dry","乾燥","🏜",dry);
+  const total=F.reduce((a,f)=>a+f.penalty,0);
+  const score=Math.max(0,Math.min(100,100-total));
+  F.sort((a,b)=>b.penalty-a.penalty);
   const stars=score>=80?5:score>=60?4:score>=40?3:score>=20?2:1;
   const level=score>=60?"ok":score>=35?"warn":"danger";
   const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
-  return{score,stars,level,label,reasons};
+  return{score,stars,level,label,factors:F,main:F[0]||null};
 }
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
@@ -772,6 +798,7 @@ function App(){
   const[wxQuery,setWxQuery]=useState("");
   const[wxResults,setWxResults]=useState(null); // null=未検索, []=該当なし
   const[wxSearching,setWxSearching]=useState(false);
+  const[walkOpen,setWalkOpen]=useState(false); // お散歩指数の内訳の開閉
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -986,7 +1013,7 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};const d=j.daily||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
@@ -997,7 +1024,8 @@ function App(){
       const hi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
       const lo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
       const code=typeof c.weather_code==="number"?c.weather_code:(Array.isArray(d.weather_code)?d.weather_code[0]:null);
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
+      const uv=typeof c.uv_index==="number"?c.uv_index:(Array.isArray(d.uv_index_max)?d.uv_index_max[0]:null);
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -2181,8 +2209,15 @@ function App(){
                 {wi&&(
                   <div className="yl-walk">
                     <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}>🐾 お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span><span className="yl-walk-label">{wi.label}</span></span>
-                    <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.reasons.length?`／${wi.reasons.join("・")}`:""}</span>
+                    <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.main?<>／主な要因：<b>{wi.main.emoji} {wi.main.label}</b></>:""}</span>
                     {wa&&wa.level==="danger"&&<span className="yl-walk-danger">⚠️ {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
+                    {wi.factors.length>0&&(wi.level!=="ok"||walkOpen)&&(
+                      <div className="yl-walk-bd">
+                        <span className="yl-walk-bd-label">スコアの内訳（減点）</span>
+                        <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name">{f.emoji} {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
+                      </div>
+                    )}
+                    {wi.factors.length>0&&wi.level==="ok"&&<button className="yl-walk-toggle" onClick={()=>setWalkOpen(o=>!o)}>{walkOpen?"内訳を閉じる":"スコアの内訳を見る"}</button>}
                   </div>
                 )}
               </div>
