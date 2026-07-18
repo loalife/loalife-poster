@@ -250,6 +250,18 @@ const BRISTOL=[
   {n:7,label:"水様",desc:"固形物のない水様",tone:"loose"},
 ];
 const bristolMeta=(n)=>BRISTOL.find(b=>b.n===n)||null;
+// お散歩の目安：気温・湿度・体感・路面(地表)温度から、いま散歩に出てよいかを3段階で判定。
+function walkAdvice(w){
+  if(!w||w.error||typeof w.temp!=="number")return null;
+  const t=w.temp,h=w.humidity,road=(typeof w.roadTemp==="number")?w.roadTemp:null,app=(typeof w.apparent==="number")?w.apparent:t;
+  if((road!=null&&road>=50)||app>=35||t>=35)
+    return{level:"danger",emoji:"🚫",label:"いまは控えて",msg:"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。"};
+  if((road!=null&&road>=40)||app>=28||t>26||(typeof h==="number"&&h>=85))
+    return{level:"warn",emoji:"⚠️",label:"注意して",msg:"地面が熱め。短めに・日陰を選び、水分を持って。"};
+  if(t<=0||(road!=null&&road<=0))
+    return{level:"warn",emoji:"❄️",label:"寒さ注意",msg:"路面凍結や冷えに注意。防寒して短めに。"};
+  return{level:"ok",emoji:"🐾",label:"お散歩日和",msg:"いまは比較的お散歩に向いています。"};
+}
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
@@ -948,10 +960,15 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover&hourly=soil_temperature_0cm&forecast_days=1&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,time:c.time});
+      // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
+      let road=null,roadEstimated=false;
+      const ht=j.hourly&&j.hourly.time,hs=j.hourly&&j.hourly.soil_temperature_0cm;
+      if(Array.isArray(ht)&&Array.isArray(hs)&&c.time){const idx=ht.findIndex(t=>t.slice(0,13)===c.time.slice(0,13));if(idx>=0&&typeof hs[idx]==="number")road=hs[idx];}
+      if(road==null&&typeof c.temperature_2m==="number"){const isDay=c.is_day===1;const cloud=typeof c.cloud_cover==="number"?c.cloud_cover:50;const delta=!isDay?2:(cloud<30?25:cloud<70?15:8);road=c.temperature_2m+delta;roadEstimated=true;}
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,time:c.time});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -963,7 +980,6 @@ function App(){
     setWxSearching(false);};
   const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");const loc={name:nm,lat:res.latitude,lon:res.longitude};setWeatherLoc(loc);try{localStorage.setItem("loalife-weatherloc",JSON.stringify(loc));}catch(e){}setWxResults(null);setWxQuery("");};
   const clearWeatherLoc=()=>{setWeatherLoc(null);setWeather(null);try{localStorage.removeItem("loalife-weatherloc");}catch(e){}};
-  const heatAlert=weather&&!weather.error&&typeof weather.temp==="number"&&weather.temp>26;
 
   // Firestore: save member
   const saveMemberToFs=async(member)=>{
@@ -2109,20 +2125,25 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(
-              <div className={"yl-weather"+(heatAlert?" alert":"")}>
+            {weatherLoc?(()=>{const wa=walkAdvice(weather);return(
+              <div className={"yl-weather"+(wa?" lv-"+wa.level:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc">📍 {weatherLoc.name}</span>
                   {weather&&weather.error?(
                     <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
                   ):weather?(
-                    <span className="yl-weather-vals"><span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span><span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></span>
+                    <span className="yl-weather-vals"><span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span><span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span>{weather.roadTemp!=null&&<span className="yl-weather-road">🐾 路面 {Math.round(weather.roadTemp)}℃</span>}<button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></span>
                   ):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
                 </div>
-                {heatAlert&&<p className="yl-weather-heat">🥵 熱中症注意：26℃を超えています。水分と涼しい場所を確保してあげてください。</p>}
+                {wa&&(
+                  <div className="yl-walk">
+                    <span className={"yl-walk-badge lv-"+wa.level}>{wa.emoji} お散歩：{wa.label}</span>
+                    <span className="yl-walk-msg">{wa.msg}{weather.roadTemp!=null?`（路面${weather.roadEstimated?"約":""}${Math.round(weather.roadTemp)}℃${weather.roadEstimated?"・推定":""}）`:""}</span>
+                  </div>
+                )}
               </div>
-            ):(
-              <button className="yl-weather-setup" onClick={()=>setTab("settings")}>🌡️ 地域を登録して天気・熱中症注意を表示</button>
+            );})():(
+              <button className="yl-weather-setup" onClick={()=>setTab("settings")}>🌡️ 地域を登録して天気・お散歩判定を表示</button>
             )}
 
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
