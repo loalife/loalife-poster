@@ -267,6 +267,27 @@ function walkAdvice(w){
     return{level:"warn",emoji:"❄️",label:"寒さ注意",msg:"路面凍結や冷えに注意。防寒して短めに。"};
   return{level:"ok",emoji:"🐾",label:"お散歩日和",msg:"いまは比較的お散歩に向いています。"};
 }
+// お散歩指数：気温・天気・風から0〜100で採点（5段階の星も）。快適さの目安。
+function walkIndex(w){
+  if(!w||w.error||typeof w.temp!=="number")return null;
+  const t=w.temp,code=w.code,wind=(typeof w.wind==="number")?w.wind:null;
+  let score=100;const reasons=[];
+  // 気温：12〜22℃が快適。暑い/寒いほど減点。
+  let tp;if(t>=35)tp=85;else if(t>=30)tp=62;else if(t>=26)tp=35;else if(t>=22)tp=12;else if(t>=12)tp=0;else if(t>=5)tp=12;else if(t>=0)tp=28;else tp=48;
+  if(tp>=28)reasons.push(t>=26?"気温が高い":"気温が低い");
+  score-=tp;
+  // 天気：雨・雪・雷は大きく減点。
+  let wp;if([0,1,2].includes(code))wp=0;else if(code===3)wp=6;else if([45,48].includes(code))wp=15;else if([51,53,55,56,57].includes(code))wp=25;else if([61,63,65,66,67,80,81,82].includes(code))wp=45;else if([71,73,75,77,85,86].includes(code))wp=42;else if([95,96,99].includes(code))wp=70;else wp=0;
+  if(wp>=25)reasons.push([95,96,99].includes(code)?"雷雨":([71,73,75,77,85,86].includes(code)?"雪":"雨"));
+  score-=wp;
+  // 風（m/s）：強風ほど減点。
+  if(wind!=null){let vp;if(wind<3)vp=0;else if(wind<5)vp=6;else if(wind<8)vp=16;else if(wind<12)vp=32;else vp=52;if(vp>=16)reasons.push("風が強い");score-=vp;}
+  score=Math.max(0,Math.min(100,Math.round(score)));
+  const stars=score>=80?5:score>=60?4:score>=40?3:score>=20?2:1;
+  const level=score>=60?"ok":score>=35?"warn":"danger";
+  const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
+  return{score,stars,level,label,reasons};
+}
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
@@ -965,7 +986,7 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};const d=j.daily||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
@@ -976,7 +997,7 @@ function App(){
       const hi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
       const lo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
       const code=typeof c.weather_code==="number"?c.weather_code:(Array.isArray(d.weather_code)?d.weather_code[0]:null);
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -2139,8 +2160,8 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(()=>{const wa=walkAdvice(weather);const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;return(
-              <div className={"yl-weather"+(wa?" lv-"+wa.level:"")}>
+            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+              <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc">📍 {weatherLoc.name}{wc&&<span className="yl-weather-cond"> {wc.emoji} {wc.label}</span>}</span>
                   <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新" disabled={weatherLoading}>↻</button>
@@ -2152,14 +2173,16 @@ function App(){
                     <span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span>
                     {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
                     <span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span>
+                    {weather.wind!=null&&<span className="yl-weather-wind">💨 {Math.round(weather.wind)}m/s</span>}
                     {weather.roadTemp!=null&&<span className="yl-weather-road">🐾 路面 {Math.round(weather.roadTemp)}℃</span>}
                   </div>
                   {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
                 </>):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
-                {wa&&(
+                {wi&&(
                   <div className="yl-walk">
-                    <span className={"yl-walk-badge lv-"+wa.level}>{wa.emoji} お散歩：{wa.label}</span>
-                    <span className="yl-walk-msg">{wa.msg}{weather.roadTemp!=null?`（路面${weather.roadEstimated?"約":""}${Math.round(weather.roadTemp)}℃${weather.roadEstimated?"・推定":""}）`:""}</span>
+                    <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}>🐾 お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span><span className="yl-walk-label">{wi.label}</span></span>
+                    <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.reasons.length?`／${wi.reasons.join("・")}`:""}</span>
+                    {wa&&wa.level==="danger"&&<span className="yl-walk-danger">⚠️ {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
                   </div>
                 )}
               </div>
