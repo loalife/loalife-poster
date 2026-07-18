@@ -209,6 +209,8 @@ const CHORE_TPL_PET=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプ
 const CHORE_TPL_PERSON=[{title:"歯みがき仕上げ",emoji:"🦷"},{title:"爪切り",emoji:"✂️"},{title:"髪カット",emoji:"💇"},{title:"耳そうじ",emoji:"👂"},{title:"上履き洗い",emoji:"👟"},{title:"シーツ交換",emoji:"🛏️"}];
 const CHORE_TPL_ME=[{title:"掃除",emoji:"🧹"},{title:"洗濯",emoji:"🧺"},{title:"シーツ交換",emoji:"🛏️"},{title:"換気",emoji:"🪟"},{title:"水やり",emoji:"🪴"},{title:"ゴミ出し",emoji:"🗑️"}];
 const choreTemplatesFor=(kind)=>kind==="pet"?CHORE_TPL_PET:kind==="person"?CHORE_TPL_PERSON:CHORE_TPL_ME;
+// まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
+const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
 function elapsedLabel(dateStr){
   if(!dateStr)return{txt:"まだ記録なし",tone:"none"};
@@ -404,6 +406,24 @@ function ageNow(dateStr){
   const passed=(now.getMonth()+1>m)||(now.getMonth()+1===m&&now.getDate()>=d);
   if(!passed)a-=1;
   return a<0?null:a;
+}
+// 生後の月齢（西暦がある場合のみ）。子犬・子猫の成長を月単位で。
+function monthsOld(dateStr){
+  if(!dateStr)return null;
+  const[y,m,d]=dateStr.split("-").map(Number);
+  if(!y||y<1900)return null;
+  const now=new Date();
+  let months=(now.getFullYear()-y)*12+(now.getMonth()+1-m);
+  if(now.getDate()<d)months-=1;
+  return months<0?null:months;
+}
+// 年齢の表示ラベル：1歳未満は月齢、2歳未満は「X歳Yヶ月」、以降は「X歳」。西暦なしは空。
+function ageLabel(dateStr){
+  const m=monthsOld(dateStr);if(m==null)return"";
+  if(m<12)return`${m}ヶ月`;
+  const yrs=Math.floor(m/12),rem=m%12;
+  if(yrs<2)return rem>0?`${yrs}歳${rem}ヶ月`:`${yrs}歳`;
+  return`${yrs}歳`;
 }
 
 function genCode() {
@@ -606,6 +626,7 @@ function App(){
   const[editBirthday,setEditBirthday]=useState("");
   const[editGotcha,setEditGotcha]=useState(""); // うちの子記念日（ペットのみ）
   const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
+  const[editMicrochip,setEditMicrochip]=useState(""); // マイクロチップ番号（ペット）
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
@@ -614,6 +635,7 @@ function App(){
   const[confirmRestore,setConfirmRestore]=useState(false);
   const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
   const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
+  const[batchSel,setBatchSel]=useState(null); // まとめて記録：選択中の子（null=全ペット既定）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -681,6 +703,13 @@ function App(){
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
   const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
+  // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
+  const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
+  const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
+  const[weatherLoading,setWeatherLoading]=useState(false);
+  const[wxQuery,setWxQuery]=useState("");
+  const[wxResults,setWxResults]=useState(null); // null=未検索, []=該当なし
+  const[wxSearching,setWxSearching]=useState(false);
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -890,6 +919,27 @@ function App(){
       try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar}));}catch(e){}
     }
   };
+
+  // 天気の取得（Open-Meteo・APIキー不要・CORS対応）。現在の気温と湿度を取得。
+  const fetchWeather=useCallback(async(loc)=>{
+    if(!loc)return;setWeatherLoading(true);
+    try{
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m`);
+      if(!r.ok)throw new Error("bad");
+      const j=await r.json();const c=j.current||{};
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,time:c.time});
+    }catch(e){setWeather({error:true});}
+    setWeatherLoading(false);
+  },[]);
+  useEffect(()=>{if(weatherLoc)fetchWeather(weatherLoc);},[weatherLoc,fetchWeather]);
+  // 地域検索（Open-Meteo Geocoding）
+  const searchPlace=async()=>{const q=wxQuery.trim();if(!q)return;setWxSearching(true);setWxResults(null);
+    try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=ja&format=json`);const j=await r.json();setWxResults(j.results||[]);}
+    catch(e){setWxResults([]);}
+    setWxSearching(false);};
+  const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");const loc={name:nm,lat:res.latitude,lon:res.longitude};setWeatherLoc(loc);try{localStorage.setItem("loalife-weatherloc",JSON.stringify(loc));}catch(e){}setWxResults(null);setWxQuery("");};
+  const clearWeatherLoc=()=>{setWeatherLoc(null);setWeather(null);try{localStorage.removeItem("loalife-weatherloc");}catch(e){}};
+  const heatAlert=weather&&!weather.error&&typeof weather.temp==="number"&&weather.temp>26;
 
   // Firestore: save member
   const saveMemberToFs=async(member)=>{
@@ -1285,7 +1335,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -1542,10 +1592,24 @@ function App(){
   const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=c.lastDone||itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
+  const petMembers=useMemo(()=>members.filter(m=>m.kind==="pet"),[members]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
   // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
   const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash("同じ項目があります");setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash("追加しました ✓");};
   const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
+  // まとめて記録：選択中の子（複数）に、日課（ご飯/お薬/散歩/トイレ）を一括でお世話ログに記録。
+  const batchLog=(action,ids)=>{
+    const sel=ids.filter(id=>members.some(m=>m.id===id&&m.kind==="pet"));
+    if(sel.length===0){showFlash("記録する子を選んでください");return;}
+    let next=[...items];const touched=[];
+    sel.forEach(sp=>{
+      const idx=next.findIndex(x=>x.space===sp&&x.type==="chore"&&x.title===action.title);
+      if(idx>=0){const x=next[idx];const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);next[idx]={...x,lastDone:todayIso,history:hist};touched.push(next[idx]);}
+      else{const rec={id:"ch"+Date.now()+"-"+sp,space:sp,type:"chore",title:action.title,emoji:action.emoji,lastDone:todayIso,history:[todayIso],createdAt:Date.now()};next.push(rec);touched.push(rec);}
+    });
+    persist(members,next);touched.forEach(it=>saveItemToFs(it).catch(()=>{}));
+    showFlash(`${sel.length}匹に「${action.emoji} ${action.title}」を記録 ✓`);
+  };
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
   const saveChoreDate=(id,newDate)=>{
@@ -1977,6 +2041,22 @@ function App(){
               </div>
             )}
 
+            {weatherLoc?(
+              <div className={"yl-weather"+(heatAlert?" alert":"")}>
+                <div className="yl-weather-main">
+                  <span className="yl-weather-loc">📍 {weatherLoc.name}</span>
+                  {weather&&weather.error?(
+                    <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
+                  ):weather?(
+                    <span className="yl-weather-vals"><span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span><span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></span>
+                  ):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
+                </div>
+                {heatAlert&&<p className="yl-weather-heat">🥵 熱中症注意：26℃を超えています。水分と涼しい場所を確保してあげてください。</p>}
+              </div>
+            ):(
+              <button className="yl-weather-setup" onClick={()=>setTab("settings")}>🌡️ 地域を登録して天気・熱中症注意を表示</button>
+            )}
+
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
             <div className="yl-layer">
@@ -2082,6 +2162,14 @@ function App(){
                   );
                 })}</div>
               </section>
+              {petMembers.length>0&&(()=>{const selIds=batchSel===null?petMembers.map(m=>m.id):batchSel.filter(id=>petMembers.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?petMembers.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
+                <section className="yl-batch">
+                  <div className="yl-batch-head"><span className="yl-batch-title">🐾 まとめてお世話記録</span><span className="yl-batch-hint">選んだ子にワンタップで記録</span></div>
+                  <div className="yl-batch-pets">{petMembers.map(m=>{const on=selIds.includes(m.id);return(
+                    <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
+                  </div>
+                  <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji">{a.emoji}</span>{a.title}</button>)}</div>
+                </section>);})()}
               {allRoutines.length>0&&(
                 <section className="yl-habit">
                   <span className="yl-habit-label">🔁 今日の習慣</span>
@@ -2211,6 +2299,16 @@ function App(){
               {notifPerm==="granted"?<p className="yl-set-ok">✓ 通知は許可されています</p>:notifPerm==="denied"?<p className="yl-set-warn">端末の設定で通知がオフになっています</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>通知を許可する</button>}
             </section>
             <section className="yl-set-sec">
+              <h3 className="yl-set-title">🌡️ 天気の地域</h3>
+              <p className="yl-set-desc">登録した地域の気温・湿度をホームに表示します。26℃を超えると熱中症注意をお知らせします。</p>
+              {weatherLoc&&<p className="yl-set-ok">📍 {weatherLoc.name} <button className="yl-linkbtn" onClick={clearWeatherLoc}>解除</button></p>}
+              <div className="yl-wxsearch">
+                <input className="yl-input sm" value={wxQuery} onChange={e=>setWxQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlace()} placeholder="市区町村名で検索（例：横浜）"/>
+                <button className="yl-addbtn sm" onClick={searchPlace} disabled={wxSearching}>{wxSearching?"検索中…":"検索"}</button>
+              </div>
+              {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=><li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}>📍 {r.name}{r.admin1&&r.admin1!==r.name?`・${r.admin1}`:""}{r.country?`（${r.country}）`:""}</button></li>)}</ul>)}
+            </section>
+            <section className="yl-set-sec">
               <h3 className="yl-set-title">💾 バックアップ</h3>
               <p className="yl-set-desc">データはこの端末に保存されます。機種変更や端末の故障に備えて、ときどきバックアップ（.json）を書き出しておくと安心です。証明書・思い出・アイコンの写真も一緒に保存されます。</p>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}>💾 データを書き出す（写真ふくむ）</button>
@@ -2245,7 +2343,7 @@ function App(){
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>ⓘ {isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageNow(meBirthday)!=null?`（${ageNow(meBirthday)}歳）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -2260,6 +2358,7 @@ function App(){
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🔢 マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>🧑 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
@@ -2268,7 +2367,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
                     </span>
                   )}
                 </div>
@@ -2280,10 +2379,11 @@ function App(){
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
-                {(activeMember.birthday||activeMember.gotchaDay)&&(
+                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip)&&(
                   <div className="yl-petstatus-fun">
-                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageNow(activeMember.birthday)!=null?`（${ageNow(activeMember.birthday)}歳）`:""}</span>}
+                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
                     {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
+                    {activeMember.microchip&&<span className="yl-funchip">🔢 {activeMember.microchip}</span>}
                   </div>
                 )}
               </section>
