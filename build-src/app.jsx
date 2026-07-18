@@ -185,6 +185,7 @@ function itemDate(it){
   if(it.type==="memory")return it.date||null;
   if(it.type==="supply")return it.lastBought||null;
   if(it.type==="routine")return it.doneDate||null;
+  if(it.type==="toilet")return it.date||null;
   if(it.type==="bday")return null;
   return it.dueDate||null;
 }
@@ -232,6 +233,8 @@ const DEFAULT_SPACE_COLOR="#D98A4E";
 const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
 const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
 const DIARY_POOP=[{key:"good",label:"good",emoji:"💩"},{key:"loose",label:"ゆるい",emoji:"💧"},{key:"none",label:"なし",emoji:"🚫"}];
+// トイレ記録（成功/失敗）。うんちは状態も残せる。
+const POOP_COND=[{key:"normal",label:"普通",emoji:"💩"},{key:"soft",label:"軟便",emoji:"💧"},{key:"loose",label:"下痢",emoji:"🚨"}];
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
@@ -636,6 +639,8 @@ function App(){
   const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
   const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
   const[batchSel,setBatchSel]=useState(null); // まとめて記録：選択中の子（null=全ペット既定）
+  const[poopCond,setPoopCond]=useState("normal"); // トイレ記録：うんちの状態
+  const[toiletRange,setToiletRange]=useState(7); // 成功率の集計期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -702,7 +707,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","toilet","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
   const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
   const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
@@ -1611,6 +1616,25 @@ function App(){
     showFlash(`${sel.length}匹に「${action.emoji} ${action.title}」を記録 ✓`);
   };
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // トイレ記録：おしっこ/うんちを成功・失敗で記録。うんちは状態も残す。
+  const logToilet=(tk,success,condition)=>{
+    const emoji=tk==="pee"?"💧":"💩";const klabel=tk==="pee"?"おしっこ":"うんち";
+    const clabel=condition?((POOP_COND.find(c=>c.key===condition)||{}).label||""):"";
+    const title=`${klabel} ${success?"成功":"失敗"}`+(tk==="poop"&&success&&clabel?`・${clabel}`:"");
+    const now=new Date();const time=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    const rec={id:"t"+Date.now(),space:tab,type:"toilet",tkind:tk,success:!!success,condition:tk==="poop"?(condition||null):null,title,emoji,date:todayIso,time,createdAt:Date.now()};
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    showFlash(`${emoji} ${title} を記録 ✓`);
+  };
+  const removeToilet=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // トイレ成功率：現在のメンバーの、期間内(7/14/30日)の成功/合計をおしっこ・うんち別に集計。
+  const toiletStats=useMemo(()=>{
+    const mk=(days)=>{const from=plusDays(-(days-1));const recs=items.filter(x=>x.space===tab&&x.type==="toilet"&&x.date&&x.date>=from);
+      const calc=(k)=>{const r=recs.filter(x=>x.tkind===k);const s=r.filter(x=>x.success).length;return{total:r.length,success:s,rate:r.length?Math.round(s/r.length*100):null};};
+      return{pee:calc("pee"),poop:calc("poop"),total:recs.length};};
+    return{7:mk(7),14:mk(14),30:mk(30)};
+  },[items,tab,todayIso]);
+  const hasToilet=useMemo(()=>items.some(x=>x.space===tab&&x.type==="toilet"),[items,tab]);
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
   const saveChoreDate=(id,newDate)=>{
     if(!newDate){setChoreDateEdit(null);return;}
@@ -1642,7 +1666,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
   const dndSensors=useSensors(
     useSensor(MouseSensor,{activationConstraint:{distance:6}}),
@@ -1675,7 +1699,7 @@ function App(){
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   // 絞り込みチップは中身がある時だけ出す（空なら押しても変わらず不要なので隠す。追加は右下＋）
-  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"),[items,tab]);
+  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"),[items,tab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
   const cardInner=(it)=>{
@@ -2595,6 +2619,16 @@ function App(){
                   )}
                 </section>
               )});
+              if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
+                <section className="yl-toiletstats">
+                  <div className="yl-toilet-head">
+                    <h2 className="yl-routine-title" style={{margin:0}}>🚽 トイレ成功率</h2>
+                    <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}日</button>)}</span>
+                  </div>
+                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,emoji,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label">{emoji} {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" emoji="💧" s={st.pee}/><Row label="うんち成功率" emoji="💩" s={st.poop}/></>);})()}
+                  <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}>🚽 トイレを記録する</button>
+                </section>
+              )});
               defs.push({key:"diary",el:(
                 <section className="yl-diary">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
@@ -2943,6 +2977,30 @@ function App(){
           </div>
         </div>
       )}
+      {inputSheet==="toilet"&&(
+        <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">🚽 トイレ記録</h3>
+            <p className="yl-diary-hint">タップするだけで記録できます（今日・現在時刻）。</p>
+            <div className="yl-toilet-row">
+              <span className="yl-toilet-label">💧 おしっこ</span>
+              <button className="yl-toilet-btn ok" onClick={()=>logToilet("pee",true)}>✓ 成功</button>
+              <button className="yl-toilet-btn ng" onClick={()=>logToilet("pee",false)}>✕ 失敗</button>
+            </div>
+            <div className="yl-toilet-row">
+              <span className="yl-toilet-label">💩 うんち</span>
+              <button className="yl-toilet-btn ok" onClick={()=>logToilet("poop",true,poopCond)}>✓ 成功</button>
+              <button className="yl-toilet-btn ng" onClick={()=>logToilet("poop",false)}>✕ 失敗</button>
+            </div>
+            <div className="yl-toilet-cond">
+              <span className="yl-toilet-condlabel">うんちの状態</span>
+              <span className="yl-toilet-condchips">{POOP_COND.map(c=><button key={c.key} className={"yl-toilet-cond-chip"+(poopCond===c.key?" on":"")} onClick={()=>setPoopCond(c.key)}>{c.emoji} {c.label}</button>)}</span>
+            </div>
+            <p className="yl-health-hint" style={{marginTop:10}}>便の状態は受診の目安です。診断ではありません。</p>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+          </div>
+        </div>
+      )}
       {inputSheet==="diary"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
@@ -3009,6 +3067,7 @@ function App(){
         const OPTS=[
           {key:"schedule",emoji:isMemberTab?"💉":"📅",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
           {key:"diary",emoji:"📝",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
+          ...(curKind==="pet"?[{key:"toilet",emoji:"🚽",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
           {key:"routine",emoji:"🗓",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
           {key:"health",emoji:"📈",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
           {key:"expense",emoji:"💰",label:"支出",freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
