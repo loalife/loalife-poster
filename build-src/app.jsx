@@ -684,6 +684,13 @@ function App(){
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
   const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object")return{...DEF,...s};}catch(e){}return DEF;});
+  // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
+  const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
+  const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
+  const[weatherLoading,setWeatherLoading]=useState(false);
+  const[wxQuery,setWxQuery]=useState("");
+  const[wxResults,setWxResults]=useState(null); // null=未検索, []=該当なし
+  const[wxSearching,setWxSearching]=useState(false);
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -893,6 +900,27 @@ function App(){
       try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar}));}catch(e){}
     }
   };
+
+  // 天気の取得（Open-Meteo・APIキー不要・CORS対応）。現在の気温と湿度を取得。
+  const fetchWeather=useCallback(async(loc)=>{
+    if(!loc)return;setWeatherLoading(true);
+    try{
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m`);
+      if(!r.ok)throw new Error("bad");
+      const j=await r.json();const c=j.current||{};
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,time:c.time});
+    }catch(e){setWeather({error:true});}
+    setWeatherLoading(false);
+  },[]);
+  useEffect(()=>{if(weatherLoc)fetchWeather(weatherLoc);},[weatherLoc,fetchWeather]);
+  // 地域検索（Open-Meteo Geocoding）
+  const searchPlace=async()=>{const q=wxQuery.trim();if(!q)return;setWxSearching(true);setWxResults(null);
+    try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=ja&format=json`);const j=await r.json();setWxResults(j.results||[]);}
+    catch(e){setWxResults([]);}
+    setWxSearching(false);};
+  const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");const loc={name:nm,lat:res.latitude,lon:res.longitude};setWeatherLoc(loc);try{localStorage.setItem("loalife-weatherloc",JSON.stringify(loc));}catch(e){}setWxResults(null);setWxQuery("");};
+  const clearWeatherLoc=()=>{setWeatherLoc(null);setWeather(null);try{localStorage.removeItem("loalife-weatherloc");}catch(e){}};
+  const heatAlert=weather&&!weather.error&&typeof weather.temp==="number"&&weather.temp>26;
 
   // Firestore: save member
   const saveMemberToFs=async(member)=>{
@@ -1994,6 +2022,22 @@ function App(){
               </div>
             )}
 
+            {weatherLoc?(
+              <div className={"yl-weather"+(heatAlert?" alert":"")}>
+                <div className="yl-weather-main">
+                  <span className="yl-weather-loc">📍 {weatherLoc.name}</span>
+                  {weather&&weather.error?(
+                    <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
+                  ):weather?(
+                    <span className="yl-weather-vals"><span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span><span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></span>
+                  ):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
+                </div>
+                {heatAlert&&<p className="yl-weather-heat">🥵 熱中症注意：26℃を超えています。水分と涼しい場所を確保してあげてください。</p>}
+              </div>
+            ):(
+              <button className="yl-weather-setup" onClick={()=>setTab("settings")}>🌡️ 地域を登録して天気・熱中症注意を表示</button>
+            )}
+
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
             <div className="yl-layer">
@@ -2234,6 +2278,16 @@ function App(){
               <h3 className="yl-set-title">🔔 通知</h3>
               <p className="yl-set-desc">予定やリマインド・誕生日をお知らせします。</p>
               {notifPerm==="granted"?<p className="yl-set-ok">✓ 通知は許可されています</p>:notifPerm==="denied"?<p className="yl-set-warn">端末の設定で通知がオフになっています</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>通知を許可する</button>}
+            </section>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title">🌡️ 天気の地域</h3>
+              <p className="yl-set-desc">登録した地域の気温・湿度をホームに表示します。26℃を超えると熱中症注意をお知らせします。</p>
+              {weatherLoc&&<p className="yl-set-ok">📍 {weatherLoc.name} <button className="yl-linkbtn" onClick={clearWeatherLoc}>解除</button></p>}
+              <div className="yl-wxsearch">
+                <input className="yl-input sm" value={wxQuery} onChange={e=>setWxQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlace()} placeholder="市区町村名で検索（例：横浜）"/>
+                <button className="yl-addbtn sm" onClick={searchPlace} disabled={wxSearching}>{wxSearching?"検索中…":"検索"}</button>
+              </div>
+              {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=><li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}>📍 {r.name}{r.admin1&&r.admin1!==r.name?`・${r.admin1}`:""}{r.country?`（${r.country}）`:""}</button></li>)}</ul>)}
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title">💾 バックアップ</h3>
