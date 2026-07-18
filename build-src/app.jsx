@@ -407,6 +407,24 @@ function ageNow(dateStr){
   if(!passed)a-=1;
   return a<0?null:a;
 }
+// 生後の月齢（西暦がある場合のみ）。子犬・子猫の成長を月単位で。
+function monthsOld(dateStr){
+  if(!dateStr)return null;
+  const[y,m,d]=dateStr.split("-").map(Number);
+  if(!y||y<1900)return null;
+  const now=new Date();
+  let months=(now.getFullYear()-y)*12+(now.getMonth()+1-m);
+  if(now.getDate()<d)months-=1;
+  return months<0?null:months;
+}
+// 年齢の表示ラベル：1歳未満は月齢、2歳未満は「X歳Yヶ月」、以降は「X歳」。西暦なしは空。
+function ageLabel(dateStr){
+  const m=monthsOld(dateStr);if(m==null)return"";
+  if(m<12)return`${m}ヶ月`;
+  const yrs=Math.floor(m/12),rem=m%12;
+  if(yrs<2)return rem>0?`${yrs}歳${rem}ヶ月`:`${yrs}歳`;
+  return`${yrs}歳`;
+}
 
 function genCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -608,6 +626,7 @@ function App(){
   const[editBirthday,setEditBirthday]=useState("");
   const[editGotcha,setEditGotcha]=useState(""); // うちの子記念日（ペットのみ）
   const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
+  const[editMicrochip,setEditMicrochip]=useState(""); // マイクロチップ番号（ペット）
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
@@ -1316,7 +1335,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -2324,7 +2343,7 @@ function App(){
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>ⓘ {isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageNow(meBirthday)!=null?`（${ageNow(meBirthday)}歳）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -2339,6 +2358,7 @@ function App(){
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🔢 マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>🧑 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
@@ -2347,7 +2367,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
                     </span>
                   )}
                 </div>
@@ -2359,10 +2379,11 @@ function App(){
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
-                {(activeMember.birthday||activeMember.gotchaDay)&&(
+                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip)&&(
                   <div className="yl-petstatus-fun">
-                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageNow(activeMember.birthday)!=null?`（${ageNow(activeMember.birthday)}歳）`:""}</span>}
+                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
                     {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
+                    {activeMember.microchip&&<span className="yl-funchip">🔢 {activeMember.microchip}</span>}
                   </div>
                 )}
               </section>
