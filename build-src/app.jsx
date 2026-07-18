@@ -213,15 +213,19 @@ const choreTemplatesFor=(kind)=>kind==="pet"?CHORE_TPL_PET:kind==="person"?CHORE
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
 const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
-function elapsedLabel(dateStr){
+// 前回からの経過ラベル。warn 日以上で黄、alert 日以上で赤（しきい値は設定で変更可）。
+function elapsedLabel(dateStr,warn=7,alert=14){
   if(!dateStr)return{txt:"まだ記録なし",tone:"none"};
   const d=daysUntil(dateStr);if(d==null)return{txt:"—",tone:"none"};
   const ago=-d;
-  if(ago<=0)return{txt:"今日やりました",tone:"fresh"};
-  if(ago===1)return{txt:"昨日",tone:"fresh"};
-  if(ago<7)return{txt:`${ago}日前`,tone:"ok"};
-  if(ago<28){const w=Math.floor(ago/7);return{txt:`${w}週間前`,tone:ago>=21?"warn":"ok"};}
-  const mo=Math.floor(ago/30);return{txt:`約${mo}か月前`,tone:"warn"};
+  const tone=ago<=0?"fresh":(ago>=alert?"over":(ago>=warn?"warn":"ok"));
+  let txt;
+  if(ago<=0)txt="今日やりました";
+  else if(ago===1)txt="昨日";
+  else if(ago<7)txt=`${ago}日前`;
+  else if(ago<28)txt=`${Math.floor(ago/7)}週間前`;
+  else txt=`約${Math.floor(ago/30)}か月前`;
+  return{txt,tone};
 }
 // からだの記録（体重・身長・体調）
 const HEALTH_CONDS=[{key:"good",label:"元気",emoji:"😊"},{key:"ok",label:"ふつう",emoji:"😐"},{key:"bad",label:"元気ない",emoji:"😟"}];
@@ -235,6 +239,17 @@ const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},
 const DIARY_POOP=[{key:"good",label:"good",emoji:"💩"},{key:"loose",label:"ゆるい",emoji:"💧"},{key:"none",label:"なし",emoji:"🚫"}];
 // トイレ記録（成功/失敗）。うんちは状態も残せる。
 const POOP_COND=[{key:"normal",label:"普通",emoji:"💩"},{key:"soft",label:"軟便",emoji:"💧"},{key:"loose",label:"下痢",emoji:"🚨"}];
+// うんちの硬さ：ブリストル便性状スケール（1=硬い〜7=水様、4が理想）。tone は色分け用。
+const BRISTOL=[
+  {n:1,label:"コロコロ",desc:"硬い木の実のような塊",tone:"hard"},
+  {n:2,label:"かたい",desc:"ゴツゴツした固まり",tone:"hard"},
+  {n:3,label:"ややかたい",desc:"表面にひび割れ",tone:"ok"},
+  {n:4,label:"理想的",desc:"なめらかで柔らかい",tone:"good"},
+  {n:5,label:"やわらかい",desc:"はっきりした境界の柔らかい塊",tone:"ok"},
+  {n:6,label:"泥状",desc:"境界がくずれた泥状",tone:"soft"},
+  {n:7,label:"水様",desc:"固形物のない水様",tone:"loose"},
+];
+const bristolMeta=(n)=>BRISTOL.find(b=>b.n===n)||null;
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
@@ -639,8 +654,12 @@ function App(){
   const[choreDateEdit,setChoreDateEdit]=useState(null); // お世話ログの実施日を後から修正 {id,date}
   const[choreDraft,setChoreDraft]=useState(""); // お世話ログの自由追加入力
   const[batchSel,setBatchSel]=useState(null); // まとめて記録：選択中の子（null=全ペット既定）
-  const[poopCond,setPoopCond]=useState("normal"); // トイレ記録：うんちの状態
+  const[bristolScore,setBristolScore]=useState(4); // トイレ記録：うんちの硬さ（ブリストル1-7、4が理想）
   const[toiletRange,setToiletRange]=useState(7); // 成功率の集計期間（日）
+  const[colorDays,setColorDays]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("loalife-colordays"));if(s&&s.warn>0&&s.alert>0)return s;}catch(e){}return{warn:7,alert:14};}); // お世話ログの色が変わる目安（黄/赤の日数）
+  const persistColorDays=(next)=>{setColorDays(next);try{localStorage.setItem("loalife-colordays",JSON.stringify(next));}catch(e){}};
+  const[vetOpen,setVetOpen]=useState(false); // 獣医さん用サマリー表示
+  const[vetDays,setVetDays]=useState(30); // サマリーの対象期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
@@ -707,7 +726,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","health","toilet","diary","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","toilet","health","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
   const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
   const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
@@ -1616,25 +1635,50 @@ function App(){
     showFlash(`${sel.length}匹に「${action.emoji} ${action.title}」を記録 ✓`);
   };
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
-  // トイレ記録：おしっこ/うんちを成功・失敗で記録。うんちは状態も残す。
-  const logToilet=(tk,success,condition)=>{
+  // トイレ記録：おしっこ/うんちを成功・失敗で記録。うんちはブリストルスコア(1〜7)も残す。
+  const logToilet=(tk,success,bristol)=>{
     const emoji=tk==="pee"?"💧":"💩";const klabel=tk==="pee"?"おしっこ":"うんち";
-    const clabel=condition?((POOP_COND.find(c=>c.key===condition)||{}).label||""):"";
-    const title=`${klabel} ${success?"成功":"失敗"}`+(tk==="poop"&&success&&clabel?`・${clabel}`:"");
+    const bm=tk==="poop"&&success&&bristol?bristolMeta(bristol):null;
+    const title=`${klabel} ${success?"成功":"失敗"}`+(bm?`・${bm.label}`:"");
     const now=new Date();const time=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
-    const rec={id:"t"+Date.now(),space:tab,type:"toilet",tkind:tk,success:!!success,condition:tk==="poop"?(condition||null):null,title,emoji,date:todayIso,time,createdAt:Date.now()};
+    const rec={id:"t"+Date.now(),space:tab,type:"toilet",tkind:tk,success:!!success,bristol:tk==="poop"?(bristol||null):null,title,emoji,date:todayIso,time,createdAt:Date.now()};
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     showFlash(`${emoji} ${title} を記録 ✓`);
   };
   const removeToilet=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // うんちの傾向：直近のブリストルスコアが極端（1-2硬い/6-7ゆるい）に偏っていれば受診の目安を出す。
+  const poopTrend=useMemo(()=>{
+    const rs=items.filter(x=>x.space===tab&&x.type==="toilet"&&x.tkind==="poop"&&x.bristol).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
+    if(rs.length<3)return null;
+    if(rs.every(r=>r.bristol>=6))return{txt:"ゆるいうんちが続いています。長引くようなら受診の目安です。",tone:"loose"};
+    if(rs.every(r=>r.bristol<=2))return{txt:"硬いうんちが続いています。水分や食事、気になるときは受診を。",tone:"hard"};
+    return null;
+  },[items,tab]);
   // トイレ成功率：現在のメンバーの、期間内(7/14/30日)の成功/合計をおしっこ・うんち別に集計。
   const toiletStats=useMemo(()=>{
     const mk=(days)=>{const from=plusDays(-(days-1));const recs=items.filter(x=>x.space===tab&&x.type==="toilet"&&x.date&&x.date>=from);
-      const calc=(k)=>{const r=recs.filter(x=>x.tkind===k);const s=r.filter(x=>x.success).length;return{total:r.length,success:s,rate:r.length?Math.round(s/r.length*100):null};};
+      const calc=(k)=>{const r=recs.filter(x=>x.tkind===k);const s=r.filter(x=>x.success).length;const br=r.filter(x=>x.bristol).map(x=>x.bristol);const avg=br.length?Math.round(br.reduce((a,b)=>a+b,0)/br.length*10)/10:null;return{total:r.length,success:s,rate:r.length?Math.round(s/r.length*100):null,avgBristol:avg,brCount:br.length};};
       return{pee:calc("pee"),poop:calc("poop"),total:recs.length};};
     return{7:mk(7),14:mk(14),30:mk(30)};
   },[items,tab,todayIso]);
   const hasToilet=useMemo(()=>items.some(x=>x.space===tab&&x.type==="toilet"),[items,tab]);
+  // 獣医さん用サマリー：対象メンバーの、期間内の体重・トイレ・症状・予防/お世話をまとめる。
+  const vetSummary=useMemo(()=>{
+    if(!activeMember)return null;
+    const sp=activeMember.id;const from=plusDays(-(vetDays-1));
+    const inRange=(d)=>d&&d>=from&&d<=todayIso;
+    const toilets=items.filter(x=>x.space===sp&&x.type==="toilet"&&inRange(x.date));
+    const trate=(k)=>{const r=toilets.filter(x=>x.tkind===k);const s=r.filter(x=>x.success).length;return{total:r.length,rate:r.length?Math.round(s/r.length*100):null};};
+    const br=toilets.filter(x=>x.tkind==="poop"&&x.bristol).map(x=>x.bristol);
+    const brAvg=br.length?Math.round(br.reduce((a,b)=>a+b,0)/br.length*10)/10:null;
+    const healths=items.filter(x=>x.space===sp&&x.type==="health"&&x.weight!=null&&inRange(x.date)).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    const wLatest=healths.length?healths[healths.length-1]:null;const wFirst=healths.length?healths[0]:null;
+    const syms={};items.filter(x=>x.space===sp&&x.type==="diary"&&inRange(x.date)).forEach(r=>(r.symptoms||[]).forEach(s=>{syms[s]=(syms[s]||0)+1;}));
+    const symList=Object.keys(syms).map(k=>({k,label:(symptomMeta(k)||{}).label||k,n:syms[k]})).sort((a,b)=>b.n-a.n);
+    const careNext=items.filter(x=>x.space===sp&&x.type==="care"&&x.dueDate&&!x.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,8).map(x=>({title:x.title,date:x.dueDate,emoji:x.emoji||"💉"}));
+    const chores=items.filter(x=>x.space===sp&&x.type==="chore"&&x.lastDone).sort((a,b)=>(b.lastDone||"").localeCompare(a.lastDone||"")).slice(0,8).map(x=>({title:x.title,date:x.lastDone,emoji:x.emoji||"🧹"}));
+    return{from,to:todayIso,pee:trate("pee"),poop:trate("poop"),brAvg,brCount:br.length,wLatest,wFirst,symList,careNext,chores};
+  },[items,activeMember,vetDays,todayIso]);
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
   const saveChoreDate=(id,newDate)=>{
     if(!newDate){setChoreDateEdit(null);return;}
@@ -2333,6 +2377,15 @@ function App(){
               {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=><li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}>📍 {r.name}{r.admin1&&r.admin1!==r.name?`・${r.admin1}`:""}{r.country?`（${r.country}）`:""}</button></li>)}</ul>)}
             </section>
             <section className="yl-set-sec">
+              <h3 className="yl-set-title">⏰ 色が変わる時間（お世話ログ）</h3>
+              <p className="yl-set-desc">お世話ログの「前回から」の色が黄色・赤に変わるまでの日数を設定します。トイレ掃除など頻度の高いお世話は短めがおすすめです。</p>
+              <div className="yl-colordays">
+                <label className="yl-colordays-field">🟡 黄色になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>日</span></label>
+                <label className="yl-colordays-field">🔴 赤になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>日</span></label>
+              </div>
+              <p className="yl-set-desc" style={{marginTop:6}}>現在：{colorDays.warn}日で🟡・{colorDays.alert}日で🔴</p>
+            </section>
+            <section className="yl-set-sec">
               <h3 className="yl-set-title">💾 バックアップ</h3>
               <p className="yl-set-desc">データはこの端末に保存されます。機種変更や端末の故障に備えて、ときどきバックアップ（.json）を書き出しておくと安心です。証明書・思い出・アイコンの写真も一緒に保存されます。</p>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}>💾 データを書き出す（写真ふくむ）</button>
@@ -2449,7 +2502,7 @@ function App(){
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>🧹 お世話ログ<span className="yl-chore-hint">前回いつ？がひと目で</span></h2>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
-                      {chores.map(c=>{const el=elapsedLabel(c.lastDone);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
+                      {chores.map(c=>{const el=elapsedLabel(c.lastDone,colorDays.warn,colorDays.alert);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
                         <li key={c.id} className="yl-chore-item">
                           <span className="yl-chore-emoji">{c.emoji}</span>
                           <span className="yl-chore-body">
@@ -2619,13 +2672,21 @@ function App(){
                   )}
                 </section>
               )});
+              if(curKind==="pet")defs.push({key:"vet",el:(
+                <section className="yl-vetcard">
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>📄 獣医さん用サマリー</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>これまでの記録を1枚にまとめて、印刷・PDF保存できます。通院時にどうぞ。</p>
+                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}>📄 サマリーを作成</button>
+                </section>
+              )});
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
                 <section className="yl-toiletstats">
                   <div className="yl-toilet-head">
                     <h2 className="yl-routine-title" style={{margin:0}}>🚽 トイレ成功率</h2>
                     <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}日</button>)}</span>
                   </div>
-                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,emoji,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label">{emoji} {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" emoji="💧" s={st.pee}/><Row label="うんち成功率" emoji="💩" s={st.poop}/></>);})()}
+                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,emoji,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label">{emoji} {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" emoji="💧" s={st.pee}/><Row label="うんち成功率" emoji="💩" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg">💩 うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
+                  {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone} style={{marginTop:2}}>⚠️ {poopTrend.txt}</p>}
                   <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}>🚽 トイレを記録する</button>
                 </section>
               )});
@@ -2989,15 +3050,54 @@ function App(){
             </div>
             <div className="yl-toilet-row">
               <span className="yl-toilet-label">💩 うんち</span>
-              <button className="yl-toilet-btn ok" onClick={()=>logToilet("poop",true,poopCond)}>✓ 成功</button>
+              <button className="yl-toilet-btn ok" onClick={()=>logToilet("poop",true,bristolScore)}>✓ 成功</button>
               <button className="yl-toilet-btn ng" onClick={()=>logToilet("poop",false)}>✕ 失敗</button>
             </div>
-            <div className="yl-toilet-cond">
-              <span className="yl-toilet-condlabel">うんちの状態</span>
-              <span className="yl-toilet-condchips">{POOP_COND.map(c=><button key={c.key} className={"yl-toilet-cond-chip"+(poopCond===c.key?" on":"")} onClick={()=>setPoopCond(c.key)}>{c.emoji} {c.label}</button>)}</span>
+            <div className="yl-bristol">
+              <span className="yl-toilet-condlabel">うんちの硬さ（7段階）</span>
+              <div className="yl-bristol-scale">{BRISTOL.map(bb=><button key={bb.n} className={"yl-bristol-chip tone-"+bb.tone+(bristolScore===bb.n?" on":"")} onClick={()=>setBristolScore(bb.n)}>{bb.n}</button>)}</div>
+              {(()=>{const bm=bristolMeta(bristolScore);return bm&&<p className="yl-bristol-desc"><b>{bm.n}／7・{bm.label}</b>：{bm.desc}</p>;})()}
             </div>
-            <p className="yl-health-hint" style={{marginTop:10}}>便の状態は受診の目安です。診断ではありません。</p>
+            {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone}>⚠️ {poopTrend.txt}</p>}
+            <p className="yl-health-hint" style={{marginTop:10}}>便の硬さは受診の目安です。診断ではありません。</p>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+          </div>
+        </div>
+      )}
+      {vetOpen&&activeMember&&vetSummary&&(
+        <div className="yl-overlay" onClick={()=>setVetOpen(false)}>
+          <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
+            <div className="yl-noprint yl-vet-toolbar"><span className="yl-vet-range">{[7,30,90].map(d=><button key={d} className={"yl-toilet-range"+(vetDays===d?" on":"")} onClick={()=>setVetDays(d)}>{d}日</button>)}</span></div>
+            <div className="yl-vetsum">
+              <div className="yl-vetsum-head">
+                <h2 className="yl-vetsum-title">🐾 {activeMember.name} の記録サマリー</h2>
+                <p className="yl-vetsum-period">{fmtDate(vetSummary.from)}〜{fmtDate(vetSummary.to)}（{vetDays}日間）／作成日 {fmtDate(todayIso)}</p>
+              </div>
+              <div className="yl-vetsum-grid">
+                <div className="yl-vetsum-sec"><h3>基本情報</h3><ul>
+                  <li>種別：{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}</li>
+                  {activeMember.birthday&&<li>誕生日：{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</li>}
+                  {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
+                </ul></div>
+                <div className="yl-vetsum-sec"><h3>体重</h3>{vetSummary.wLatest?<ul>
+                  <li>最新：{vetSummary.wLatest.weight}{vetSummary.wLatest.wunit||"kg"}（{fmtDate(vetSummary.wLatest.date)}）</li>
+                  {vetSummary.wFirst&&vetSummary.wFirst!==vetSummary.wLatest&&<li>期間の変化：{(vetSummary.wLatest.weight-vetSummary.wFirst.weight>=0?"+":"")}{Math.round((vetSummary.wLatest.weight-vetSummary.wFirst.weight)*10)/10}{vetSummary.wLatest.wunit||"kg"}（{fmtDate(vetSummary.wFirst.date)}比）</li>}
+                </ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>トイレ</h3><ul>
+                  <li>おしっこ成功率：{vetSummary.pee.total?`${vetSummary.pee.rate}%（${vetSummary.pee.total}回）`:"記録なし"}</li>
+                  <li>うんち成功率：{vetSummary.poop.total?`${vetSummary.poop.rate}%（${vetSummary.poop.total}回）`:"記録なし"}</li>
+                  {vetSummary.brAvg!=null&&<li>うんちの硬さ平均：{vetSummary.brAvg}／7{bristolMeta(Math.round(vetSummary.brAvg))?`（${bristolMeta(Math.round(vetSummary.brAvg)).label}）`:""}</li>}
+                </ul></div>
+                <div className="yl-vetsum-sec"><h3>症状</h3>{vetSummary.symList.length?<ul>{vetSummary.symList.map(s=><li key={s.k}>{s.label} × {s.n}回</li>)}</ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>予防・ワクチン等の次回予定</h3>{vetSummary.careNext.length?<ul>{vetSummary.careNext.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">予定なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>最近のお世話</h3>{vetSummary.chores.length?<ul>{vetSummary.chores.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+              </div>
+              <p className="yl-vetsum-note">※本サマリーは飼い主の記録に基づくもので、診断ではありません。</p>
+            </div>
+            <div className="yl-modal-btns yl-noprint">
+              <button className="yl-modal-cancel" onClick={()=>setVetOpen(false)}>とじる</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}>🖨 印刷・PDF保存</button>
+            </div>
           </div>
         </div>
       )}
