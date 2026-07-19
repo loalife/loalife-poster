@@ -176,6 +176,9 @@ function scheduleReminders(items, members) {
 function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let{width,height}=img;if(width>height&&width>maxDim){height=(height*maxDim)/width;width=maxDim;}else if(height>=width&&height>maxDim){width=(width*maxDim)/height;height=maxDim;}const c=document.createElement("canvas");c.width=Math.round(width);c.height=Math.round(height);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);try{resolve(c.toDataURL("image/jpeg",quality));}catch(e){reject(e);}};img.onerror=reject;img.src=url;});}
 
 const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
+// ケア種別 → ラインアイコン名（SF Symbols相当）
+const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth"};
+const careIcon=(k)=>CARE_ICON[k]||"paw";
 
 // ライフログ・カレンダー用：各アイテムが「どの日に紐づくか」を1つに正規化する。
 //  予定/ケア=dueDate、ストック=購入日(lastBought)、思い出=date、ルーティン=実施日(doneDate)。
@@ -276,36 +279,36 @@ function walkIndex(w){
   const h=(typeof w.humidity==="number")?w.humidity:null;
   const road=(typeof w.roadTemp==="number")?w.roadTemp:null;
   const uv=(typeof w.uv==="number")?w.uv:null;
-  const F=[];const add=(key,label,emoji,pen)=>{if(pen>0)F.push({key,label,emoji,penalty:Math.round(pen)});};
+  const F=[];const add=(key,label,icon,pen)=>{if(pen>0)F.push({key,label,icon,penalty:Math.round(pen)});};
   // 暑さ（気温）
   let heat=0;if(t>=35)heat=85;else if(t>=30)heat=60;else if(t>=28)heat=42;else if(t>=26)heat=28;else if(t>=24)heat=14;
-  add("heat","暑さ","☀️",heat);
+  add("heat","暑さ","sun",heat);
   // 寒さ（気温）
   let cold=0;if(t<0)cold=48;else if(t<3)cold=32;else if(t<7)cold=18;else if(t<11)cold=8;
-  add("cold","寒さ","❄️",cold);
+  add("cold","寒さ","snow",cold);
   // 蒸し暑さ（気温高め＋多湿）
   let mug=0;if(h!=null&&t>=23){const over=Math.max(0,h-65);mug=Math.min(28,over*0.4+(t>=28?8:0));}
-  add("mug","蒸し暑さ","🥵",mug);
+  add("mug","蒸し暑さ","thermometer",mug);
   // 路面の暑さ
   let rh=0;if(road!=null){if(road>=55)rh=40;else if(road>=50)rh=30;else if(road>=45)rh=20;else if(road>=40)rh=10;}
-  add("road","路面の暑さ","🐾",rh);
+  add("road","路面の暑さ","paw",rh);
   // 雨・雪・雷・霧
-  let wx=0,wxl="雨",wxe="🌧";
-  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";}
-  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";}
-  else if([71,73,75,77,85,86].includes(code)){wx=42;wxl="雪";wxe="🌨";}
-  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";wxe="⛈";}
-  else if([45,48].includes(code)){wx=14;wxl="霧";wxe="🌫";}
-  add("wx",wxl,wxe,wx);
+  let wx=0,wxl="雨",wxi="cloudrain";
+  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";wxi="cloudrain";}
+  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";wxi="cloudrain";}
+  else if([71,73,75,77,85,86].includes(code)){wx=42;wxl="雪";wxi="snow";}
+  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";wxi="cloudrain";}
+  else if([45,48].includes(code)){wx=14;wxl="霧";wxi="cloudrain";}
+  add("wx",wxl,wxi,wx);
   // 風
   let vp=0;if(wind!=null){if(wind>=12)vp=52;else if(wind>=8)vp=32;else if(wind>=5)vp=16;else if(wind>=3.5)vp=6;}
-  add("wind","風","💨",vp);
+  add("wind","風","wind",vp);
   // 紫外線
   let uvp=0;if(uv!=null){if(uv>=11)uvp=26;else if(uv>=8)uvp=18;else if(uv>=6)uvp=10;else if(uv>=3)uvp=4;}
-  add("uv","紫外線","🕶",uvp);
+  add("uv","紫外線","glasses",uvp);
   // 乾燥
   let dry=0;if(h!=null){if(h<20)dry=12;else if(h<30)dry=6;}
-  add("dry","乾燥","🏜",dry);
+  add("dry","乾燥","droplet",dry);
   const total=F.reduce((a,f)=>a+f.penalty,0);
   const score=Math.max(0,Math.min(100,100-total));
   F.sort((a,b)=>b.penalty-a.penalty);
@@ -629,6 +632,18 @@ const ICONS={
   alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
   clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  syringe:'<path d="m18 2 4 4M17 7l3-3M19 9 8.7 19.3a2.4 2.4 0 0 1-3.4 0l-.6-.6a2.4 2.4 0 0 1 0-3.4L15 5M9 11l4 4M5 19l-3 3M14 4l6 6"/>',
+  pill:'<path d="m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
+  bug:'<rect x="8" y="6" width="8" height="14" rx="4"/><path d="M12 6V3M9 4 7.5 2.5M15 4l1.5-1.5M8 11H4M20 11h-4M8 16H4M20 16h-4M8 20l-2 2M16 20l2 2"/>',
+  stethoscope:'<path d="M4 3v5a4 4 0 0 0 8 0V3M8 16a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/><path d="M4 3H2.5M12 3h-1.5"/>',
+  tooth:'<path d="M12 5.5C10 3.5 6.5 3 5 6c-1.4 2.8.3 6 .8 8.7.4 2.2 1 5.3 2.4 5.3s1.4-3 1.9-5c.1-.6.6-1.6 1.9-1.6s1.8 1 1.9 1.6c.5 2 .5 5 1.9 5s2-3.1 2.4-5.3c.5-2.7 2.2-5.9.8-8.7C17.5 3 14 3.5 12 5.5z"/>',
+  building:'<rect x="4" y="2" width="16" height="20" rx="1.5"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
+  activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  sparkles:'<path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9L12 18l1.9-5.4 5.8-1.9-5.8-1.9z"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  snow:'<path d="M2 12h20M12 2v20M6.3 6.3l11.4 11.4M17.7 6.3 6.3 17.7"/>',
+  cloudrain:'<path d="M4 14.9A5 5 0 1 1 15 8h1a4 4 0 0 1 1 7.9M8 19v2M12 19v2M16 19v2"/>',
+  glasses:'<circle cx="6" cy="15" r="3"/><circle cx="18" cy="15" r="3"/><path d="M9 15a3 3 0 0 1 6 0M2 12l3-3M22 12l-3-3"/>',
 };
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
@@ -1886,7 +1901,7 @@ function App(){
     const cst=isCare?careState(it):null;
     const actionable=isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0; // 期限切れ/今日＝その場でワンタップ解消
     return(<>
-      <button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} onPointerDown={e=>e.stopPropagation()} title="タップで絵文字を変更">{it.emoji}</button>
+      {isCare?<span className="yl-bubble" style={{background:meta.bg,color:meta.fg}}><Icon name={careIcon(it.careKind)} size={22}/></span>:<button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} onPointerDown={e=>e.stopPropagation()} title="タップで絵文字を変更">{it.emoji}</button>}
       <div className="yl-body" onClick={()=>openEdit(it)}>
         <div className="yl-row1"><span className="yl-badge" style={{background:meta.bg,color:meta.fg}}>{label}</span><span className="yl-text">{it.title}</span></div>
         {(ds||cst||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
@@ -2260,12 +2275,12 @@ function App(){
                 {wi&&(
                   <div className="yl-walk">
                     <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span><span className="yl-walk-label">{wi.label}</span></span>
-                    <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.main?<>／主な要因：<b>{wi.main.emoji} {wi.main.label}</b></>:""}</span>
+                    <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.main?<>／主な要因：<b><Icon name={wi.main.icon} size={13}/> {wi.main.label}</b></>:""}</span>
                     {wa&&wa.level==="danger"&&<span className="yl-walk-danger">⚠️ {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
                     {wi.factors.length>0&&(wi.level!=="ok"||walkOpen)&&(
                       <div className="yl-walk-bd">
                         <span className="yl-walk-bd-label">スコアの内訳（減点）</span>
-                        <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name">{f.emoji} {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
+                        <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
                       </div>
                     )}
                     {wi.factors.length>0&&wi.level==="ok"&&<button className="yl-walk-toggle" onClick={()=>setWalkOpen(o=>!o)}>{walkOpen?"内訳を閉じる":"スコアの内訳を見る"}</button>}
@@ -2713,7 +2728,7 @@ function App(){
               )});
               defs.push({key:"list",el:(
                 <section className="yl-listsec">
-                  {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{f.emoji?f.emoji+" ":""}{f.label}</button>)}</div>}
+                  {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{isMemberTab&&f.key!=="all"&&<Icon name={careIcon(f.key)} size={13}/>}{f.label}</button>)}</div>}
                   {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の ＋ から追加できます。</p>:(()=>{
                     const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
                     return(
@@ -3188,13 +3203,13 @@ function App(){
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{isMemberTab?"ケア・予定を追加":"予定・ToDoを追加"}</h3>
-            {!isMemberTab?<div className="yl-typerow">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}>{TYPE_META[t].emoji} {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}>{k.emoji} {k.label}</button>)}</div>}
+            {!isMemberTab?<div className="yl-typerow">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}>{TYPE_META[t].emoji} {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {k.label}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
             <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
             <div className="yl-optrow"><label className="yl-opt">{isMemberTab?"期限":(isScheduleType(draftType)?"日付":"期限（任意）")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
             {!isMemberTab&&isScheduleType(draftType)&&<p className="yl-foot" style={{marginTop:2}}>日付を入れるとカレンダーに表示。</p>}
             <div className="yl-notify"><span className="yl-notify-label">🔔 通知{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
-            {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">1タップ追加（前回コピー）</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico">{k.emoji}</span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{k.label}</span><span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
+            {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">1タップ追加（前回コピー）</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{k.label}</span><span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
