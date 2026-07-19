@@ -489,6 +489,16 @@ function ageNow(dateStr){
   if(!passed)a-=1;
   return a<0?null:a;
 }
+// お迎えから今日までの日数（西暦がある場合のみ）。何日一緒に過ごしたか。
+function daysTogether(dateStr){
+  if(!dateStr)return null;
+  const[y,m,d]=dateStr.split("-").map(Number);
+  if(!y||y<1900)return null;
+  const start=new Date(y,m-1,d);const now=new Date();
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const days=Math.floor((today-start)/86400000);
+  return days>=0?days:null;
+}
 // 生後の月齢（西暦がある場合のみ）。子犬・子猫の成長を月単位で。
 function monthsOld(dateStr){
   if(!dateStr)return null;
@@ -709,6 +719,9 @@ function App(){
   const[editGotcha,setEditGotcha]=useState(""); // うちの子記念日（ペットのみ）
   const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
   const[editMicrochip,setEditMicrochip]=useState(""); // マイクロチップ番号（ペット）
+  const[editBreed,setEditBreed]=useState(""); // 犬種・猫種
+  const[editCoat,setEditCoat]=useState(""); // 毛の色
+  const[editNeuter,setEditNeuter]=useState(""); // 避妊・去勢（""＝未設定 / done / not）
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
@@ -1438,7 +1451,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -2535,6 +2548,9 @@ function App(){
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎂 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎉 うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>{activeMember.species==="cat"?"🐈 猫種":activeMember.species==="dog"?"🐕 犬種":"🐾 種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder={activeMember.species==="cat"?"例：スコティッシュフォールド":activeMember.species==="dog"?"例：柴犬 / トイプードル":"例：種類"}/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🎨 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="例：赤茶 / 黒 / キジトラ"/></label>}
+                      {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>✂️ 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}>🔢 マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}>🧑 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
@@ -2544,7 +2560,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
                     </span>
                   )}
                 </div>
@@ -2556,10 +2572,14 @@ function App(){
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
-                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip)&&(
+                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter)&&(
                   <div className="yl-petstatus-fun">
+                    {activeMember.breed&&<span className="yl-funchip">{activeMember.species==="cat"?"🐈":"🐕"} {activeMember.breed}</span>}
                     {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
                     {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
+                    {activeMember.gotchaDay&&daysTogether(activeMember.gotchaDay)!=null&&<span className="yl-funchip">🏠 お迎えから{daysTogether(activeMember.gotchaDay).toLocaleString()}日</span>}
+                    {activeMember.coat&&<span className="yl-funchip">🎨 {activeMember.coat}</span>}
+                    {activeMember.neuter&&<span className="yl-funchip">✂️ 避妊・去勢{activeMember.neuter==="done"?"済み":"まだ"}</span>}
                     {activeMember.microchip&&<span className="yl-funchip">🔢 {activeMember.microchip}</span>}
                   </div>
                 )}
