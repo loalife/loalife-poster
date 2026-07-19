@@ -605,6 +605,20 @@ const ICONS={
   paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5 3 3 0 0 1-6 2 3 3 0 0 1-4-4 5 5 0 0 1 5-3z"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
   pencil:'<path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L8 18.6l-4 1 1-4z"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  thermometer:'<path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/>',
+  printer:'<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+  filetext:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
+  note:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 15l-4 1 1-4z"/>',
+  scale:'<path d="M12 3v18M7 3h10M5 7l-3 6a4 4 0 0 0 6 0L5 7zM19 7l-3 6a4 4 0 0 0 6 0l-3-6z"/>',
+  wallet:'<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
+  package:'<path d="M16.5 9.4 7.5 4.2M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8"/>',
+  pin:'<path d="M12 17v5M9 10.8V6l-2-1V3h10v2l-2 1v4.8l2 3.2v1H7v-1z"/>',
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/><path d="M12 8C12 8 12 3 9 3a2 2 0 0 0 0 4h6a2 2 0 0 0 0-4c-3 0-3 5-3 5z"/>',
+  repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
 };
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
@@ -2190,7 +2204,7 @@ function App(){
 
         {a2hsHint&&(
           <div className="yl-notif-banner">
-            <span>📲 ホーム画面に追加すると、データが消えにくく安心です</span>
+            <span>ホーム画面に追加すると、データが消えにくく安心です</span>
             <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>あとで</button>
           </div>
         )}
@@ -2210,7 +2224,7 @@ function App(){
           <div className="yl-home">
             {showNotifBanner&&(hasReminders||members.some(m=>m.birthday))&&(
               <div className="yl-notif-banner">
-                <span>🔔 通知を許可すると、リマインダーや誕生日をお知らせします</span>
+                <span>通知を許可すると、リマインダーや誕生日をお知らせします</span>
                 <button className="yl-notif-allow" onClick={handleNotifRequest}>許可する</button>
               </div>
             )}
@@ -2249,7 +2263,7 @@ function App(){
                 )}
               </div>
             );})():(
-              <button className="yl-weather-setup" onClick={()=>setTab("settings")}>🌡️ 地域を登録して天気・お散歩判定を表示</button>
+              <button className="yl-weather-setup" onClick={()=>setTab("settings")}><Icon name="thermometer" size={16}/> 地域を登録して天気・お散歩判定を表示</button>
             )}
 
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
@@ -2329,7 +2343,7 @@ function App(){
                       <li key={s.id} className="yl-quickcond-item">
                         <span className="yl-quickcond-emoji">{avatarNode(s,"sm")}</span>
                         <span className="yl-quickcond-name">{s.name}</span>
-                        <button className="yl-quickcond-btn" onClick={()=>quickHealthy(s.id)}>👌 今日も元気</button>
+                        <button className="yl-quickcond-btn" onClick={()=>quickHealthy(s.id)}><Icon name="check" size={15}/> 今日も元気</button>
                       </li>
                     ))}
                   </ul>
@@ -2482,7 +2496,7 @@ function App(){
                 )}
               </section>
             )}
-            <button className="yl-cal-exportall" onClick={()=>setCalPicker({bulk:true})}>📅 予定をカレンダーアプリに出力（.ics）</button>
+            <button className="yl-cal-exportall" onClick={()=>setCalPicker({bulk:true})}><Icon name="download" size={16}/> 予定をカレンダーアプリに出力（.ics）</button>
             <p className="yl-foot" style={{marginTop:8}}>日付をタップで記録・ふりかえり</p>
           </div>
         ):tab==="settings"?(
@@ -2830,7 +2844,7 @@ function App(){
                 <section className="yl-vetcard">
                   <h2 className="yl-routine-title" style={{marginBottom:8}}>獣医さん用サマリー</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>記録を1枚にまとめて印刷・PDF保存。</p>
-                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}>📄 サマリーを作成</button>
+                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> サマリーを作成</button>
                 </section>
               )});
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
@@ -2841,7 +2855,7 @@ function App(){
                   </div>
                   {(()=>{const st=toiletStats[toiletRange];const Row=({label,emoji,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label">{emoji} {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" emoji="💧" s={st.pee}/><Row label="うんち成功率" emoji="💩" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg">💩 うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
                   {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone} style={{marginTop:2}}>⚠️ {poopTrend.txt}</p>}
-                  <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}>🚽 トイレを記録する</button>
+                  <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}><Icon name="paw" size={18}/> トイレを記録する</button>
                 </section>
               )});
               defs.push({key:"diary",el:(
@@ -2850,7 +2864,7 @@ function App(){
                   {todayHasCond(tab)?(
                     <button className="yl-quick-done tap" onClick={()=>setInputSheet("diary")}>✓ 今日の体調は記録ずみ 👌<span className="yl-quick-edit">追記・編集</span></button>
                   ):(
-                    <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}>📝 体調を記録</button>
+                    <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}><Icon name="note" size={18}/> 体調を記録</button>
                   )}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">「体調を記録」から残せます</p>}
@@ -3250,7 +3264,7 @@ function App(){
             </div>
             <div className="yl-modal-btns yl-noprint">
               <button className="yl-modal-cancel" onClick={()=>setVetOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}>🖨 印刷・PDF保存</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
             </div>
           </div>
         </div>
@@ -3259,7 +3273,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">今日のようす</h3>
-            {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}>👌 今日も元気（ワンタップで完了）</button>}
+            {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}><Icon name="check" size={18}/> 今日も元気（ワンタップで完了）</button>}
             <p className="yl-diary-hint">くわしく残すときだけ（任意）。</p>
             {(()=>{const dcfg=diaryConfigFor(diaryTypeOf(tab));const has=k=>dcfg.rows.includes(k);return(<>
             {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}>{c.emoji} {c.label}</button>)}</span></div>}
@@ -3319,21 +3333,21 @@ function App(){
         const has=(t)=>items.some(x=>x.space===tab&&x.type===t);
         const open=(fn)=>{setHubOpen(false);fn();};
         const OPTS=[
-          {key:"schedule",emoji:isMemberTab?"💉":"📅",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
-          {key:"diary",emoji:"📝",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
-          ...(curKind==="pet"?[{key:"toilet",emoji:"🚽",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
-          {key:"routine",emoji:"🗓",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
-          {key:"health",emoji:"📈",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
-          {key:"expense",emoji:"💰",label:"支出",freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
-          {key:"memory",emoji:"📸",label:"思い出",freq:2,used:has("memory"),act:()=>openLifeNew(todayIso,tab)},
-          {key:"supply",emoji:"📦",label:"ストック",freq:3,used:has("supply"),act:openSupplyCustom},
-          {key:"card",emoji:"📌",label:"大切な情報",freq:3,used:has("card"),act:()=>openCardNew("other")},
-          ...(curKind==="person"?[{key:"belong",emoji:"🎒",label:"持ち物（曜日）",freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
-          ...(!isMemberTab?[{key:"bday",emoji:"🎂",label:"誕生日・記念日",freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
+          {key:"schedule",icon:"calendar",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
+          {key:"diary",icon:"note",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
+          ...(curKind==="pet"?[{key:"toilet",icon:"paw",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
+          {key:"routine",icon:"repeat",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
+          {key:"health",icon:"scale",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
+          {key:"expense",icon:"wallet",label:"支出",freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
+          {key:"memory",icon:"camera",label:"思い出",freq:2,used:has("memory"),act:()=>openLifeNew(todayIso,tab)},
+          {key:"supply",icon:"package",label:"ストック",freq:3,used:has("supply"),act:openSupplyCustom},
+          {key:"card",icon:"pin",label:"大切な情報",freq:3,used:has("card"),act:()=>openCardNew("other")},
+          ...(curKind==="person"?[{key:"belong",icon:"bag",label:"持ち物（曜日）",freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
+          ...(!isMemberTab?[{key:"bday",icon:"gift",label:"誕生日・記念日",freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
         ];
         const core=OPTS.filter(o=>o.freq===1||o.used);
         const unused=OPTS.filter(o=>o.freq!==1&&!o.used);
-        const Grid=({list})=>(<div className="yl-hub-grid">{list.map(o=><button key={o.key} className="yl-hub-item" onClick={()=>open(o.act)}><span className="yl-hub-emoji">{o.emoji}</span><span className="yl-hub-label">{o.label}</span></button>)}</div>);
+        const Grid=({list})=>(<div className="yl-hub-grid">{list.map(o=><button key={o.key} className="yl-hub-item" onClick={()=>open(o.act)}><span className="yl-hub-emoji"><Icon name={o.icon} size={24}/></span><span className="yl-hub-label">{o.label}</span></button>)}</div>);
         return(
           <div className="yl-overlay yl-hub-ov" onClick={()=>setHubOpen(false)}>
             <div className="yl-hub" onClick={e=>e.stopPropagation()}>
