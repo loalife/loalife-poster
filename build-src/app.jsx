@@ -594,6 +594,18 @@ function downloadIcal(content, filename="loalife-calendar.ics"){
 
 const HOURS=Array.from({length:24},(_,i)=>i);
 const MINS=[0,5,10,15,20,25,30,35,40,45,50,55];
+// Lucide ベースのラインアイコン（絵文字置き換え用）。currentColor で色を継承。
+const ICONS={
+  home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2.4"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  record:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 15l-4 1 1-4z"/>',
+  folder:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5 3 3 0 0 1-6 2 3 3 0 0 1-4-4 5 5 0 0 1 5-3z"/>',
+};
+function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
+
 function TimeInput({value,onChange}){
   const curH=value?Number(value.split(":")[0]):"";
   const curM=value?Math.round(Number(value.split(":")[1])/5)*5%60:0;
@@ -2161,7 +2173,7 @@ function App(){
 
       <div className="yl-wrap">
         <header className="yl-head">
-          <h1 className="yl-title">{tab==="home"?"🏠 ホーム":tab==="cal"?"📅 カレンダー":tab==="settings"?"⚙️ 設定":personSeg==="manage"?"🗂 管理":"📝 記録"}</h1>
+          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"記録"}</h1>
           {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
           {FB_READY&&(
             <button
@@ -2256,7 +2268,7 @@ function App(){
               {/* 緊急（見逃せないこと）を先頭に */}
               {homeData.bombs.length>0&&(
                 <section className="yl-bombs">
-                  <h2 className="yl-sec-title alert">⚠️ 見逃せないこと</h2>
+                  <h2 className="yl-sec-title alert">見逃せないこと</h2>
                   <ul className="yl-bomb-list">
                     {homeData.bombs.slice(0,3).map(({item,d})=>(
                       <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
@@ -2277,7 +2289,7 @@ function App(){
               ):homeData.todos.length>0&&(
                 <section className="yl-todo">
                   <div className="yl-dash-head">
-                    <h2 className="yl-sec-title" style={{marginBottom:0}}>☑️ 今日やること</h2>
+                    <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
                     <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート">📅 出力</button>
                   </div>
                   <ul className="yl-todo-list">
@@ -2309,7 +2321,7 @@ function App(){
               {/* ワンタップ記録：今日まだ体調記録が無いメンバーを、押すだけで完了できる導線 */}
               {(()=>{const need=spaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
                 <section className="yl-quickcond">
-                  <p className="yl-quickcond-label">📝 今日のみんなの調子は？</p>
+                  <p className="yl-quickcond-label">今日のみんなの調子は？</p>
                   <ul className="yl-quickcond-list">
                     {need.map(s=>(
                       <li key={s.id} className="yl-quickcond-item">
@@ -2327,7 +2339,7 @@ function App(){
             {/* ━━ 第2層「コンディション」：みんなの様子と習慣の軽チェック ━━ */}
             <div className="yl-layer">
               <section>
-                <h2 className="yl-sec-title">{spaces.some(s=>{const l=spaceLevel(s.id);return l==="warn"||l==="alert";})?"⚠️":"😊"} みんなの様子</h2>
+                <h2 className="yl-sec-title">みんなの様子</h2>
                 <div className="yl-statusgrid">{spaces.map(s=>{
                   const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
                   const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
@@ -2345,7 +2357,7 @@ function App(){
               </section>
               {petMembers.length>0&&(()=>{const selIds=batchSel===null?petMembers.map(m=>m.id):batchSel.filter(id=>petMembers.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?petMembers.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
                 <section className="yl-batch">
-                  <div className="yl-batch-head"><span className="yl-batch-title">🐾 まとめてお世話記録</span></div>
+                  <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
                   <div className="yl-batch-pets">{petMembers.map(m=>{const on=selIds.includes(m.id);return(
                     <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
                   </div>
@@ -2353,7 +2365,7 @@ function App(){
                 </section>);})()}
               {allRoutines.length>0&&(
                 <section className="yl-habit">
-                  <span className="yl-habit-label">🔁 今日の習慣</span>
+                  <span className="yl-habit-label">今日の習慣</span>
                   <span className="yl-habit-bar"><span className="yl-habit-fill" style={{width:Math.round(routineDoneToday/allRoutines.length*100)+"%"}}/></span>
                   <span className="yl-habit-count">{routineDoneToday}/{allRoutines.length}</span>
                 </section>
@@ -2371,7 +2383,7 @@ function App(){
                 <div className="yl-layer-body">
                   {homeExpense.total>0&&(
                     <section className="yl-hexp">
-                      <div className="yl-hexp-top"><span className="yl-hexp-label">💰 今月の支出</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
+                      <div className="yl-hexp-top"><span className="yl-hexp-label">今月の支出</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
                       {homeExpense.rows.length>1&&(
                         <ul className="yl-hexp-rows">
                           {homeExpense.rows.slice(0,4).map(r=>(
@@ -2386,7 +2398,7 @@ function App(){
                   )}
                   {lowSupplies.length>0&&(
                     <section className="yl-supply">
-                      <h2 className="yl-sec-title">📦 そろそろ買い足し</h2>
+                      <h2 className="yl-sec-title">そろそろ買い足し</h2>
                       <ul className="yl-supply-list">
                         {[...lowSupplies].sort((a,b)=>a.st.left-b.st.left).map(({item,st})=>(
                           <li key={item.id} className={"yl-supply-item "+st.tone}>
@@ -2473,7 +2485,7 @@ function App(){
           </div>
         ):tab==="settings"?(
           <div className="yl-settings">
-            <h2 className="yl-sec-title" style={{marginBottom:12}}>⚙️ 設定</h2>
+            <h2 className="yl-sec-title" style={{marginBottom:12}}>設定</h2>
             <section className="yl-set-sec">
               <h3 className="yl-set-title">🔔 通知</h3>
               <p className="yl-set-desc">予定やリマインド・誕生日をお知らせします。</p>
@@ -2590,7 +2602,7 @@ function App(){
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">🔁 今日のルーティン</h2>
+                    <h2 className="yl-routine-title">今日のルーティン</h2>
                     {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
                   </div>
                   {routines.length===0?(
@@ -2619,7 +2631,7 @@ function App(){
               )});
               defs.push({key:"chore",el:(
                 <section className="yl-chore">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🧹 お世話ログ</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>お世話ログ</h2>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
                       {chores.map(c=>{const el=elapsedLabel(c.lastDone,colorDays.warn,colorDays.alert);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
@@ -2673,7 +2685,7 @@ function App(){
               )});
               if(curKind==="person"&&tomorrowBelongings.length>0)defs.push({key:"prep",el:(
                 <section className="yl-belong">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📋 明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
                   <div className="yl-prep">
                     <ul className="yl-prep-list">
                       {tomorrowBelongings.map(b=>(
@@ -2689,7 +2701,7 @@ function App(){
               defs.push({key:"supply",el:(
                 <section className="yl-supply">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">📦 ストック</h2>
+                    <h2 className="yl-routine-title">ストック</h2>
                   </div>
                   {supplies.length===0?(
                     <p className="yl-routine-empty">{tab==="me"?"サプリや日用品などのストックを管理できます。":"フードなどの消耗品を登録すると、残りを自動でお知らせします"}</p>
@@ -2716,7 +2728,7 @@ function App(){
               )});
               defs.push({key:"expense",el:(
                 <section className="yl-exp">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>💰 支出</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>支出</h2>
                   {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の ＋ から追加</p>}
                   {expenseMonth.total>0&&(
                     <div className="yl-exp-viz">
@@ -2753,7 +2765,7 @@ function App(){
             {personSeg==="record"&&(()=>{const defs=[];
               if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
                 <section className="yl-certs">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📄 証明書</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>証明書</h2>
                   {certsByYear.map(g=>(
                     <div key={g.year} className="yl-cert-year">
                       <span className="yl-cert-yearlabel">{g.year==="----"?"日付なし":`${g.year}年`}</span>
@@ -2774,7 +2786,7 @@ function App(){
               )});
               defs.push({key:"health",el:(
                 <section className="yl-health">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📈 からだの記録</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>からだの記録</h2>
                   {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?"🎉 目標達成中！この調子で":weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
                   {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の ＋ から体重などを記録できます。"}</p>}
                   {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label="身長"/>}
@@ -2793,7 +2805,7 @@ function App(){
               )});
               if(curKind==="pet")defs.push({key:"vet",el:(
                 <section className="yl-vetcard">
-                  <h2 className="yl-routine-title" style={{marginBottom:8}}>📄 獣医さん用サマリー</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>獣医さん用サマリー</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>記録を1枚にまとめて印刷・PDF保存。</p>
                   <button className="yl-quick-big" onClick={()=>setVetOpen(true)}>📄 サマリーを作成</button>
                 </section>
@@ -2801,7 +2813,7 @@ function App(){
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
                 <section className="yl-toiletstats">
                   <div className="yl-toilet-head">
-                    <h2 className="yl-routine-title" style={{margin:0}}>🚽 トイレ成功率</h2>
+                    <h2 className="yl-routine-title" style={{margin:0}}>トイレ成功率</h2>
                     <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}日</button>)}</span>
                   </div>
                   {(()=>{const st=toiletStats[toiletRange];const Row=({label,emoji,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label">{emoji} {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" emoji="💧" s={st.pee}/><Row label="うんち成功率" emoji="💩" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg">💩 うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
@@ -2811,7 +2823,7 @@ function App(){
               )});
               defs.push({key:"diary",el:(
                 <section className="yl-diary">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>📝 今日のようす</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>今日のようす</h2>
                   {todayHasCond(tab)?(
                     <button className="yl-quick-done tap" onClick={()=>setInputSheet("diary")}>✓ 今日の体調は記録ずみ 👌<span className="yl-quick-edit">追記・編集</span></button>
                   ):(
@@ -2868,7 +2880,7 @@ function App(){
               defs.push({key:"album",el:(
                 <section className="yl-album">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">📸 思い出</h2>
+                    <h2 className="yl-routine-title">思い出</h2>
                     <button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>
                   </div>
                   {memories.length===0?(
@@ -2891,7 +2903,7 @@ function App(){
             {personSeg==="manage"&&(()=>{const defs=[];
               if(curKind==="person")defs.push({key:"belong",el:(
                 <section className="yl-belong">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>🎒 持ち物（曜日ごと）</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>持ち物（曜日ごと）</h2>
                   {belongings.length>0&&(
                     <div className="yl-belong-week">
                       {WEEKDAYS_JA.map((w,i)=>{const list=belongings.filter(b=>b.dow===i);if(!list.length)return null;return(
@@ -2935,7 +2947,7 @@ function App(){
       </div>
 
       {isPersonMode&&!hubOpen&&!inputSheet&&(
-        <button className="yl-fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加">＋</button>
+        <button className="yl-fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加"><Icon name="plus" size={26} stroke={2.2}/></button>
       )}
 
       {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
@@ -2979,17 +2991,17 @@ function App(){
         const personTarget=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";
         const goSeg=(seg)=>{setTab(personTarget);setPersonSeg(seg);};
         const items=[
-          {key:"home",icon:"🏠",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
-          {key:"cal",icon:"📅",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
-          {key:"record",icon:"📝",label:"記録",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
-          {key:"manage",icon:"🗂",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
-          {key:"settings",icon:"⚙️",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
+          {key:"home",icon:"home",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
+          {key:"cal",icon:"calendar",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
+          {key:"record",icon:"record",label:"記録",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
+          {key:"manage",icon:"folder",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
+          {key:"settings",icon:"settings",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
         ];
         return(
           <nav className="yl-bottomnav">
             {items.map(it=>(
               <button key={it.key} className={"yl-bnav-item"+(it.on?" on":"")} onClick={it.act}>
-                <span className="yl-bnav-ico">{it.icon}</span>
+                <span className="yl-bnav-ico"><Icon name={it.icon} size={23}/></span>
                 <span className="yl-bnav-label">{it.label}</span>
               </button>
             ))}
@@ -3112,7 +3124,7 @@ function App(){
       {expEdit&&(
         <div className="yl-overlay" onClick={()=>setExpEdit(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">💰 支出を編集</h3>
+            <h3 className="yl-modal-title">支出を編集</h3>
             <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expEdit.amount} onChange={e=>setExpEdit(x=>({...x,amount:e.target.value}))} placeholder="金額"/></span><select className="yl-select" value={expEdit.category} onChange={e=>setExpEdit(x=>({...x,category:e.target.value}))}>{(()=>{const cats=expenseCatsFor(curKind);const has=cats.some(c=>c.key===expEdit.category);return(has?cats:[...cats,expCatMeta(expEdit.category)]).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>);})()}</select></div>
             <input className="yl-input" style={{marginTop:10}} value={expEdit.note} onChange={e=>setExpEdit(x=>({...x,note:e.target.value}))} placeholder="メモ（任意）"/>
             <label className="yl-opt" style={{marginTop:10}}>日付（レシート遅れ・代理入力などの修正用）<input type="date" className="yl-date" value={expEdit.date} onChange={e=>setExpEdit(x=>({...x,date:e.target.value}))}/></label>
@@ -3143,7 +3155,7 @@ function App(){
       {inputSheet==="health"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">📈 からだの記録</h3>
+            <h3 className="yl-modal-title">からだの記録</h3>
             <div className="yl-health-input">
               <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/>{isMemberTab?<span className="yl-health-uswitch"><button className={"yl-health-ubtn"+(weightUnit==="kg"?" on":"")} onClick={()=>setMemberWeightUnit("kg")}>kg</button><button className={"yl-health-ubtn"+(weightUnit==="g"?" on":"")} onClick={()=>setMemberWeightUnit("g")}>g</button></span>:<span className="yl-health-unit">kg</span>}</span></label>
               {isMemberTab&&<label className="yl-opt">身長<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
@@ -3223,7 +3235,7 @@ function App(){
       {inputSheet==="diary"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">📝 今日のようす</h3>
+            <h3 className="yl-modal-title">今日のようす</h3>
             {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}>👌 今日も元気（ワンタップで完了）</button>}
             <p className="yl-diary-hint">くわしく残すときだけ（任意）。</p>
             {(()=>{const dcfg=diaryConfigFor(diaryTypeOf(tab));const has=k=>dcfg.rows.includes(k);return(<>
@@ -3239,7 +3251,7 @@ function App(){
             </>);})()}
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:4}} value={diaryDraft.note} onChange={e=>setDiary({note:e.target.value})} placeholder="日々の様子・病院でのこと・ひとこと…"/>
             <div className="yl-diary-photorow">{diaryDraft.photo?<span className="yl-diary-thumb"><img src={diaryDraft.photo} alt=""/><button className="yl-diary-thumbdel" onClick={()=>setDiary({photo:null})} aria-label="写真を削除">×</button></span>:<label className="yl-diary-addphoto">📷 写真を追加（お薬・症状など）<input type="file" accept="image/*" style={{display:"none"}} onChange={pickDiaryPhoto}/></label>}</div>
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveDiary}>📝 今日のようすを記録</button>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveDiary}>今日のようすを記録</button>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
@@ -3247,11 +3259,11 @@ function App(){
       {inputSheet==="expense"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">💰 支出を記録</h3>
+            <h3 className="yl-modal-title">支出を記録</h3>
             <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder="金額"/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}</select></div>
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:6}} value={expNote} onChange={e=>setExpNote(e.target.value)} placeholder="メモ（任意）"/>
             <p className="yl-foot" style={{margin:"8px 0 0",textAlign:"left"}}>今日の日付で記録。修正は明細をタップ。</p>
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>💰 支出を記録</button>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>支出を記録</button>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
