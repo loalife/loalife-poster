@@ -619,6 +619,16 @@ const ICONS={
   bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
   download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  cake:'<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01"/>',
+  heart:'<path d="M19 14c1.5-1.5 3-3.5 3-5.5A5.5 5.5 0 0 0 12 5 5.5 5.5 0 0 0 2 8.5c0 2 1.5 4 3 5.5l7 7z"/>',
+  scissors:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/>',
+  hash:'<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>',
+  droplet:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5S5 13 5 15a7 7 0 0 0 7 7z"/>',
+  wind:'<path d="M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8A2.5 2.5 0 1 1 19 12.5H2M9.6 4.6A2 2 0 1 1 11 8H2"/>',
+  palette:'<circle cx="13.5" cy="6.5" r="1.2"/><circle cx="17" cy="10.5" r="1.2"/><circle cx="8.5" cy="7.5" r="1.2"/><circle cx="6.5" cy="12" r="1.2"/><path d="M12 2a10 10 0 0 0 0 20 2 2 0 0 0 2-2 2 2 0 0 1 2-2h1.5a3.5 3.5 0 0 0 3.5-3.5C22.5 6.6 17.8 2 12 2z"/>',
+  alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
@@ -1433,7 +1443,7 @@ function App(){
     else next=[...items,base];
     persist(members,next);
     const saved=next.find(x=>x.id===id);if(saved)saveItemToFs(saved).catch(()=>{});
-    setLifeDraft(null);showFlash("記録しました ✏️");
+    setLifeDraft(null);showFlash("記録しました ✓");
   };
   const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash("削除しました");};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("明日へ送りました");};
@@ -2239,17 +2249,17 @@ function App(){
                   <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
                 ):weather?(<>
                   <div className="yl-weather-vals">
-                    <span className="yl-weather-temp">🌡️ {Math.round(weather.temp)}℃</span>
+                    <span className="yl-weather-temp"><Icon name="thermometer" size={14}/> {Math.round(weather.temp)}℃</span>
                     {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
-                    <span className="yl-weather-hum">💧 {Math.round(weather.humidity)}%</span>
-                    {weather.wind!=null&&<span className="yl-weather-wind">💨 {Math.round(weather.wind)}m/s</span>}
-                    {weather.roadTemp!=null&&<span className="yl-weather-road">🐾 路面 {Math.round(weather.roadTemp)}℃</span>}
+                    <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
+                    {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
+                    {weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
                   </div>
                   {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
                 </>):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
                 {wi&&(
                   <div className="yl-walk">
-                    <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}>🐾 お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span><span className="yl-walk-label">{wi.label}</span></span>
+                    <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span><span className="yl-walk-label">{wi.label}</span></span>
                     <span className="yl-walk-msg">気温{Math.round(weather.temp)}℃・{wc?wc.label:"—"}・風{weather.wind!=null?Math.round(weather.wind):"—"}m/s{wi.main?<>／主な要因：<b>{wi.main.emoji} {wi.main.label}</b></>:""}</span>
                     {wa&&wa.level==="danger"&&<span className="yl-walk-danger">⚠️ {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
                     {wi.factors.length>0&&(wi.level!=="ok"||walkOpen)&&(
@@ -2578,7 +2588,7 @@ function App(){
             })()}
             {/* プロフィールは畳む：細いバー＋ⓘで開閉。ケア状態だけは常時表示（見守りの安心） */}
             <div className="yl-profbar">
-              {isMemberTab&&activeMember.kind!=="pet"&&(()=>{const over=memberStats?.over||0,soon=memberStats?.soon||0;return over>0?<span className="yl-pill over">🔴 期限切れ {over}</span>:soon>0?<span className="yl-pill soon">⏰ 期限近 {soon}</span>:<span className="yl-pill ok">✅ ケアは順調</span>;})()}
+              {isMemberTab&&activeMember.kind!=="pet"&&(()=>{const over=memberStats?.over||0,soon=memberStats?.soon||0;return over>0?<span className="yl-pill over"><Icon name="alert" size={13}/> 期限切れ {over}</span>:soon>0?<span className="yl-pill soon"><Icon name="clock" size={13}/> 期限近 {soon}</span>:<span className="yl-pill ok"><Icon name="check" size={13}/> ケアは順調</span>;})()}
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>{isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
@@ -2609,27 +2619,27 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}>✏️</button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
                 {/* ケア帯＝緊急度。異常が無い時は「順調 ✅」1個に畳み、数字が立った時だけ目立たせる */}
                 <div className="yl-petstatus-chips">
-                  {(memberStats?.over||0)>0&&<span className="yl-pill over">🔴 期限切れ {memberStats.over}</span>}
-                  {(memberStats?.soon||0)>0&&<span className="yl-pill soon">⏰ 期限近 {memberStats.soon}</span>}
-                  {!(memberStats?.over)&&!(memberStats?.soon)&&<span className="yl-pill ok">✅ ケアは順調</span>}
+                  {(memberStats?.over||0)>0&&<span className="yl-pill over"><Icon name="alert" size={13}/> 期限切れ {memberStats.over}</span>}
+                  {(memberStats?.soon||0)>0&&<span className="yl-pill soon"><Icon name="clock" size={13}/> 期限近 {memberStats.soon}</span>}
+                  {!(memberStats?.over)&&!(memberStats?.soon)&&<span className="yl-pill ok"><Icon name="check" size={13}/> ケアは順調</span>}
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?"🔒 非公開":"👨‍👩‍👧 共有中"}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
                 {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter)&&(
                   <div className="yl-petstatus-fun">
-                    {activeMember.breed&&<span className="yl-funchip">{activeMember.species==="cat"?"🐈":"🐕"} {activeMember.breed}</span>}
-                    {activeMember.birthday&&<span className="yl-funchip">🎂 {fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
-                    {activeMember.gotchaDay&&<span className="yl-funchip">🎉 {(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
-                    {activeMember.gotchaDay&&daysTogether(activeMember.gotchaDay)!=null&&<span className="yl-funchip">🏠 お迎えから{daysTogether(activeMember.gotchaDay).toLocaleString()}日</span>}
-                    {activeMember.coat&&<span className="yl-funchip">🎨 {activeMember.coat}</span>}
-                    {activeMember.neuter&&<span className="yl-funchip">✂️ 避妊・去勢{activeMember.neuter==="done"?"済み":"まだ"}</span>}
-                    {activeMember.microchip&&<span className="yl-funchip">🔢 {activeMember.microchip}</span>}
+                    {activeMember.breed&&<span className="yl-funchip"><Icon name="paw" size={13}/>{activeMember.breed}</span>}
+                    {activeMember.birthday&&<span className="yl-funchip"><Icon name="cake" size={13}/>{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
+                    {activeMember.gotchaDay&&<span className="yl-funchip"><Icon name="heart" size={13}/>{(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
+                    {activeMember.gotchaDay&&daysTogether(activeMember.gotchaDay)!=null&&<span className="yl-funchip"><Icon name="home" size={13}/>お迎えから{daysTogether(activeMember.gotchaDay).toLocaleString()}日</span>}
+                    {activeMember.coat&&<span className="yl-funchip"><Icon name="palette" size={13}/>{activeMember.coat}</span>}
+                    {activeMember.neuter&&<span className="yl-funchip"><Icon name="scissors" size={13}/>避妊・去勢{activeMember.neuter==="done"?"済み":"まだ"}</span>}
+                    {activeMember.microchip&&<span className="yl-funchip"><Icon name="hash" size={13}/>{activeMember.microchip}</span>}
                   </div>
                 )}
               </section>
