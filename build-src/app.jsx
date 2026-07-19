@@ -603,6 +603,8 @@ const ICONS={
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5 3 3 0 0 1-6 2 3 3 0 0 1-4-4 5 5 0 0 1 5-3z"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+  pencil:'<path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L8 18.6l-4 1 1-4z"/>',
 };
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
@@ -2539,10 +2541,31 @@ function App(){
           </div>
         ):(
           <>
+            {/* ペットのヒーロー：写真を主役に、名前・年齢・今日の状態を大きく */}
+            {isMemberTab&&activeMember.kind==="pet"&&(()=>{
+              const lv=spaceLevel(activeMember.id);const concern=spaceConcern(activeMember.id);
+              const statusText=concern||(lv==="none"?"まだ記録がありません":`${activeMember.name}は順調です`);
+              const photo=activeMember.avatar&&photos[activeMember.avatar];
+              const sub=[activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット");
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setProfileOpen(true);};
+              return(
+                <section className="yl-hero">
+                  <button className="yl-hero-photo" onClick={openEdit} aria-label="写真・プロフィールを編集">
+                    {photo?<img src={photo} alt=""/>:<span className="yl-hero-ph"><Icon name="camera" size={26}/><span>写真を追加</span></span>}
+                  </button>
+                  <div className="yl-hero-body">
+                    <h2 className="yl-hero-name">{activeMember.name}</h2>
+                    <p className="yl-hero-sub">{sub}</p>
+                    <span className={"yl-hero-status lv-"+lv}><span className="yl-hero-dot"/>{statusText}</span>
+                  </div>
+                  <button className="yl-hero-edit" onClick={openEdit} aria-label="プロフィールを編集"><Icon name="pencil" size={17}/></button>
+                </section>
+              );
+            })()}
             {/* プロフィールは畳む：細いバー＋ⓘで開閉。ケア状態だけは常時表示（見守りの安心） */}
             <div className="yl-profbar">
-              {isMemberTab&&(()=>{const over=memberStats?.over||0,soon=memberStats?.soon||0;return over>0?<span className="yl-pill over">🔴 期限切れ {over}</span>:soon>0?<span className="yl-pill soon">⏰ 期限近 {soon}</span>:<span className="yl-pill ok">✅ ケアは順調</span>;})()}
-              <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>ⓘ {isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
+              {isMemberTab&&activeMember.kind!=="pet"&&(()=>{const over=memberStats?.over||0,soon=memberStats?.soon||0;return over>0?<span className="yl-pill over">🔴 期限切れ {over}</span>:soon>0?<span className="yl-pill soon">⏰ 期限近 {soon}</span>:<span className="yl-pill ok">✅ ケアは順調</span>;})()}
+              <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>{isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
             {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}>{meBirthday?`🎂 ${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:"🎂 自分の誕生日を登録"}</button>}</div></section>:(
