@@ -344,6 +344,31 @@ function walkIndex(w){
   const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
   return{score,stars,level,label,factors:F,main:F[0]||null};
 }
+// 1時間ぶんの散歩レベル判定（体感温度ベース。雨・雷・寒さも考慮）。good/caution/avoid。
+function walkHourLevel(hr){
+  if(!hr)return"good";
+  const t=typeof hr.app==="number"?hr.app:hr.temp;
+  const pop=hr.pop,code=hr.code;
+  const thunder=[95,96,99].includes(code);
+  const heavyRain=[65,67,75,82,86].includes(code)||(typeof pop==="number"&&pop>=80);
+  if(typeof t==="number"){
+    if(t>=31||thunder)return"avoid";           // 猛暑・雷
+    if(t<=-3)return"avoid";                     // 厳しい寒さ
+    if(t>=28)return"caution";                   // 暑い
+    if(t<=1)return"caution";                    // 寒い
+  }else if(thunder)return"avoid";
+  if(heavyRain)return"avoid";
+  if(typeof pop==="number"&&pop>=55)return"caution"; // 雨が降りやすい
+  return"good";
+}
+// 今日の散歩タイム（時間別の色帯＋おすすめ時間帯）。hours=[{h,temp,app,pop,uv,code}]。
+function walkTimeline(hours){
+  if(!Array.isArray(hours)||hours.length===0)return null;
+  const segs=hours.map(hr=>({h:hr.h,level:walkHourLevel(hr)}));
+  const bestRun=(lvl)=>{let best=null,s=-1;for(let i=0;i<=segs.length;i++){const ok=i<segs.length&&segs[i].level===lvl;if(ok&&s<0)s=i;if(!ok&&s>=0){const run={from:segs[s].h,to:segs[i-1].h,len:i-s};if(!best||run.len>best.len)best=run;s=-1;}}return best;};
+  const best=bestRun("good")||bestRun("caution");
+  return{segs,best};
+}
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
@@ -1195,19 +1220,27 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
       if(!r.ok)throw new Error("bad");
-      const j=await r.json();const c=j.current||{};const d=j.daily||{};
+      const j=await r.json();const c=j.current||{};const d=j.daily||{};const H=j.hourly||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
       let road=null,roadEstimated=false;
-      const ht=j.hourly&&j.hourly.time,hs=j.hourly&&j.hourly.soil_temperature_0cm;
+      const ht=H.time,hs=H.soil_temperature_0cm;
       if(Array.isArray(ht)&&Array.isArray(hs)&&c.time){const idx=ht.findIndex(t=>t.slice(0,13)===c.time.slice(0,13));if(idx>=0&&typeof hs[idx]==="number")road=hs[idx];}
       if(road==null&&typeof c.temperature_2m==="number"){const isDay=c.is_day===1;const cloud=typeof c.cloud_cover==="number"?c.cloud_cover:50;const delta=!isDay?2:(cloud<30?25:cloud<70?15:8);road=c.temperature_2m+delta;roadEstimated=true;}
       const hi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
       const lo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
       const code=typeof c.weather_code==="number"?c.weather_code:(Array.isArray(d.weather_code)?d.weather_code[0]:null);
       const uv=typeof c.uv_index==="number"?c.uv_index:(Array.isArray(d.uv_index_max)?d.uv_index_max[0]:null);
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
+      // 今日の時間別（散歩タイム判定用）。5〜22時ぶんを取り出す。
+      let hours=null;
+      if(Array.isArray(ht)){
+        const day=(c.time||ht[0]||"").slice(0,10);
+        hours=[];
+        ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===day&&hh>=5&&hh<=22)hours.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
+        if(hours.length===0)hours=null;
+      }
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -2444,7 +2477,7 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wt=weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc"><Icon name="pin" size={13}/> {weatherLoc.name}{wc&&<span className="yl-weather-cond"> {wc.emoji} {wc.label}</span>}</span>
@@ -2474,6 +2507,21 @@ function App(){
                       </div>
                     )}
                     {wi.factors.length>0&&wi.level==="ok"&&<button className="yl-walk-toggle" onClick={()=>setWalkOpen(o=>!o)}>{walkOpen?"内訳を閉じる":"スコアの内訳を見る"}</button>}
+                    {wt&&(
+                      <div className="yl-walktime">
+                        <div className="yl-walktime-head">
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> きょうのおすすめ散歩タイム</span>
+                          {wt.best?<span className="yl-walktime-badge"><Icon name="paw" size={12}/> おすすめ {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}-${wt.best.to}時`}</span>:<span className="yl-walktime-badge none">今日はお休みが安心</span>}
+                        </div>
+                        <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                        <div className="yl-walktime-axis"><span>5時</span><span>9時</span><span>13時</span><span>17時</span><span>22時</span></div>
+                        <div className="yl-walktime-legend">
+                          <span className="yl-wt-lg"><span className="yl-wt-dot good"/> おすすめ</span>
+                          <span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ようすを見て</span>
+                          <span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> さけて</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
