@@ -5,7 +5,8 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { FB_READY, fbAuth, fbDb } from "./firebase";
 import {
-  GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
+  GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification
 } from "firebase/auth";
 import {
   doc, setDoc, getDoc, updateDoc, deleteDoc,
@@ -32,7 +33,7 @@ const ME_TYPES=["dream","work","event","social","habit"];
 const isScheduleType=(t)=>t==="event"||t==="social";
 const KIND_STYLE={pet:{bg:"#E4EEE7",fg:"#557E63",word:"ケア"},person:{bg:"#E3EEFF",fg:"#3B7BF6",word:"予定"}};
 // 安心ステータスのレベル：OK / 注意 / 要対応
-const LEVEL_META={ok:{label:"順調",dot:"#6FA382"},warn:{label:"注意",dot:"#D9A441"},alert:{label:"要対応",dot:"#B23A48"},none:{label:"記録なし",dot:"#B5ADA3"}};
+const LEVEL_META={ok:{label:"順調",dot:"#6FA382"},warn:{label:"注意",dot:"#D9A441"},alert:{label:"要対応",dot:"#B23A48"},none:{label:"記録なし",dot:"#B5ADA3"},memorial:{label:"追悼",dot:"#A98BC9"}};
 const DOG_KINDS=[{key:"daycare",label:"保育園",emoji:"🏫"},{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"rabies",label:"狂犬病",emoji:"🐕"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"med",label:"投薬",emoji:"💊"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const CAT_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"filaria",label:"フィラリア",emoji:"🦟"},{key:"med",label:"投薬",emoji:"💊"},{key:"trim",label:"トリミング",emoji:"✂️"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"med",label:"投薬",emoji:"💊"},{key:"groom",label:"お手入れ",emoji:"🧼"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
@@ -43,6 +44,27 @@ const DOG_BREEDS=["柴犬","豆柴","トイプードル","チワワ","ミニチ�
 const CAT_BREEDS=["スコティッシュフォールド","アメリカンショートヘア","マンチカン","ラグドール","ノルウェージャンフォレストキャット","ブリティッシュショートヘア","ペルシャ","ロシアンブルー","メインクーン","ベンガル","アビシニアン","ソマリ","シャム","ヒマラヤン","日本猫（雑種）","ミックス（雑種）","その他"];
 const COAT_COLORS=["黒","白","茶（レッド）","クリーム","グレー","ブラウン","ブラック＆タン","三毛","キジトラ","茶トラ","サバトラ","サビ","ハチワレ","白黒（ハチワレ）","シルバー","ブルー","その他"];
 const breedOptionsFor=(species)=>species==="cat"?CAT_BREEDS:species==="dog"?DOG_BREEDS:[];
+
+// 誤食・中毒の危険物リスト（犬・猫向けの一般的な注意。獣医の診断に代わるものではない）。
+// sp: 対象種（"dog"/"cat"/"both"）, lv: "danger"(絶対NG)/"caution"(要注意)
+const TOXIC_ITEMS=[
+  {name:"チョコレート・ココア",sp:"both",lv:"danger",sym:"嘔吐・下痢・興奮・けいれん・不整脈",note:"カカオのテオブロミンが中毒源。ビター/製菓用ほど危険。"},
+  {name:"ねぎ類（玉ねぎ・長ねぎ・にら・にんにく）",sp:"both",lv:"danger",sym:"貧血・血尿・元気消失・食欲不振",note:"加熱・スープでも危険。猫は特に感受性が高い。"},
+  {name:"ぶどう・レーズン",sp:"both",lv:"danger",sym:"嘔吐・下痢・急性腎不全",note:"少量でも腎障害の報告あり。皮・ジュースも避ける。"},
+  {name:"キシリトール（ガム・お菓子）",sp:"dog",lv:"danger",sym:"低血糖・ふらつき・けいれん・肝障害",note:"犬でごく少量でも急激な低血糖。無糖商品に注意。"},
+  {name:"アルコール",sp:"both",lv:"danger",sym:"ふらつき・嘔吐・呼吸抑制・昏睡",note:"飲み物だけでなく、パン生地・消毒液にも。"},
+  {name:"カフェイン（コーヒー・お茶・エナジー飲料）",sp:"both",lv:"danger",sym:"興奮・頻脈・けいれん",note:"茶葉やコーヒーかすの誤食にも注意。"},
+  {name:"ユリ科の植物（花・葉・花粉・生けた水）",sp:"cat",lv:"danger",sym:"急性腎不全・嘔吐・無尿",note:"猫はごく微量で致死的。切り花にも要注意。"},
+  {name:"マカダミアナッツ",sp:"dog",lv:"danger",sym:"後ろ足の脱力・発熱・震え・嘔吐",note:"少量でも神経症状が出ることがある。"},
+  {name:"生のパン生地",sp:"both",lv:"danger",sym:"胃の膨張・アルコール中毒",note:"胃内で発酵・膨張して危険。"},
+  {name:"アボカド",sp:"both",lv:"caution",sym:"嘔吐・下痢",note:"ペルシンを含む。種による誤飲・閉塞にも注意。"},
+  {name:"鶏・魚の加熱した骨",sp:"both",lv:"caution",sym:"口・のど・消化管の裂傷や閉塞",note:"加熱骨は鋭く割れやすい。"},
+  {name:"牛乳・乳製品",sp:"both",lv:"caution",sym:"下痢・お腹のゆるみ",note:"乳糖不耐の子が多い。少量でも合わないことがある。"},
+  {name:"生卵の白身・生肉",sp:"both",lv:"caution",sym:"食中毒・皮膚や被毛の不調",note:"サルモネラ等のリスク。加熱が無難。"},
+  {name:"塩分・味付けの濃い人の食べ物",sp:"both",lv:"caution",sym:"嘔吐・多飲多尿・ふらつき",note:"ハム・スナック・出汁の効いた料理など。"},
+  {name:"果物の種・芯（りんご・さくらんぼ等）",sp:"both",lv:"caution",sym:"閉塞・微量の有害成分",note:"果肉は少量可でも種・芯は避ける。"},
+  {name:"観葉植物（ポトス・アイビー・サゴヤシ等）",sp:"both",lv:"caution",sym:"口内の痛み・よだれ・嘔吐",note:"かじれる場所に置かない。サゴヤシは特に危険。"},
+];
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
@@ -538,13 +560,15 @@ function ageNow(dateStr){
   return a<0?null:a;
 }
 // お迎えから今日までの日数（西暦がある場合のみ）。何日一緒に過ごしたか。
-function daysTogether(dateStr){
+function daysTogether(dateStr,endStr){
   if(!dateStr)return null;
   const[y,m,d]=dateStr.split("-").map(Number);
   if(!y||y<1900)return null;
-  const start=new Date(y,m-1,d);const now=new Date();
-  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const days=Math.floor((today-start)/86400000);
+  const start=new Date(y,m-1,d);
+  let end;
+  if(endStr){const[ey,em,ed]=endStr.split("-").map(Number);if(ey&&ey>=1900)end=new Date(ey,em-1,ed);}
+  if(!end){const now=new Date();end=new Date(now.getFullYear(),now.getMonth(),now.getDate());}
+  const days=Math.floor((end-start)/86400000);
   return days>=0?days:null;
 }
 // 生後の月齢（西暦がある場合のみ）。子犬・子猫の成長を月単位で。
@@ -639,6 +663,22 @@ function downloadIcal(content, filename="loalife-calendar.ics"){
     try{window.location.href="data:text/calendar;charset=utf-8,"+encodeURIComponent(content);}catch(_){}
   }
 }
+
+// テキストファイル（CSV等）のダウンロード。Excel が日本語を化けさせないよう BOM 付き。
+function downloadTextFile(content, filename, mime="text/csv"){
+  try{
+    const blob=new Blob(["﻿"+content],{type:mime+";charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=filename;a.rel="noopener";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }catch(e){
+    try{window.location.href="data:"+mime+";charset=utf-8,"+encodeURIComponent(content);}catch(_){}
+  }
+}
+// CSV 1セルのエスケープ（カンマ・改行・引用符を含む場合は "" で囲む）。
+const csvCell=(v)=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
 
 const HOURS=Array.from({length:24},(_,i)=>i);
 const MINS=[0,5,10,15,20,25,30,35,40,45,50,55];
@@ -837,6 +877,7 @@ function App(){
   const[editBreed,setEditBreed]=useState(""); // 犬種・猫種
   const[editCoat,setEditCoat]=useState(""); // 毛の色
   const[editNeuter,setEditNeuter]=useState(""); // 避妊・去勢（""＝未設定 / done / not）
+  const[editMemorial,setEditMemorial]=useState(""); // 虹の橋（お別れの日）。""＝現役 / 日付＝追悼モード
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
@@ -927,6 +968,13 @@ function App(){
   const[wxResults,setWxResults]=useState(null); // null=未検索, []=該当なし
   const[wxSearching,setWxSearching]=useState(false);
   const[walkOpen,setWalkOpen]=useState(false); // お散歩指数の内訳の開閉
+  const[toxicOpen,setToxicOpen]=useState(false); // 誤食・中毒の危険物リスト
+  const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
+  const[toxicQ,setToxicQ]=useState("");
+  const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
+  const[authEmail,setAuthEmail]=useState("");
+  const[authPw,setAuthPw]=useState("");
+  const[authIsSignup,setAuthIsSignup]=useState(false);
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
@@ -1092,10 +1140,16 @@ function App(){
     return()=>timerIds.current.forEach(clearTimeout);
   },[items,members,notifPerm]);
 
+  // 追悼モード（虹の橋）の子。予定・ケアのお知らせや「今日やること」から除外する。
+  // ※ 通知やhomeDataの useEffect/useMemo 依存配列より前で宣言する必要がある（TDZ回避）。
+  const memorialIds=useMemo(()=>new Set(members.filter(m=>m.kind==="pet"&&m.memorial).map(m=>m.id)),[members]);
+  const isMemorialSpace=(sp)=>memorialIds.has(sp);
+
   // Birthday & うちの子記念日 notifications on load
   useEffect(()=>{
     if(!loaded||notifPerm!=="granted") return;
     members.forEach(m=>{
+      if(m.kind==="pet"&&m.memorial)return; // 追悼モードの子は誕生日・記念日通知を控える
       const d=daysUntilBirthday(m.birthday);
       if(d===0) setTimeout(()=>fireNotif(`🎂 ${m.name}の誕生日！`,`今日は${m.name}の誕生日です`),1000);
       if(d===3) setTimeout(()=>fireNotif(`🎂 ${m.name}の誕生日まであと3日`,`お祝いの準備はできてますか？`),2000);
@@ -1119,7 +1173,7 @@ function App(){
     let last=null;try{last=localStorage.getItem(DIGEST_KEY);}catch(e){}
     const today=iso(new Date());
     if(last===today)return; // 今日はもう通知済み
-    const urgent=buildDigest(items);
+    const urgent=buildDigest(items.filter(x=>!memorialIds.has(x.space))); // 追悼モードの子は除外
     if(urgent.length===0)return;
     const body=urgent.slice(0,3).map(u=>`${u.emoji} ${u.text}`).join(" / ")+(urgent.length>3?` ほか${urgent.length-3}件`:"");
     const id=setTimeout(()=>{
@@ -1127,7 +1181,7 @@ function App(){
       try{localStorage.setItem(DIGEST_KEY,today);}catch(e){}
     },1800);
     return()=>clearTimeout(id);
-  },[loaded,notifPerm,items]);
+  },[loaded,notifPerm,items,memorialIds]);
 
   // Local persist (used when no household)
   const persist=async(m,it,u=usage)=>{
@@ -1272,6 +1326,27 @@ function App(){
       showFlash(n?`バックアップを書き出しました 💾（写真${n}枚ふくむ）`:"バックアップを書き出しました 💾");
     }catch(e){showFlash("書き出せませんでした");}
   };
+  // 記録を CSV で書き出し（表計算で開ける形式）。体重・トイレ・お世話ログ・ケア/予定・支出・今日のようすを1ファイルに。
+  const exportCSV=()=>{
+    try{
+      const nameOfSpace=(sp)=>sp==="me"?(meName||"わたし"):(members.find(m=>m.id===sp)||{}).name||sp;
+      const rows=[["日付","メンバー","種類","内容","値・区分","メモ"]];
+      const push=(date,sp,kind,title,val,note)=>rows.push([date||"",nameOfSpace(sp),kind,title||"",val||"",note||""]);
+      items.forEach(x=>{
+        if(x.type==="health")push(x.date,x.space,"からだの記録",x.weight!=null?"体重":"記録",x.weight!=null?x.weight+"kg":"",x.note);
+        else if(x.type==="toilet")push(x.date,x.space,"トイレ",x.toiletKind==="pee"?"おしっこ":"うんち",x.success?"成功":"失敗",x.bristol?`硬さ${x.bristol}/7`:"");
+        else if(x.type==="expense")push(x.date,x.space,"支出",x.title,x.amount!=null?x.amount+"円":"",x.category||"");
+        else if(x.type==="diary"){const en=x.energy?(diaryMeta(DIARY_ENERGY,x.energy)||{}).label:"";const syms=(x.symptoms||[]).map(s=>(symptomMeta(s)||{}).label||s).join("・");push(x.date,x.space,"今日のようす",en||"記録",[x.appetite?(diaryMeta(DIARY_APPETITE,x.appetite)||{}).label:"",x.walk?"散歩":"",x.hospital?"通院":""].filter(Boolean).join("・"),[syms,x.note].filter(Boolean).join(" / "));}
+        else if(x.type==="chore")(x.history||[]).forEach(d=>push(d,x.space,"やった記録",x.title,"",""));
+        else if(x.type==="care")push(x.dueDate,x.space,"ケア・予定",x.title,x.done?"完了":(x.dueDate?"予定":""),x.repeat&&x.repeat!=="none"?(REPEATS.find(r=>r.key===x.repeat)||{}).label:"");
+        else if(x.type==="memory")push(x.date,x.space,"思い出",x.title,"",x.note);
+      });
+      rows.sort((a,b)=>a===rows[0]?-1:b===rows[0]?1:(a[0]<b[0]?1:a[0]>b[0]?-1:0));
+      const csv=rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+      downloadTextFile(csv,`loalife-records-${iso(new Date())}.csv`);
+      showFlash("CSVを書き出しました");
+    }catch(e){showFlash("書き出せませんでした");}
+  };
   // バックアップの読み込み（復元）。写真同梱の新形式・本体のみの旧形式どちらも受ける。既存データは上書き。
   const importData=async(e)=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
@@ -1318,6 +1393,43 @@ function App(){
     }catch(e){
       setShareError("サインインできませんでした");
     }
+    setShareLoading(false);
+  };
+
+  // メール＋パスワードのエラーを日本語に。
+  const emailAuthError=(e)=>{
+    const c=e&&e.code||"";
+    if(c.includes("email-already-in-use"))return"このメールアドレスは登録済みです。ログインしてください。";
+    if(c.includes("invalid-email"))return"メールアドレスの形式が正しくありません。";
+    if(c.includes("weak-password"))return"パスワードは6文字以上にしてください。";
+    if(c.includes("wrong-password")||c.includes("invalid-credential"))return"メールアドレスかパスワードが違います。";
+    if(c.includes("user-not-found"))return"このメールでは登録されていません。新規登録してください。";
+    if(c.includes("too-many-requests"))return"試行が多すぎます。しばらくしてからお試しください。";
+    if(c.includes("operation-not-allowed"))return"メール＋パスワード登録が有効化されていません（Firebase設定）。";
+    return"うまくいきませんでした。もう一度お試しください。";
+  };
+  // メール＋パスワードで新規登録。確認メールを送る。
+  const signUpEmail=async()=>{
+    if(!FB_READY)return;
+    const em=authEmail.trim();if(!em||authPw.length<6){setShareError("メールアドレスと6文字以上のパスワードを入力してください。");return;}
+    setShareLoading(true);setShareError("");
+    try{
+      const cred=await createUserWithEmailAndPassword(fbAuth,em,authPw);
+      try{await sendEmailVerification(cred.user);}catch(_){}
+      setAuthPw("");
+      showFlash("確認メールを送りました。メール内のリンクを開いてください");
+    }catch(e){setShareError(emailAuthError(e));}
+    setShareLoading(false);
+  };
+  // メール＋パスワードでログイン。
+  const signInEmail=async()=>{
+    if(!FB_READY)return;
+    const em=authEmail.trim();if(!em||!authPw){setShareError("メールアドレスとパスワードを入力してください。");return;}
+    setShareLoading(true);setShareError("");
+    try{
+      await signInWithEmailAndPassword(fbAuth,em,authPw);
+      setAuthPw("");
+    }catch(e){setShareError(emailAuthError(e));}
     setShareLoading(false);
   };
 
@@ -1566,7 +1678,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -2096,8 +2208,9 @@ function App(){
   // --- ホーム再設計用の集計 ---
   // ③ 直近の"爆弾"（放置するとヤバいもの）と ① 今日やること（最大3件）
   const homeData=useMemo(()=>{
+    const live=items.filter(x=>!memorialIds.has(x.space)); // 追悼モードの子は「今日やること」等から除外
     const bombs=[];
-    items.forEach(x=>{
+    live.forEach(x=>{
       if(x.done||!x.dueDate)return;
       const d=daysUntil(x.dueDate);
       const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);          // ワクチン・薬・通院など
@@ -2109,7 +2222,7 @@ function App(){
     const bombSet=new Set(bombs.map(b=>b.item.id));
     // ① 今日やること：今日=今日だけ（今日のケア/予定＋未完了の今日のルーティン）。未来は混ぜない。
     const todos=[];
-    items.forEach(x=>{
+    live.forEach(x=>{
       if(x.done)return;
       if(x.type==="routine"){if(x.doneDate!==todayIso)todos.push({key:x.id,emoji:x.emoji||"⏰",title:x.title,space:x.space,time:x.time,tag:x.time||"今日",pri:2});return;}
       if(x.dueDate&&!bombSet.has(x.id)){const d=daysUntil(x.dueDate);if(d<=0)todos.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,time:x.time,tag:d<0?"やり残し":"今日",pri:d<0?0:1});}
@@ -2117,10 +2230,10 @@ function App(){
     todos.sort((a,b)=>a.pri-b.pri||((a.time||"99")<(b.time||"99")?-1:1));
     // 直近の予定（明日〜7日・爆弾/ルーティン除く）は別枠で薄く表示。今日リストには混ぜない。
     const upcoming=[];
-    items.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id)||x.type==="routine")return;const d=daysUntil(x.dueDate);if(d>=1&&d<=7)upcoming.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,d,tag:d===1?"明日":`あと${d}日`});});
+    live.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id)||x.type==="routine")return;const d=daysUntil(x.dueDate);if(d>=1&&d<=7)upcoming.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,d,tag:d===1?"明日":`あと${d}日`});});
     upcoming.sort((a,b)=>a.d-b.d);
     return{bombs,todos,upcoming};
-  },[items,todayIso]);
+  },[items,todayIso,memorialIds]);
 
   // ② 安心ステータス：各メンバーのレベルと一言
   // 「注意」は本当のケア漏れだけに絞る：期限切れ・在庫切れ＝要対応、重要ケアが迫る/在庫少＝注意。
@@ -2128,6 +2241,7 @@ function App(){
   // 見守るデータが1件も無い時は「順調(緑)」ではなく「記録なし(グレー)」＝偽の安心を出さない。
   const spaceTracked=(spaceId)=>items.some(x=>x.space===spaceId&&(x.type==="supply"||x.type==="routine"||x.type==="care"||!!x.dueDate));
   const spaceLevel=(spaceId)=>{
+    if(memorialIds.has(spaceId))return"memorial";
     let overdue=0,soonCare=0;
     items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x))overdue++;else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3)soonCare++;});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId);
@@ -2137,6 +2251,7 @@ function App(){
     return"ok";
   };
   const spaceConcern=(spaceId)=>{
+    if(memorialIds.has(spaceId)){const m=members.find(x=>x.id===spaceId);const dl=m&&m.gotchaDay?daysTogether(m.gotchaDay,m.memorial):null;return dl?`${dl}日間、一緒に過ごしました`:"ずっと、心の中に";}
     let overdue=null,soonCare=null;
     items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x)){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3){if(!soonCare||d<soonCare.d)soonCare={item:x,d};}});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId).sort((a,b)=>a.st.left-b.st.left)[0];
@@ -2182,12 +2297,25 @@ function App(){
         <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
           <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
-            <p className="yl-share-desc">Googleアカウントでサインインすると、家族とデータを共有できます。</p>
+            <p className="yl-share-desc">サインインすると、家族とデータを共有できます。</p>
+            <div className="yl-auth-tabs">
+              <button className={"yl-auth-tab"+(authTab==="google"?" on":"")} onClick={()=>{setAuthTab("google");setShareError("");}}>Google</button>
+              <button className={"yl-auth-tab"+(authTab==="email"?" on":"")} onClick={()=>{setAuthTab("email");setShareError("");}}>メール</button>
+            </div>
             {shareError&&<p className="yl-share-error">{shareError}</p>}
-            <button className="yl-google-btn" onClick={signInWithGoogle} disabled={shareLoading}>
-              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
-              Googleでサインイン
-            </button>
+            {authTab==="google"?(
+              <button className="yl-google-btn" onClick={signInWithGoogle} disabled={shareLoading}>
+                <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+                Googleでサインイン
+              </button>
+            ):(
+              <div className="yl-auth-email">
+                <input className="yl-input" type="email" autoComplete="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="メールアドレス"/>
+                <input className="yl-input" type="password" autoComplete={authIsSignup?"new-password":"current-password"} value={authPw} onChange={e=>setAuthPw(e.target.value)} placeholder={authIsSignup?"パスワード（6文字以上）":"パスワード"}/>
+                <button className="yl-share-choice primary" onClick={authIsSignup?signUpEmail:signInEmail} disabled={shareLoading}>{shareLoading?"処理中…":(authIsSignup?"新規登録して確認メールを送る":"ログイン")}</button>
+                <button className="yl-linkbtn" style={{marginTop:8,alignSelf:"center"}} onClick={()=>{setAuthIsSignup(v=>!v);setShareError("");}}>{authIsSignup?"すでにアカウントがある方はこちら":"はじめての方（メールで新規登録）"}</button>
+              </div>
+            )}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button></div>
           </div>
         </div>
@@ -2458,10 +2586,10 @@ function App(){
                   );
                 })}</div>
               </section>
-              {petMembers.length>0&&(()=>{const selIds=batchSel===null?petMembers.map(m=>m.id):batchSel.filter(id=>petMembers.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?petMembers.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
+              {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
                 <section className="yl-batch">
                   <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
-                  <div className="yl-batch-pets">{petMembers.map(m=>{const on=selIds.includes(m.id);return(
+                  <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
                     <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
                   </div>
                   <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
@@ -2614,9 +2742,15 @@ function App(){
               <p className="yl-set-desc" style={{marginTop:6}}>現在：{colorDays.warn}日で<span className="yl-legend-dot warn"/>・{colorDays.alert}日で<span className="yl-legend-dot alert"/></p>
             </section>
             <section className="yl-set-sec">
+              <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
+              <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なものを一覧で確認できます。</p>
+              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
+            </section>
+            <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">データは端末内に保存。バックアップ（.json）で写真ごと書き出せます。</p>
+              <p className="yl-set-desc">データは端末内に保存。バックアップ（.json）で写真ごと書き出せます。記録は CSV でも書き出せます。</p>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
+              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
               {confirmRestore?(
                 <div className="yl-restore-confirm">
                   <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
@@ -2647,17 +2781,19 @@ function App(){
               const lv=spaceLevel(activeMember.id);const concern=spaceConcern(activeMember.id);
               const statusText=concern||(lv==="none"?"まだ記録がありません":`${activeMember.name}は順調です`);
               const photo=activeMember.avatar&&photos[activeMember.avatar];
+              const memo=!!activeMember.memorial;
+              const together=activeMember.gotchaDay?daysTogether(activeMember.gotchaDay,activeMember.memorial):null;
               const sub=[activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット");
-              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setProfileOpen(true);};
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setProfileOpen(true);};
               return(
-                <section className="yl-hero">
+                <section className={"yl-hero"+(memo?" memorial":"")}>
                   <button className="yl-hero-photo" onClick={openEdit} aria-label="写真・プロフィールを編集">
                     {photo?<img src={photo} alt=""/>:<span className="yl-hero-ph"><Icon name="camera" size={26}/><span>写真を追加</span></span>}
                   </button>
                   <div className="yl-hero-body">
                     <h2 className="yl-hero-name">{activeMember.name}</h2>
                     <p className="yl-hero-sub">{sub}</p>
-                    <span className={"yl-hero-status lv-"+lv}><span className="yl-hero-dot"/>{statusText}</span>
+                    {memo?<span className="yl-hero-memorial"><Icon name="sparkles" size={13}/> 虹の橋へ {fmtBirthday(activeMember.memorial)}{together?`・${together}日間ありがとう`:""}</span>:<span className={"yl-hero-status lv-"+lv}><span className="yl-hero-dot"/>{statusText}</span>}
                   </div>
                   <button className="yl-hero-edit" onClick={openEdit} aria-label="プロフィールを編集"><Icon name="pencil" size={17}/></button>
                 </section>
@@ -2689,6 +2825,10 @@ function App(){
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="pet"&&<div className="yl-opt yl-memorial-opt" style={{marginTop:10,width:"100%"}}><Icon name="sparkles" size={14}/> 虹の橋（お別れの記録・任意）
+                        {editMemorial?<span className="yl-memorial-set"><span className="yl-memorial-date"><BdayInput value={editMemorial} onChange={setEditMemorial}/></span><button className="yl-linkbtn" onClick={()=>setEditMemorial("")}>解除</button></span>:<button className="yl-memorial-btn" onClick={()=>setEditMemorial(todayIso)}>お別れを記録して追悼モードにする</button>}
+                        <span className="yl-set-desc" style={{marginTop:4}}>追悼モードにすると、予定・ケアのお知らせを止め、そっと思い出を振り返れる表示になります。</span>
+                      </div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
                       <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
                       <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}><Icon name="trash" size={14}/> このメンバーを削除</button>
@@ -2696,7 +2836,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}><Icon name="pencil" size={15}/></button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
@@ -3134,6 +3274,30 @@ function App(){
       })()}
       </div>
 
+      {toxicOpen&&(
+        <div className="yl-help-ov" onClick={()=>setToxicOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head">
+              <h2 className="yl-help-title"><Icon name="alert" size={18}/> 誤食・中毒の危険物</h2>
+              <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
+            </div>
+            <div className="yl-toxic-controls">
+              <div className="yl-toxic-tabs">{[{k:"all",l:"すべて"},{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-toxic-tab"+(toxicSp===o.k?" on":"")} onClick={()=>setToxicSp(o.k)}>{o.l}</button>)}</div>
+              <input className="yl-input sm" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="名前・症状で検索"/>
+            </div>
+            <ul className="yl-toxic-list">
+              {TOXIC_ITEMS.filter(t=>(toxicSp==="all"||t.sp==="both"||t.sp===toxicSp)).filter(t=>{const q=toxicQ.trim();return !q||t.name.includes(q)||t.sym.includes(q)||(t.note||"").includes(q);}).map((t,i)=>(
+                <li key={i} className={"yl-toxic-item lv-"+t.lv}>
+                  <div className="yl-toxic-top"><span className={"yl-toxic-badge lv-"+t.lv}><Icon name={t.lv==="danger"?"ban":"alert"} size={12}/> {t.lv==="danger"?"絶対NG":"要注意"}</span><span className="yl-toxic-name">{t.name}</span>{t.sp!=="both"&&<span className="yl-toxic-sp">{t.sp==="dog"?"犬":"猫"}</span>}</div>
+                  <p className="yl-toxic-sym">症状：{t.sym}</p>
+                  {t.note&&<p className="yl-toxic-note">{t.note}</p>}
+                </li>
+              ))}
+            </ul>
+            <p className="yl-toxic-foot">※ 一般的な注意です。食べてしまった時は量にかかわらず、早めにかかりつけ・救急にご相談ください。</p>
+          </div>
+        </div>
+      )}
       {helpOpen&&(
         <div className="yl-help-ov" onClick={()=>setHelpOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
