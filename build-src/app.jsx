@@ -969,6 +969,7 @@ function App(){
   const[expAmount,setExpAmount]=useState("");
   const[expCat,setExpCat]=useState("hospital");
   const[expNote,setExpNote]=useState("");
+  const[expScope,setExpScope]=useState("this"); // this=このコ / all=みんな（全体）
   const[expEdit,setExpEdit]=useState(null); // {id,amount,category,note,date}
   // 使い方・機能紹介ページ
   const[helpOpen,setHelpOpen]=useState(false);
@@ -1931,6 +1932,35 @@ function App(){
     const cats=ALL_EXPENSE_CATS.map(c=>({...c,amount:byCat[c.key]||0})).filter(c=>c.amount>0).sort((a,b)=>b.amount-a.amount);
     return{total,cats,ym};
   },[expenseRecords,todayIso]);
+  // 費用の集計（このコ／みんな 切替）：合計・今年・月平均・年間見込み・カテゴリ内訳・月次推移・メンバー別。
+  const expStats=useMemo(()=>{
+    const all=items.filter(x=>x.type==="expense");
+    const recs=expScope==="all"?all:all.filter(x=>x.space===tab);
+    const amt=x=>Number(x.amount)||0;
+    const total=recs.reduce((s,x)=>s+amt(x),0);
+    const yr=todayIso.slice(0,4);
+    const thisYear=recs.filter(x=>(x.date||"").slice(0,4)===yr).reduce((s,x)=>s+amt(x),0);
+    // カテゴリ内訳
+    const byCat={};recs.forEach(x=>{const k=x.category||"other";byCat[k]=(byCat[k]||0)+amt(x);});
+    const cats=ALL_EXPENSE_CATS.map(c=>({...c,amount:byCat[c.key]||0})).filter(c=>c.amount>0).sort((a,b)=>b.amount-a.amount);
+    // 月次推移（直近12ヶ月）
+    const now=new Date(todayIso+"T00:00:00");
+    const series=[];const monthKeys=[];
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;monthKeys.push(ym);series.push({ym,m:d.getMonth()+1,total:0});}
+    const byMonth={};recs.forEach(x=>{const k=(x.date||"").slice(0,7);if(k)byMonth[k]=(byMonth[k]||0)+amt(x);});
+    series.forEach(s=>{s.total=byMonth[s.ym]||0;});
+    // 月平均：記録がある最古の月〜今月の月数で割る（最低1）。年間見込み＝月平均×12。
+    const monthsWithData=Object.keys(byMonth).sort();
+    let span=1;
+    if(monthsWithData.length){const first=monthsWithData[0];const[fy,fm]=first.split("-").map(Number);span=Math.max(1,(now.getFullYear()-fy)*12+(now.getMonth()+1-fm)+1);}
+    const monthlyAvg=Math.round(total/span);
+    const annual=monthlyAvg*12;
+    // メンバー別（みんな表示のとき）
+    const spaces=["me",...members.map(m=>m.id)];
+    const byMember=spaces.map(sp=>({space:sp,name:nameOf(sp)||"わたし",total:all.filter(x=>x.space===sp).reduce((s,x)=>s+amt(x),0)})).filter(m=>m.total>0).sort((a,b)=>b.total-a.total);
+    const grandTotal=all.reduce((s,x)=>s+amt(x),0);
+    return{total,thisYear,monthlyAvg,annual,cats,series,byMember,grandTotal,count:recs.length,year:yr};
+  },[items,expScope,tab,todayIso,members,meName]);
   const saveExpense=()=>{
     const amt=Number(expAmount);
     if(!expAmount.trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}
@@ -3040,28 +3070,64 @@ function App(){
               )});
               defs.push({key:"expense",el:(
                 <section className="yl-exp">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>支出</h2>
-                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の ＋ から追加</p>}
-                  {expenseMonth.total>0&&(
-                    <div className="yl-exp-viz">
-                      <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
-                      <ul className="yl-exp-bars">
-                        {expenseMonth.cats.map(c=>(
-                          <li key={c.key} className="yl-exp-bar">
-                            <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
-                            <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
-                            <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="yl-exp-head">
+                    <h2 className="yl-routine-title" style={{margin:0}}>支出</h2>
+                    <span className="yl-exp-scope">{[{k:"this",l:"このコ"},{k:"all",l:"みんな"}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}>{o.l}</button>)}</span>
+                  </div>
+                  {expStats.total===0?<p className="yl-routine-empty">{expScope==="all"?"まだ支出の記録がありません。":"右下の ＋ から追加"}</p>:(<>
+                    <div className="yl-exp-stats">
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">合計</span><strong className="yl-exp-stat-v">{fmtYen(expStats.total)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{expStats.year}年</span><strong className="yl-exp-stat-v">{fmtYen(expStats.thisYear)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">月平均</span><strong className="yl-exp-stat-v">{fmtYen(expStats.monthlyAvg)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">年間見込み</span><strong className="yl-exp-stat-v">{fmtYen(expStats.annual)}</strong></div>
                     </div>
-                  )}
-                  {expenseRecords.length>0&&(
+                    {expScope==="all"&&expStats.byMember.length>0&&(
+                      <div className="yl-exp-block">
+                        <p className="yl-exp-blocktitle">メンバー別</p>
+                        <ul className="yl-exp-members">
+                          {expStats.byMember.map(m=>(
+                            <li key={m.space} className="yl-exp-member">
+                              <span className="yl-exp-member-name">{m.name}</span>
+                              <span className="yl-exp-member-track"><span className="yl-exp-member-fill" style={{width:Math.max(4,Math.round(m.total/expStats.byMember[0].total*100))+"%"}}/></span>
+                              <span className="yl-exp-member-amt">{fmtYen(m.total)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="yl-exp-block">
+                      <p className="yl-exp-blocktitle">カテゴリ別</p>
+                      <div className="yl-exp-donutrow">
+                        <div className="yl-donut" style={{background:`conic-gradient(${(()=>{let acc=0;const stops=expStats.cats.map(c=>{const s=acc/expStats.total*100;acc+=c.amount;const e=acc/expStats.total*100;return `${c.color} ${s}% ${e}%`;});return stops.join(",")||"#E5DED4 0% 100%"})()})`}}>
+                          <div className="yl-donut-hole"><span>合計</span><strong>{fmtYen(expStats.total)}</strong></div>
+                        </div>
+                        <ul className="yl-exp-legend">
+                          {expStats.cats.map(c=>(
+                            <li key={c.key} className="yl-exp-leg"><span className="yl-exp-leg-dot" style={{background:c.color}}/><span className="yl-exp-leg-name">{c.label}</span><span className="yl-exp-leg-amt">{fmtYen(c.amount)}</span><span className="yl-exp-leg-pct">{Math.round(c.amount/expStats.total*100)}%</span></li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="yl-exp-block">
+                      <p className="yl-exp-blocktitle">月ごとの推移（直近12ヶ月）</p>
+                      {(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));return(
+                        <div className="yl-exp-trend">
+                          {expStats.series.map((s,i)=>(
+                            <div key={s.ym} className="yl-exp-trendcol" title={`${s.m}月 ${fmtYen(s.total)}`}>
+                              <span className="yl-exp-trendbar-wrap"><span className="yl-exp-trendbar" style={{height:s.total>0?Math.max(4,Math.round(s.total/mx*100))+"%":"0"}}/></span>
+                              <span className="yl-exp-trendlab">{(i===0||s.m===1||i===expStats.series.length-1)?s.m+"月":""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );})()}
+                    </div>
+                  </>)}
+                  {expScope==="this"&&expenseRecords.length>0&&(
                     <ul className="yl-exp-list">
                       {expenseRecords.slice(0,8).map(r=>(
                         <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
                           <span className="yl-exp-idate">{fmtDate(r.date)}</span>
-                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
+                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}><Icon name={guessIcon(expCatMeta(r.category).label,"wallet")} size={13}/> {expCatMeta(r.category).label}</span>
                           {r.note&&<span className="yl-exp-inote">{r.note}</span>}
                           <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
                           <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
