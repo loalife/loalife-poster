@@ -38,6 +38,11 @@ const CAT_KINDS=[{key:"vaccine",label:"ワクチン",emoji:"💉"},{key:"filaria
 const OTHER_PET_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"med",label:"投薬",emoji:"💊"},{key:"groom",label:"お手入れ",emoji:"🧼"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"other",label:"その他",emoji:"🐾"}];
 const PERSON_KINDS=[{key:"lesson",label:"習い事",emoji:"🎒"},{key:"event",label:"予定",emoji:"📅"},{key:"school",label:"学校行事",emoji:"🏫"},{key:"med",label:"投薬",emoji:"💊"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"dental",label:"歯科",emoji:"🦷"},{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
 const SPECIES=[{key:"dog",label:"犬",emoji:"🐶"},{key:"cat",label:"猫",emoji:"🐱"},{key:"other",label:"その他",emoji:"🐹"}];
+// 犬種・猫種・毛色の候補（選択リスト。リストにない場合は自由入力も可＝datalist）。
+const DOG_BREEDS=["柴犬","豆柴","トイプードル","チワワ","ミニチュアダックスフンド","ポメラニアン","ミニチュアシュナウザー","ヨークシャーテリア","フレンチブルドッグ","シーズー","マルチーズ","ゴールデンレトリバー","ラブラドールレトリバー","ウェルシュコーギー","ボーダーコリー","パグ","ジャックラッセルテリア","ビーグル","キャバリア","ペキニーズ","パピヨン","ミニチュアピンシャー","ボストンテリア","秋田犬","ミックス（雑種）","その他"];
+const CAT_BREEDS=["スコティッシュフォールド","アメリカンショートヘア","マンチカン","ラグドール","ノルウェージャンフォレストキャット","ブリティッシュショートヘア","ペルシャ","ロシアンブルー","メインクーン","ベンガル","アビシニアン","ソマリ","シャム","ヒマラヤン","日本猫（雑種）","ミックス（雑種）","その他"];
+const COAT_COLORS=["黒","白","茶（レッド）","クリーム","グレー","ブラウン","ブラック＆タン","三毛","キジトラ","茶トラ","サバトラ","サビ","ハチワレ","白黒（ハチワレ）","シルバー","ブルー","その他"];
+const breedOptionsFor=(species)=>species==="cat"?CAT_BREEDS:species==="dog"?DOG_BREEDS:[];
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
@@ -1958,7 +1963,7 @@ function App(){
     const cst=isCare?careState(it):null;
     const actionable=isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0; // 期限切れ/今日＝その場でワンタップ解消
     return(<>
-      {isCare?<span className="yl-bubble" style={{background:meta.bg,color:meta.fg}}><Icon name={careIcon(it.careKind)} size={22}/></span>:<button className="yl-bubble" style={{background:meta.bg,color:meta.fg}} onClick={()=>setPickerId(it.id)} onPointerDown={e=>e.stopPropagation()} title="タップで絵文字を変更">{it.emoji}</button>}
+      {isCare?<span className="yl-bubble" style={{background:meta.bg,color:meta.fg}}><Icon name={careIcon(it.careKind)} size={22}/></span>:<span className="yl-bubble" style={{background:meta.bg,color:meta.fg}}><Icon name={guessIcon(it.title,TYPE_ICON[it.type]||"sparkles")} size={22}/></span>}
       <div className="yl-body" onClick={()=>openEdit(it)}>
         <div className="yl-row1"><span className="yl-badge" style={{background:meta.bg,color:meta.fg}}>{label}</span><span className="yl-text">{it.title}</span></div>
         {(ds||cst||it.time||it.reminders||it.type==="care"||(it.repeat&&it.repeat!=="none"))&&(
@@ -2600,7 +2605,7 @@ function App(){
               {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=><li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={13}/> {r.name}{r.admin1&&r.admin1!==r.name?`・${r.admin1}`:""}{r.country?`（${r.country}）`:""}</button></li>)}</ul>)}
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="clock" size={16}/> 色が変わる時間（お世話ログ）</h3>
+              <h3 className="yl-set-title"><Icon name="clock" size={16}/> 色が変わる時間（お世話・やることログ）</h3>
               <p className="yl-set-desc">色が<span className="yl-legend-dot warn"/>→<span className="yl-legend-dot alert"/>に変わる日数を設定します。</p>
               <div className="yl-colordays">
                 <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> 黄色になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>日</span></label>
@@ -2679,8 +2684,8 @@ function App(){
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder={activeMember.species==="cat"?"例：スコティッシュフォールド":activeMember.species==="dog"?"例：柴犬 / トイプードル":"例：種類"}/></label>}
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="例：赤茶 / 黒 / キジトラ"/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-breed-list" value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-breed-list">{breedOptionsFor(activeMember.species).map(b=><option key={b} value={b}/>)}</datalist></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-coat-list" value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-coat-list">{COAT_COLORS.map(c=><option key={c} value={c}/>)}</datalist></label>}
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
@@ -2750,7 +2755,7 @@ function App(){
               )});
               defs.push({key:"chore",el:(
                 <section className="yl-chore">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>お世話ログ</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{curKind==="pet"?"お世話ログ":"やることログ"}</h2>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
                       {chores.map(c=>{const el=elapsedLabel(c.lastDone,colorDays.warn,colorDays.alert);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
