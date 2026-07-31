@@ -415,7 +415,7 @@ const appetiteIcon=(k)=>APPETITE_ICON[k]||"utensils";
 const DIARY_CONFIG={
   pet:{rows:["energy","appetite","poop","walk","hospital"],symptoms:["cough","sneeze","diarrhea","vomit","noappetite","itch"]},
   adult:{rows:["energy","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
-  child:{rows:["energy","appetite","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
+  child:{rows:["energy","appetite","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 家族台帳（人）：性別・血液型の選択肢。
@@ -431,6 +431,13 @@ const MILESTONE_CATS=[
   {key:"learn",label:"まなび",icon:"note"},
 ];
 const milestoneCatMeta=(k)=>MILESTONE_CATS.find(c=>c.key===k)||MILESTONE_CATS[0];
+// お手伝いポイントのひな型（タスク→ポイント）。
+const HELP_PRESETS=[{task:"お皿はこび",pt:1},{task:"おふろそうじ",pt:2},{task:"くつをそろえる",pt:1},{task:"おもちゃのかたづけ",pt:1},{task:"ゴミすて",pt:1},{task:"せんたくたたみ",pt:2},{task:"食器あらい",pt:2},{task:"お手伝い",pt:1}];
+// おこづかい帳の入出金の向き。
+const ALLOWANCE_DIRS=[{k:"in",l:"もらった",sign:1},{k:"out",l:"つかった",sign:-1},{k:"save",l:"ちょきん",sign:0}];
+// 家族ノート（メッセージ・感謝・きもち）の種別。
+const NOTE_KINDS=[{k:"note",l:"今日のこと",icon:"note"},{k:"thanks",l:"ありがとう",icon:"heart"},{k:"mood",l:"きもち",icon:"smile"}];
+const noteKindMeta=(k)=>NOTE_KINDS.find(o=>o.k===k)||NOTE_KINDS[0];
 const MILESTONE_PRESETS={
   first:["初めて笑った","初めて寝返りした","初めてハイハイした","初めて立った","初めて歩いた","初めての言葉"],
   word:["ママと言えた","パパと言えた","二語文が出た","自分の名前が言えた"],
@@ -977,6 +984,15 @@ function App(){
   const[editBlood,setEditBlood]=useState(""); // 血液型（人・任意）
   const[msCat,setMsCat]=useState("first"); // 成長記録：選択中カテゴリ
   const[msDraft,setMsDraft]=useState(""); // 成長記録：自由入力
+  const[pointTask,setPointTask]=useState(""); // お手伝いポイント：自由入力タスク
+  const[allowAmt,setAllowAmt]=useState(""); // おこづかい：金額
+  const[allowDir,setAllowDir]=useState("in"); // もらった/つかった/ちょきん
+  const[allowReason,setAllowReason]=useState(""); // おこづかい：メモ
+  const[medName,setMedName]=useState(""); // お薬：名前
+  const[medDays,setMedDays]=useState("5"); // お薬：日数
+  const[notesOpen,setNotesOpen]=useState(false); // 家族ノート（メッセージ・感謝）
+  const[noteText,setNoteText]=useState("");
+  const[noteKind,setNoteKind]=useState("note");
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[confirmRestore,setConfirmRestore]=useState(false);
@@ -1032,7 +1048,7 @@ function App(){
   const[meAvatar,setMeAvatar]=useState(""); // わたしの写真アイコン（IDBの photo:<id>）
   const[meNameDraft,setMeNameDraft]=useState("");
   // 今日のようす（日記）入力（症状・写真も。お薬手帳/体調メモ兼用）
-  const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
+  const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",note:"",symptoms:[],photo:null});
   const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
   const[profileOpen,setProfileOpen]=useState(false); // プロフィール詳細（顔写真・説明・誕生日・編集）の開閉。既定=畳む
   const[memListOpen,setMemListOpen]=useState(false); // メンバー切替のドロップアップ一覧の開閉
@@ -1657,7 +1673,7 @@ function App(){
     persist(members,items.filter(x=>x.id!==id));
   };
 
-  const onFilePicked=async(e,id)=>{
+  const onFilePicked=async(e,id,okMsg="証明書を保存しました")=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
     if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
     try{
@@ -1665,8 +1681,9 @@ function App(){
       const ok=await photoStorage.set(`photo:${id}`,dataUrl);
       if(!ok){showFlash("ストレージ容量が不足しています");return;}
       setPhotos(p=>({...p,[id]:dataUrl}));
-      setItems(prev=>{const next=prev.map(x=>x.id===id?{...x,photo:true}:x);try{storage.set(STORAGE_KEY,serializeState({members,items:next,usage,meEmoji,meBirthday,meColor,meName,meAvatar})).catch(()=>{});}catch(er){}return next;});
-      showFlash("証明書を保存しました");
+      const next=items.map(x=>x.id===id?{...x,photo:true}:x);
+      persist(members,next);saveItemToFs(next.find(x=>x.id===id)).catch(()=>{});
+      showFlash(okMsg);
     }catch(err){showFlash("保存できませんでした。別の画像でお試しください");}
   };
 
@@ -1939,15 +1956,15 @@ function App(){
   };
   const saveDiary=async()=>{
     const d=diaryDraft;const note=(d.note||"").trim();const syms=d.symptoms||[];
-    if(!d.energy&&!d.appetite&&!d.poop&&!d.walk&&!d.hospital&&!note&&!syms.length&&!d.photo){showFlash("ようすを選ぶか、ひとことを書いてください");return;}
+    if(!d.energy&&!d.appetite&&!d.poop&&!d.walk&&!d.hospital&&!d.sleep&&!note&&!syms.length&&!d.photo){showFlash("ようすを選ぶか、ひとことを書いてください");return;}
     const id="dy"+Date.now();
     const rec={id,space:tab,type:"diary",date:todayIso,createdAt:Date.now()};
-    if(d.energy)rec.energy=d.energy;if(d.appetite)rec.appetite=d.appetite;if(d.poop)rec.poop=d.poop;
+    if(d.energy)rec.energy=d.energy;if(d.appetite)rec.appetite=d.appetite;if(d.poop)rec.poop=d.poop;if(d.sleep)rec.sleep=d.sleep;
     if(d.walk)rec.walk=true;if(d.hospital)rec.hospital=true;if(note)rec.note=note;if(syms.length)rec.symptoms=syms;
     if(syms.includes("period"))rec.private=true; // 生理を含む記録はセンシティブ＝本人のみ
     if(d.photo){const pid="dyp"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,d.photo);if(ok){setPhotos(p=>({...p,[pid]:d.photo}));rec.photo=true;rec.photos=[pid];}}
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
-    setDiaryDraft({energy:"",appetite:"",poop:"",walk:false,hospital:false,note:"",symptoms:[],photo:null});
+    setDiaryDraft({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",note:"",symptoms:[],photo:null});
     showFlash("今日のようすを記録しました 📝");
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
@@ -1999,6 +2016,25 @@ function App(){
   const growthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="milestone").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   const addMilestone=(cat,title)=>{const t=(title||"").trim();if(!t)return;const rec={id:"ms"+Date.now(),space:tab,type:"milestone",date:todayIso,category:cat||"first",title:t,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMsDraft("");showFlash("成長記録に残しました");};
   const removeMilestone=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // お手伝いポイント：タスクごとにポイントを付与。合計・今週を集計。
+  const pointRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="point").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  const pointStats=useMemo(()=>{const total=pointRecords.reduce((s,x)=>s+(Number(x.points)||0),0);const wk=iso(new Date(Date.now()-6*86400000));const week=pointRecords.filter(x=>(x.date||"")>=wk).reduce((s,x)=>s+(Number(x.points)||0),0);return{total,week};},[pointRecords]);
+  const addPoint=(task,pt)=>{const t=(task||"").trim();if(!t)return;const rec={id:"pt"+Date.now(),space:tab,type:"point",date:todayIso,task:t,points:Number(pt)||1,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setPointTask("");showFlash(`${t} +${Number(pt)||1}pt`);};
+  const removePoint=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // おこづかい帳：もらった/つかった/ちょきん。残高を集計（ちょきんは残高に影響しない記録）。
+  const allowanceRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="allowance").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  const allowanceBalance=useMemo(()=>allowanceRecords.reduce((s,x)=>{const d=ALLOWANCE_DIRS.find(o=>o.k===x.dir);return s+(d?d.sign:0)*(Number(x.amount)||0);},0),[allowanceRecords]);
+  const addAllowance=()=>{const amt=Number(allowAmt);if(!allowAmt.trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}const rec={id:"al"+Date.now(),space:tab,type:"allowance",date:todayIso,amount:amt,dir:allowDir,reason:(allowReason||"").trim()||undefined,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setAllowAmt("");setAllowReason("");showFlash("おこづかいを記録しました");};
+  const removeAllowance=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // お薬コース：X日間の服用を1日ずつチェック。残り日数を表示。
+  const medCourses=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="medcourse").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  const addMedCourse=()=>{const n=(medName||"").trim();if(!n){showFlash("お薬の名前を入力してください");return;}const days=Math.max(1,parseInt(medDays||"1",10));const rec={id:"md"+Date.now(),space:tab,type:"medcourse",name:n,days,startDate:todayIso,taken:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMedName("");showFlash("お薬を登録しました");};
+  const toggleMedToday=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const taken=x.taken||[];const has=taken.includes(todayIso);const nt=has?taken.filter(d=>d!==todayIso):[...taken,todayIso];return{...x,taken:nt};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
+  const removeMedCourse=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // 家族ノート（メッセージ・感謝・きもち）。端末内で家族が書き込める簡易ボード。
+  const familyNotes=useMemo(()=>items.filter(x=>x.type==="familynote").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items]);
+  const addFamilyNote=()=>{const t=(noteText||"").trim();if(!t)return;const author=(meName||"わたし");const rec={id:"fn"+Date.now(),space:"me",type:"familynote",kind:noteKind,text:t,author,date:todayIso,createdAt:Date.now()};persist(members,[...items,rec]);setNoteText("");showFlash("ノートに残しました");};
+  const removeFamilyNote=(id)=>{persist(members,items.filter(x=>x.id!==id));};
   const tomorrowIso=plusDays(1);const tomorrowDow=dowOf(tomorrowIso);
   const tomorrowBelongings=useMemo(()=>belongings.filter(b=>b.dow===tomorrowDow),[belongings,tomorrowDow]);
   const toggleBelongPrep=(id)=>{const next=items.map(x=>x.id===id?{...x,prepDate:x.prepDate===tomorrowIso?null:tomorrowIso}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
@@ -3327,6 +3363,7 @@ function App(){
                                       {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span className="yl-dayrec-chip"><Icon name={ENERGY_ICON[r.energy]} size={13}/> {diaryMeta(DIARY_ENERGY,r.energy).label}</span>}
                                       {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span className="yl-dayrec-chip"><Icon name={appetiteIcon(r.appetite)} size={13}/> {diaryMeta(DIARY_APPETITE,r.appetite).label}</span>}
                                       {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip"><Icon name={POOP_DIARY_ICON[r.poop]||"droplet"} size={13}/> {diaryMeta(DIARY_POOP,r.poop).label}</span>}
+                                      {r.sleep&&<span className="yl-dayrec-chip"><Icon name="moon" size={13}/> 睡眠{r.sleep}h</span>}
                                       {r.walk&&<span className="yl-dayrec-chip"><Icon name="paw" size={13}/> さんぽ</span>}
                                       {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> 病院</span>}
                                       {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/> {symptomMeta(sk).label}</span>)}
@@ -3348,16 +3385,17 @@ function App(){
               if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"growth",el:(
                 <section className="yl-growth">
                   <h2 className="yl-routine-title" style={{marginBottom:6}}>成長の記録</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめて・できたことを残せます。あとから育児日記として振り返れます。</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめて・できたこと・作品を残せます（写真も添付OK）。あとから育児日記として振り返れます。</p>
                   <div className="yl-growth-cats">{MILESTONE_CATS.map(c=><button key={c.key} className={"yl-growth-cat"+(msCat===c.key?" on":"")} onClick={()=>setMsCat(c.key)}><Icon name={c.icon} size={14}/> {c.label}</button>)}</div>
                   <div className="yl-growth-presets">{MILESTONE_PRESETS[msCat].filter(p=>!growthRecords.some(g=>g.title===p)).map(p=><button key={p} className="yl-growth-preset" onClick={()=>addMilestone(msCat,p)}>＋ {p}</button>)}</div>
                   <div className="yl-growth-custom"><input className="yl-input sm" value={msDraft} onChange={e=>setMsDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMilestone(msCat,msDraft)} placeholder="自分で追加（例：逆上がりができた）"/><button className="yl-addbtn sm" onClick={()=>addMilestone(msCat,msDraft)}>＋ 記録</button></div>
                   {growthRecords.length>0&&(
                     <ul className="yl-growth-list">
-                      {growthRecords.map(g=>{const cm=milestoneCatMeta(g.category);const at=activeMember.birthday?ageAtLabel(activeMember.birthday,g.date):"";return(
+                      {growthRecords.map(g=>{const cm=milestoneCatMeta(g.category);const at=activeMember.birthday?ageAtLabel(activeMember.birthday,g.date):"";const pid=firstPhotoId(g);return(
                         <li key={g.id} className="yl-growth-item">
-                          <span className={"yl-growth-badge cat-"+g.category}><Icon name={cm.icon} size={14}/></span>
+                          {pid&&photos[pid]?<button className="yl-growth-thumbwrap" onClick={()=>viewPhoto(pid)}><img className="yl-growth-thumb" src={photos[pid]} alt=""/></button>:<span className={"yl-growth-badge cat-"+g.category}><Icon name={cm.icon} size={14}/></span>}
                           <span className="yl-growth-body"><span className="yl-growth-title">{g.title}</span><span className="yl-growth-meta">{cm.label}・{fmtDate(g.date)}{at?`・${at}`:""}</span></span>
+                          {!pid&&<label className="yl-growth-cam" title="作品・写真を追加" onClick={e=>e.stopPropagation()}><Icon name="camera" size={15}/><input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,g.id,"作品・写真を保存しました")}/></label>}
                           <button className="yl-health-del" onClick={()=>askDelete(g.title,()=>removeMilestone(g.id))} aria-label="削除">×</button>
                         </li>
                       );})}
@@ -3389,6 +3427,31 @@ function App(){
             })()}
 
             {personSeg==="manage"&&(()=>{const defs=[];
+              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"help",el:(
+                <section className="yl-help-sec">
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">お手伝いポイント</h2><span className="yl-point-total"><Icon name="sparkles" size={14}/> 合計 {pointStats.total}pt<span className="yl-point-week">（今週 {pointStats.week}）</span></span></div>
+                  <div className="yl-growth-presets">{HELP_PRESETS.map(h=><button key={h.task} className="yl-growth-preset" onClick={()=>addPoint(h.task,h.pt)}>＋ {h.task} <b>+{h.pt}</b></button>)}</div>
+                  <div className="yl-growth-custom"><input className="yl-input sm" value={pointTask} onChange={e=>setPointTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addPoint(pointTask,1)} placeholder="自分で追加（+1pt）"/><button className="yl-addbtn sm" onClick={()=>addPoint(pointTask,1)}>＋ 記録</button></div>
+                  {pointRecords.length>0&&<ul className="yl-point-list">{pointRecords.slice(0,8).map(p=>(<li key={p.id} className="yl-point-item"><span className="yl-point-date">{fmtDate(p.date)}</span><span className="yl-point-task">{p.task}</span><span className="yl-point-pt">+{p.points}pt</span><button className="yl-health-del" onClick={()=>removePoint(p.id)} aria-label="削除">×</button></li>))}</ul>}
+                </section>
+              )});
+              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"allowance",el:(
+                <section className="yl-allow-sec">
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">おこづかい帳</h2><span className="yl-allow-bal">のこり <strong>{fmtYen(allowanceBalance)}</strong></span></div>
+                  <div className="yl-allow-input">
+                    <span className="yl-seg-mini">{ALLOWANCE_DIRS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(allowDir===o.k?" on":"")} onClick={()=>setAllowDir(o.k)}>{o.l}</button>)}</span>
+                    <div className="yl-allow-row"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={allowAmt} onChange={e=>setAllowAmt(e.target.value)} placeholder="金額"/></span><input className="yl-input sm" value={allowReason} onChange={e=>setAllowReason(e.target.value)} placeholder="メモ（おかし 等・任意）"/><button className="yl-addbtn sm" onClick={addAllowance}>＋</button></div>
+                  </div>
+                  {allowanceRecords.length>0&&<ul className="yl-allow-list">{allowanceRecords.slice(0,8).map(a=>{const dm=ALLOWANCE_DIRS.find(o=>o.k===a.dir)||ALLOWANCE_DIRS[0];return(<li key={a.id} className="yl-allow-item"><span className="yl-point-date">{fmtDate(a.date)}</span><span className={"yl-allow-tag dir-"+a.dir}>{dm.l}</span>{a.reason&&<span className="yl-allow-reason">{a.reason}</span>}<span className={"yl-allow-amt"+(dm.sign<0?" out":dm.sign>0?" in":"")}>{dm.sign<0?"-":dm.sign>0?"+":""}{fmtYen(a.amount)}</span><button className="yl-health-del" onClick={()=>removeAllowance(a.id)} aria-label="削除">×</button></li>);})}</ul>}
+                </section>
+              )});
+              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"meds",el:(
+                <section className="yl-med-sec">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬の服用</h2>
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/> {m.name}</span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
+                  <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder="お薬の名前（例：抗生剤）"/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>日間</span><button className="yl-addbtn sm" onClick={addMedCourse}>＋ 登録</button></div>
+                </section>
+              )});
               if(curKind==="person")defs.push({key:"belong",el:(
                 <section className="yl-belong">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>持ち物（曜日ごと）</h2>
@@ -3511,6 +3574,7 @@ function App(){
               <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("home");}}><Icon name="home" size={19}/> ホーム</button>
               <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("cal");}}><Icon name="calendar" size={19}/> カレンダー</button>
               <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";setTab(t);setPersonSeg("manage");}}><Icon name="wallet" size={19}/> 費用・管理</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setNotesOpen(true);}}><Icon name="heart" size={19}/> 家族ノート</button>
               {FB_READY&&<button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setShowShareModal(true);setShareStep("menu");setShareError("");}}><Icon name="users" size={19}/> 家族で共有</button>}
             </div>
             <div className="yl-drawer-sep"/>
@@ -3519,6 +3583,26 @@ function App(){
               <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("settings");}}><Icon name="settings" size={19}/> 設定</button>
             </div>
             <p className="yl-drawer-foot">LoaLife・試作版</p>
+          </div>
+        </div>
+      )}
+      {notesOpen&&(
+        <div className="yl-help-ov" onClick={()=>setNotesOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="heart" size={18}/> 家族ノート</h2><button className="yl-help-close" onClick={()=>setNotesOpen(false)}>×</button></div>
+            <div className="yl-note-compose">
+              <div className="yl-note-kinds">{NOTE_KINDS.map(k=><button key={k.k} className={"yl-note-kind"+(noteKind===k.k?" on":"")} onClick={()=>setNoteKind(k.k)}><Icon name={k.icon} size={14}/> {k.l}</button>)}</div>
+              <div className="yl-note-inputrow"><input className="yl-input" value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFamilyNote()} placeholder="今日あったこと・ありがとう・きもち…"/><button className="yl-addbtn sm" onClick={addFamilyNote}>送る</button></div>
+            </div>
+            {familyNotes.length===0?<p className="yl-set-desc" style={{padding:"12px 4px"}}>家族みんなで、今日のことや「ありがとう」「きもち」を残せます。</p>:(
+              <ul className="yl-note-list">{familyNotes.map(n=>{const km=noteKindMeta(n.kind);return(
+                <li key={n.id} className={"yl-note-item kind-"+n.kind}>
+                  <span className="yl-note-ic"><Icon name={km.icon} size={15}/></span>
+                  <span className="yl-note-body"><span className="yl-note-text">{n.text}</span><span className="yl-note-meta">{km.l}・{n.author}・{fmtDate(n.date)}</span></span>
+                  <button className="yl-health-del" onClick={()=>removeFamilyNote(n.id)} aria-label="削除">×</button>
+                </li>);})}</ul>
+            )}
+            <p className="yl-toxic-foot">※ この端末に保存されます。家族で同じ端末を使う「連絡帳」としてお使いください。</p>
           </div>
         </div>
       )}
@@ -3828,6 +3912,7 @@ function App(){
             {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">元気</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {c.label}</button>)}</span></div>}
             {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">食欲</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}><Icon name="utensils" size={15}/> {c.label}</button>)}</span></div>}
             {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">うんち</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}><Icon name={POOP_DIARY_ICON[c.key]} size={15}/> {c.label}</button>)}</span></div>}
+            {has("sleep")&&<div className="yl-diary-row"><span className="yl-diary-label">睡眠</span><span className="yl-diary-chips">{["9","10","11","12"].map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {h}時間</button>)}<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder="時間"/>時間</span></span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">その他</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}><Icon name="paw" size={15}/> さんぽ・おでかけ</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}><Icon name="activity" size={15}/> 病院に行った</button>}</span></div>}
             {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">症状</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}><Icon name={symIcon(sk)} size={15}/> {s.label}</button>;})}</span></div>}
             {dcfg.symptoms.includes("period")&&(()=>{const periodSel=(diaryDraft.symptoms||[]).includes("period");const fc=periodForecast(tab);const showFc=fc&&fc.next;if(!periodSel&&!showFc)return null;return(<div className="yl-period-inline">
