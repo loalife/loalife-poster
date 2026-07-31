@@ -796,6 +796,7 @@ const ICONS={
   trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>',
   chevron:'<path d="M9 6l6 6-6 6"/>',
   phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>',
   tag:'<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V4a1.2 1.2 0 0 1 1.2-1.2h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8z"/><path d="M7 7h.01"/>',
 };
@@ -1031,6 +1032,7 @@ function App(){
   const[toxicQ,setToxicQ]=useState("");
   const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
   const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
+  const[menuOpen,setMenuOpen]=useState(false); // まとめメニュー（右からのドロワー）
   const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
   const[authEmail,setAuthEmail]=useState("");
   const[authPw,setAuthPw]=useState("");
@@ -2502,16 +2504,19 @@ function App(){
       <div className="yl-wrap">
         <header className="yl-head">
           <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"記録"}</h1>
-          {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
-          {FB_READY&&(
-            <button
-              className={"yl-share-btn"+(inHousehold?" active":"")}
-              onClick={()=>{setShowShareModal(true);setShareStep(household?"menu":"menu");setShareError("");}}
-              title="家族共有"
-            >
-              {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
-            </button>
-          )}
+          <div className="yl-head-actions">
+            {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
+            {FB_READY&&(
+              <button
+                className={"yl-share-btn"+(inHousehold?" active":"")}
+                onClick={()=>{setShowShareModal(true);setShareStep(household?"menu":"menu");setShareError("");}}
+                title="家族共有"
+              >
+                {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
+              </button>
+            )}
+            <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー"><Icon name="menu" size={22}/></button>
+          </div>
         </header>
 
         {a2hsHint&&(
@@ -3423,6 +3428,30 @@ function App(){
       })()}
       </div>
 
+      {menuOpen&&(
+        <div className="yl-drawer-ov" onClick={()=>setMenuOpen(false)}>
+          <div className="yl-drawer" onClick={e=>e.stopPropagation()}>
+            <div className="yl-drawer-head"><span className="yl-drawer-title">メニュー</span><button className="yl-help-close" onClick={()=>setMenuOpen(false)}>×</button></div>
+            <div className="yl-drawer-group">
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={19}/> 誤食・中毒 危険物リスト</button>
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setEmergencyOpen(true);}}><Icon name="activity" size={19}/> 夜間・救急の備え</button>
+            </div>
+            <div className="yl-drawer-sep"/>
+            <div className="yl-drawer-group">
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("home");}}><Icon name="home" size={19}/> ホーム</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("cal");}}><Icon name="calendar" size={19}/> カレンダー</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";setTab(t);setPersonSeg("manage");}}><Icon name="wallet" size={19}/> 費用・管理</button>
+              {FB_READY&&<button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setShowShareModal(true);setShareStep("menu");setShareError("");}}><Icon name="users" size={19}/> 家族で共有</button>}
+            </div>
+            <div className="yl-drawer-sep"/>
+            <div className="yl-drawer-group">
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setHelpOpen(true);}}><Icon name="note" size={19}/> つかい方・機能紹介</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("settings");}}><Icon name="settings" size={19}/> 設定</button>
+            </div>
+            <p className="yl-drawer-foot">LoaLife・試作版</p>
+          </div>
+        </div>
+      )}
       {emergencyOpen&&(()=>{
         const contacts=items.filter(x=>x.type==="card"&&(x.kind==="hospital"||x.kind==="emergency")).sort((a,b)=>(a.kind==="emergency"?-1:0)-(b.kind==="emergency"?-1:0));
         return(
