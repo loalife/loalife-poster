@@ -2725,6 +2725,16 @@ function App(){
               <button className="yl-weather-setup" onClick={()=>setTab("settings")}><Icon name="thermometer" size={16}/> 地域を登録して天気・お散歩判定を表示</button>
             )}
 
+            {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
+            {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
+              <section className="yl-batch">
+                <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
+                <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
+                  <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
+                </div>
+                <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
+              </section>);})()}
+
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
             <div className="yl-layer">
@@ -2740,21 +2750,7 @@ function App(){
                   ))}
                 </section>
               )}
-              {/* 緊急（見逃せないこと）を先頭に */}
-              {homeData.bombs.length>0&&(
-                <section className="yl-bombs">
-                  <h2 className="yl-sec-title alert">見逃せないこと</h2>
-                  <ul className="yl-bomb-list">
-                    {homeData.bombs.slice(0,3).map(({item,d})=>(
-                      <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
-                        <span className="yl-bomb-emoji"><Icon name={guessIcon(item.title,"alert")} size={20}/></span>
-                        <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
-                        <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+              {/* 今日やること（毎日使う）を先に。見逃せないことはその下に。 */}
               {todayClear?(
                 <section className="yl-hero calm">
                   <div className="yl-hero-emoji"><Icon name="sun" size={40} stroke={1.7}/></div>
@@ -2777,6 +2773,20 @@ function App(){
                     ))}
                   </ul>
                   {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
+                </section>
+              )}
+              {homeData.bombs.length>0&&(
+                <section className="yl-bombs">
+                  <h2 className="yl-sec-title alert">見逃せないこと</h2>
+                  <ul className="yl-bomb-list">
+                    {homeData.bombs.slice(0,3).map(({item,d})=>(
+                      <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
+                        <span className="yl-bomb-emoji"><Icon name={guessIcon(item.title,"alert")} size={20}/></span>
+                        <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
+                        <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
               {homeData.upcoming.length>0&&(
@@ -2830,14 +2840,6 @@ function App(){
                   );
                 })}</div>
               </section>
-              {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
-                <section className="yl-batch">
-                  <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
-                  <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
-                    <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
-                  </div>
-                  <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
-                </section>);})()}
               {allRoutines.length>0&&(
                 <section className="yl-habit">
                   <span className="yl-habit-label">今日の習慣</span>
