@@ -1206,6 +1206,8 @@ function App(){
   // ※ 通知やhomeDataの useEffect/useMemo 依存配列より前で宣言する必要がある（TDZ回避）。
   const memorialIds=useMemo(()=>new Set(members.filter(m=>m.kind==="pet"&&m.memorial).map(m=>m.id)),[members]);
   const isMemorialSpace=(sp)=>memorialIds.has(sp);
+  // お散歩するペット（犬）がいるか。いなければお散歩指数・散歩タイム等は隠し、天気だけ出す。
+  const hasWalker=useMemo(()=>members.some(m=>m.kind==="pet"&&!m.memorial&&m.species==="dog"),[members]);
 
   // Birthday & うちの子記念日 notifications on load
   useEffect(()=>{
@@ -2546,7 +2548,7 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wt=weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc"><Icon name="pin" size={13}/> {weatherLoc.name}{wc&&<span className="yl-weather-cond"> {wc.emoji} {wc.label}</span>}</span>
@@ -2558,9 +2560,11 @@ function App(){
                   <div className="yl-weather-vals">
                     <span className="yl-weather-temp"><Icon name="thermometer" size={14}/> {Math.round(weather.temp)}℃</span>
                     {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
+                    {weather.apparent!=null&&<span className="yl-weather-feels">体感 {Math.round(weather.apparent)}℃</span>}
                     <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
                     {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
-                    {weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
+                    {weather.uv!=null&&<span className="yl-weather-uv"><Icon name="sun" size={13}/> UV {Math.round(weather.uv)}</span>}
+                    {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
                   </div>
                   {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
                 </>):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
