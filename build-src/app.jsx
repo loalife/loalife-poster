@@ -219,9 +219,11 @@ function scheduleReminders(items, members) {
 // --- Image helpers ---
 function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let{width,height}=img;if(width>height&&width>maxDim){height=(height*maxDim)/width;width=maxDim;}else if(height>=width&&height>maxDim){width=(width*maxDim)/height;height=maxDim;}const c=document.createElement("canvas");c.width=Math.round(width);c.height=Math.round(height);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);try{resolve(c.toDataURL("image/jpeg",quality));}catch(e){reject(e);}};img.onerror=reject;img.src=url;});}
 
-const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
+// 高齢者向けのケア・予定の種別（通院・介護サポート）。
+const SENIOR_KINDS=[{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"服薬",emoji:"💊"},{key:"pickup",label:"薬の受け取り",emoji:"💊"},{key:"care",label:"介護サービス",emoji:"🧑"},{key:"daycare",label:"デイサービス",emoji:"🏫"},{key:"rehab",label:"リハビリ",emoji:"🩹"},{key:"nurse",label:"訪問看護",emoji:"🩺"},{key:"checkup",label:"健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
+const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
 // ケア種別 → ラインアイコン名（SF Symbols相当）
-const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth"};
+const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
 
 // ライフログ・カレンダー用：各アイテムが「どの日に紐づくか」を1つに正規化する。
@@ -416,6 +418,7 @@ const DIARY_CONFIG={
   pet:{rows:["energy","appetite","poop","walk","hospital"],symptoms:["cough","sneeze","diarrhea","vomit","noappetite","itch"]},
   adult:{rows:["energy","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
   child:{rows:["energy","appetite","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
+  senior:{rows:["energy","appetite","sleep","hospital"],symptoms:["headache","fever","cough","fatigue","nose","throat"]},
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 家族台帳（人）：性別・血液型の選択肢。
@@ -446,10 +449,10 @@ const MILESTONE_PRESETS={
   learn:["ひらがなが読めた","数を数えられた","自分の名前が書けた","時計が読めた"],
 };
 // 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモなど）
-const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"other",label:"メモ",emoji:"📝"}];
+const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"insurance",label:"保険証・保険情報",emoji:"🪪"},{key:"other",label:"メモ",emoji:"📝"}];
 const cardMeta=(k)=>CARD_PRESETS.find(c=>c.key===k)||CARD_PRESETS[CARD_PRESETS.length-1];
 // 大切な情報カードの種別 → ラインアイコン名。
-const CARD_ICON={emergency:"alert",allergy:"alert",hospital:"activity",other:"note"};
+const CARD_ICON={emergency:"alert",allergy:"alert",hospital:"activity",insurance:"shield",other:"note"};
 const cardIcon=(k)=>CARD_ICON[k]||"note";
 // 思い出の「はじめて」タグ
 const FIRST_TAG="はじめて";
@@ -1011,6 +1014,7 @@ function App(){
   const[memberSel,setMemberSel]=useState("me"); // メンバーモードで選択中の人
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
+  const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
   const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -1918,6 +1922,7 @@ function App(){
   // からだの記録（体重・身長・体調）
   const healthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="health").sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const weightPts=useMemo(()=>healthRecords.filter(r=>r.weight!=null).map(r=>({date:r.date,value:r.weight,unit:r.wunit||"kg"})),[healthRecords]);
+  const bpPts=useMemo(()=>healthRecords.filter(r=>r.bpSys!=null).map(r=>({date:r.date,value:r.bpSys,unit:"mmHg"})),[healthRecords]);
   const heightPts=useMemo(()=>healthRecords.filter(r=>r.height!=null).map(r=>({date:r.date,value:r.height})),[healthRecords]);
   // 体重の単位（メンバーごと。小動物はg）。自分はkg固定
   const weightUnit=isMemberTab?(activeMember.weightUnit||"kg"):"kg";
@@ -1929,13 +1934,17 @@ function App(){
   const weightDiff=(targetWeight!==""&&latestWeight!=null)?(latestWeight-Number(targetWeight)):null;
   const saveHealth=()=>{
     const w=healthW.trim()===""?null:Number(healthW);const h=healthH.trim()===""?null:Number(healthH);
-    if(w==null&&h==null&&!healthCond){showFlash("体重などを入力してください");return;}
+    const num=(s)=>{const t=(s||"").trim();if(t==="")return null;const n=Number(t);return isNaN(n)?null:n;};
+    const bpS=num(healthBpS),bpD=num(healthBpD),temp=num(healthTemp),glu=num(healthGlucose);
+    const hasVital=bpS!=null||bpD!=null||temp!=null||glu!=null;
+    if(w==null&&h==null&&!healthCond&&!hasVital){showFlash("体重などを入力してください");return;}
     if(w!=null&&(isNaN(w)||w<=0)){showFlash("体重は数字で入力してください");return;}
     if(h!=null&&(isNaN(h)||h<=0)){showFlash("身長は数字で入力してください");return;}
     const rec={id:"hl"+Date.now(),space:tab,type:"health",date:todayIso,createdAt:Date.now()};
     if(w!=null){rec.weight=w;rec.wunit=weightUnit;}if(h!=null)rec.height=h;if(healthCond)rec.condition=healthCond;
+    if(bpS!=null)rec.bpSys=bpS;if(bpD!=null)rec.bpDia=bpD;if(temp!=null)rec.temp=temp;if(glu!=null)rec.glucose=glu;
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
-    setHealthW("");setHealthH("");setHealthCond("");
+    setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");
     showFlash("からだの記録を保存しました 📈");
   };
   const removeHealth=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
@@ -3024,7 +3033,7 @@ function App(){
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-coat-list" value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-coat-list">{COAT_COLORS.map(c=><option key={c} value={c}/>)}</datalist></label>}
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
-                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"},{k:"senior",l:"高齢者"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{GENDER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="droplet" size={14}/> 血液型（任意）<span className="yl-seg-mini">{BLOOD_OPTS.map(o=><button key={o} className={"yl-seg-mini-btn"+(editBlood===o?" on":"")} onClick={()=>setEditBlood(editBlood===o?"":o)}>{o}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<div className="yl-opt yl-memorial-opt" style={{marginTop:10,width:"100%"}}><Icon name="sparkles" size={14}/> 虹の橋（お別れの記録・任意）
@@ -3294,12 +3303,13 @@ function App(){
                   {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?<><Icon name="sparkles" size={13}/> 目標達成中！この調子で</>:weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
                   {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の ＋ から体重などを記録できます。"}</p>}
                   {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label="身長"/>}
+                  {bpPts.length>=2&&<MiniChart points={bpPts} unit="mmHg" color="#B23A48" label="血圧（上）"/>}
                   {healthRecords.length>0&&(
                     <ul className="yl-health-list">
                       {[...healthRecords].reverse().slice(0,6).map(r=>(
                         <li key={r.id} className="yl-health-item">
                           <span className="yl-health-date">{fmtDate(r.date)}</span>
-                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>血圧 {r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
                           <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
                         </li>
                       ))}
@@ -3445,7 +3455,7 @@ function App(){
                   {allowanceRecords.length>0&&<ul className="yl-allow-list">{allowanceRecords.slice(0,8).map(a=>{const dm=ALLOWANCE_DIRS.find(o=>o.k===a.dir)||ALLOWANCE_DIRS[0];return(<li key={a.id} className="yl-allow-item"><span className="yl-point-date">{fmtDate(a.date)}</span><span className={"yl-allow-tag dir-"+a.dir}>{dm.l}</span>{a.reason&&<span className="yl-allow-reason">{a.reason}</span>}<span className={"yl-allow-amt"+(dm.sign<0?" out":dm.sign>0?" in":"")}>{dm.sign<0?"-":dm.sign>0?"+":""}{fmtYen(a.amount)}</span><button className="yl-health-del" onClick={()=>removeAllowance(a.id)} aria-label="削除">×</button></li>);})}</ul>}
                 </section>
               )});
-              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"meds",el:(
+              if(curKind==="person"&&((activeMember.personType||"child")==="child"||activeMember.personType==="senior"))defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬の服用</h2>
                   {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/> {m.name}</span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
@@ -3819,6 +3829,13 @@ function App(){
               <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/>{isMemberTab?<span className="yl-health-uswitch"><button className={"yl-health-ubtn"+(weightUnit==="kg"?" on":"")} onClick={()=>setMemberWeightUnit("kg")}>kg</button><button className={"yl-health-ubtn"+(weightUnit==="g"?" on":"")} onClick={()=>setMemberWeightUnit("g")}>g</button></span>:<span className="yl-health-unit">kg</span>}</span></label>
               {isMemberTab&&<label className="yl-opt">身長<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
             </div>
+            {isMemberTab&&activeMember&&activeMember.personType==="senior"&&(
+              <div className="yl-vital-input">
+                <label className="yl-opt">血圧<span className="yl-health-field yl-bp-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpS} onChange={e=>setHealthBpS(e.target.value)} placeholder="上"/><span className="yl-bp-sep">/</span><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpD} onChange={e=>setHealthBpD(e.target.value)} placeholder="下"/><span className="yl-health-unit">mmHg</span></span></label>
+                <label className="yl-opt">体温<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthTemp} onChange={e=>setHealthTemp(e.target.value)} placeholder="36.5"/><span className="yl-health-unit">℃</span></span></label>
+                <label className="yl-opt">血糖値<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthGlucose} onChange={e=>setHealthGlucose(e.target.value)} placeholder="任意"/><span className="yl-health-unit">mg/dL</span></span></label>
+              </div>
+            )}
             {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">小動物は0.1g単位</p>}
             {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">体調</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
             <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}><Icon name="scale" size={16}/> からだを記録</button>
