@@ -65,6 +65,23 @@ const TOXIC_ITEMS=[
   {name:"果物の種・芯（りんご・さくらんぼ等）",sp:"both",lv:"caution",sym:"閉塞・微量の有害成分",note:"果肉は少量可でも種・芯は避ける。"},
   {name:"観葉植物（ポトス・アイビー・サゴヤシ等）",sp:"both",lv:"caution",sym:"口内の痛み・よだれ・嘔吐",note:"かじれる場所に置かない。サゴヤシは特に危険。"},
 ];
+// 夜間・救急で電話するときに伝えたいこと（安全な備えガイド。病院データは各自で登録）。
+const EMERGENCY_TIPS=[
+  "子の種類・年齢・体重（例：柴犬・5歳・8kg）",
+  "何が起きたか（いつ・何を・どれくらい）",
+  "今の様子（意識・呼吸・嘔吐や下痢・出血・けいれんの有無）",
+  "誤食なら、食べたもの・量・時間（できれば現物やパッケージを手元に）",
+  "持病・飲んでいる薬・かかりつけの有無",
+  "向かうまでの目安時間",
+];
+const EMERGENCY_PREP=[
+  "キャリー／タオル（保温・保定に）",
+  "現物・パッケージ（誤食のとき）",
+  "お薬手帳・ワクチン証明（このアプリのサマリーでもOK）",
+  "支払い手段（カードのみの病院もあります）",
+];
+// 文字列から電話番号らしき部分を抽出（tel: リンク用）。無ければ null。
+const extractTel=(str)=>{const m=(str||"").match(/0\d{1,4}[-(]?\d{1,4}[-)]?\d{3,4}/);return m?m[0].replace(/[()]/g,"-").replace(/--/g,"-"):null;};
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
@@ -280,6 +297,17 @@ const BRISTOL=[
   {n:7,label:"水様",desc:"固形物のない水様",tone:"loose"},
 ];
 const bristolMeta=(n)=>BRISTOL.find(b=>b.n===n)||null;
+// うんちの硬さ 1〜7 の形イラスト（塗り。tone色で着色）。viewBox 0 0 24 24。
+const POOP_SHAPE={
+  1:'<circle cx="6" cy="13" r="2.6"/><circle cx="12" cy="10" r="2.6"/><circle cx="18" cy="13.5" r="2.6"/>',
+  2:'<path d="M4 12c0-3 3.5-4 8-4s8 1 8 4-3.5 4-8 4-8-1-8-4z"/><circle cx="8" cy="10.5" r="1" fill="#fff"/><circle cx="15" cy="13" r="1" fill="#fff"/>',
+  3:'<rect x="3" y="9.5" width="18" height="5.5" rx="2.7"/><path d="M9 9.8v5M14 9.8v5" stroke="#fff" stroke-width="1" fill="none"/>',
+  4:'<rect x="3" y="9.8" width="18" height="4.6" rx="2.3"/>',
+  5:'<circle cx="8" cy="12" r="4"/><circle cx="15" cy="12.5" r="4.4"/>',
+  6:'<circle cx="6" cy="13.5" r="2.8"/><circle cx="11" cy="11" r="3.4"/><circle cx="16.5" cy="13.5" r="2.8"/>',
+  7:'<ellipse cx="12" cy="14" rx="9" ry="2.8"/><ellipse cx="8" cy="12.5" rx="2" ry="1"/>',
+};
+const POOP_TONE_COLOR={hard:"#B98A5A",ok:"#A9803F",good:"#8A6A3E",soft:"#C89B5E",loose:"#CBA96A"};
 // WMO 天気コード → 絵文字＋日本語。Open-Meteo の weather_code に対応。
 function weatherCodeMeta(code){
   const m={0:["☀️","快晴"],1:["🌤","晴れ"],2:["⛅","一部くもり"],3:["☁️","くもり"],45:["🌫","霧"],48:["🌫","霧氷"],51:["🌦","霧雨"],53:["🌦","霧雨"],55:["🌦","強い霧雨"],56:["🌧","着氷性の霧雨"],57:["🌧","着氷性の霧雨"],61:["🌧","小雨"],63:["🌧","雨"],65:["🌧","強い雨"],66:["🌧","着氷性の雨"],67:["🌧","着氷性の雨"],71:["🌨","小雪"],73:["🌨","雪"],75:["🌨","大雪"],77:["🌨","霧雪"],80:["🌦","にわか雨"],81:["🌦","にわか雨"],82:["🌦","激しいにわか雨"],85:["🌨","にわか雪"],86:["🌨","にわか雪"],95:["⛈","雷雨"],96:["⛈","雹を伴う雷雨"],99:["⛈","雹を伴う雷雨"]};
@@ -343,6 +371,31 @@ function walkIndex(w){
   const level=score>=60?"ok":score>=35?"warn":"danger";
   const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
   return{score,stars,level,label,factors:F,main:F[0]||null};
+}
+// 1時間ぶんの散歩レベル判定（体感温度ベース。雨・雷・寒さも考慮）。good/caution/avoid。
+function walkHourLevel(hr){
+  if(!hr)return"good";
+  const t=typeof hr.app==="number"?hr.app:hr.temp;
+  const pop=hr.pop,code=hr.code;
+  const thunder=[95,96,99].includes(code);
+  const heavyRain=[65,67,75,82,86].includes(code)||(typeof pop==="number"&&pop>=80);
+  if(typeof t==="number"){
+    if(t>=31||thunder)return"avoid";           // 猛暑・雷
+    if(t<=-3)return"avoid";                     // 厳しい寒さ
+    if(t>=28)return"caution";                   // 暑い
+    if(t<=1)return"caution";                    // 寒い
+  }else if(thunder)return"avoid";
+  if(heavyRain)return"avoid";
+  if(typeof pop==="number"&&pop>=55)return"caution"; // 雨が降りやすい
+  return"good";
+}
+// 今日の散歩タイム（時間別の色帯＋おすすめ時間帯）。hours=[{h,temp,app,pop,uv,code}]。
+function walkTimeline(hours){
+  if(!Array.isArray(hours)||hours.length===0)return null;
+  const segs=hours.map(hr=>({h:hr.h,level:walkHourLevel(hr)}));
+  const bestRun=(lvl)=>{let best=null,s=-1;for(let i=0;i<=segs.length;i++){const ok=i<segs.length&&segs[i].level===lvl;if(ok&&s<0)s=i;if(!ok&&s>=0){const run={from:segs[s].h,to:segs[i-1].h,len:i-s};if(!best||run.len>best.len)best=run;s=-1;}}return best;};
+  const best=bestRun("good")||bestRun("caution");
+  return{segs,best};
 }
 const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
@@ -741,6 +794,8 @@ const ICONS={
   moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
   coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v2M10 2v2M14 2v2"/>',
   trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>',
+  chevron:'<path d="M9 6l6 6-6 6"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>',
   tag:'<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V4a1.2 1.2 0 0 1 1.2-1.2h8a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8z"/><path d="M7 7h.01"/>',
 };
@@ -748,6 +803,8 @@ const TYPE_ICON={dream:"sparkles",work:"briefcase",event:"calendar",social:"user
 const ENERGY_ICON={great:"smileplus",genki:"smile",normal:"meh",low:"frown",bad:"angry"};
 const POOP_DIARY_ICON={good:"check",loose:"droplet",none:"ban"};
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
+// うんちの硬さイラスト（塗り）。POOP_SHAPE のパスを tone 色で描画。
+function PoopShape({n,size=30}){const d=POOP_SHAPE[n];if(!d)return null;const bm=bristolMeta(n);const col=(bm&&POOP_TONE_COLOR[bm.tone])||"#A9803F";return(<svg width={size} height={size} viewBox="0 0 24 24" fill={col} aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
 function TimeInput({value,onChange}){
   const curH=value?Number(value.split(":")[0]):"";
@@ -944,6 +1001,7 @@ function App(){
   const[expAmount,setExpAmount]=useState("");
   const[expCat,setExpCat]=useState("hospital");
   const[expNote,setExpNote]=useState("");
+  const[expScope,setExpScope]=useState("this"); // this=このコ / all=みんな（全体）
   const[expEdit,setExpEdit]=useState(null); // {id,amount,category,note,date}
   // 使い方・機能紹介ページ
   const[helpOpen,setHelpOpen]=useState(false);
@@ -971,6 +1029,8 @@ function App(){
   const[toxicOpen,setToxicOpen]=useState(false); // 誤食・中毒の危険物リスト
   const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
   const[toxicQ,setToxicQ]=useState("");
+  const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
+  const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
   const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
   const[authEmail,setAuthEmail]=useState("");
   const[authPw,setAuthPw]=useState("");
@@ -1195,19 +1255,27 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
       if(!r.ok)throw new Error("bad");
-      const j=await r.json();const c=j.current||{};const d=j.daily||{};
+      const j=await r.json();const c=j.current||{};const d=j.daily||{};const H=j.hourly||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
       let road=null,roadEstimated=false;
-      const ht=j.hourly&&j.hourly.time,hs=j.hourly&&j.hourly.soil_temperature_0cm;
+      const ht=H.time,hs=H.soil_temperature_0cm;
       if(Array.isArray(ht)&&Array.isArray(hs)&&c.time){const idx=ht.findIndex(t=>t.slice(0,13)===c.time.slice(0,13));if(idx>=0&&typeof hs[idx]==="number")road=hs[idx];}
       if(road==null&&typeof c.temperature_2m==="number"){const isDay=c.is_day===1;const cloud=typeof c.cloud_cover==="number"?c.cloud_cover:50;const delta=!isDay?2:(cloud<30?25:cloud<70?15:8);road=c.temperature_2m+delta;roadEstimated=true;}
       const hi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
       const lo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
       const code=typeof c.weather_code==="number"?c.weather_code:(Array.isArray(d.weather_code)?d.weather_code[0]:null);
       const uv=typeof c.uv_index==="number"?c.uv_index:(Array.isArray(d.uv_index_max)?d.uv_index_max[0]:null);
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,time:c.time,fetchedAt:Date.now()});
+      // 今日の時間別（散歩タイム判定用）。5〜22時ぶんを取り出す。
+      let hours=null;
+      if(Array.isArray(ht)){
+        const day=(c.time||ht[0]||"").slice(0,10);
+        hours=[];
+        ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===day&&hh>=5&&hh<=22)hours.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
+        if(hours.length===0)hours=null;
+      }
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -1898,6 +1966,35 @@ function App(){
     const cats=ALL_EXPENSE_CATS.map(c=>({...c,amount:byCat[c.key]||0})).filter(c=>c.amount>0).sort((a,b)=>b.amount-a.amount);
     return{total,cats,ym};
   },[expenseRecords,todayIso]);
+  // 費用の集計（このコ／みんな 切替）：合計・今年・月平均・年間見込み・カテゴリ内訳・月次推移・メンバー別。
+  const expStats=useMemo(()=>{
+    const all=items.filter(x=>x.type==="expense");
+    const recs=expScope==="all"?all:all.filter(x=>x.space===tab);
+    const amt=x=>Number(x.amount)||0;
+    const total=recs.reduce((s,x)=>s+amt(x),0);
+    const yr=todayIso.slice(0,4);
+    const thisYear=recs.filter(x=>(x.date||"").slice(0,4)===yr).reduce((s,x)=>s+amt(x),0);
+    // カテゴリ内訳
+    const byCat={};recs.forEach(x=>{const k=x.category||"other";byCat[k]=(byCat[k]||0)+amt(x);});
+    const cats=ALL_EXPENSE_CATS.map(c=>({...c,amount:byCat[c.key]||0})).filter(c=>c.amount>0).sort((a,b)=>b.amount-a.amount);
+    // 月次推移（直近12ヶ月）
+    const now=new Date(todayIso+"T00:00:00");
+    const series=[];const monthKeys=[];
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;monthKeys.push(ym);series.push({ym,m:d.getMonth()+1,total:0});}
+    const byMonth={};recs.forEach(x=>{const k=(x.date||"").slice(0,7);if(k)byMonth[k]=(byMonth[k]||0)+amt(x);});
+    series.forEach(s=>{s.total=byMonth[s.ym]||0;});
+    // 月平均：記録がある最古の月〜今月の月数で割る（最低1）。年間見込み＝月平均×12。
+    const monthsWithData=Object.keys(byMonth).sort();
+    let span=1;
+    if(monthsWithData.length){const first=monthsWithData[0];const[fy,fm]=first.split("-").map(Number);span=Math.max(1,(now.getFullYear()-fy)*12+(now.getMonth()+1-fm)+1);}
+    const monthlyAvg=Math.round(total/span);
+    const annual=monthlyAvg*12;
+    // メンバー別（みんな表示のとき）
+    const spaces=["me",...members.map(m=>m.id)];
+    const byMember=spaces.map(sp=>({space:sp,name:nameOf(sp)||"わたし",total:all.filter(x=>x.space===sp).reduce((s,x)=>s+amt(x),0)})).filter(m=>m.total>0).sort((a,b)=>b.total-a.total);
+    const grandTotal=all.reduce((s,x)=>s+amt(x),0);
+    return{total,thisYear,monthlyAvg,annual,cats,series,byMember,grandTotal,count:recs.length,year:yr};
+  },[items,expScope,tab,todayIso,members,meName]);
   const saveExpense=()=>{
     const amt=Number(expAmount);
     if(!expAmount.trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}
@@ -2444,7 +2541,7 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wt=weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc"><Icon name="pin" size={13}/> {weatherLoc.name}{wc&&<span className="yl-weather-cond"> {wc.emoji} {wc.label}</span>}</span>
@@ -2474,6 +2571,21 @@ function App(){
                       </div>
                     )}
                     {wi.factors.length>0&&wi.level==="ok"&&<button className="yl-walk-toggle" onClick={()=>setWalkOpen(o=>!o)}>{walkOpen?"内訳を閉じる":"スコアの内訳を見る"}</button>}
+                    {wt&&(
+                      <div className="yl-walktime">
+                        <div className="yl-walktime-head">
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> きょうのおすすめ散歩タイム</span>
+                          {wt.best?<span className="yl-walktime-badge"><Icon name="paw" size={12}/> おすすめ {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}-${wt.best.to}時`}</span>:<span className="yl-walktime-badge none">今日はお休みが安心</span>}
+                        </div>
+                        <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                        <div className="yl-walktime-axis"><span>5時</span><span>9時</span><span>13時</span><span>17時</span><span>22時</span></div>
+                        <div className="yl-walktime-legend">
+                          <span className="yl-wt-lg"><span className="yl-wt-dot good"/> おすすめ</span>
+                          <span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ようすを見て</span>
+                          <span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> さけて</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2743,8 +2855,9 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
-              <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なものを一覧で確認できます。</p>
+              <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なもの、いざという時の備えを確認できます。</p>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
+              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
@@ -2992,28 +3105,64 @@ function App(){
               )});
               defs.push({key:"expense",el:(
                 <section className="yl-exp">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>支出</h2>
-                  {expenseMonth.total===0&&expenseRecords.length===0&&<p className="yl-routine-empty">右下の ＋ から追加</p>}
-                  {expenseMonth.total>0&&(
-                    <div className="yl-exp-viz">
-                      <div className="yl-exp-total"><span>今月（{Number(expenseMonth.ym.slice(5))}月）の合計</span><strong>{fmtYen(expenseMonth.total)}</strong></div>
-                      <ul className="yl-exp-bars">
-                        {expenseMonth.cats.map(c=>(
-                          <li key={c.key} className="yl-exp-bar">
-                            <span className="yl-exp-barlabel">{c.emoji} {c.label}</span>
-                            <span className="yl-exp-bartrack"><span className="yl-exp-barfill" style={{width:Math.max(4,Math.round(c.amount/expenseMonth.total*100))+"%",background:c.color}}/></span>
-                            <span className="yl-exp-baramt">{fmtYen(c.amount)}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="yl-exp-head">
+                    <h2 className="yl-routine-title" style={{margin:0}}>支出</h2>
+                    <span className="yl-exp-scope">{[{k:"this",l:"このコ"},{k:"all",l:"みんな"}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}>{o.l}</button>)}</span>
+                  </div>
+                  {expStats.total===0?<p className="yl-routine-empty">{expScope==="all"?"まだ支出の記録がありません。":"右下の ＋ から追加"}</p>:(<>
+                    <div className="yl-exp-stats">
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">合計</span><strong className="yl-exp-stat-v">{fmtYen(expStats.total)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{expStats.year}年</span><strong className="yl-exp-stat-v">{fmtYen(expStats.thisYear)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">月平均</span><strong className="yl-exp-stat-v">{fmtYen(expStats.monthlyAvg)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">年間見込み</span><strong className="yl-exp-stat-v">{fmtYen(expStats.annual)}</strong></div>
                     </div>
-                  )}
-                  {expenseRecords.length>0&&(
+                    {expScope==="all"&&expStats.byMember.length>0&&(
+                      <div className="yl-exp-block">
+                        <p className="yl-exp-blocktitle">メンバー別</p>
+                        <ul className="yl-exp-members">
+                          {expStats.byMember.map(m=>(
+                            <li key={m.space} className="yl-exp-member">
+                              <span className="yl-exp-member-name">{m.name}</span>
+                              <span className="yl-exp-member-track"><span className="yl-exp-member-fill" style={{width:Math.max(4,Math.round(m.total/expStats.byMember[0].total*100))+"%"}}/></span>
+                              <span className="yl-exp-member-amt">{fmtYen(m.total)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="yl-exp-block">
+                      <p className="yl-exp-blocktitle">カテゴリ別</p>
+                      <div className="yl-exp-donutrow">
+                        <div className="yl-donut" style={{background:`conic-gradient(${(()=>{let acc=0;const stops=expStats.cats.map(c=>{const s=acc/expStats.total*100;acc+=c.amount;const e=acc/expStats.total*100;return `${c.color} ${s}% ${e}%`;});return stops.join(",")||"#E5DED4 0% 100%"})()})`}}>
+                          <div className="yl-donut-hole"><span>合計</span><strong>{fmtYen(expStats.total)}</strong></div>
+                        </div>
+                        <ul className="yl-exp-legend">
+                          {expStats.cats.map(c=>(
+                            <li key={c.key} className="yl-exp-leg"><span className="yl-exp-leg-dot" style={{background:c.color}}/><span className="yl-exp-leg-name">{c.label}</span><span className="yl-exp-leg-amt">{fmtYen(c.amount)}</span><span className="yl-exp-leg-pct">{Math.round(c.amount/expStats.total*100)}%</span></li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="yl-exp-block">
+                      <p className="yl-exp-blocktitle">月ごとの推移（直近12ヶ月）</p>
+                      {(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));return(
+                        <div className="yl-exp-trend">
+                          {expStats.series.map((s,i)=>(
+                            <div key={s.ym} className="yl-exp-trendcol" title={`${s.m}月 ${fmtYen(s.total)}`}>
+                              <span className="yl-exp-trendbar-wrap"><span className="yl-exp-trendbar" style={{height:s.total>0?Math.max(4,Math.round(s.total/mx*100))+"%":"0"}}/></span>
+                              <span className="yl-exp-trendlab">{(i===0||s.m===1||i===expStats.series.length-1)?s.m+"月":""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );})()}
+                    </div>
+                  </>)}
+                  {expScope==="this"&&expenseRecords.length>0&&(
                     <ul className="yl-exp-list">
                       {expenseRecords.slice(0,8).map(r=>(
                         <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
                           <span className="yl-exp-idate">{fmtDate(r.date)}</span>
-                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}>{expCatMeta(r.category).emoji} {expCatMeta(r.category).label}</span>
+                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}><Icon name={guessIcon(expCatMeta(r.category).label,"wallet")} size={13}/> {expCatMeta(r.category).label}</span>
                           {r.note&&<span className="yl-exp-inote">{r.note}</span>}
                           <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
                           <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
@@ -3274,6 +3423,45 @@ function App(){
       })()}
       </div>
 
+      {emergencyOpen&&(()=>{
+        const contacts=items.filter(x=>x.type==="card"&&(x.kind==="hospital"||x.kind==="emergency")).sort((a,b)=>(a.kind==="emergency"?-1:0)-(b.kind==="emergency"?-1:0));
+        return(
+        <div className="yl-help-ov" onClick={()=>setEmergencyOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head">
+              <h2 className="yl-help-title"><Icon name="activity" size={18}/> 夜間・救急の備え</h2>
+              <button className="yl-help-close" onClick={()=>setEmergencyOpen(false)}>×</button>
+            </div>
+            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>受診の前に、必ずお電話を。多くの病院が事前連絡・予約制です。診療時間や番号は変わることがあります。</span></div>
+
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> あなたの緊急連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 登録</button></div>
+              {contacts.length===0?(
+                <p className="yl-set-desc">かかりつけ・夜間救急の病院を登録しておくと、いざという時にすぐ電話できます。「大切な情報カード」に病院メモとして保存されます。</p>
+              ):(
+                <ul className="yl-emg-contacts">{contacts.map(c=>{const tel=extractTel(c.body);return(
+                  <li key={c.id} className="yl-emg-contact">
+                    <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||"病院"}{c.kind==="emergency"?<span className="yl-emg-tag">緊急</span>:null}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+                    {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>番号を追加</button>}
+                  </li>
+                );})}</ul>
+              )}
+            </div>
+
+            <div className="yl-emg-sec">
+              <button className="yl-emg-tipshead" onClick={()=>setTipsOpen(o=>!o)}><span><Icon name="bell" size={15}/> 電話でうまく伝えるコツ</span><Icon name={tipsOpen?"chevron":"chevron"} size={16} className={tipsOpen?"yl-rot90":"yl-rot0"}/></button>
+              {tipsOpen&&<ul className="yl-emg-list">{EMERGENCY_TIPS.map((t,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{t}</li>)}</ul>}
+            </div>
+
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="bag" size={15}/> 持っていくと安心</span></div>
+              <ul className="yl-emg-prep">{EMERGENCY_PREP.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>
+            </div>
+
+            <p className="yl-toxic-foot">※ 具体的な病院・電話番号はご自身で登録・ご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急にご連絡を。</p>
+          </div>
+        </div>
+      );})()}
       {toxicOpen&&(
         <div className="yl-help-ov" onClick={()=>setToxicOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
@@ -3474,11 +3662,22 @@ function App(){
             </div>
             <div className="yl-bristol">
               <span className="yl-toilet-condlabel">うんちの硬さ（7段階）</span>
-              <div className="yl-bristol-scale">{BRISTOL.map(bb=><button key={bb.n} className={"yl-bristol-chip tone-"+bb.tone+(bristolScore===bb.n?" on":"")} onClick={()=>setBristolScore(bb.n)}>{bb.n}</button>)}</div>
-              {(()=>{const bm=bristolMeta(bristolScore);return bm&&<p className="yl-bristol-desc"><b>{bm.n}／7・{bm.label}</b>：{bm.desc}</p>;})()}
+              <p className="yl-bristol-note">4がいちばん健康的（形があり、なめらか）。1や7に近い状態が続くときは、獣医さんに相談を。</p>
+              <button className="yl-poop-alert" onClick={()=>{setInputSheet(null);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}>
+                <span className="yl-poop-alert-body"><Icon name="alert" size={14}/> 気をつけたいこと：消化管異物・腸閉塞・中毒</span>
+                <span className="yl-poop-alert-link">危険物リストで詳しく<Icon name="chevron" size={14}/></span>
+              </button>
+              <ul className="yl-poop-scale">{BRISTOL.map(bb=>(
+                <li key={bb.n}><button className={"yl-poop-card tone-"+bb.tone+(bristolScore===bb.n?" on":"")} onClick={()=>setBristolScore(bb.n)}>
+                  <span className={"yl-poop-num tone-"+bb.tone}>{bb.n}</span>
+                  <span className="yl-poop-illust"><PoopShape n={bb.n} size={34}/></span>
+                  <span className="yl-poop-text"><span className="yl-poop-label">{bb.label}{bb.n===4?"（理想的）":""}</span><span className="yl-poop-desc">{bb.desc}</span></span>
+                  {bristolScore===bb.n&&<span className="yl-poop-check"><Icon name="check" size={15}/></span>}
+                </button></li>
+              ))}</ul>
             </div>
             {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone}><Icon name="alert" size={13}/> {poopTrend.txt}</p>}
-            <p className="yl-health-hint" style={{marginTop:10}}>受診の目安です（診断ではありません）。</p>
+            <p className="yl-health-hint" style={{marginTop:10}}>便の硬さは受診目安の一次情報です（診断ではありません）。</p>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
           </div>
         </div>
