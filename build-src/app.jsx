@@ -1366,11 +1366,23 @@ function App(){
     document.addEventListener("visibilitychange",onVis);
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[weatherLoc,fetchWeather]);
-  // 地域検索（Open-Meteo Geocoding）
+  // 地域検索（Open-Meteo Geocoding）。同名地名が全国・海外に多数あるため、
+  // 日本国内を優先し、人口が多い（＝よく知られた）地点を上位に並べて取り違えを防ぐ。
   const searchPlace=async()=>{const q=wxQuery.trim();if(!q)return;setWxSearching(true);setWxResults(null);
-    try{const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=ja&format=json`);const j=await r.json();setWxResults(j.results||[]);}
+    try{
+      const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=20&language=ja&format=json`);
+      const j=await r.json();
+      let list=Array.isArray(j.results)?j.results:[];
+      const jp=list.filter(x=>x.country_code==="JP");
+      if(jp.length)list=jp; // 日本に該当があれば海外の同名を除外
+      list=list.slice().sort((a,b)=>(b.population||0)-(a.population||0)); // 人口降順（不明は後ろ）
+      setWxResults(list.slice(0,8));
+    }
     catch(e){setWxResults([]);}
     setWxSearching(false);};
+  // 表示・保存用の地名（都道府県・市区町村を付けて取り違えを防ぐ）
+  const placeParts=(res)=>[res.admin1,res.admin2,res.admin3].filter(v=>v&&v!==res.name);
+  const placeLabel=(res)=>[res.name,...placeParts(res)].join("・");
   const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");const loc={name:nm,lat:res.latitude,lon:res.longitude};setWeatherLoc(loc);try{localStorage.setItem("loalife-weatherloc",JSON.stringify(loc));}catch(e){}setWxResults(null);setWxQuery("");};
   const clearWeatherLoc=()=>{setWeatherLoc(null);setWeather(null);try{localStorage.removeItem("loalife-weatherloc");}catch(e){}};
 
@@ -2991,7 +3003,8 @@ function App(){
                 <input className="yl-input sm" value={wxQuery} onChange={e=>setWxQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlace()} placeholder="市区町村名で検索（例：横浜）"/>
                 <button className="yl-addbtn sm" onClick={searchPlace} disabled={wxSearching}>{wxSearching?"検索中…":"検索"}</button>
               </div>
-              {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=><li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={13}/> {r.name}{r.admin1&&r.admin1!==r.name?`・${r.admin1}`:""}{r.country?`（${r.country}）`:""}</button></li>)}</ul>)}
+              {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=>{const sub=[...placeParts(r),r.country&&r.country!=="日本"?r.country:""].filter(Boolean).join(" ");return(<li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={14}/><span className="yl-wxrow-body"><span className="yl-wxrow-name">{r.name}</span>{sub&&<span className="yl-wxrow-sub">{sub}</span>}</span>{r.population?<span className="yl-wxrow-pop">人口{r.population>=10000?`${Math.round(r.population/10000)}万`:r.population.toLocaleString()}</span>:null}</button></li>);})}</ul>)}
+              <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>同じ地名が各地にあります。都道府県名を確かめて選んでください（例：新宿→東京都）。</p>
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="clock" size={16}/> 色が変わる時間（お世話・やることログ）</h3>
