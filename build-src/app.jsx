@@ -853,14 +853,19 @@ function PoopShape({n,size=30}){const d=POOP_SHAPE[n];if(!d)return null;const bm
 
 // IME（日本語入力）に強いテキスト入力。変換中(composition)は親stateを更新せず、
 // 変換確定時にまとめて反映する。背景の再描画で変換が消える不具合を防ぐ。
-function IMEInput({value,onChange,...rest}){
+function IMEInput({value,onChange,onBlur,...rest}){
   const composing=useRef(false);
   const [local,setLocal]=useState(value||"");
   useEffect(()=>{ if(!composing.current&&value!==local)setLocal(value||""); },[value]); // eslint-disable-line
+  // 変換中でも親へ即時反映する。表示値(local)は常にDOMの実値と一致させるので、
+  // 親の再描画でinputのDOM値が書き換わることはなく、日本語変換は中断されない。
+  // これによりiOS Safariでcompositionendが発火しない場合でも入力が確実に保存される。
+  const push=(v)=>{setLocal(v);onChange(v);};
   return(<input {...rest} value={local}
     onCompositionStart={()=>{composing.current=true;}}
-    onCompositionEnd={e=>{composing.current=false;const v=e.target.value;setLocal(v);onChange(v);}}
-    onChange={e=>{const v=e.target.value;setLocal(v);if(!composing.current)onChange(v);}}/>);
+    onCompositionEnd={e=>{composing.current=false;push(e.target.value);}}
+    onChange={e=>push(e.target.value)}
+    onBlur={e=>{composing.current=false;push(e.target.value);if(onBlur)onBlur(e);}}/>);
 }
 
 function TimeInput({value,onChange}){
@@ -1803,7 +1808,7 @@ function App(){
   };
 
   const addMember=()=>{
-    const name=newName.trim();if(!name)return;
+    const name=newName.trim();if(!name){showFlash("名前を入力してください");return;}
     const id="f"+Date.now();
     const member={id,name,emoji:newEmoji,kind:newKind,birthday:newBirthday||"",visibility:newVisibility};
     if(newKind==="pet")member.species=newSpecies;
