@@ -418,6 +418,26 @@ const DIARY_CONFIG={
   child:{rows:["energy","appetite","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
+// 家族台帳（人）：性別・血液型の選択肢。
+const GENDER_OPTS=[{k:"boy",l:"男の子"},{k:"girl",l:"女の子"},{k:"other",l:"その他"}];
+const BLOOD_OPTS=["A","B","O","AB"];
+const genderLabel=(k)=>(GENDER_OPTS.find(o=>o.k===k)||{}).l||"";
+// 成長記録（育児日記）のカテゴリと、よく使うマイルストーンのひな型。
+const MILESTONE_CATS=[
+  {key:"first",label:"はじめて",icon:"sparkles"},
+  {key:"word",label:"ことば",icon:"smile"},
+  {key:"body",label:"からだ",icon:"activity"},
+  {key:"can",label:"できた",icon:"check"},
+  {key:"learn",label:"まなび",icon:"note"},
+];
+const milestoneCatMeta=(k)=>MILESTONE_CATS.find(c=>c.key===k)||MILESTONE_CATS[0];
+const MILESTONE_PRESETS={
+  first:["初めて笑った","初めて寝返りした","初めてハイハイした","初めて立った","初めて歩いた","初めての言葉"],
+  word:["ママと言えた","パパと言えた","二語文が出た","自分の名前が言えた"],
+  body:["歯が生えた","トイレでできた","ひとりで着替えできた","くつが履けた"],
+  can:["スプーンで食べられた","自転車に乗れた","泳げた","ボタンがとめられた"],
+  learn:["ひらがなが読めた","数を数えられた","自分の名前が書けた","時計が読めた"],
+};
 // 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモなど）
 const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"other",label:"メモ",emoji:"📝"}];
 const cardMeta=(k)=>CARD_PRESETS.find(c=>c.key===k)||CARD_PRESETS[CARD_PRESETS.length-1];
@@ -640,6 +660,20 @@ function ageLabel(dateStr){
   if(m<12)return`${m}ヶ月`;
   const yrs=Math.floor(m/12),rem=m%12;
   if(yrs<2)return rem>0?`${yrs}歳${rem}ヶ月`:`${yrs}歳`;
+  return`${yrs}歳`;
+}
+
+// ある日付時点の年齢ラベル（成長記録で「その時何歳だったか」を表示）。
+function ageAtLabel(birthStr,atStr){
+  if(!birthStr||!atStr)return"";
+  const[by,bm,bd]=birthStr.split("-").map(Number);
+  const[ay,am,ad]=atStr.split("-").map(Number);
+  if(!by||by<1900||!ay)return"";
+  let months=(ay-by)*12+(am-bm);if(ad<bd)months-=1;
+  if(months<0)return"";
+  if(months<12)return`${months}ヶ月`;
+  const yrs=Math.floor(months/12),rem=months%12;
+  if(yrs<3)return rem>0?`${yrs}歳${rem}ヶ月`:`${yrs}歳`;
   return`${yrs}歳`;
 }
 
@@ -939,6 +973,10 @@ function App(){
   const[editAvatar,setEditAvatar]=useState(""); // 写真アイコン（photo id）
   const[editVisibility,setEditVisibility]=useState("household");
   const[editPersonType,setEditPersonType]=useState("child"); // 人メンバーの大人/子ども区分
+  const[editGender,setEditGender]=useState(""); // 性別（人・任意）
+  const[editBlood,setEditBlood]=useState(""); // 血液型（人・任意）
+  const[msCat,setMsCat]=useState("first"); // 成長記録：選択中カテゴリ
+  const[msDraft,setMsDraft]=useState(""); // 成長記録：自由入力
   const[confirmDel,setConfirmDel]=useState(null);
   const[confirmReset,setConfirmReset]=useState(false);
   const[confirmRestore,setConfirmRestore]=useState(false);
@@ -1206,6 +1244,8 @@ function App(){
   // ※ 通知やhomeDataの useEffect/useMemo 依存配列より前で宣言する必要がある（TDZ回避）。
   const memorialIds=useMemo(()=>new Set(members.filter(m=>m.kind==="pet"&&m.memorial).map(m=>m.id)),[members]);
   const isMemorialSpace=(sp)=>memorialIds.has(sp);
+  // お散歩するペット（犬）がいるか。いなければお散歩指数・散歩タイム等は隠し、天気だけ出す。
+  const hasWalker=useMemo(()=>members.some(m=>m.kind==="pet"&&!m.memorial&&m.species==="dog"),[members]);
 
   // Birthday & うちの子記念日 notifications on load
   useEffect(()=>{
@@ -1748,7 +1788,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType,gender:editGender||"",blood:editBlood||""}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -1955,6 +1995,10 @@ function App(){
   const belongings=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="belonging"),[items,tab]);
   const addBelonging=()=>{const t=belongDraft.trim();if(!t){showFlash("持ち物を入力してください");return;}const rec={id:"bl"+Date.now(),space:tab,type:"belonging",title:t,dow:belongDow,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setBelongDraft("");showFlash("持ち物を追加しました 🎒");};
   const removeBelonging=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // 成長記録（育児日記）：はじめて・できたこと等のマイルストーンを記録。
+  const growthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="milestone").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  const addMilestone=(cat,title)=>{const t=(title||"").trim();if(!t)return;const rec={id:"ms"+Date.now(),space:tab,type:"milestone",date:todayIso,category:cat||"first",title:t,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMsDraft("");showFlash("成長記録に残しました");};
+  const removeMilestone=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   const tomorrowIso=plusDays(1);const tomorrowDow=dowOf(tomorrowIso);
   const tomorrowBelongings=useMemo(()=>belongings.filter(b=>b.dow===tomorrowDow),[belongings,tomorrowDow]);
   const toggleBelongPrep=(id)=>{const next=items.map(x=>x.id===id?{...x,prepDate:x.prepDate===tomorrowIso?null:tomorrowIso}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
@@ -2546,7 +2590,7 @@ function App(){
               </div>
             )}
 
-            {weatherLoc?(()=>{const wi=walkIndex(weather);const wa=walkAdvice(weather);const wt=weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 <div className="yl-weather-main">
                   <span className="yl-weather-loc"><Icon name="pin" size={13}/> {weatherLoc.name}{wc&&<span className="yl-weather-cond"> {wc.emoji} {wc.label}</span>}</span>
@@ -2558,9 +2602,11 @@ function App(){
                   <div className="yl-weather-vals">
                     <span className="yl-weather-temp"><Icon name="thermometer" size={14}/> {Math.round(weather.temp)}℃</span>
                     {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
+                    {weather.apparent!=null&&<span className="yl-weather-feels">体感 {Math.round(weather.apparent)}℃</span>}
                     <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
                     {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
-                    {weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
+                    {weather.uv!=null&&<span className="yl-weather-uv"><Icon name="sun" size={13}/> UV {Math.round(weather.uv)}</span>}
+                    {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
                   </div>
                   {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
                 </>):(<span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span>)}
@@ -2902,7 +2948,7 @@ function App(){
               const memo=!!activeMember.memorial;
               const together=activeMember.gotchaDay?daysTogether(activeMember.gotchaDay,activeMember.memorial):null;
               const sub=[activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット");
-              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setProfileOpen(true);};
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
                   <button className="yl-hero-photo" onClick={openEdit} aria-label="写真・プロフィールを編集">
@@ -2943,6 +2989,8 @@ function App(){
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{GENDER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="droplet" size={14}/> 血液型（任意）<span className="yl-seg-mini">{BLOOD_OPTS.map(o=><button key={o} className={"yl-seg-mini-btn"+(editBlood===o?" on":"")} onClick={()=>setEditBlood(editBlood===o?"":o)}>{o}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<div className="yl-opt yl-memorial-opt" style={{marginTop:10,width:"100%"}}><Icon name="sparkles" size={14}/> 虹の橋（お別れの記録・任意）
                         {editMemorial?<span className="yl-memorial-set"><span className="yl-memorial-date"><BdayInput value={editMemorial} onChange={setEditMemorial}/></span><button className="yl-linkbtn" onClick={()=>setEditMemorial("")}>解除</button></span>:<button className="yl-memorial-btn" onClick={()=>setEditMemorial(todayIso)}>お別れを記録して追悼モードにする</button>}
                         <span className="yl-set-desc" style={{marginTop:4}}>追悼モードにすると、予定・ケアのお知らせを止め、そっと思い出を振り返れる表示になります。</span>
@@ -2954,7 +3002,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");}}><Icon name="pencil" size={15}/></button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
@@ -2966,8 +3014,10 @@ function App(){
                   {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?<><Icon name="shield" size={11}/> 非公開</>:<><Icon name="users" size={11}/> 共有中</>}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
-                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter)&&(
+                {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter||activeMember.gender||activeMember.blood)&&(
                   <div className="yl-petstatus-fun">
+                    {activeMember.gender&&<span className="yl-funchip"><Icon name="smile" size={13}/>{genderLabel(activeMember.gender)}</span>}
+                    {activeMember.blood&&<span className="yl-funchip"><Icon name="droplet" size={13}/>{activeMember.blood}型</span>}
                     {activeMember.breed&&<span className="yl-funchip"><Icon name="paw" size={13}/>{activeMember.breed}</span>}
                     {activeMember.birthday&&<span className="yl-funchip"><Icon name="cake" size={13}/>{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
                     {activeMember.gotchaDay&&<span className="yl-funchip"><Icon name="heart" size={13}/>{(()=>{const y=yearsSinceAnniv(activeMember.gotchaDay);const dd=daysUntilAnniv(activeMember.gotchaDay);const an=ageNow(activeMember.gotchaDay);return dd===0?(y?`迎えて${y}年！`:"うちの子記念日！"):`記念日 ${fmtBirthday(activeMember.gotchaDay)}${an!=null?`（${an}周年）`:""}`;})()}</span>}
@@ -3291,6 +3341,26 @@ function App(){
                           </li>
                         );
                       })}
+                    </ul>
+                  )}
+                </section>
+              )});
+              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"growth",el:(
+                <section className="yl-growth">
+                  <h2 className="yl-routine-title" style={{marginBottom:6}}>成長の記録</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめて・できたことを残せます。あとから育児日記として振り返れます。</p>
+                  <div className="yl-growth-cats">{MILESTONE_CATS.map(c=><button key={c.key} className={"yl-growth-cat"+(msCat===c.key?" on":"")} onClick={()=>setMsCat(c.key)}><Icon name={c.icon} size={14}/> {c.label}</button>)}</div>
+                  <div className="yl-growth-presets">{MILESTONE_PRESETS[msCat].filter(p=>!growthRecords.some(g=>g.title===p)).map(p=><button key={p} className="yl-growth-preset" onClick={()=>addMilestone(msCat,p)}>＋ {p}</button>)}</div>
+                  <div className="yl-growth-custom"><input className="yl-input sm" value={msDraft} onChange={e=>setMsDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMilestone(msCat,msDraft)} placeholder="自分で追加（例：逆上がりができた）"/><button className="yl-addbtn sm" onClick={()=>addMilestone(msCat,msDraft)}>＋ 記録</button></div>
+                  {growthRecords.length>0&&(
+                    <ul className="yl-growth-list">
+                      {growthRecords.map(g=>{const cm=milestoneCatMeta(g.category);const at=activeMember.birthday?ageAtLabel(activeMember.birthday,g.date):"";return(
+                        <li key={g.id} className="yl-growth-item">
+                          <span className={"yl-growth-badge cat-"+g.category}><Icon name={cm.icon} size={14}/></span>
+                          <span className="yl-growth-body"><span className="yl-growth-title">{g.title}</span><span className="yl-growth-meta">{cm.label}・{fmtDate(g.date)}{at?`・${at}`:""}</span></span>
+                          <button className="yl-health-del" onClick={()=>askDelete(g.title,()=>removeMilestone(g.id))} aria-label="削除">×</button>
+                        </li>
+                      );})}
                     </ul>
                   )}
                 </section>
