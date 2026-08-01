@@ -3193,36 +3193,42 @@ function App(){
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
               <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なもの、いざという時の備えを確認できます。</p>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
+                <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
+                <button className="yl-addbtn sm" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
+              </div>
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
               <p className="yl-set-desc">データは端末内に保存。バックアップ（.json）で写真ごと書き出せます。記録は CSV でも書き出せます。</p>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
-              {confirmRestore?(
-                <div className="yl-restore-confirm">
-                  <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
-                  <label className="yl-addbtn sm" style={{display:"inline-block",cursor:"pointer"}}><Icon name="folder" size={14}/> ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
-                  <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
-                </div>
-              ):(
-                <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> バックアップから復元する</button>
-              )}
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
+                <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
+                {confirmRestore?(
+                  <div className="yl-restore-confirm">
+                    <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
+                    <label className="yl-addbtn sm" style={{display:"inline-flex",cursor:"pointer"}}><Icon name="folder" size={14}/> ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
+                    <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
+                  </div>
+                ):(
+                  <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> バックアップから復元する</button>
+                )}
+              </div>
             </section>
             {FB_READY&&(
               <section className="yl-set-sec">
                 <h3 className="yl-set-title"><Icon name="users" size={16}/> 家族で共有</h3>
-                <button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button>
+                <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button></div>
               </section>
             )}
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
-              <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
+                <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
+                <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+              </div>
             </section>
             <p className="yl-foot">試作版・データはこの端末に保存されます</p>
           </div>
