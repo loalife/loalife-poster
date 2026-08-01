@@ -1035,6 +1035,7 @@ function App(){
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
+  const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
   const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -2000,6 +2001,39 @@ function App(){
     showFlash("からだの記録を保存しました 📈");
   };
   const removeHealth=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- ごはん（給餌）記録：回/g/ml/粒。1回分=◯g を設定すると「回」を内部でg換算し総摂取量に反映 ---
+  const FEED_UNITS=[{k:"serving",l:"回"},{k:"g",l:"g"},{k:"ml",l:"ml"},{k:"grain",l:"粒"}];
+  const feedUnitLabel=(k)=>(FEED_UNITS.find(u=>u.k===k)||{}).l||k;
+  // 単位の並び順：そのペットで前回使った単位を先頭に（よく使う順）
+  const feedUnitsOrdered=useMemo(()=>{const last=isMemberTab?activeMember.lastFeedUnit:null;if(!last)return FEED_UNITS;return[...FEED_UNITS.filter(u=>u.k===last),...FEED_UNITS.filter(u=>u.k!==last)];},[activeMember,isMemberTab]);
+  const servingG=isMemberTab&&activeMember.servingG!=null&&activeMember.servingG!==""?Number(activeMember.servingG):null; // 1回分の基準量(g)
+  const openFeed=()=>{setFeedUnit((activeMember&&activeMember.lastFeedUnit)||"serving");setFeedServing(servingG!=null?String(servingG):"");setFeedAmt("");setFeedMult(1);setInputSheet("feed");};
+  const feedEntryText=(x)=>{const u=feedUnitLabel(x.unit);const base=x.unit==="serving"?`×${x.amount}`:`${x.amount}${u}`;return x.grams!=null&&x.unit!=="g"?`${base}（約${x.grams}g）`:base;};
+  const feedRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="feed").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
+  const feedToday=useMemo(()=>feedRecords.filter(x=>x.date===todayIso),[feedRecords,todayIso]);
+  const feedTodayG=useMemo(()=>feedToday.reduce((s,x)=>s+(x.grams||0),0),[feedToday]);
+  const saveFeed=()=>{
+    const unit=feedUnit;const memberPatch={lastFeedUnit:unit};let amount,grams=null;
+    if(unit==="serving"){
+      amount=feedMult;
+      const draftG=Number(feedServing);
+      let baseG=servingG;
+      // 1回分の基準量：未設定なら今回入力で確定し以降使い回す。変更もここで反映。
+      if(feedServing.trim()!==""&&draftG>0&&draftG!==servingG){baseG=draftG;memberPatch.servingG=draftG;}
+      if(baseG)grams=Math.round(feedMult*baseG); // 倍率×基準量でg換算
+    }else{
+      const n=Number(feedAmt);if(feedAmt.trim()===""||isNaN(n)||n<=0){showFlash("分量を入力してください");return;}
+      amount=n;if(unit==="g"||unit==="ml")grams=n; // g・mlはそのまま総量へ（ml≒g）。粒は換算せず記録のみ
+    }
+    const rec={id:"fd"+Date.now(),space:tab,type:"feed",date:todayIso,unit,amount,createdAt:Date.now()};
+    if(grams!=null)rec.grams=grams;
+    const nextMembers=members.map(m=>m.id===tab?{...m,...memberPatch}:m);
+    persist(nextMembers,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    const um=nextMembers.find(m=>m.id===tab);if(um)saveMemberToFs(um).catch(()=>{});
+    setFeedAmt("");setFeedMult(1);
+    showFlash(grams!=null?`ごはんを記録しました（約${grams}g）🍚`:"ごはんを記録しました 🍚");
+  };
+  const removeFeed=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // --- 今日のようす（日記）：元気・食欲・うんち・さんぽ・病院・症状・写真・ひとことを追記型で記録 ---
   const diaryRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // 1日=1カード：同じ日付でグルーピング（日降順、カード内は時系列昇順）。レコードは束ねるだけで消さない。
@@ -2271,7 +2305,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
   const dndSensors=useSensors(
     useSensor(MouseSensor,{activationConstraint:{distance:6}}),
@@ -2304,7 +2338,7 @@ function App(){
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   // 絞り込みチップは中身がある時だけ出す（空なら押しても変わらず不要なので隠す。追加は右下＋）
-  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"),[items,tab]);
+  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"),[items,tab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
   const cardInner=(it)=>{
@@ -3426,6 +3460,31 @@ function App(){
                   <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> サマリーを作成</button>
                 </section>
               )});
+              if(curKind==="pet")defs.push({key:"feed",el:(
+                <section className="yl-feedsec">
+                  <div className="yl-toilet-head">
+                    <h2 className="yl-routine-title" style={{margin:0}}>ごはん</h2>
+                    {feedTodayG>0&&<span className="yl-feed-todaytotal">今日 合計 約{feedTodayG}g</span>}
+                  </div>
+                  {feedToday.length>0?(
+                    <p className="yl-feed-todaysub">今日 {feedToday.length}回{servingG!=null?` ・ 1回分=${servingG}g`:""}</p>
+                  ):(
+                    <p className="yl-routine-empty" style={{padding:"4px 0 0"}}>「回」でワンタップ記録。1回分＝◯g を設定すると総量に反映されます。</p>
+                  )}
+                  {feedRecords.length>0&&(
+                    <ul className="yl-feed-list">
+                      {feedRecords.slice(0,5).map(x=>(
+                        <li key={x.id} className="yl-feed-item">
+                          <span className="yl-feed-emoji"><Icon name="utensils" size={16}/></span>
+                          <span className="yl-feed-body"><span className="yl-feed-amt">{feedEntryText(x)}</span><span className="yl-feed-date">{fmtDate(x.date)}</span></span>
+                          <button className="yl-feed-del" onClick={()=>askDelete("ごはんの記録",()=>removeFeed(x.id))} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button className="yl-quick-big" style={{marginTop:10}} onClick={openFeed}><Icon name="utensils" size={18}/> ごはんを記録する</button>
+                </section>
+              )});
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
                 <section className="yl-toiletstats">
                   <div className="yl-toilet-head">
@@ -4022,6 +4081,29 @@ function App(){
           </div>
         </div>
       )}
+      {inputSheet==="feed"&&(()=>{
+        const baseNow=feedServing.trim()!==""&&Number(feedServing)>0?Number(feedServing):servingG;
+        const previewG=feedUnit==="serving"&&baseNow?Math.round(feedMult*baseNow):null;
+        return(
+        <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">ごはんの記録</h3>
+            <div className="yl-feed-units">{feedUnitsOrdered.map(u=><button key={u.k} className={"yl-feed-unit"+(feedUnit===u.k?" on":"")} onClick={()=>setFeedUnit(u.k)}>{u.l}</button>)}</div>
+            {feedUnit==="serving"?(<>
+              <label className="yl-opt" style={{marginTop:12}}>1回分の量<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={feedServing} onChange={e=>setFeedServing(e.target.value)} placeholder="例：100"/><span className="yl-health-unit">g</span></span></label>
+              <p className="yl-health-hint" style={{marginTop:4}}>{baseNow?`1回分＝${baseNow}g として総量に反映します（初回だけ設定すればOK）`:"未設定でも記録できます（設定すると総量に反映）"}</p>
+              <p className="yl-feed-mlabel">分量</p>
+              <div className="yl-feed-mults">{[0.5,1,1.5,2].map(m=><button key={m} className={"yl-feed-mult"+(feedMult===m?" on":"")} onClick={()=>setFeedMult(m)}>×{m}</button>)}</div>
+              {previewG!=null&&<p className="yl-feed-preview">＝ 約 <b>{previewG}g</b>（{feedMult}回分）</p>}
+            </>):(
+              <label className="yl-opt" style={{marginTop:12}}>分量<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={feedAmt} onChange={e=>setFeedAmt(e.target.value)} placeholder="0" autoFocus/><span className="yl-health-unit">{feedUnitLabel(feedUnit)}</span></span></label>
+            )}
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:14}} onClick={saveFeed}><Icon name="utensils" size={16}/> ごはんを記録</button>
+            {feedTodayG>0&&<p className="yl-feed-today">今日の合計 約{feedTodayG}g（{feedToday.length}回）</p>}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+          </div>
+        </div>
+        );})()}
       {inputSheet==="diary"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
@@ -4089,6 +4171,7 @@ function App(){
         const OPTS=[
           {key:"schedule",icon:"calendar",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
           {key:"diary",icon:"note",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
+          ...(curKind==="pet"?[{key:"feed",icon:"utensils",label:"ごはん",freq:1,used:has("feed"),act:openFeed}]:[]),
           ...(curKind==="pet"?[{key:"toilet",icon:"paw",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
           {key:"routine",icon:"repeat",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
           {key:"health",icon:"scale",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
