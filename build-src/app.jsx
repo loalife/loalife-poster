@@ -256,9 +256,18 @@ const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
 // お世話ログ（やった履歴・前回からの経過）。対象（自分/ペット/家族）で出し分け
 const CHORE_TPL_PET=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプー",emoji:"🛁"},{title:"爪切り",emoji:"✂️"},{title:"ブラッシング",emoji:"🪮"},{title:"耳そうじ",emoji:"👂"},{title:"歯みがき",emoji:"🦷"},{title:"トイレ砂替え",emoji:"🐾"}];
-const CHORE_TPL_PERSON=[{title:"歯みがき仕上げ",emoji:"🦷"},{title:"爪切り",emoji:"✂️"},{title:"髪カット",emoji:"💇"},{title:"耳そうじ",emoji:"👂"},{title:"上履き洗い",emoji:"👟"},{title:"シーツ交換",emoji:"🛏️"}];
+// 人の候補は種別ごとに文脈へ合わせて出し分ける（あとから調整しやすいよう定数で保持）。
+const CHORE_TPL_CHILD=[{title:"上履き洗い",emoji:"👟"},{title:"持ち物準備",emoji:"🎒"},{title:"体温チェック",emoji:"🌡️"},{title:"歯みがき仕上げ",emoji:"🦷"},{title:"髪カット",emoji:"💇"},{title:"爪切り",emoji:"✂️"}];
+const CHORE_TPL_SENIOR=[{title:"服薬確認",emoji:"💊"},{title:"通院付き添い",emoji:"🏥"},{title:"体温チェック",emoji:"🌡️"},{title:"血圧チェック",emoji:"🩺"},{title:"シーツ交換",emoji:"🛏️"},{title:"爪切り",emoji:"✂️"}];
+const CHORE_TPL_ADULT=[{title:"体調メモ",emoji:"📝"},{title:"服薬・サプリ",emoji:"💊"},{title:"シーツ交換",emoji:"🛏️"},{title:"爪切り",emoji:"✂️"},{title:"美容院",emoji:"💇"},{title:"体重チェック",emoji:"⚖️"}];
 const CHORE_TPL_ME=[{title:"掃除",emoji:"🧹"},{title:"洗濯",emoji:"🧺"},{title:"シーツ交換",emoji:"🛏️"},{title:"換気",emoji:"🪟"},{title:"水やり",emoji:"🪴"},{title:"ゴミ出し",emoji:"🗑️"}];
-const choreTemplatesFor=(kind)=>kind==="pet"?CHORE_TPL_PET:kind==="person"?CHORE_TPL_PERSON:CHORE_TPL_ME;
+// 引数はメンバー(または null=自分)。人は personType(大人/子ども/高齢者)で候補を切替。
+const choreTemplatesFor=(m)=>{
+  if(!m)return CHORE_TPL_ME;
+  if(m.kind==="pet")return CHORE_TPL_PET;
+  if(m.kind==="person"){const pt=m.personType||"child";return pt==="senior"?CHORE_TPL_SENIOR:pt==="adult"?CHORE_TPL_ADULT:CHORE_TPL_CHILD;}
+  return CHORE_TPL_ME;
+};
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
 const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
@@ -425,9 +434,13 @@ const DIARY_CONFIG={
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 家族台帳（人）：性別・血液型の選択肢。
-const GENDER_OPTS=[{k:"boy",l:"男の子"},{k:"girl",l:"女の子"},{k:"other",l:"その他"}];
+// 性別の文言は種別で出し分け（キーは boy/girl/other で共通・保存互換）。
+const GENDER_OPTS_CHILD=[{k:"boy",l:"男の子"},{k:"girl",l:"女の子"},{k:"other",l:"その他"}];
+const GENDER_OPTS_ADULT=[{k:"boy",l:"男性"},{k:"girl",l:"女性"},{k:"other",l:"その他"}];
+const genderOptsFor=(personType)=>personType==="child"?GENDER_OPTS_CHILD:GENDER_OPTS_ADULT;
+const GENDER_OPTS=GENDER_OPTS_CHILD; // 後方互換（既存参照用）
 const BLOOD_OPTS=["A","B","O","AB"];
-const genderLabel=(k)=>(GENDER_OPTS.find(o=>o.k===k)||{}).l||"";
+const genderLabel=(k,personType)=>(genderOptsFor(personType).find(o=>o.k===k)||{}).l||"";
 // 成長記録（育児日記）のカテゴリと、よく使うマイルストーンのひな型。
 const MILESTONE_CATS=[
   {key:"first",label:"はじめて",icon:"sparkles"},
@@ -3150,7 +3163,7 @@ function App(){
                         {editAvatar&&<button className="yl-editavatar-clear" onClick={()=>setEditAvatar("")}>絵文字に戻す</button>}
                       </div>
                       <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
-                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（多頭飼いの分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder="例：犬たち / ハムスター / 2階の子"/></label>
+                      <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder={activeMember.kind==="person"?"例：ご家族 / 2階の親 / 実家":"例：犬たち / ハムスター / 2階の子"}/></label>
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
@@ -3159,15 +3172,15 @@ function App(){
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"},{k:"senior",l:"高齢者"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
-                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{GENDER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{genderOptsFor(editPersonType).map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="droplet" size={14}/> 血液型（任意）<span className="yl-seg-mini">{BLOOD_OPTS.map(o=><button key={o} className={"yl-seg-mini-btn"+(editBlood===o?" on":"")} onClick={()=>setEditBlood(editBlood===o?"":o)}>{o}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<div className="yl-opt yl-memorial-opt" style={{marginTop:10,width:"100%"}}><Icon name="sparkles" size={14}/> 虹の橋（お別れの記録・任意）
                         {editMemorial?<span className="yl-memorial-set"><span className="yl-memorial-date"><BdayInput value={editMemorial} onChange={setEditMemorial}/></span><button className="yl-linkbtn" onClick={()=>setEditMemorial("")}>解除</button></span>:<button className="yl-memorial-btn" onClick={()=>setEditMemorial(todayIso)}>お別れを記録して追悼モードにする</button>}
                         <span className="yl-set-desc" style={{marginTop:4}}>追悼モードにすると、予定・ケアのお知らせを止め、そっと思い出を振り返れる表示になります。</span>
                       </div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
-                      <button className="yl-addbtn sm" onClick={()=>saveRename(activeMember.id)}>保存</button>
-                      <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}><Icon name="trash" size={14}/> このメンバーを削除</button>
+                      <button className="yl-member-save" onClick={()=>saveRename(activeMember.id)}><Icon name="check" size={16}/> 保存する</button>
+                      <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>このメンバーを削除</button>
                     </div>
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
@@ -3186,7 +3199,7 @@ function App(){
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
                 {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter||activeMember.gender||activeMember.blood)&&(
                   <div className="yl-petstatus-fun">
-                    {activeMember.gender&&<span className="yl-funchip"><Icon name="smile" size={13}/>{genderLabel(activeMember.gender)}</span>}
+                    {activeMember.gender&&<span className="yl-funchip"><Icon name="smile" size={13}/>{genderLabel(activeMember.gender,activeMember.personType)}</span>}
                     {activeMember.blood&&<span className="yl-funchip"><Icon name="droplet" size={13}/>{activeMember.blood}型</span>}
                     {activeMember.breed&&<span className="yl-funchip"><Icon name="paw" size={13}/>{activeMember.breed}</span>}
                     {activeMember.birthday&&<span className="yl-funchip"><Icon name="cake" size={13}/>{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</span>}
@@ -3258,7 +3271,7 @@ function App(){
                     </ul>
                   )}
                   <div className="yl-chore-tpl">
-                    {choreTemplatesFor(curKind).filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ <Icon name={guessIcon(t.title)} size={14}/> {t.title}</button>)}
+                    {choreTemplatesFor(activeMember).filter(t=>!chores.some(c=>c.title===t.title)).map(t=><button key={t.title} className="yl-chore-add" onClick={()=>addChore(t.title,t.emoji)}>＋ <Icon name={guessIcon(t.title)} size={14}/> {t.title}</button>)}
                   </div>
                   <div className="yl-chore-custom">
                     <input className="yl-input sm" value={choreDraft} onChange={e=>setChoreDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomChore()} placeholder="自分で追加（例：水そうじ）"/>
