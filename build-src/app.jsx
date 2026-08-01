@@ -268,12 +268,14 @@ function elapsedLabel(dateStr,warn=7,alert=14){
   const d=daysUntil(dateStr);if(d==null)return{txt:"—",tone:"none"};
   const ago=-d;
   const tone=ago<=0?"fresh":(ago>=alert?"over":(ago>=warn?"warn":"ok"));
+  // 経過表記の統一ルール：当日→「今日」／7日未満→「◯日前」／
+  // 7日以上〜1か月(30日)未満→「◯週間前」／1か月以上→「約◯か月前」。
+  // Math.max(1,…) で「0か月前」「0週間前」などの0始まり表記を必ず防ぐ。
   let txt;
-  if(ago<=0)txt="今日やりました";
-  else if(ago===1)txt="昨日";
+  if(ago<=0)txt="今日";
   else if(ago<7)txt=`${ago}日前`;
-  else if(ago<28)txt=`${Math.floor(ago/7)}週間前`;
-  else txt=`約${Math.floor(ago/30)}か月前`;
+  else if(ago<30)txt=`${Math.max(1,Math.floor(ago/7))}週間前`;
+  else txt=`約${Math.max(1,Math.floor(ago/30))}か月前`;
   return{txt,tone};
 }
 // からだの記録（体重・身長・体調）
@@ -1117,6 +1119,7 @@ function App(){
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
+  const[doneOpen,setDoneOpen]=useState(false); // 予定リストの「完了済み」セクションの開閉（既定は折りたたみ）
   // 記録メニューに「追加した機能」のキー一覧（ユーザー操作で増える。UI設定なのでローカル保存）。
   // メイン領域への表示は「使ったか」ではなく、この明示的な追加操作でのみ変わる（並びの安定性）。
   const[menuAdded,setMenuAdded]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-menu-added"))||[];}catch(e){return[];}});
@@ -2117,23 +2120,25 @@ function App(){
     // カテゴリ内訳
     const byCat={};recs.forEach(x=>{const k=x.category||"other";byCat[k]=(byCat[k]||0)+amt(x);});
     const cats=ALL_EXPENSE_CATS.map(c=>({...c,amount:byCat[c.key]||0})).filter(c=>c.amount>0).sort((a,b)=>b.amount-a.amount);
-    // 月次推移（直近12ヶ月）
+    // 月次推移：実データのある期間に合わせて表示月数を可変に（最大12・最小3の枠）。
     const now=new Date(todayIso+"T00:00:00");
-    const series=[];const monthKeys=[];
-    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;monthKeys.push(ym);series.push({ym,m:d.getMonth()+1,total:0});}
     const byMonth={};recs.forEach(x=>{const k=(x.date||"").slice(0,7);if(k)byMonth[k]=(byMonth[k]||0)+amt(x);});
-    series.forEach(s=>{s.total=byMonth[s.ym]||0;});
-    // 月平均：記録がある最古の月〜今月の月数で割る（最低1）。年間見込み＝月平均×12。
     const monthsWithData=Object.keys(byMonth).sort();
+    // 記録がある最古の月〜今月の月数（span）。月平均や表示期間の基準に使う。
     let span=1;
     if(monthsWithData.length){const first=monthsWithData[0];const[fy,fm]=first.split("-").map(Number);span=Math.max(1,(now.getFullYear()-fy)*12+(now.getMonth()+1-fm)+1);}
     const monthlyAvg=Math.round(total/span);
+    // グラフ表示月数：データ範囲(span)に合わせて 3〜12ヶ月。2ヶ月以上のデータで推移を表示。
+    const trendMonths=Math.min(12,Math.max(3,span));
+    const series=[];
+    for(let i=trendMonths-1;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;series.push({ym,m:d.getMonth()+1,total:byMonth[ym]||0});}
+    const trendReady=monthsWithData.length>=2; // 1ヶ月分だけでは「推移」にならないためプレースホルダー
     const annual=monthlyAvg*12;
     // メンバー別（みんな表示のとき）
     const spaces=["me",...members.map(m=>m.id)];
     const byMember=spaces.map(sp=>({space:sp,name:nameOf(sp)||"わたし",total:all.filter(x=>x.space===sp).reduce((s,x)=>s+amt(x),0)})).filter(m=>m.total>0).sort((a,b)=>b.total-a.total);
     const grandTotal=all.reduce((s,x)=>s+amt(x),0);
-    return{total,thisYear,monthlyAvg,annual,cats,series,byMember,grandTotal,count:recs.length,year:yr};
+    return{total,thisYear,monthlyAvg,annual,cats,series,trendReady,trendMonths,byMember,grandTotal,count:recs.length,year:yr};
   },[items,expScope,tab,todayIso,members,meName]);
   const saveExpense=()=>{
     const amt=Number(expAmount);
@@ -3232,16 +3237,25 @@ function App(){
                   {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{isMemberTab&&f.key!=="all"&&<Icon name={careIcon(f.key)} size={13}/>}{f.label}</button>)}</div>}
                   {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">まだありません。右下の ＋ から追加できます。</p>:(()=>{
                     const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
-                    return(
+                    return(<>
                       <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
                         <SortableContext items={actList.map(x=>x.id)} strategy={verticalListSortingStrategy}>
                           <ul className="yl-list">
                             {actList.map(it=><SortableCard key={it.id} id={it.id} className="yl-card">{cardInner(it)}</SortableCard>)}
-                            {doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}
                           </ul>
                         </SortableContext>
                       </DndContext>
-                    );
+                      {actList.length===0&&<p className="yl-empty" style={{marginTop:2}}>これからの予定はありません。</p>}
+                      {doneList.length>0&&(
+                        <div className="yl-donesec">
+                          <button className="yl-donesec-head" onClick={()=>setDoneOpen(o=>!o)} aria-expanded={doneOpen}>
+                            <Icon name="check" size={14}/> 完了済み（{doneList.length}）
+                            <span className={"yl-donesec-caret"+(doneOpen?" open":"")}>⌄</span>
+                          </button>
+                          {doneOpen&&<ul className="yl-list yl-donesec-list">{doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}</ul>}
+                        </div>
+                      )}
+                    </>);
                   })()}
                   {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>長押しで並び替え</p>}
                 </section>
@@ -3330,8 +3344,8 @@ function App(){
                       </div>
                     </div>
                     <div className="yl-exp-block">
-                      <p className="yl-exp-blocktitle">月ごとの推移（直近12ヶ月）</p>
-                      {(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));return(
+                      <p className="yl-exp-blocktitle">月ごとの推移{expStats.trendReady?`（直近${expStats.trendMonths}ヶ月）`:""}</p>
+                      {expStats.trendReady?(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));return(
                         <div className="yl-exp-trend">
                           {expStats.series.map((s,i)=>(
                             <div key={s.ym} className="yl-exp-trendcol" title={`${s.m}月 ${fmtYen(s.total)}`}>
@@ -3340,7 +3354,9 @@ function App(){
                             </div>
                           ))}
                         </div>
-                      );})()}
+                      );})():(
+                        <p className="yl-exp-trend-empty">データが増えると、月ごとの推移が表示されます。</p>
+                      )}
                     </div>
                   </>)}
                   {expScope==="this"&&expenseRecords.length>0&&(
