@@ -3821,7 +3821,7 @@ function App(){
             {/* カテゴリ */}
             <div className="yl-typerow" style={{marginBottom:10}}>{CAL_CATS.map(c=><button key={c.key} className={"yl-chip"+(lifeDraft.category===c.key?" on":"")} style={lifeDraft.category===c.key?{background:"#E39A5C",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,category:c.key}))}>{c.emoji} {c.label}</button>)}</div>
             {/* 誰の */}
-            <div className="yl-typerow" style={{marginBottom:10}}>{spaces.map(s=><button key={s.id} className={"yl-chip"+(lifeDraft.space===s.id?" on":"")} style={lifeDraft.space===s.id?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,space:s.id}))}>{s.emoji} {s.name}</button>)}</div>
+            <div className="yl-typerow" style={{marginBottom:10}}>{spaces.map(s=><button key={s.id} className={"yl-chip yl-chip-person"+(lifeDraft.space===s.id?" on":"")} style={lifeDraft.space===s.id?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,space:s.id}))}>{avatarNode(s,"xs")} {s.name}</button>)}</div>
             <input className="yl-input" value={lifeDraft.title} onChange={e=>setLifeDraft(p=>({...p,title:e.target.value}))} placeholder={lifeDraft.category==="event"?"予定のタイトル（例：病院）":"ひとこと（任意・例：はじめて海へ）"}/>
             {/* 写真（複数可・証明書/処方箋もここに） */}
             <div className="yl-life-photos">
@@ -3849,7 +3849,8 @@ function App(){
               );
             })()}
             <div className="yl-optrow"><label className="yl-opt">日付<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">時間<TimeInput value={lifeDraft.time} onChange={t=>setLifeDraft(p=>({...p,time:t}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">繰り返し<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label>}</div>
-            <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
+            {/* 通知は「予定」のときだけ。思い出・日記は過去の記録なので事前通知は表示しない */}
+            {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>}
             <div className="yl-modal-btns">
               {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>削除</button>}
               <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>閉じる</button>
