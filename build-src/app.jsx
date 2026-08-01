@@ -1137,7 +1137,6 @@ function App(){
   const[eReminders,setEReminders]=useState([]);
   const[onboarding,setOnboarding]=useState(false);
   const[obStep,setObStep]=useState(0);
-  const[obWish,setObWish]=useState("");
   const[obKind,setObKind]=useState(null);
   const[obSpecies,setObSpecies]=useState("dog");
   const[obName,setObName]=useState("");
@@ -1641,12 +1640,11 @@ function App(){
 
   const finishOnboarding=()=>{
     const nm=[];const ni=[];
-    if(obWish.trim())ni.push({id:"x"+Date.now(),space:"me",type:"dream",title:obWish.trim(),emoji:guessEmoji(obWish.trim(),"🌈"),repeat:"none",done:false,createdAt:Date.now()});
     if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;nm.push(m);}
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
-  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObWish("");setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
+  const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
 
   const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
 
@@ -2809,8 +2807,7 @@ function App(){
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><p className="yl-ob-step">1 / 2</p><h2 className="yl-ob-h2">まず、あなたの「やりたいこと」を1つ</h2><p className="yl-ob-sub">あとから追加できます</p><div className="yl-ob-chips">{["海外旅行に行く","副業・スキルアップ","毎日運動する","語学を身につける"].map(ex=><button key={ex} className="yl-ob-chip" onClick={()=>setObWish(ex)}>{ex}</button>)}</div><input className="yl-input" value={obWish} onChange={e=>setObWish(e.target.value)} onKeyDown={e=>e.key==="Enter"&&setObStep(2)} placeholder="やりたいこと…" autoFocus/><button className="yl-ob-btn" onClick={()=>setObStep(2)}>次へ</button><button className="yl-ob-link" onClick={()=>{setObWish("");setObStep(2);}}>スキップ</button></div>}
-          {obStep===2&&<div className="yl-ob-inner"><p className="yl-ob-step">2 / 2</p><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:PET_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:PET_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -3193,36 +3190,42 @@ function App(){
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
               <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なもの、いざという時の備えを確認できます。</p>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
+                <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
+                <button className="yl-addbtn sm" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
+              </div>
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">データは端末内に保存。バックアップ（.json）で写真ごと書き出せます。記録は CSV でも書き出せます。</p>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
-              {confirmRestore?(
-                <div className="yl-restore-confirm">
-                  <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
-                  <label className="yl-addbtn sm" style={{display:"inline-block",cursor:"pointer"}}><Icon name="folder" size={14}/> ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
-                  <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
-                </div>
-              ):(
-                <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> バックアップから復元する</button>
-              )}
+              <p className="yl-set-desc">データは端末内に保存。<span className="yl-nowrap">バックアップ（.json）で</span>写真ごと書き出せます。<span className="yl-nowrap">記録はCSVでも</span>書き出せます。</p>
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
+                <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
+                {confirmRestore?(
+                  <div className="yl-restore-confirm">
+                    <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
+                    <label className="yl-addbtn sm" style={{display:"inline-flex",cursor:"pointer"}}><Icon name="folder" size={14}/> ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
+                    <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
+                  </div>
+                ):(
+                  <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> バックアップから復元する</button>
+                )}
+              </div>
             </section>
             {FB_READY&&(
               <section className="yl-set-sec">
                 <h3 className="yl-set-title"><Icon name="users" size={16}/> 家族で共有</h3>
-                <button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button>
+                <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button></div>
               </section>
             )}
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
-              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
-              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
-              <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+              <div className="yl-set-actions">
+                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
+                <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
+                <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+              </div>
             </section>
             <p className="yl-foot">試作版・データはこの端末に保存されます</p>
           </div>
