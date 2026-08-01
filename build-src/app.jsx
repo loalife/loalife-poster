@@ -2800,12 +2800,12 @@ function App(){
                       )}
                       {wt&&(<div className="yl-walktime">
                         <div className="yl-walktime-head">
-                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> きょうのおすすめ散歩タイム</span>
-                          {wt.best?<span className="yl-walktime-badge"><Icon name="paw" size={12}/> おすすめ {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}-${wt.best.to}時`}</span>:<span className="yl-walktime-badge none">今日はお休みが安心</span>}
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
+                          {wt.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}〜${wt.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">今日はおうちでのんびり</span>}
                         </div>
                         <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                        <div className="yl-walktime-axis"><span>5時</span><span>9時</span><span>13時</span><span>17時</span><span>22時</span></div>
-                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> おすすめ</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ようすを見て</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> さけて</span></div>
+                        <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
+                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
                       </div>)}
                     </div>)}
                   </div>)}
