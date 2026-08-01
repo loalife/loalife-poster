@@ -3307,7 +3307,7 @@ function App(){
                 <section className="yl-exp">
                   <div className="yl-exp-head">
                     <h2 className="yl-routine-title" style={{margin:0}}>支出</h2>
-                    <span className="yl-exp-scope">{[{k:"this",l:"このコ"},{k:"all",l:"みんな"}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}>{o.l}</button>)}</span>
+                    <span className="yl-exp-scope">{[{k:"this",l:nameOf(tab)||"このコ"},{k:"all",l:"みんな"}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}><span className="yl-exp-scopelab">{o.l}</span></button>)}</span>
                   </div>
                   {expStats.total===0?<p className="yl-routine-empty">{expScope==="all"?"まだ支出の記録がありません。":"右下の ＋ から追加"}</p>:(<>
                     <div className="yl-exp-stats">
