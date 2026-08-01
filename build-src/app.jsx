@@ -80,6 +80,25 @@ const EMERGENCY_PREP=[
   "お薬手帳・ワクチン証明（このアプリのサマリーでもOK）",
   "支払い手段（カードのみの病院もあります）",
 ];
+// 防災・避難の備え（同行避難が基本。一般的な備えガイド。避難先は各自で自治体確認）。
+const DISASTER_PREP=[
+  "フード・水（できれば5〜7日分）と食器",
+  "常備薬・療法食・お薬手帳／ワクチン接種証明",
+  "キャリー／クレート・リード・ハーネス（脱走防止に予備も）",
+  "トイレ用品（ペットシーツ・うんち袋・猫砂）",
+  "迷子札・鑑札・マイクロチップ番号の控え",
+  "はぐれた時のための写真（飼い主と一緒に写ったもの）",
+  "タオル・毛布（保温・目隠し・音対策）",
+  "ガムテープ・油性ペン（ケージ補修・情報書き）",
+];
+const DISASTER_TIPS=[
+  "災害時は「同行避難」が基本。まず自分と家族の安全を確保してから、落ち着いてペットと避難を。",
+  "避難所はペットの受け入れ可否・飼育場所が施設ごとに違います。指定避難所とペット可否を事前に自治体で確認しておく。",
+  "普段からキャリー／クレートに慣らしておくと、いざという時ストレスが少なく安全。",
+  "はぐれ対策に、迷子札＋マイクロチップの登録情報を最新に。連絡先も定期的に見直す。",
+  "無駄吠え・トイレなどの基本のしつけは、避難所での共同生活を助けます。",
+  "親戚・知人・ペットホテルなど、預け先の候補も複数考えておくと安心。",
+];
 // 文字列から電話番号らしき部分を抽出（tel: リンク用）。無ければ null。
 const extractTel=(str)=>{const m=(str||"").match(/0\d{1,4}[-(]?\d{1,4}[-)]?\d{3,4}/);return m?m[0].replace(/[()]/g,"-").replace(/--/g,"-"):null;};
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
@@ -466,10 +485,10 @@ const MILESTONE_PRESETS={
   learn:["ひらがなが読めた","数を数えられた","自分の名前が書けた","時計が読めた"],
 };
 // 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモなど）
-const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"insurance",label:"保険証・保険情報",emoji:"🪪"},{key:"other",label:"メモ",emoji:"📝"}];
+const CARD_PRESETS=[{key:"emergency",label:"緊急連絡先",emoji:"🚨"},{key:"allergy",label:"アレルギー・禁忌",emoji:"⚠️"},{key:"hospital",label:"かかりつけ・病院メモ",emoji:"🏥"},{key:"shelter",label:"避難先・防災メモ",emoji:"🏫"},{key:"insurance",label:"保険証・保険情報",emoji:"🪪"},{key:"other",label:"メモ",emoji:"📝"}];
 const cardMeta=(k)=>CARD_PRESETS.find(c=>c.key===k)||CARD_PRESETS[CARD_PRESETS.length-1];
 // 大切な情報カードの種別 → ラインアイコン名。
-const CARD_ICON={emergency:"alert",allergy:"alert",hospital:"activity",insurance:"shield",other:"note"};
+const CARD_ICON={emergency:"alert",allergy:"alert",hospital:"activity",shelter:"home",insurance:"shield",other:"note"};
 const cardIcon=(k)=>CARD_ICON[k]||"note";
 // 思い出の「はじめて」タグ
 const FIRST_TAG="はじめて";
@@ -1125,7 +1144,9 @@ function App(){
   const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
   const[toxicQ,setToxicQ]=useState("");
   const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
+  const[disasterOpen,setDisasterOpen]=useState(false); // 防災・避難の備え
   const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
+  const[disasterTipsOpen,setDisasterTipsOpen]=useState(false); // 防災「いざという時のポイント」の開閉
   const[menuOpen,setMenuOpen]=useState(false); // まとめメニュー（右からのドロワー）
   const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
   const[authEmail,setAuthEmail]=useState("");
@@ -3093,6 +3114,7 @@ function App(){
               <p className="yl-set-desc">犬・猫が食べてはいけないもの・危険なもの、いざという時の備えを確認できます。</p>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
               <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
+              <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
@@ -3753,6 +3775,7 @@ function App(){
             <div className="yl-drawer-group">
               <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={19}/> 誤食・中毒 危険物リスト</button>
               <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setEmergencyOpen(true);}}><Icon name="activity" size={19}/> 夜間・救急の備え</button>
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setDisasterOpen(true);}}><Icon name="home" size={19}/> 防災・避難の備え</button>
             </div>
             <div className="yl-drawer-sep"/>
             <div className="yl-drawer-group">
@@ -3827,6 +3850,45 @@ function App(){
             </div>
 
             <p className="yl-toxic-foot">※ 具体的な病院・電話番号はご自身で登録・ご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急にご連絡を。</p>
+          </div>
+        </div>
+      );})()}
+      {disasterOpen&&(()=>{
+        const shelters=items.filter(x=>x.type==="card"&&x.kind==="shelter");
+        return(
+        <div className="yl-help-ov" onClick={()=>setDisasterOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head">
+              <h2 className="yl-help-title"><Icon name="home" size={18}/> 防災・避難の備え</h2>
+              <button className="yl-help-close" onClick={()=>setDisasterOpen(false)}>×</button>
+            </div>
+            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。</span></div>
+
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> わが家の避難先</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>＋ 登録</button></div>
+              {shelters.length===0?(
+                <p className="yl-set-desc">指定避難所（ペット可否）・広域避難場所・預け先などを登録しておくと、いざという時に迷いません。「大切な情報カード」に避難先メモとして保存されます。</p>
+              ):(
+                <ul className="yl-emg-contacts">{shelters.map(c=>{const tel=extractTel(c.body);return(
+                  <li key={c.id} className="yl-emg-contact">
+                    <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||"避難先"}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+                    {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setDisasterOpen(false);setTab(c.space);openCardEdit(c);}}>編集</button>}
+                  </li>
+                );})}</ul>
+              )}
+            </div>
+
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="bag" size={15}/> 持ち出し・備蓄（ペット用）</span></div>
+              <ul className="yl-emg-prep">{DISASTER_PREP.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>
+            </div>
+
+            <div className="yl-emg-sec">
+              <button className="yl-emg-tipshead" onClick={()=>setDisasterTipsOpen(o=>!o)}><span><Icon name="bell" size={15}/> いざという時のポイント</span><Icon name="chevron" size={16} className={disasterTipsOpen?"yl-rot90":"yl-rot0"}/></button>
+              {disasterTipsOpen&&<ul className="yl-emg-list">{DISASTER_TIPS.map((t,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{t}</li>)}</ul>}
+            </div>
+
+            <p className="yl-toxic-foot">※ 指定避難所のペット受け入れ可否・場所は自治体ごとに異なります。お住まいの自治体・自主防災組織で必ず事前にご確認ください。</p>
           </div>
         </div>
       );})()}
