@@ -31,7 +31,6 @@ const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Numbe
 const TYPE_META={work:{label:"仕事",emoji:"💼",bg:"#E7E9EF",fg:"#5B6B9E"},event:{label:"予定",emoji:"📅",bg:"#ECE6F1",fg:"#8A6D9E"},social:{label:"飲み会",emoji:"🍻",bg:"#F3E7D6",fg:"#C77A2E"},habit:{label:"習慣",emoji:"💪",bg:"#F5EAD2",fg:"#C99A2E"},dream:{label:"夢",emoji:"🌈",bg:"#F5EAD8",fg:"#B23A48"}};
 const ME_TYPES=["work","event","social","habit"];
 // 予定系（その日に起きる・カレンダー表示・日付が実質必須）。それ以外はToDo系＝期限は任意。
-const isScheduleType=(t)=>t==="event"||t==="social";
 const KIND_STYLE={pet:{bg:"#E4EEE7",fg:"#557E63",word:"ケア"},person:{bg:"#E3EEFF",fg:"#3B7BF6",word:"予定"}};
 // 安心ステータスのレベル：OK / 注意 / 要対応
 const LEVEL_META={ok:{label:"順調",dot:"#6FA382"},warn:{label:"注意",dot:"#D9A441"},alert:{label:"要対応",dot:"#B23A48"},none:{label:"記録なし",dot:"#B5ADA3"},memorial:{label:"追悼",dot:"#A98BC9"}};
@@ -280,9 +279,10 @@ function elapsedLabel(dateStr,warn=7,alert=14){
 // からだの記録（体重・身長・体調）
 const HEALTH_CONDS=[{key:"good",label:"元気",emoji:"😊"},{key:"ok",label:"ふつう",emoji:"😐"},{key:"bad",label:"元気ない",emoji:"😟"}];
 const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
-// メンバーごとの色分け（カレンダーで色別管理。自分で選べる）
+// 登録ユーザーごとの色（色定義はここ1箇所）。フィルターチップ・カレンダーのドット・
+// メンバーバー等はすべて colorOf() 経由でこの配列を参照する。登録順で自動割り当て、
+// 設定でユーザーが個別に選ぶことも可能。
 const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178"];
-const DEFAULT_SPACE_COLOR="#D98A4E";
 // 今日のようす（日記）の選択肢。元気は5段階（推移グラフ用に score を持つ。旧3段階キーも内包）
 const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
 const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
@@ -1809,7 +1809,6 @@ function App(){
     let title=draft.trim();let careMeta=null;
     if(isMemberTab){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=(careMeta||{}).label||"";}
     if(!title)return;
-    if(!isMemberTab&&isScheduleType(draftType)&&!draftDate){showFlash("「"+TYPE_META[draftType].label+"」は日付を入れてください");return;}
     let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined};
     if(isMemberTab){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,careMeta.emoji)};}
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
@@ -1823,7 +1822,10 @@ function App(){
   const addMember=()=>{
     const name=newName.trim();if(!name){showFlash("名前を入力してください");return;}
     const id="f"+Date.now();
-    const member={id,name,emoji:newEmoji,kind:newKind,birthday:newBirthday||"",visibility:newVisibility};
+    // 登録時に固定色を自動割り当て（既に使われている色を避けて MEMBER_COLORS から選ぶ）
+    const used=new Set([meColor||MEMBER_COLORS[0],...members.map(m=>m.color).filter(Boolean)]);
+    const color=MEMBER_COLORS.find(c=>!used.has(c))||MEMBER_COLORS[(members.length+1)%MEMBER_COLORS.length];
+    const member={id,name,emoji:newEmoji,kind:newKind,birthday:newBirthday||"",visibility:newVisibility,color};
     if(newKind==="pet")member.species=newSpecies;
     persist([...members,member],items);
     saveMemberToFs(member).catch(()=>{});
@@ -2342,7 +2344,17 @@ function App(){
   // フォルダ分け（多頭飼い）：未分類を先頭、その後グループ順
   const groupedMembers=useMemo(()=>{const order=[];const map={};members.forEach(m=>{const g=m.group||"";if(!(g in map)){map[g]=[];order.push(g);}map[g].push(m);});order.sort((a,b)=>a===""?-1:b===""?1:0);return order.map(g=>({group:g,members:map[g]}));},[members]);
   // スペース（自分/メンバー）の色（カレンダーの色別管理。自分で選べる）
-  const colorOf=(spaceId)=>{if(spaceId==="me")return meColor||"#E39A5C";const m=members.find(x=>x.id===spaceId);return(m&&m.color)||DEFAULT_SPACE_COLOR;};
+  // 登録ユーザーごとの固定色を一元管理。フィルターチップ・カレンダーのドット・
+  // メンバーバー等すべてがこの関数を参照する（色定義は MEMBER_COLORS 1箇所）。
+  // 明示的に色を選んでいればそれを、未設定なら登録順で MEMBER_COLORS を安定割り当て。
+  const colorIndex=useMemo(()=>{const map={me:0};let i=1;members.forEach(m=>{map[m.id]=i++;});return map;},[members]);
+  const colorOf=useCallback((spaceId)=>{
+    if(spaceId==="me")return meColor||MEMBER_COLORS[0];
+    const m=members.find(x=>x.id===spaceId);
+    if(m&&m.color)return m.color;
+    const idx=colorIndex[spaceId];
+    return MEMBER_COLORS[(idx==null?0:idx)%MEMBER_COLORS.length];
+  },[members,meColor,colorIndex]);
   const setMemberColor=(c)=>{if(!activeMember)return;const next=members.map(m=>m.id===activeMember.id?{...m,color:c}:m);persist(next,items);const upd=next.find(m=>m.id===activeMember.id);if(upd)saveMemberToFs(upd).catch(()=>{});};
   const statusFor=(spaceId)=>{const arr=items.filter(x=>x.space===spaceId&&!x.done&&x.dueDate);let over=0,next=null,nextDays=Infinity;arr.forEach(x=>{const d=daysUntil(x.dueDate);if(isOverdue(x))over++;else if(d>=0&&d<nextDays){nextDays=d;next=x;}});return{over,next,nextDays};};
   const todayList=useMemo(()=>items.filter(x=>!x.done&&x.dueDate&&daysUntil(x.dueDate)<=0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)),[items]);
@@ -2371,22 +2383,14 @@ function App(){
       const dIso=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
       const di=calSpaceItems.filter(x=>itemDate(x)===dIso);
       const ch=choreOn(dIso);
-      const colors=[];const seenSp={};di.forEach(x=>{if(!seenSp[x.space]){seenSp[x.space]=1;colors.push(colorOf(x.space));}});
-      ch.forEach(e=>{if(!seenSp[e.space]){seenSp[e.space]=1;colors.push(colorOf(e.space));}});
-      cells.push({d,iso:dIso,count:di.length+ch.length,ind:{
-        photo:di.some(x=>x.photo),
-        memory:di.some(x=>x.type==="memory"),
-        care:di.some(x=>x.type==="care"),
-        supply:di.some(x=>x.type==="supply"),
-        event:di.filter(x=>x.type==="event"||x.type==="routine").length,
-        anniv:annivOn(dIso).length>0,
-        chore:ch.length>0,
-        colors,
-      }});
+      const an=annivOn(dIso);
+      // 全カテゴリの項目を1件=1ドットで、該当ユーザー色で並べる（カテゴリで表示差はつけない）
+      const dots=[...di.map(x=>colorOf(x.space)),...ch.map(e=>colorOf(e.space)),...an.map(a=>colorOf(a.space))];
+      cells.push({d,iso:dIso,count:dots.length,dots});
     }
     while(cells.length%7!==0)cells.push(null);
     return cells;
-  },[calCursor,calSpaceItems,annivAll,choreEventsAll,calFilter]);
+  },[calCursor,calSpaceItems,annivAll,choreEventsAll,calFilter,colorOf]);
   const dayTimeline=useMemo(()=>{
     if(!calDay)return[];
     const list=calSpaceItems.filter(x=>itemDate(x)===calDay).map(x=>({item:x,time:x.time||""}));
@@ -2939,13 +2943,12 @@ function App(){
               {calGrid.map((c,i)=>c?(
                 <button key={c.iso} className={"yl-cal-cell"+(c.iso===todayIso?" today":"")+(c.iso===calDay?" sel":"")} onClick={()=>setCalDay(c.iso===calDay?null:c.iso)}>
                   <span className={"yl-cal-dnum"+(dowOf(c.iso)===0?" sun":dowOf(c.iso)===6?" sat":"")}>{c.d}</span>
-                  <span className="yl-cal-marks">
-                    {c.ind.anniv&&<span className="yl-cal-em"><Icon name="cake" size={11}/></span>}
-                    {c.ind.photo?<span className="yl-cal-em"><Icon name="camera" size={11}/></span>:c.ind.memory?<span className="yl-cal-em"><Icon name="note" size={11}/></span>:c.ind.chore?<span className="yl-cal-em"><Icon name="sparkles" size={11}/></span>:null}
+                  {c.count>0&&(()=>{const shown=c.count<=4?c.count:3;return(
                     <span className="yl-cal-dots">
-                      {c.ind.colors.slice(0,4).map((col,ci)=><span key={ci} className="yl-cal-dot" style={{background:col}}/>)}
+                      {c.dots.slice(0,shown).map((col,ci)=><span key={ci} className="yl-cal-dot" style={{background:col}}/>)}
+                      {c.count>shown&&<span className="yl-cal-more">+{c.count-shown}</span>}
                     </span>
-                  </span>
+                  );})()}
                 </button>
               ):<span key={"e"+i} className="yl-cal-cell empty"/>)}
             </div>
@@ -3093,7 +3096,7 @@ function App(){
                       </div>
                       <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（多頭飼いの分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder="例：犬たち / ハムスター / 2階の子"/></label>
-                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((activeMember.color||DEFAULT_SPACE_COLOR)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
+                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-breed-list" value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-breed-list">{breedOptionsFor(activeMember.species).map(b=><option key={b} value={b}/>)}</datalist></label>}
@@ -3792,7 +3795,7 @@ function App(){
         </div>
         <label className="yl-opt" style={{width:"100%",marginBottom:12}}>名前（任意）<input className="yl-input sm" style={{marginTop:4}} value={meNameDraft} onChange={e=>setMeNameDraft(e.target.value)} placeholder="わたし"/></label>
         {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ</p><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);}}>{e}</button>)}</div></>}
-        <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色</p><div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+((meColor||"#E39A5C")===col?" on":"")} style={{background:col}} onClick={()=>persistMeColor(col)} aria-label="色を選ぶ"/>)}</div>
+        <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色</p><div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>persistMeColor(col)} aria-label="色を選ぶ"/>)}</div>
         <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
       {lifeDraft&&(
@@ -3880,8 +3883,8 @@ function App(){
             {!isMemberTab?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {k.label}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
             <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
-            <div className="yl-optrow"><label className="yl-opt">{isMemberTab?"期限":(isScheduleType(draftType)?"日付":"期限（任意）")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
-            {!isMemberTab&&isScheduleType(draftType)&&<p className="yl-foot" style={{marginTop:2}}>日付を入れるとカレンダーに表示。</p>}
+            <div className="yl-optrow"><label className="yl-opt">{isMemberTab?"期限":"日付・期限（任意）"}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
+            {!isMemberTab&&<p className="yl-foot" style={{marginTop:2}}>日付・期限を入れると、その日のカレンダーに表示されます。</p>}
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
             {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">1タップ追加（前回コピー）</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{k.label}</span><span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
