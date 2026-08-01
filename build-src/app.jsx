@@ -293,7 +293,8 @@ const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 // 登録ユーザーごとの色（色定義はここ1箇所）。フィルターチップ・カレンダーのドット・
 // メンバーバー等はすべて colorOf() 経由でこの配列を参照する。登録順で自動割り当て、
 // 設定でユーザーが個別に選ぶことも可能。
-const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178"];
+// 前半＝従来のやさしいアース系、後半＝追加したパステル・明るめカラー（既存の色は不変）。
+const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178","#EBA0B7","#C7A8E9","#8FC1EA","#7FCFC4","#A9D48C","#F2C86E","#F0A882","#E29CC6","#9AA8E0","#6FB6A6"];
 // 今日のようす（日記）の選択肢。元気は5段階（推移グラフ用に score を持つ。旧3段階キーも内包）
 const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
 const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
