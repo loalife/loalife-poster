@@ -1117,6 +1117,22 @@ function App(){
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
+  // 記録メニューに「追加した機能」のキー一覧（ユーザー操作で増える。UI設定なのでローカル保存）。
+  // メイン領域への表示は「使ったか」ではなく、この明示的な追加操作でのみ変わる（並びの安定性）。
+  const[menuAdded,setMenuAdded]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-menu-added"))||[];}catch(e){return[];}});
+  const menuMigrated=useRef(false);
+  const addToMenu=useCallback((key)=>{setMenuAdded(prev=>{if(prev.includes(key))return prev;const next=[...prev,key];try{localStorage.setItem("loalife-menu-added",JSON.stringify(next));}catch(e){}return next;});},[]);
+  // 既存ユーザー移行：すでにデータのある任意機能は「追加済み」として扱い、メインに残す（初回のみ）。
+  useEffect(()=>{
+    if(menuMigrated.current)return;
+    try{if(localStorage.getItem("loalife-menu-migrated")==="1"){menuMigrated.current=true;return;}}catch(e){}
+    if(!items.length)return; // データ読込を待つ
+    const map={health:"health",expense:"expense",memory:"memory",supply:"supply",card:"card",belong:"belonging",bday:"bday"};
+    const seed=Object.keys(map).filter(k=>items.some(x=>x.type===map[k]));
+    if(seed.length)setMenuAdded(prev=>{const next=[...new Set([...prev,...seed])];try{localStorage.setItem("loalife-menu-added",JSON.stringify(next));}catch(e){}return next;});
+    try{localStorage.setItem("loalife-menu-migrated","1");}catch(e){}
+    menuMigrated.current=true;
+  },[items]);
   // 思い出アルバムのタグ絞り込み
   const[albumTag,setAlbumTag]=useState("");
   // 思い出に付けるタグ入力（ライフエディタ）
@@ -4066,18 +4082,23 @@ function App(){
           ...(curKind==="person"?[{key:"belong",icon:"bag",label:"持ち物（曜日）",freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
           ...(!isMemberTab?[{key:"bday",icon:"gift",label:"誕生日・記念日",freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
         ];
-        const core=OPTS.filter(o=>o.freq===1||o.used);
-        const unused=OPTS.filter(o=>o.freq!==1&&!o.used);
+        // メイン表示は「よく使う機能」＋「ユーザーが明示的に追加した機能」のみ。
+        // 「使ったかどうか」では並びが変わらない（安定性）。
+        const pinned=new Set(menuAdded);
+        const core=OPTS.filter(o=>o.freq===1||pinned.has(o.key));
+        const addable=OPTS.filter(o=>o.freq!==1&&!pinned.has(o.key));
         const Grid=({list})=>(<div className="yl-hub-grid">{list.map(o=><button key={o.key} className="yl-hub-item" onClick={()=>open(o.act)}><span className="yl-hub-emoji"><Icon name={o.icon} size={24}/></span><span className="yl-hub-label">{o.label}</span></button>)}</div>);
         return(
           <div className="yl-overlay yl-hub-ov" onClick={()=>setHubOpen(false)}>
             <div className="yl-hub" onClick={e=>e.stopPropagation()}>
               <div className="yl-hub-head"><h3 className="yl-hub-title">何を記録しますか？</h3><span className="yl-hub-who">{nameOf(tab)}</span></div>
               <Grid list={core}/>
-              {unused.length>0&&(
-                <div className="yl-hub-unused">
-                  <p className="yl-hub-unused-label">まだ使っていない機能（{unused.length}）</p>
-                  <Grid list={unused}/>
+              {addable.length>0&&(
+                <div className="yl-hub-add">
+                  <p className="yl-hub-add-label">追加できる機能</p>
+                  <div className="yl-hub-grid">
+                    {addable.map(o=><button key={o.key} className="yl-hub-item addable" onClick={()=>{addToMenu(o.key);open(o.act);}}><span className="yl-hub-addbadge"><Icon name="plus" size={12}/></span><span className="yl-hub-emoji"><Icon name={o.icon} size={24}/></span><span className="yl-hub-label">{o.label}</span></button>)}
+                  </div>
                 </div>
               )}
               <button className="yl-hub-close" onClick={()=>setHubOpen(false)}>とじる</button>
