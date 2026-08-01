@@ -930,6 +930,54 @@ function BdayInput({value,onChange}){
   </span>);
 }
 
+// ───────── コーチマーク（スポットライト型ガイド） ─────────
+// 対象要素の実測位置(getBoundingClientRect)にスポットライトと吹き出しを重ねる。
+// 座標はベタ書きせず、要素をセレクタで探して毎フレーム追従（リサイズ・スクロールにも対応）。
+const TOUR_STEPS=[
+  {sel:'[data-tour="fab"]',title:"まずはここから記録",body:"右下の＋から、予定・ケア・ごはん・体重などをまとめて記録できます。"},
+  {sel:'[data-tour="nav-cal"]',title:"カレンダー",body:"家族みんなの予定が一覧に。日付をタップすると、その日の記録・ふりかえりが見られます。"},
+  {sel:'[data-tour="nav-manage"]',title:"家族",body:"ペットや家族ごとに、ケア・お世話ログ・支出などをまとめて管理できます。"},
+  {sel:'[data-tour="membar"]',title:"プロフィールの切り替え",body:"ここで「誰の」画面かを切り替えます。名前をタップすると一覧が開きます。"},
+];
+// 画面ごとの初回1ポイント案内（B）。キー＝画面、value＝{sel,title,body}
+const COACH_HINTS={
+  cal:{sel:".yl-cal-grid",title:"日付をタップ",body:"色つきのドットはその日の予定。日付をタップすると、記録やふりかえりを見られます。"},
+  record:{sel:'[data-tour="fab"]',title:"からだ・ようすを記録",body:"右下の＋から、体重・体調・ごはん・日記などをすぐ記録できます。"},
+  manage:{sel:".yl-chore, .yl-routine, .yl-list",title:"毎日のお世話・予定",body:"やることログや予定をここで管理。「やった」を押すと前回からの経過がひと目でわかります。"},
+};
+// 永続フラグ（UI設定なのでローカル保存。ツアーAと画面案内Bは別キーで管理）。
+const tourIsDone=()=>{try{return localStorage.getItem("loalife-tour-v1")==="1";}catch(e){return true;}};
+const markTourDone=()=>{try{localStorage.setItem("loalife-tour-v1","1");}catch(e){}};
+const coachIsSeen=(k)=>{try{return !!(JSON.parse(localStorage.getItem("loalife-coach-v1")||"{}")[k]);}catch(e){return true;}};
+const markCoachSeen=(k)=>{try{const o=JSON.parse(localStorage.getItem("loalife-coach-v1")||"{}");o[k]=1;localStorage.setItem("loalife-coach-v1",JSON.stringify(o));}catch(e){}};
+const resetGuides=()=>{try{localStorage.removeItem("loalife-tour-v1");localStorage.removeItem("loalife-coach-v1");}catch(e){}};
+function CoachMark({sel,title,body,step,total,nextLabel,onNext,onSkip,single}){
+  const[rect,setRect]=useState(null);
+  useEffect(()=>{
+    const measure=()=>{const el=document.querySelector(sel);if(el){const r=el.getBoundingClientRect();if(r.width||r.height){setRect({top:r.top,left:r.left,width:r.width,height:r.height});return;}}setRect(null);};
+    measure();const iv=setInterval(measure,150);
+    window.addEventListener("resize",measure);window.addEventListener("scroll",measure,true);
+    return()=>{clearInterval(iv);window.removeEventListener("resize",measure);window.removeEventListener("scroll",measure,true);};
+  },[sel]);
+  if(!rect)return null; // 対象が見つかるまで待つ（見つかり次第スポットライト表示）
+  const pad=8;const vh=typeof window!=="undefined"?window.innerHeight:800;
+  const hole={top:rect.top-pad,left:rect.left-pad,w:rect.width+pad*2,h:rect.height+pad*2};
+  const placeBelow=(hole.top+hole.h+16)<(vh-190);
+  const tipStyle=placeBelow?{top:hole.top+hole.h+14}:{bottom:(vh-hole.top)+14};
+  return(<div className="yl-coach">
+    <div className="yl-coach-hole" style={{top:hole.top,left:hole.left,width:hole.w,height:hole.h}}/>
+    <div className="yl-coach-tip" style={tipStyle}>
+      {total?<span className="yl-coach-step">{step} / {total}</span>:null}
+      <h4 className="yl-coach-title">{title}</h4>
+      <p className="yl-coach-body">{body}</p>
+      <div className="yl-coach-btns">
+        {!single&&<button className="yl-coach-skip" onClick={onSkip}>スキップ</button>}
+        <button className="yl-coach-next" onClick={onNext}>{nextLabel}</button>
+      </div>
+    </div>
+  </div>);
+}
+
 // 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
 // 2点以上でのみ折れ線を描く（1点以下は呼び出し側で空状態メッセージ）。
 function MiniChart({points,unit,color,label}){
@@ -1154,6 +1202,9 @@ function App(){
   const[authIsSignup,setAuthIsSignup]=useState(false);
   // ＋入力ハブ（全入力を1か所に集約）。hubOpen=チューザー、inputSheet=開いている入力フォーム
   const[hubOpen,setHubOpen]=useState(false);
+  const[tourStep,setTourStep]=useState(null); // 初回ツアー(A)の現在ステップ（null=非表示）
+  const[coachKey,setCoachKey]=useState(null); // 画面ごとの初回案内(B)の対象画面キー
+  const tourInit=useRef(false);
   const[inputSheet,setInputSheet]=useState(null); // "schedule"|"health"|"diary"|"expense"|"belong"|"bday"|null
   const[doneOpen,setDoneOpen]=useState(false); // 予定リストの「完了済み」セクションの開閉（既定は折りたたみ）
   // 記録メニューに「追加した機能」のキー一覧（ユーザー操作で増える。UI設定なのでローカル保存）。
@@ -1732,6 +1783,26 @@ function App(){
   const activeMember=members.find(m=>m.id===tab);
   const isMemberTab=!!activeMember;
   const isPersonMode=tab==="me"||isMemberTab; // 人/ペットの詳細を見ているモード
+  // ── コーチマーク：初回ツアー(A)と画面ごと案内(B) ──
+  const startTour=useCallback(()=>{setCoachKey(null);setTab("me");setTourStep(0);},[]);
+  const endTour=useCallback(()=>{markTourDone();setTourStep(null);setTab("home");},[]);
+  const tourNext=useCallback(()=>{setTourStep(s=>{if(s==null)return null;if(s>=TOUR_STEPS.length-1){markTourDone();setTab("home");return null;}return s+1;});},[]);
+  // 初回起動：オンボーディング終了後、未完了ならツアーを自動表示（一度だけ）
+  useEffect(()=>{
+    if(tourInit.current||onboarding||!loaded)return;
+    tourInit.current=true;
+    if(!tourIsDone())startTour();
+  },[onboarding,loaded,startTour]);
+  // 画面ごとの初回案内(B)：ツアー中は抑制。1画面1ポイント、既表示は出さない。
+  useEffect(()=>{
+    if(tourStep!==null||coachKey||onboarding||!loaded)return;
+    let key=null;
+    if(tab==="cal")key="cal";
+    else if(isPersonMode&&personSeg==="record")key="record";
+    else if(isPersonMode&&personSeg==="manage")key="manage";
+    if(key&&COACH_HINTS[key]&&!coachIsSeen(key))setCoachKey(key);
+  },[tab,personSeg,isPersonMode,tourStep,coachKey,onboarding,loaded]);
+  const dismissCoach=useCallback(()=>{setCoachKey(k=>{if(k)markCoachSeen(k);return null;});},[]);
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
@@ -2725,6 +2796,16 @@ function App(){
 
   return(
     <div className="yl-root">
+      {/* 初回ツアー(A)：主要操作を順番に案内。スキップで一括終了。 */}
+      {!onboarding&&tourStep!==null&&TOUR_STEPS[tourStep]&&(
+        <CoachMark key={"tour"+tourStep} sel={TOUR_STEPS[tourStep].sel} title={TOUR_STEPS[tourStep].title} body={TOUR_STEPS[tourStep].body}
+          step={tourStep+1} total={TOUR_STEPS.length} nextLabel={tourStep<TOUR_STEPS.length-1?"次へ":"はじめる"} onNext={tourNext} onSkip={endTour}/>
+      )}
+      {/* 画面ごとの初回案内(B)：ツアー中は出さない（tourStep===null のみ）。1画面1ポイント。 */}
+      {!onboarding&&tourStep===null&&coachKey&&COACH_HINTS[coachKey]&&(
+        <CoachMark key={"coach"+coachKey} sel={COACH_HINTS[coachKey].sel} title={COACH_HINTS[coachKey].title} body={COACH_HINTS[coachKey].body}
+          nextLabel="OK" onNext={dismissCoach} single/>
+      )}
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
@@ -3140,6 +3221,7 @@ function App(){
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
               <button className="yl-addbtn sm" style={{marginBottom:10}} onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
+              <button className="yl-addbtn sm" style={{marginBottom:10,marginLeft:8}} onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
               <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
             </section>
             <p className="yl-foot">試作版・データはこの端末に保存されます</p>
@@ -3705,7 +3787,7 @@ function App(){
       </div>
 
       {isPersonMode&&!hubOpen&&!inputSheet&&(
-        <button className="yl-fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加"><Icon name="plus" size={26} stroke={2.2}/></button>
+        <button className="yl-fab" data-tour="fab" onClick={()=>setHubOpen(true)} aria-label="記録を追加"><Icon name="plus" size={26} stroke={2.2}/></button>
       )}
 
       {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
@@ -3735,7 +3817,7 @@ function App(){
               <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ メンバーを追加</button>
             </div>
           )}
-          <button className="yl-membar" onClick={()=>setMemListOpen(o=>!o)} aria-expanded={memListOpen} aria-label="メンバーを切り替え">
+          <button className="yl-membar" data-tour="membar" onClick={()=>setMemListOpen(o=>!o)} aria-expanded={memListOpen} aria-label="メンバーを切り替え">
             {curId==="all"
               ?<><span className="yl-mrow-ico"><Icon name="users" size={16}/></span><span className="yl-mbar-name">すべて</span></>
               :<><span className="yl-mchip-dot" style={{background:colorOf(cur.id)}}/>{avatarNode(cur,"xs")}<span className="yl-mbar-name">{cur.name}</span></>}
@@ -3758,7 +3840,7 @@ function App(){
         return(
           <nav className="yl-bottomnav">
             {items.map(it=>(
-              <button key={it.key} className={"yl-bnav-item"+(it.on?" on":"")} onClick={it.act}>
+              <button key={it.key} data-tour={"nav-"+it.key} className={"yl-bnav-item"+(it.on?" on":"")} onClick={it.act}>
                 <span className="yl-bnav-ico"><Icon name={it.icon} size={23}/></span>
                 <span className="yl-bnav-label">{it.label}</span>
               </button>
