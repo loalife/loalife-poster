@@ -110,7 +110,14 @@ function effRepeat(x){if(!x)return"none";if(x.repeat&&x.repeat!=="none")return x
 const isCyclic=(x)=>effRepeat(x)!=="none";
 // 「期限切れ(赤)」は、周期があり・未完了・前回(期限)を過ぎたものだけ。状態として持たず毎回計算する。
 function isOverdue(x){return !!(x&&!x.done&&isCyclic(x)&&x.dueDate&&daysUntil(x.dueDate)<0);}
-const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐦","🐢"];
+// 種別ごとのアイコン候補（正面顔・ゆるいトーンで統一。各配列の先頭が既定選択）。
+const SPECIES_EMOJIS={
+  dog:["🐶","🐕","🐩"],
+  cat:["🐱","🐈","🐈‍⬛"],
+  other:["🐹","🐰","🐤","🐢","🐭","🐷"],
+};
+const petEmojisFor=(species)=>SPECIES_EMOJIS[species]||SPECIES_EMOJIS.dog;
+const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐤","🐢"]; // 既定・後方互換（🐦→🐤に統一）
 const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
@@ -2498,7 +2505,7 @@ function App(){
     return list.sort((a,b)=>a.daysUntil-b.daysUntil);
   },[items]);
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
-  const emojiSet=newKind==="person"?PERSON_EMOJIS:PET_EMOJIS;
+  const emojiSet=newKind==="person"?PERSON_EMOJIS:petEmojisFor(newSpecies);
   const spaces=useMemo(()=>[{id:"me",name:meName||"わたし",emoji:meEmoji,avatar:meAvatar||"",kind:"me"},...members],[members,meEmoji,meName,meAvatar]);
   // フォルダ分け（多頭飼い）：未分類を先頭、その後グループ順
   const groupedMembers=useMemo(()=>{const order=[];const map={};members.forEach(m=>{const g=m.group||"";if(!(g in map)){map[g]=[];order.push(g);}map[g].push(m);});order.sort((a,b)=>a===""?-1:b===""?1:0);return order.map(g=>({group:g,members:map[g]}));},[members]);
@@ -2807,7 +2814,7 @@ function App(){
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:PET_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:petEmojisFor(obSpecies)).map(e=><button key={e} className={"yl-emoji"+(obEmoji===e?" on":"")} onClick={()=>setObEmoji(e)}>{e}</button>)}</div><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -2839,7 +2846,7 @@ function App(){
         {adding&&(
           <div className="yl-petform">
             <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);}}>🐶 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);}}>👤 家族（人）</button></div>
-            {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(s.emoji);}}>{s.emoji} {s.label}</button>)}</div>}
+            {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(newEmoji===e?" on":"")} onClick={()=>setNewEmoji(e)}>{e}</button>)}</div>
             <div className="yl-petform-row"><IMEInput className="yl-input" value={newName} onChange={setNewName} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
             <label className="yl-opt" style={{marginTop:10}}>誕生日（年は任意）<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
