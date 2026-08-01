@@ -3201,7 +3201,7 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">データは端末内に保存。バックアップ（.json）で写真ごと書き出せます。記録は CSV でも書き出せます。</p>
+              <p className="yl-set-desc">データは端末内に保存。<span className="yl-nowrap">バックアップ（.json）で</span>写真ごと書き出せます。<span className="yl-nowrap">記録はCSVでも</span>書き出せます。</p>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
                 <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
