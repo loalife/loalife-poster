@@ -293,7 +293,8 @@ const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 // 登録ユーザーごとの色（色定義はここ1箇所）。フィルターチップ・カレンダーのドット・
 // メンバーバー等はすべて colorOf() 経由でこの配列を参照する。登録順で自動割り当て、
 // 設定でユーザーが個別に選ぶことも可能。
-const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178"];
+// 前半＝従来のやさしいアース系、後半＝追加したパステル・明るめカラー（既存の色は不変）。
+const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178","#EBA0B7","#C7A8E9","#8FC1EA","#7FCFC4","#A9D48C","#F2C86E","#F0A882","#E29CC6","#9AA8E0","#6FB6A6"];
 // 今日のようす（日記）の選択肢。元気は5段階（推移グラフ用に score を持つ。旧3段階キーも内包）
 const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
 const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
@@ -2800,12 +2801,12 @@ function App(){
                       )}
                       {wt&&(<div className="yl-walktime">
                         <div className="yl-walktime-head">
-                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> きょうのおすすめ散歩タイム</span>
-                          {wt.best?<span className="yl-walktime-badge"><Icon name="paw" size={12}/> おすすめ {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}-${wt.best.to}時`}</span>:<span className="yl-walktime-badge none">今日はお休みが安心</span>}
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
+                          {wt.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}〜${wt.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">今日はおうちでのんびり</span>}
                         </div>
                         <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                        <div className="yl-walktime-axis"><span>5時</span><span>9時</span><span>13時</span><span>17時</span><span>22時</span></div>
-                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> おすすめ</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ようすを見て</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> さけて</span></div>
+                        <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
+                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
                       </div>)}
                     </div>)}
                   </div>)}
