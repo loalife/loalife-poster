@@ -190,9 +190,14 @@ const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${
 const notifSupported = typeof window !== "undefined" && "Notification" in window;
 
 async function requestNotifPermission() {
-  if (!notifSupported) return "denied";
-  const p = await Notification.requestPermission();
-  return p;
+  if (!notifSupported) return "unsupported";
+  try {
+    const p = await Notification.requestPermission();
+    return p || "default";
+  } catch (e) {
+    // iOS Safari など：ホーム画面に追加していないと requestPermission が例外/未対応
+    return "unsupported";
+  }
 }
 
 function fireNotif(title, body) {
@@ -1656,7 +1661,7 @@ function App(){
 
   const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObAvatar("");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
 
-  const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted")showFlash("通知を許可しました 🔔");};
+  const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted"){showFlash("通知を許可しました 🔔");}else if(p==="denied"){showFlash("端末の設定から通知をオンにできます");}else if(p==="unsupported"){const iOS=/iP(hone|ad|od)/.test(navigator.userAgent);showFlash(iOS?"ホーム画面に追加すると通知を使えます":"この端末では通知を利用できません");}};
 
   // --- Family sharing functions ---
   const signInWithGoogle=async()=>{
