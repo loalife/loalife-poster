@@ -3286,14 +3286,18 @@ function App(){
           </div>
         ):(
           <>
-            {/* ペットのヒーロー：写真を主役に、名前・年齢・今日の状態を大きく */}
-            {isMemberTab&&activeMember.kind==="pet"&&(()=>{
+            {/* メンバーのヒーロー：写真を主役に、名前・年齢・今日の状態を大きく（ペットも人も共通で常時表示） */}
+            {isMemberTab&&(()=>{
+              const isPet=activeMember.kind==="pet";
               const lv=spaceLevel(activeMember.id);const concern=spaceConcern(activeMember.id);
               const statusText=concern||(lv==="none"?"まだ記録がありません":`${activeMember.name}は順調です`);
               const photo=activeMember.avatar&&photos[activeMember.avatar];
               const memo=!!activeMember.memorial;
               const together=activeMember.gotchaDay?daysTogether(activeMember.gotchaDay,activeMember.memorial):null;
-              const sub=[activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット");
+              const ptLabel=(PERSON_TYPES.find(p=>p.k===(activeMember.personType||"child"))||{}).l||"家族";
+              const sub=isPet
+                ?([activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット"))
+                :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||ptLabel);
               const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
