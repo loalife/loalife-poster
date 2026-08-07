@@ -120,6 +120,8 @@ const SPECIES_EMOJIS={
 const petEmojisFor=(species)=>SPECIES_EMOJIS[species]||SPECIES_EMOJIS.dog;
 const PET_EMOJIS=["🐶","🐱","🐰","🐹","🐤","🐢"]; // 既定・後方互換（🐦→🐤に統一）
 const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
+// 人メンバーの種別（記録項目の出し分け）。赤ちゃん→子ども→大人→高齢者の順で提示。
+const PERSON_TYPES=[{k:"baby",l:"赤ちゃん",emoji:"👶"},{k:"child",l:"子ども",emoji:"🧒"},{k:"adult",l:"大人",emoji:"🧑"},{k:"senior",l:"高齢者",emoji:"👵"}];
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
 // 1日のルーティン（タスクテンプレ）
@@ -253,7 +255,9 @@ function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resol
 
 // 高齢者向けのケア・予定の種別（通院・介護サポート）。
 const SENIOR_KINDS=[{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"服薬",emoji:"💊"},{key:"pickup",label:"薬の受け取り",emoji:"💊"},{key:"care",label:"介護サービス",emoji:"🧑"},{key:"daycare",label:"デイサービス",emoji:"🏫"},{key:"rehab",label:"リハビリ",emoji:"🩹"},{key:"nurse",label:"訪問看護",emoji:"🩺"},{key:"checkup",label:"健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
-const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
+// 赤ちゃん（乳児）向けの予定・ケアの種別（乳児健診・予防接種・通院など）。日々のミルク/おむつ等は「お世話ログ」で扱う。
+const BABY_KINDS=[{key:"checkup",label:"乳児健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"投薬",emoji:"💊"},{key:"event",label:"予定",emoji:"📅"},{key:"other",label:"その他",emoji:"✨"}];
+const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
 // ケア種別 → ラインアイコン名（SF Symbols相当）
 const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
@@ -292,12 +296,14 @@ const CHORE_TPL_PET=[{title:"トイレ掃除",emoji:"🧹"},{title:"シャンプ
 const CHORE_TPL_CHILD=[{title:"上履き洗い",emoji:"👟"},{title:"持ち物準備",emoji:"🎒"},{title:"体温チェック",emoji:"🌡️"},{title:"歯みがき仕上げ",emoji:"🦷"},{title:"髪カット",emoji:"💇"},{title:"爪切り",emoji:"✂️"}];
 const CHORE_TPL_SENIOR=[{title:"服薬確認",emoji:"💊"},{title:"通院付き添い",emoji:"🏥"},{title:"体温チェック",emoji:"🌡️"},{title:"血圧チェック",emoji:"🩺"},{title:"シーツ交換",emoji:"🛏️"},{title:"爪切り",emoji:"✂️"}];
 const CHORE_TPL_ADULT=[{title:"体調メモ",emoji:"📝"},{title:"服薬・サプリ",emoji:"💊"},{title:"シーツ交換",emoji:"🛏️"},{title:"爪切り",emoji:"✂️"},{title:"美容院",emoji:"💇"},{title:"体重チェック",emoji:"⚖️"}];
+// 赤ちゃん：ぴよログ的な毎日のお世話。前回からの経過が出るので「前回の授乳から◯時間」等が把握できる。
+const CHORE_TPL_BABY=[{title:"ミルク",emoji:"🍼"},{title:"母乳",emoji:"🤱"},{title:"おむつ替え",emoji:"🧷"},{title:"寝かしつけ",emoji:"😴"},{title:"検温",emoji:"🌡️"},{title:"沐浴",emoji:"🛁"},{title:"離乳食",emoji:"🍚"},{title:"つめ切り",emoji:"✂️"}];
 const CHORE_TPL_ME=[{title:"掃除",emoji:"🧹"},{title:"洗濯",emoji:"🧺"},{title:"シーツ交換",emoji:"🛏️"},{title:"換気",emoji:"🪟"},{title:"水やり",emoji:"🪴"},{title:"ゴミ出し",emoji:"🗑️"}];
 // 引数はメンバー(または null=自分)。人は personType(大人/子ども/高齢者)で候補を切替。
 const choreTemplatesFor=(m)=>{
   if(!m)return CHORE_TPL_ME;
   if(m.kind==="pet")return CHORE_TPL_PET;
-  if(m.kind==="person"){const pt=m.personType||"child";return pt==="senior"?CHORE_TPL_SENIOR:pt==="adult"?CHORE_TPL_ADULT:CHORE_TPL_CHILD;}
+  if(m.kind==="person"){const pt=m.personType||"child";return pt==="senior"?CHORE_TPL_SENIOR:pt==="adult"?CHORE_TPL_ADULT:pt==="baby"?CHORE_TPL_BABY:CHORE_TPL_CHILD;}
   return CHORE_TPL_ME;
 };
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
@@ -464,13 +470,14 @@ const DIARY_CONFIG={
   adult:{rows:["energy","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
   child:{rows:["energy","appetite","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
   senior:{rows:["energy","appetite","sleep","hospital"],symptoms:["headache","fever","cough","fatigue","nose","throat"]},
+  baby:{rows:["energy","appetite","poop","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash"]},
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 家族台帳（人）：性別・血液型の選択肢。
 // 性別の文言は種別で出し分け（キーは boy/girl/other で共通・保存互換）。
 const GENDER_OPTS_CHILD=[{k:"boy",l:"男の子"},{k:"girl",l:"女の子"},{k:"other",l:"その他"}];
 const GENDER_OPTS_ADULT=[{k:"boy",l:"男性"},{k:"girl",l:"女性"},{k:"other",l:"その他"}];
-const genderOptsFor=(personType)=>personType==="child"?GENDER_OPTS_CHILD:GENDER_OPTS_ADULT;
+const genderOptsFor=(personType)=>(personType==="child"||personType==="baby")?GENDER_OPTS_CHILD:GENDER_OPTS_ADULT;
 const GENDER_OPTS=GENDER_OPTS_CHILD; // 後方互換（既存参照用）
 const BLOOD_OPTS=["A","B","O","AB"];
 const genderLabel=(k,personType)=>(genderOptsFor(personType).find(o=>o.k===k)||{}).l||"";
@@ -1080,6 +1087,7 @@ function App(){
   const[adding,setAdding]=useState(false);
   const[newKind,setNewKind]=useState("pet");
   const[newSpecies,setNewSpecies]=useState("dog");
+  const[newPersonType,setNewPersonType]=useState("child");
   const[newName,setNewName]=useState("");
   const[newEmoji,setNewEmoji]=useState("🐶");
   const[newBirthday,setNewBirthday]=useState("");
@@ -1152,6 +1160,7 @@ function App(){
   const[obStep,setObStep]=useState(0);
   const[obKind,setObKind]=useState(null);
   const[obSpecies,setObSpecies]=useState("dog");
+  const[obPersonType,setObPersonType]=useState("child");
   const[obName,setObName]=useState("");
   const[obEmoji,setObEmoji]=useState("🐶");
   const[obAvatar,setObAvatar]=useState(""); // オンボーディングの写真アイコン（photo id）
@@ -1655,7 +1664,7 @@ function App(){
 
   const finishOnboarding=()=>{
     const nm=[];const ni=[];
-    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;nm.push(m);}
+    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;else if(obKind==="person")m.personType=obPersonType;nm.push(m);}
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
   };
 
@@ -1966,6 +1975,7 @@ function App(){
     const color=MEMBER_COLORS.find(c=>!used.has(c))||MEMBER_COLORS[(members.length+1)%MEMBER_COLORS.length];
     const member={id,name,emoji:newEmoji,avatar:newAvatar||"",kind:newKind,birthday:newBirthday||"",visibility:newVisibility,color};
     if(newKind==="pet")member.species=newSpecies;
+    if(newKind==="person")member.personType=newPersonType;
     persist([...members,member],items);
     saveMemberToFs(member).catch(()=>{});
     setNewName("");setNewBirthday("");setNewVisibility("household");setNewAvatar("");setAdding(false);setTab(id);setMemberSel(id);
@@ -2831,7 +2841,7 @@ function App(){
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:petEmojisFor(obSpecies)).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:petEmojisFor(obSpecies)).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -2864,6 +2874,7 @@ function App(){
           <div className="yl-petform">
             <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);setNewAvatar("");}}>🐶 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
             {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}
+            {newKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(newPersonType===pt.k?" on":"")} onClick={()=>{setNewPersonType(pt.k);setNewAvatar("");setNewEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(!newAvatar&&newEmoji===e?" on":"")} onClick={()=>{setNewAvatar("");setNewEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(newAvatar?" on":"")} title="写真をアイコンにする">{newAvatar&&photos[newAvatar]?<img className="yl-emoji-photoimg" src={photos[newAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickNewAvatar}/></label></div>
             <div className="yl-petform-row"><IMEInput className="yl-input" value={newName} onChange={setNewName} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
             <label className="yl-opt" style={{marginTop:10}}>誕生日（年は任意）<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
@@ -3303,7 +3314,7 @@ function App(){
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-coat-list" value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-coat-list">{COAT_COLORS.map(c=><option key={c} value={c}/>)}</datalist></label>}
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
-                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{[{k:"adult",l:"大人"},{k:"child",l:"子ども"},{k:"senior",l:"高齢者"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
+                      {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{PERSON_TYPES.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{genderOptsFor(editPersonType).map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="droplet" size={14}/> 血液型（任意）<span className="yl-seg-mini">{BLOOD_OPTS.map(o=><button key={o} className={"yl-seg-mini-btn"+(editBlood===o?" on":"")} onClick={()=>setEditBlood(editBlood===o?"":o)}>{o}</button>)}</span></div>}
                       {activeMember.kind==="pet"&&<div className="yl-opt yl-memorial-opt" style={{marginTop:10,width:"100%"}}><Icon name="sparkles" size={14}/> 虹の橋（お別れの記録・任意）
@@ -3698,7 +3709,7 @@ function App(){
                   )}
                 </section>
               )});
-              if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"growth",el:(
+              if(curKind==="person"&&["child","baby"].includes(activeMember.personType||"child"))defs.push({key:"growth",el:(
                 <section className="yl-growth">
                   <h2 className="yl-routine-title" style={{marginBottom:6}}>成長の記録</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>はじめて・できたこと・作品を残せます（写真も添付OK）。あとから育児日記として振り返れます。</p>
@@ -3761,7 +3772,7 @@ function App(){
                   {allowanceRecords.length>0&&<ul className="yl-allow-list">{allowanceRecords.slice(0,8).map(a=>{const dm=ALLOWANCE_DIRS.find(o=>o.k===a.dir)||ALLOWANCE_DIRS[0];return(<li key={a.id} className="yl-allow-item"><span className="yl-point-date">{fmtDate(a.date)}</span><span className={"yl-allow-tag dir-"+a.dir}>{dm.l}</span>{a.reason&&<span className="yl-allow-reason">{a.reason}</span>}<span className={"yl-allow-amt"+(dm.sign<0?" out":dm.sign>0?" in":"")}>{dm.sign<0?"-":dm.sign>0?"+":""}{fmtYen(a.amount)}</span><button className="yl-health-del" onClick={()=>removeAllowance(a.id)} aria-label="削除">×</button></li>);})}</ul>}
                 </section>
               )});
-              if(curKind==="person"&&((activeMember.personType||"child")==="child"||activeMember.personType==="senior"))defs.push({key:"meds",el:(
+              if(curKind==="person"&&(["child","baby"].includes(activeMember.personType||"child")||activeMember.personType==="senior"))defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬の服用</h2>
                   {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/> {m.name}</span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
