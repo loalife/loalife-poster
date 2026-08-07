@@ -23,6 +23,11 @@ const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return i
 const daysUntil = (s) => { if(!s)return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
 const addInterval = (s,rep) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); if(rep==="daily")dt.setDate(dt.getDate()+1); else if(rep==="weekly")dt.setDate(dt.getDate()+7); else if(rep==="monthly")dt.setMonth(dt.getMonth()+1); else if(rep==="yearly")dt.setFullYear(dt.getFullYear()+1); return iso(dt); };
 const fmtDate = (s) => { if(!s)return""; const[,m,d]=s.split("-").map(Number); return`${m}/${d}`; };
+// 授乳タイマー用のフォーマッタ（ms タイムスタンプ基準）。
+const isoOf = (ms) => iso(new Date(ms));
+const fmtDur = (sec) => sec<60?`${sec}秒`:`${Math.floor(sec/60)}分${sec%60?`${sec%60}秒`:""}`;
+const fmtClock = (ms) => { const d=new Date(ms); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
+const sinceLabel = (ms) => { const mins=Math.max(0,Math.floor((Date.now()-ms)/60000)); if(mins<1)return"たった今"; if(mins<60)return`${mins}分`; const h=Math.floor(mins/60),m=mins%60; return`${h}時間${m?`${m}分`:""}`; };
 const daysBetween = (a,b) => { const[ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
 const addDays = (s,n) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return iso(dt); };
 const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Number); return`${mo}月${d}日`; };
@@ -1138,6 +1143,10 @@ function App(){
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
   const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
+  // 授乳タイマー（赤ちゃん）：稼働中タイマーは localStorage に持たせてアプリを閉じても続く。
+  const[nursing,setNursing]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-nursing")||"null");}catch(e){return null;}}); // {space,side,start}
+  const[nursingNow,setNursingNow]=useState(Date.now());
+  const[milkMl,setMilkMl]=useState("");
   const[friendBdayDate,setFriendBdayDate]=useState("");
   const[pickerId,setPickerId]=useState(null);
   const[viewer,setViewer]=useState(null);
@@ -1201,7 +1210,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["certs","toilet","health","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["nursing","certs","toilet","health","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
   const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
   const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
@@ -1832,6 +1841,8 @@ function App(){
   const diaryTypeOf=(space)=>{if(space==="me")return"adult";const m=members.find(x=>x.id===space);if(!m)return"adult";if(m.kind==="pet")return"pet";return m.personType||"child";};
   const nameOf=(spaceId)=>spaceId==="me"?(meName||"わたし"):(members.find(m=>m.id===spaceId)||{}).name||"";
 
+  // 授乳タイマー稼働中は1秒ごとに表示を更新する。
+  useEffect(()=>{if(!nursing)return;const id=setInterval(()=>setNursingNow(Date.now()),1000);return()=>clearInterval(id);},[nursing]);
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
@@ -2172,6 +2183,15 @@ function App(){
     showFlash(grams!=null?`ごはんを記録しました（約${grams}g）🍚`:"ごはんを記録しました 🍚");
   };
   const removeFeed=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- 授乳タイマー（赤ちゃん）：母乳は左右のタイマー、ミルクは量(ml)で記録。前回からの経過が出る ---
+  const nursingRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="nursing").sort((a,b)=>(b.ts||0)-(a.ts||0)),[items,tab]);
+  const nursingToday=useMemo(()=>nursingRecords.filter(x=>x.date===todayIso),[nursingRecords,todayIso]);
+  const lastNursingTs=nursingRecords.length?nursingRecords[0].ts:null;
+  const startNursing=(side)=>{const t={space:tab,side,start:Date.now()};setNursing(t);try{localStorage.setItem("loalife-nursing",JSON.stringify(t));}catch(e){}setNursingNow(Date.now());};
+  const cancelNursing=()=>{setNursing(null);try{localStorage.removeItem("loalife-nursing");}catch(e){}};
+  const stopNursing=()=>{if(!nursing)return;const durationSec=Math.max(1,Math.round((Date.now()-nursing.start)/1000));const rec={id:"ns"+Date.now(),space:nursing.space,type:"nursing",ts:nursing.start,date:isoOf(nursing.start),side:nursing.side,durationSec,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});const side=nursing.side;cancelNursing();showFlash(`授乳を記録しました（${side==="left"?"左":"右"} ${fmtDur(durationSec)}）`);};
+  const logMilk=()=>{const n=Number(milkMl);if(!milkMl.trim()||isNaN(n)||n<=0){showFlash("ミルクの量(ml)を入力してください");return;}const rec={id:"ns"+Date.now(),space:tab,type:"nursing",ts:Date.now(),date:todayIso,side:"milk",amountMl:Math.round(n),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMilkMl("");showFlash(`ミルクを記録しました（${Math.round(n)}ml）🍼`);};
+  const removeNursing=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // --- 今日のようす（日記）：元気・食欲・うんち・さんぽ・病院・症状・写真・ひとことを追記型で記録 ---
   const diaryRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // 1日=1カード：同じ日付でグルーピング（日降順、カード内は時系列昇順）。レコードは束ねるだけで消さない。
@@ -2443,7 +2463,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
   const dndSensors=useSensors(
     useSensor(MouseSensor,{activationConstraint:{distance:6}}),
@@ -2476,7 +2496,7 @@ function App(){
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   // 絞り込みチップは中身がある時だけ出す（空なら押しても変わらず不要なので隠す。追加は右下＋）
-  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"),[items,tab]);
+  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing"),[items,tab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
   const cardInner=(it)=>{
@@ -3614,6 +3634,33 @@ function App(){
                   <h2 className="yl-routine-title" style={{marginBottom:8}}>獣医さん用サマリー</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>記録を1枚にまとめて印刷・PDF保存。</p>
                   <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> サマリーを作成</button>
+                </section>
+              )});
+              if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
+                <section className="yl-nursing">
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">授乳・ミルク</h2>{lastNursingTs&&!nursing&&<span className="yl-nursing-since">前回から {sinceLabel(lastNursingTs)}</span>}</div>
+                  {nursing&&nursing.space===tab?(
+                    <div className="yl-nursing-run">
+                      <div className="yl-nursing-runinfo"><span className="yl-nursing-runside">{nursing.side==="left"?"◀ 左で授乳中":"右で授乳中 ▶"}</span><span className="yl-nursing-time">{fmtDur(Math.max(0,Math.round((nursingNow-nursing.start)/1000)))}</span></div>
+                      <div className="yl-nursing-runbtns"><button className="yl-nursing-stop" onClick={stopNursing}><Icon name="check" size={16}/> 終了して記録</button><button className="yl-nursing-cancel" onClick={cancelNursing}>やめる</button></div>
+                    </div>
+                  ):(
+                    <div className="yl-nursing-start"><button className="yl-nursing-btn" onClick={()=>startNursing("left")}>◀ 左で授乳</button><button className="yl-nursing-btn" onClick={()=>startNursing("right")}>右で授乳 ▶</button></div>
+                  )}
+                  <div className="yl-nursing-milk"><span className="yl-nursing-milklabel">🍼 ミルク</span><span className="yl-nursing-mlbox"><input type="number" inputMode="numeric" min="0" className="yl-health-num" value={milkMl} onChange={e=>setMilkMl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&logMilk()} placeholder="量"/><span className="yl-nursing-unit">ml</span></span><button className="yl-addbtn sm" onClick={logMilk}>＋ 記録</button></div>
+                  {nursingToday.length>0&&<p className="yl-nursing-todaysub">今日 {nursingToday.length}回</p>}
+                  {nursingRecords.length>0&&(
+                    <ul className="yl-nursing-list">
+                      {nursingRecords.slice(0,6).map(x=>(
+                        <li key={x.id} className="yl-nursing-item">
+                          <span className="yl-nursing-itime">{fmtClock(x.ts)}</span>
+                          <span className="yl-nursing-ibody">{x.side==="milk"?<>🍼 ミルク {x.amountMl}ml</>:<>🤱 母乳 {x.side==="left"?"左":"右"}・{fmtDur(x.durationSec)}</>}</span>
+                          <span className="yl-nursing-idate">{fmtDate(x.date)}</span>
+                          <button className="yl-health-del" onClick={()=>askDelete("授乳の記録",()=>removeNursing(x.id))} aria-label="削除">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </section>
               )});
               if(curKind==="pet")defs.push({key:"feed",el:(
