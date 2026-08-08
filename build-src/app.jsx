@@ -135,11 +135,11 @@ const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"we
 const ROUTINE_TEMPLATES={
   pet:[{title:"散歩",emoji:"🦮",time:"07:00"},{title:"ごはん",emoji:"🍚",time:"08:00"},{title:"トイレ掃除",emoji:"🧹",time:"09:00"}],
   person:[{title:"歯みがき",emoji:"🪥",time:"08:00"},{title:"宿題",emoji:"📖",time:"17:00"},{title:"お風呂",emoji:"🛁",time:"19:00"},{title:"薬",emoji:"💊",time:"20:00"}],
-  me:[{title:"薬・サプリ",emoji:"💊",time:"08:00"},{title:"ストレッチ",emoji:"🧘",time:"07:00"},{title:"水を飲む",emoji:"💧",time:"12:00"},{title:"早く寝る",emoji:"🌙",time:"23:00"}],
+  me:[{title:"運動",emoji:"🏃",time:"07:00"},{title:"筋トレ",emoji:"🏋️",time:"07:30"},{title:"勉強",emoji:"📖",time:"21:00"},{title:"読書",emoji:"📚",time:"22:00"},{title:"掃除",emoji:"🧹",time:"10:00"},{title:"洗濯",emoji:"🧺",time:"09:00"},{title:"ストレッチ",emoji:"🧘",time:"22:30"},{title:"薬・サプリ",emoji:"💊",time:"08:00"}],
 };
 const normKind=(k)=>k==="person"?"person":k==="me"?"me":"pet";
 const routineTemplatesFor=(kind)=>ROUTINE_TEMPLATES[normKind(kind)];
-const ROUTINE_EMOJIS={pet:["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"],person:["🪥","📖","🛁","💊","🍚","🌙","⏰","🎒","🧴","💧"],me:["💊","🧘","💧","🌙","☕","📖","🏃","🧴","⏰","🍵"]};
+const ROUTINE_EMOJIS={pet:["🦮","🍚","🧹","💊","🛁","🦴","🚽","🪥","🐾","💧"],person:["🪥","📖","🛁","💊","🍚","🌙","⏰","🎒","🧴","💧"],me:["🏃","🏋️","📖","📚","🧹","🧺","🧘","💊","💧","🌙","⏰","☕"]};
 // 消耗品（ストック）テンプレ：買った日＋消費サイクルで「そろそろ切れそう」を自動表示
 const SUPPLY_TEMPLATES={
   pet:[{title:"フード",emoji:"🍚",cycleDays:30},{title:"おやつ",emoji:"🦴",cycleDays:30},{title:"トイレシーツ",emoji:"🧻",cycleDays:30},{title:"薬・サプリ",emoji:"💊",cycleDays:30}],
@@ -3409,6 +3409,7 @@ function App(){
                       })}
                     </ul>
                   )}
+                  {(()=>{const tpls=routineTemplatesFor(curKind).filter(t=>!routines.some(r=>r.title===t.title));return tpls.length>0&&(<div className="yl-chore-tpl" style={{marginTop:routines.length?10:6}}>{tpls.map(t=><button key={t.title} className="yl-chore-add" onClick={()=>openRoutineTemplate(t)}>＋ <Icon name={guessIcon(t.title)} size={14}/> {t.title}</button>)}</div>);})()}
                 </section>
               )});
               defs.push({key:"chore",el:(
