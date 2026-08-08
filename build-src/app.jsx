@@ -28,6 +28,26 @@ const isoOf = (ms) => iso(new Date(ms));
 const fmtDur = (sec) => sec<60?`${sec}秒`:`${Math.floor(sec/60)}分${sec%60?`${sec%60}秒`:""}`;
 const fmtClock = (ms) => { const d=new Date(ms); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
 const sinceLabel = (ms) => { const mins=Math.max(0,Math.floor((Date.now()-ms)/60000)); if(mins<1)return"たった今"; if(mins<60)return`${mins}分`; const h=Math.floor(mins/60),m=mins%60; return`${h}時間${m?`${m}分`:""}`; };
+// 散歩記録：2点間の距離（メートル・Haversine）、距離表記、GPSルートのSVGトレース。
+const haversineM = (a,b) => { const R=6371000,rad=Math.PI/180; const dLat=(b.lat-a.lat)*rad,dLng=(b.lng-a.lng)*rad; const s=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(s))); };
+const fmtDist = (m) => m==null?"—":m>=1000?`${(m/1000).toFixed(2)}km`:`${Math.round(m)}m`;
+const routePath = (route,w,h,pad=6) => { if(!Array.isArray(route)||route.length<2)return""; let minLa=Infinity,maxLa=-Infinity,minLo=Infinity,maxLo=-Infinity; route.forEach(p=>{if(p.lat<minLa)minLa=p.lat;if(p.lat>maxLa)maxLa=p.lat;if(p.lng<minLo)minLo=p.lng;if(p.lng>maxLo)maxLo=p.lng;}); const spanLa=Math.max(1e-6,maxLa-minLa),spanLo=Math.max(1e-6,maxLo-minLo); const iw=w-2*pad,ih=h-2*pad; return route.map(p=>{const x=pad+((p.lng-minLo)/spanLo)*iw; const y=pad+(1-(p.lat-minLa)/spanLa)*ih; return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(" "); };
+// 散歩の月間めやす（犬種サイズ×年齢）。獣医の助言ではなく、あくまでゆるやかな目安。
+const WALK_BREED_SMALL=["チワワ","トイプードル","ダックス","ポメラニアン","シーズー","マルチーズ","ヨークシャー","パピヨン","豆柴","カニンヘン","チン","キャバリア","ペキニーズ","ピンシャー","ビション","パグ","フレンチブル","ボストン"];
+const WALK_BREED_LARGE=["ゴールデン","ラブラドール","レトリバー","シェパード","ハスキー","ボーダーコリー","バーニーズ","ピレニーズ","ドーベルマン","ダルメシアン","秋田","ワイマラナー","ロットワイラー","スタンダードプードル","フラットコーテッド","コリー","ボクサー","グレート"];
+const walkSizeOf=(breed)=>{const b=(breed||"");if(WALK_BREED_LARGE.some(k=>b.includes(k)))return"large";if(WALK_BREED_SMALL.some(k=>b.includes(k)))return"small";return"medium";};
+const walkGoalFor=(m)=>{
+  if(!m||m.species!=="dog")return null;
+  const size=walkSizeOf(m.breed);
+  const mo=typeof monthsOld==="function"?monthsOld(m.birthday):null;
+  const stage=mo==null?"adult":mo<12?"puppy":mo>=96?"senior":"adult"; // <1歳=子犬, 8歳以上=シニア
+  const baseKm={small:2,medium:3.5,large:5.5}[size];
+  const factor={puppy:0.5,adult:1,senior:0.65}[stage];
+  const monthlyKm=Math.round(baseKm*factor*30);
+  const dailyWalks=size==="small"?1:2;
+  const monthlyWalks=Math.round(dailyWalks*(stage==="senior"?0.7:1)*30);
+  return{size,stage,monthlyKm,monthlyWalks,sizeLabel:{small:"小型",medium:"中型",large:"大型"}[size],stageLabel:{puppy:"子犬",adult:"成犬",senior:"シニア"}[stage],knownBreed:size!=="medium"||!!(m.breed&&m.breed.trim()),knownAge:mo!=null};
+};
 const daysBetween = (a,b) => { const[ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
 const addDays = (s,n) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return iso(dt); };
 const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Number); return`${mo}月${d}日`; };
@@ -1146,6 +1166,11 @@ function App(){
   const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
   // 授乳タイマー（赤ちゃん）：稼働中タイマーは localStorage に持たせてアプリを閉じても続く。
   const[nursing,setNursing]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-nursing")||"null");}catch(e){return null;}}); // {space,side,start}
+  // 散歩記録：稼働中の散歩（GPSルート・距離）。アプリを閉じても復帰できるよう localStorage に保持。
+  const[walk,setWalk]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-walk")||"null");}catch(e){return null;}}); // {space,start,route:[{lat,lng,t}],distanceM}
+  const[walkNow,setWalkNow]=useState(Date.now());
+  const[walkGpsErr,setWalkGpsErr]=useState("");
+  const walkWatchRef=useRef(null);
   const[nursingNow,setNursingNow]=useState(Date.now());
   const[milkMl,setMilkMl]=useState("");
   const[friendBdayDate,setFriendBdayDate]=useState("");
@@ -1213,7 +1238,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState("record");
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["nursing","certs","toilet","health","meds","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["walk","nursing","certs","toilet","health","meds","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
   const[weatherLoc,setWeatherLoc]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-weatherloc"))||null;}catch(e){return null;}});
   const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
@@ -1223,6 +1248,7 @@ function App(){
   const[wxSearching,setWxSearching]=useState(false);
   const[walkOpen,setWalkOpen]=useState(false); // お散歩指数の内訳の開閉
   const[wxDetail,setWxDetail]=useState(false); // 天気カードの詳細の開閉（初期は要点だけ）
+  const[walkDay,setWalkDay]=useState("today"); // 散歩タイム：今日/明日の切替
   const[toxicOpen,setToxicOpen]=useState(false); // 誤食・中毒の危険物リスト
   const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
   const[toxicQ,setToxicQ]=useState("");
@@ -1477,7 +1503,7 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=2&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};const d=j.daily||{};const H=j.hourly||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
@@ -1497,7 +1523,20 @@ function App(){
         ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===day&&hh>=5&&hh<=22)hours.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
         if(hours.length===0)hours=null;
       }
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,time:c.time,fetchedAt:Date.now()});
+      // 明日の予報（最高/最低・天気・UV）＋時間別（散歩タイム用）。
+      let tomorrow=null;
+      if(Array.isArray(ht)){
+        const today=(c.time||ht[0]||"").slice(0,10);
+        const tmr=addInterval(today,"daily");
+        const th=[];
+        ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===tmr&&hh>=5&&hh<=22)th.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
+        const thi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[1]:null;
+        const tlo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[1]:null;
+        const tcode=Array.isArray(d.weather_code)?d.weather_code[1]:null;
+        const tuv=Array.isArray(d.uv_index_max)?d.uv_index_max[1]:null;
+        if(thi!=null||th.length)tomorrow={hi:thi,lo:tlo,code:tcode,uv:tuv,hours:th.length?th:null};
+      }
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,tomorrow,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -2204,6 +2243,22 @@ function App(){
   const stopNursing=()=>{if(!nursing)return;const durationSec=Math.max(1,Math.round((Date.now()-nursing.start)/1000));const rec={id:"ns"+Date.now(),space:nursing.space,type:"nursing",ts:nursing.start,date:isoOf(nursing.start),side:nursing.side,durationSec,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});const side=nursing.side;cancelNursing();showFlash(`授乳を記録しました（${side==="left"?"左":"右"} ${fmtDur(durationSec)}）`);};
   const logMilk=()=>{const n=Number(milkMl);if(!milkMl.trim()||isNaN(n)||n<=0){showFlash("ミルクの量(ml)を入力してください");return;}const rec={id:"ns"+Date.now(),space:tab,type:"nursing",ts:Date.now(),date:todayIso,side:"milk",amountMl:Math.round(n),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMilkMl("");showFlash(`ミルクを記録しました（${Math.round(n)}ml）🍼`);};
   const removeNursing=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- 散歩記録（開始・終了／時間・距離・GPSルート）---
+  const walkRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="walk").sort((a,b)=>(b.start||0)-(a.start||0)),[items,tab]);
+  const walkMonthStats=useMemo(()=>{const mo=todayIso.slice(0,7);const list=walkRecords.filter(w=>(w.date||"").slice(0,7)===mo);return{count:list.length,km:list.reduce((s,w)=>s+(w.distanceM||0),0)/1000};},[walkRecords,todayIso]);
+  const walkPersist=(w)=>{try{w?localStorage.setItem("loalife-walk",JSON.stringify(w)):localStorage.removeItem("loalife-walk");}catch(e){}};
+  const onWalkPos=(pos)=>{const p={lat:pos.coords.latitude,lng:pos.coords.longitude,t:Date.now()};setWalk(prev=>{if(!prev)return prev;const route=prev.route||[];const last=route[route.length-1];let add=0;if(last){const d=haversineM(last,p);if(d<3)return prev;add=d;} // 3m未満のブレは無視
+    const next={...prev,route:[...route,p],distanceM:(prev.distanceM||0)+add};walkPersist(next);return next;});};
+  const onWalkErr=(e)=>{setWalkGpsErr(e&&e.code===1?"位置情報が許可されていません（時間は記録できます）":"位置情報を取得できませんでした");};
+  const startWalkWatch=()=>{if(walkWatchRef.current!=null||!navigator.geolocation)return;try{walkWatchRef.current=navigator.geolocation.watchPosition(onWalkPos,onWalkErr,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});}catch(e){}};
+  const stopWalkWatch=()=>{if(walkWatchRef.current!=null&&navigator.geolocation){try{navigator.geolocation.clearWatch(walkWatchRef.current);}catch(e){}}walkWatchRef.current=null;};
+  const startWalk=()=>{if(walk){showFlash("すでに散歩を記録中です");return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
+  const cancelWalk=()=>{stopWalkWatch();setWalk(null);walkPersist(null);setWalkGpsErr("");};
+  const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,Math.round((Date.now()-walk.start)/1000));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(`おさんぽ記録：${fmtDur(durationSec)}・${fmtDist(distanceM)} 🐾`);};
+  const removeWalk=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // 散歩の経過時間を1秒ごとに更新＋アプリ復帰時にGPS監視を再開。
+  useEffect(()=>{if(!walk)return;const id=setInterval(()=>setWalkNow(Date.now()),1000);startWalkWatch();return()=>{clearInterval(id);stopWalkWatch();};// eslint-disable-next-line
+  },[walk?.start]);
   // --- 今日のようす（日記）：元気・食欲・うんち・さんぽ・病院・症状・写真・ひとことを追記型で記録 ---
   const diaryRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   // 1日=1カード：同じ日付でグルーピング（日降順、カード内は時系列昇順）。レコードは束ねるだけで消さない。
@@ -2475,7 +2530,7 @@ function App(){
     return res;
   },[items,activeMember]);
 
-  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
+  const visible=useMemo(()=>{let arr=items.filter(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing"&&x.type!=="walk");if(filter!=="all")arr=arr.filter(x=>isMemberTab?x.careKind===filter:x.type===filter);arr=[...arr].sort((a,b)=>{const ao=a.order,bo=b.order;if(ao!=null&&bo!=null&&ao!==bo)return ao-bo;if(ao!=null&&bo==null)return -1;if(ao==null&&bo!=null)return 1;if(!a.dueDate&&!b.dueDate)return b.createdAt-a.createdAt;if(!a.dueDate)return 1;if(!b.dueDate)return -1;return a.dueDate.localeCompare(b.dueDate);});return arr.sort((a,b)=>a.done===b.done?0:a.done?1:-1);},[items,tab,filter,isMemberTab]);
   // 並び替え：長押し（モバイル）/ドラッグ（PC）で D&D。未完了タスクの並びだけ order に反映。
   const dndSensors=useSensors(
     useSensor(MouseSensor,{activationConstraint:{distance:6}}),
@@ -2508,7 +2563,7 @@ function App(){
   };
   const filterChips=useMemo(()=>{const all={key:"all",label:"すべて"};if(isMemberTab)return[all,...careKindsFor(activeMember)];return[all,...ME_TYPES.map(t=>({key:t,label:TYPE_META[t].label}))];},[tab,isMemberTab]);
   // 絞り込みチップは中身がある時だけ出す（空なら押しても変わらず不要なので隠す。追加は右下＋）
-  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing"),[items,tab]);
+  const hasListItems=useMemo(()=>items.some(x=>x.space===tab&&x.type!=="routine"&&x.type!=="supply"&&x.type!=="memory"&&x.type!=="bday"&&x.type!=="health"&&x.type!=="diary"&&x.type!=="expense"&&x.type!=="card"&&x.type!=="belonging"&&x.type!=="chore"&&x.type!=="toilet"&&x.type!=="feed"&&x.type!=="nursing"&&x.type!=="walk"),[items,tab]);
   const suggestions=useMemo(()=>{const prefix=tab+" ";return Object.entries(usage).filter(([k,c])=>k.startsWith(prefix)&&c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k])=>k.slice(prefix.length));},[usage,tab]);
   // 1件分のカード中身（D&D用に <li> から分離）。並び替えボタンは廃止し長押し/ドラッグへ。
   const cardInner=(it)=>{
@@ -2950,7 +3005,7 @@ function App(){
               </section>
             )}
 
-            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
@@ -2985,14 +3040,18 @@ function App(){
                           <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
                         </div>
                       )}
-                      {wt&&(<div className="yl-walktime">
+                      {(wt||wtT)&&(<div className="yl-walktime">
                         <div className="yl-walktime-head">
                           <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
-                          {wt.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}〜${wt.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">今日はおうちでのんびり</span>}
+                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>今日</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>明日</button></span>}
                         </div>
-                        <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                        <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
-                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">明日の予報はまだ取得できません</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
+                          {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
+                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {active.best.from===active.best.to?`${active.best.from}時ごろ`:`${active.best.from}〜${active.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">{isT?"明日はおうちでのんびり":"今日はおうちでのんびり"}</span>}
+                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                          <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
+                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                        </>);})()}
                       </div>)}
                     </div>)}
                   </div>)}
@@ -3704,6 +3763,45 @@ function App(){
                           <button className="yl-health-del" onClick={()=>askDelete("授乳の記録",()=>removeNursing(x.id))} aria-label="削除">×</button>
                         </li>
                       ))}
+                    </ul>
+                  )}
+                </section>
+              )});
+              if(curKind==="pet")defs.push({key:"walk",el:(
+                <section className="yl-walkrec">
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>おさんぽ記録</h2>
+                  {(()=>{const g=walkGoalFor(activeMember);if(!g)return null;const kmPct=Math.min(100,Math.round(walkMonthStats.km/g.monthlyKm*100));const cntPct=Math.min(100,Math.round(walkMonthStats.count/g.monthlyWalks*100));return(
+                    <div className="yl-walkgoal">
+                      <div className="yl-walkgoal-head"><span className="yl-walkgoal-title"><Icon name="paw" size={13}/> 今月のめやす</span><span className="yl-walkgoal-tag">{g.sizeLabel}・{g.stageLabel}</span></div>
+                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">距離</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:kmPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.km.toFixed(1)}<span className="yl-walkgoal-goal"> / {g.monthlyKm}km</span></span></div>
+                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">回数</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:cntPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.count}<span className="yl-walkgoal-goal"> / {g.monthlyWalks}回</span></span></div>
+                      <p className="yl-walkgoal-note">犬種{g.knownBreed?"":"（未設定→中型で計算）"}と年齢{g.knownAge?"":"（未設定→成犬で計算）"}からのゆるやかな目安です。体調・獣医さんの指示に合わせて調整してください。</p>
+                    </div>
+                  );})()}
+                  {walk&&walk.space===tab?(
+                    <div className="yl-walkrec-live">
+                      <div className="yl-walkrec-stats">
+                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(Math.max(0,Math.round((walkNow-walk.start)/1000)))}</span><span className="yl-walkrec-statl">時間</span></div>
+                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDist(walk.distanceM||0)}</span><span className="yl-walkrec-statl">距離</span></div>
+                      </div>
+                      {walk.route&&walk.route.length>=2&&<svg className="yl-walkrec-map live" viewBox="0 0 300 120" preserveAspectRatio="none"><polyline points={routePath(walk.route,300,120)} fill="none" stroke="#E39A5C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      <p className="yl-walkrec-hint">{walkGpsErr?walkGpsErr:(walk.route&&walk.route.length?`GPSでルート記録中（${walk.route.length}点）`:"GPSでルートを記録中…歩き出すと距離が増えます")}</p>
+                      <div className="yl-walkrec-livebtns"><button className="yl-walkrec-stop" onClick={stopWalk}><Icon name="check" size={16}/> 終了して記録</button><button className="yl-walkrec-cancel" onClick={cancelWalk}>やめる</button></div>
+                    </div>
+                  ):walk?(
+                    <p className="yl-walkrec-other"><Icon name="paw" size={14}/> 別のコの散歩を記録中です</p>
+                  ):(
+                    <button className="yl-walkrec-start" onClick={startWalk}><Icon name="paw" size={18}/> 散歩スタート</button>
+                  )}
+                  {walkRecords.length>0&&(
+                    <ul className="yl-walkrec-list">
+                      {walkRecords.slice(0,6).map(w=>{const rp=routePath(w.route,72,48);return(
+                        <li key={w.id} className="yl-walkrec-item">
+                          <span className="yl-walkrec-thumb">{rp?<svg viewBox="0 0 72 48" preserveAspectRatio="none"><polyline points={rp} fill="none" stroke="#E39A5C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>:<Icon name="paw" size={16}/>}</span>
+                          <span className="yl-walkrec-body"><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
+                          <button className="yl-walkrec-del" onClick={()=>askDelete("散歩の記録",()=>removeWalk(w.id))} aria-label="削除">×</button>
+                        </li>
+                      );})}
                     </ul>
                   )}
                 </section>
