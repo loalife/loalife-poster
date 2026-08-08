@@ -1223,6 +1223,7 @@ function App(){
   const[wxSearching,setWxSearching]=useState(false);
   const[walkOpen,setWalkOpen]=useState(false); // お散歩指数の内訳の開閉
   const[wxDetail,setWxDetail]=useState(false); // 天気カードの詳細の開閉（初期は要点だけ）
+  const[walkDay,setWalkDay]=useState("today"); // 散歩タイム：今日/明日の切替
   const[toxicOpen,setToxicOpen]=useState(false); // 誤食・中毒の危険物リスト
   const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
   const[toxicQ,setToxicQ]=useState("");
@@ -1477,7 +1478,7 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=1&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=2&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};const d=j.daily||{};const H=j.hourly||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
@@ -1497,7 +1498,20 @@ function App(){
         ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===day&&hh>=5&&hh<=22)hours.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
         if(hours.length===0)hours=null;
       }
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,time:c.time,fetchedAt:Date.now()});
+      // 明日の予報（最高/最低・天気・UV）＋時間別（散歩タイム用）。
+      let tomorrow=null;
+      if(Array.isArray(ht)){
+        const today=(c.time||ht[0]||"").slice(0,10);
+        const tmr=addInterval(today,"daily");
+        const th=[];
+        ht.forEach((t,i)=>{const hh=parseInt(t.slice(11,13),10);if(t.slice(0,10)===tmr&&hh>=5&&hh<=22)th.push({h:hh,temp:H.temperature_2m?.[i],app:H.apparent_temperature?.[i],pop:H.precipitation_probability?.[i],uv:H.uv_index?.[i],code:H.weather_code?.[i]});});
+        const thi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[1]:null;
+        const tlo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[1]:null;
+        const tcode=Array.isArray(d.weather_code)?d.weather_code[1]:null;
+        const tuv=Array.isArray(d.uv_index_max)?d.uv_index_max[1]:null;
+        if(thi!=null||th.length)tomorrow={hi:thi,lo:tlo,code:tcode,uv:tuv,hours:th.length?th:null};
+      }
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,tomorrow,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
@@ -2950,7 +2964,7 @@ function App(){
               </section>
             )}
 
-            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
@@ -2985,14 +2999,18 @@ function App(){
                           <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
                         </div>
                       )}
-                      {wt&&(<div className="yl-walktime">
+                      {(wt||wtT)&&(<div className="yl-walktime">
                         <div className="yl-walktime-head">
                           <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
-                          {wt.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {wt.best.from===wt.best.to?`${wt.best.from}時ごろ`:`${wt.best.from}〜${wt.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">今日はおうちでのんびり</span>}
+                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>今日</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>明日</button></span>}
                         </div>
-                        <div className="yl-walktime-bar">{wt.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                        <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
-                        <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">明日の予報はまだ取得できません</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
+                          {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
+                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {active.best.from===active.best.to?`${active.best.from}時ごろ`:`${active.best.from}〜${active.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">{isT?"明日はおうちでのんびり":"今日はおうちでのんびり"}</span>}
+                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                          <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
+                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                        </>);})()}
                       </div>)}
                     </div>)}
                   </div>)}
