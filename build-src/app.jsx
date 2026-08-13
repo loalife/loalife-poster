@@ -2450,6 +2450,8 @@ function App(){
   // 証明書を年ごとにまとめる（何年度ぶん、が分かるように）。
   // 対応済みにすると dueDate は次回（翌年）へ進むため、実施日 lastDone を優先して「その証明書が実際にいつのものか」で分類する。
   const certsByYear=useMemo(()=>{const map={};certs.forEach(c=>{const d=c.lastDone||itemDate(c)||(c.createdAt?iso(new Date(c.createdAt)):"");const y=d?d.slice(0,4):"----";(map[y]=map[y]||[]).push(c);});return Object.keys(map).sort((a,b)=>b.localeCompare(a)).map(y=>({year:y,items:map[y]}));},[certs]);
+  // まだ写真（証明書）が付いていないケア記録。「健康・ケアの記録」でその場から写真を添付できるよう出し分ける（データ構造は変更せず読み取りのみ）。
+  const careNoPhoto=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="care"&&!x.photo).sort((a,b)=>{const da=a.lastDone||itemDate(a)||"";const db=b.lastDone||itemDate(b)||"";return db.localeCompare(da);}),[items,tab]);
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const petMembers=useMemo(()=>members.filter(m=>m.kind==="pet"),[members]);
@@ -3701,25 +3703,62 @@ function App(){
             })()}
 
             {personSeg==="record"&&(()=>{const defs=[];
-              if(isMemberTab&&certs.length>0)defs.push({key:"certs",el:(
+              if(isMemberTab)defs.push({key:"certs",el:(
                 <section className="yl-certs">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>証明書</h2>
-                  {certsByYear.map(g=>(
-                    <div key={g.year} className="yl-cert-year">
-                      <span className="yl-cert-yearlabel">{g.year==="----"?"日付なし":`${g.year}年`}</span>
-                      <div className="yl-certs-row">
-                        {g.items.map(c=>{
-                          const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
-                          return(
-                            <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
-                              {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph"><Icon name="filetext" size={20}/></span>}
-                              <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                  <div className="yl-routine-head">
+                    <h2 className="yl-routine-title">健康・ケアの記録</h2>
+                    {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>setInputSheet("schedule")}>＋ 追加</button>}
+                  </div>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>ワクチン・通院・お薬・証明書などの記録をまとめて管理できます。</p>
+                  {(certs.length>0||careNoPhoto.length>0)&&(()=>{
+                    const allCare=[...certs,...careNoPhoto];
+                    const chips=careKindsFor(activeMember).filter(k=>k.key!=="other"&&allCare.some(c=>c.careKind===k.key)).map(k=>({key:k.key,label:k.label,icon:careIcon(k.key)}));
+                    if(certs.length>0)chips.push({key:"__cert",label:"証明書",icon:"filetext"});
+                    return chips.length>0?(<div className="yl-typerow" style={{marginBottom:12}}>{chips.map(c=><span key={c.key} className="yl-chip" style={{cursor:"default"}}><Icon name={c.icon} size={14}/> {c.label}</span>)}</div>):null;
+                  })()}
+                  {certs.length===0&&careNoPhoto.length===0?(
+                    <div className="yl-cert-empty">
+                      <button className="yl-quick-big" onClick={()=>setInputSheet("schedule")}><Icon name="camera" size={18}/> ＋ 証明書を追加</button>
+                      <p className="yl-routine-empty" style={{marginTop:10}}>＋から「狂犬病」などを選び、過去の日付にして証明書の写真を保存できます。</p>
                     </div>
-                  ))}
+                  ):(<>
+                    {certs.length>0&&(<>
+                      <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="filetext" size={13}/> 証明書（タップで拡大）</p>
+                      {certsByYear.map(g=>(
+                        <div key={g.year} className="yl-cert-year">
+                          <span className="yl-cert-yearlabel">{g.year==="----"?"日付なし":`${g.year}年`}</span>
+                          <div className="yl-certs-row">
+                            {g.items.map(c=>{
+                              const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
+                              return(
+                                <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
+                                  {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph"><Icon name="filetext" size={20}/></span>}
+                                  <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </>)}
+                    {careNoPhoto.length>0&&(
+                      <div className="yl-cert-addable" style={{marginTop:certs.length>0?12:0}}>
+                        <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="camera" size={13}/> 写真（証明書）を追加できる記録</p>
+                        <div className="yl-certs-row">
+                          {careNoPhoto.map(c=>{
+                            const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
+                            return(
+                              <label key={c.id} className="yl-cert-cell" style={{cursor:"pointer"}} title="タップで証明書の写真を追加" onClick={e=>e.stopPropagation()}>
+                                <span className="yl-cert-ph"><Icon name="camera" size={20}/></span>
+                                <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
+                                <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,c.id)}/>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>)}
                 </section>
               )});
               defs.push({key:"health",el:(
