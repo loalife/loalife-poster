@@ -92,7 +92,7 @@ const TOXIC_ITEMS=[
 ];
 // 夜間・救急で電話するときに伝えたいこと（安全な備えガイド。病院データは各自で登録）。
 const EMERGENCY_TIPS=[
-  "子の種類・年齢・体重（例：柴犬・5歳・8kg）",
+  "ペットの種類・年齢・体重（例：柴犬・5歳・8kg）",
   "何が起きたか（いつ・何を・どれくらい）",
   "今の様子（意識・呼吸・嘔吐や下痢・出血・けいれんの有無）",
   "誤食なら、食べたもの・量・時間（できれば現物やパッケージを手元に）",
@@ -102,8 +102,8 @@ const EMERGENCY_TIPS=[
 const EMERGENCY_PREP=[
   "キャリー／タオル（保温・保定に）",
   "現物・パッケージ（誤食のとき）",
-  "お薬手帳・ワクチン証明（このアプリのサマリーでもOK）",
-  "支払い手段（カードのみの病院もあります）",
+  "お薬手帳・ワクチン接種証明（登録していればアプリの記録も確認できます）",
+  "支払い手段（対応している支払い方法を事前に確認）",
 ];
 // 防災・避難の備え（同行避難が基本。一般的な備えガイド。避難先は各自で自治体確認）。
 const DISASTER_PREP=[
@@ -4216,12 +4216,12 @@ function App(){
               <h2 className="yl-help-title"><Icon name="activity" size={18}/> 夜間・救急の備え</h2>
               <button className="yl-help-close" onClick={()=>setEmergencyOpen(false)}>×</button>
             </div>
-            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>受診の前に、必ずお電話を。多くの病院が事前連絡・予約制です。診療時間や番号は変わることがあります。</span></div>
+            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>受診前に、まずお電話で受け入れ可否や診療方法をご確認ください。夜間・救急は事前連絡が必要な場合があります。診療時間・連絡先は変わることがあります。</span></div>
 
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> あなたの緊急連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 登録</button></div>
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> あなたの緊急連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 連絡先を登録</button></div>
               {contacts.length===0?(
-                <p className="yl-set-desc">かかりつけ・夜間救急の病院を登録しておくと、いざという時にすぐ電話できます。「大切な情報カード」に病院メモとして保存されます。</p>
+                <p className="yl-set-desc">かかりつけ・夜間救急などの連絡先を登録しておくと、いざという時にすぐ確認できます。電話番号を入れておけば、ここからそのまま発信できます。「大切な情報カード」にも保存されます。</p>
               ):(
                 <ul className="yl-emg-contacts">{contacts.map(c=>{const tel=extractTel(c.body);return(
                   <li key={c.id} className="yl-emg-contact">
@@ -4258,7 +4258,7 @@ function App(){
             <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。</span></div>
 
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> わが家の避難先</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>＋ 登録</button></div>
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> わが家の避難先</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>＋ 避難先を登録</button></div>
               {shelters.length===0?(
                 <p className="yl-set-desc">指定避難所（ペット可否）・広域避難場所・預け先などを登録しておくと、いざという時に迷いません。「大切な情報カード」に避難先メモとして保存されます。</p>
               ):(
