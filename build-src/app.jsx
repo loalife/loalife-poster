@@ -450,11 +450,11 @@ function walkIndex(w){
   const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
   return{score,stars,level,label,factors:F,main:F[0]||null};
 }
-// 1時間ぶんの散歩レベル判定（体感温度ベース。雨・雷・寒さも考慮）。good/caution/avoid。
+// 1時間ぶんの散歩レベル判定（体感温度・降水・UV・雷を考慮。時間帯ごとに判定して時間軸で推奨を出す）。good/caution/avoid。
 function walkHourLevel(hr){
   if(!hr)return"good";
   const t=typeof hr.app==="number"?hr.app:hr.temp;
-  const pop=hr.pop,code=hr.code;
+  const pop=hr.pop,code=hr.code,uv=hr.uv;
   const thunder=[95,96,99].includes(code);
   const heavyRain=[65,67,75,82,86].includes(code)||(typeof pop==="number"&&pop>=80);
   if(typeof t==="number"){
@@ -465,6 +465,7 @@ function walkHourLevel(hr){
   }else if(thunder)return"avoid";
   if(heavyRain)return"avoid";
   if(typeof pop==="number"&&pop>=55)return"caution"; // 雨が降りやすい
+  if(typeof uv==="number"&&uv>=8)return"caution";    // 紫外線が強い（日差しの強い時間帯）
   return"good";
 }
 // 今日の散歩タイム（時間別の色帯＋おすすめ時間帯）。hours=[{h,temp,app,pop,uv,code}]。
@@ -3772,10 +3773,10 @@ function App(){
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>おさんぽ記録</h2>
                   {(()=>{const g=walkGoalFor(activeMember);if(!g)return null;const kmPct=Math.min(100,Math.round(walkMonthStats.km/g.monthlyKm*100));const cntPct=Math.min(100,Math.round(walkMonthStats.count/g.monthlyWalks*100));return(
                     <div className="yl-walkgoal">
-                      <div className="yl-walkgoal-head"><span className="yl-walkgoal-title"><Icon name="paw" size={13}/> 今月のめやす</span><span className="yl-walkgoal-tag">{g.sizeLabel}・{g.stageLabel}</span></div>
+                      <div className="yl-walkgoal-head"><span className="yl-walkgoal-title"><Icon name="paw" size={13}/> 今月のめやす（参考）</span><span className="yl-walkgoal-tag">{g.sizeLabel}・{g.stageLabel}</span></div>
                       <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">距離</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:kmPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.km.toFixed(1)}<span className="yl-walkgoal-goal"> / {g.monthlyKm}km</span></span></div>
                       <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">回数</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:cntPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.count}<span className="yl-walkgoal-goal"> / {g.monthlyWalks}回</span></span></div>
-                      <p className="yl-walkgoal-note">犬種{g.knownBreed?"":"（未設定→中型で計算）"}と年齢{g.knownAge?"":"（未設定→成犬で計算）"}からのゆるやかな目安です。体調・獣医さんの指示に合わせて調整してください。</p>
+                      <p className="yl-walkgoal-note">犬種{g.knownBreed?"":"（未設定→中型で計算）"}と年齢{g.knownAge?"":"（未設定→成犬で計算）"}からの<b>一般的な目安（参考値）</b>です。健康状態や個体差で必要な運動量は変わります。体調やかかりつけ獣医さんの助言に合わせて調整してください。</p>
                     </div>
                   );})()}
                   {walk&&walk.space===tab?(
