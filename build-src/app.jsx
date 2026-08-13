@@ -3390,7 +3390,7 @@ function App(){
                 <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
               </div>
             </section>
-            <p className="yl-foot">試作版・データはこの端末に保存されます</p>
+            <p className="yl-foot">大切な家族の毎日を、ひとつの場所で。</p>
           </div>
         ):(
           <>
@@ -4028,7 +4028,7 @@ function App(){
           </>
         )}
         <div className="yl-help-foot"><button className="yl-help-btn" onClick={()=>setHelpOpen(true)}><Icon name="note" size={15}/> つかい方・機能紹介</button></div>
-        <p className="yl-foot">試作版・データはこの端末に保存されます</p>
+        <p className="yl-foot">大切な家族の毎日を、ひとつの場所で。</p>
       </div>
 
       {isPersonMode&&!hubOpen&&!inputSheet&&(
