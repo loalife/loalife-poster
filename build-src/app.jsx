@@ -1160,7 +1160,7 @@ function App(){
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
-  const[memberSel,setMemberSel]=useState("me"); // メンバーモードで選択中の人
+  const[memberSel,setMemberSel]=useState(()=>{try{return localStorage.getItem("loalife-membersel")||"me";}catch(e){return"me";}}); // メンバーモードで選択中の人（再訪時に復元）
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
@@ -1237,7 +1237,7 @@ function App(){
   // ホーム「記録」層の開閉（低頻度の情報は既定で畳む）
   const[recOpen,setRecOpen]=useState(false);
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
-  const[personSeg,setPersonSeg]=useState("record");
+  const[personSeg,setPersonSeg]=useState(()=>{try{return localStorage.getItem("loalife-personseg")||"record";}catch(e){return"record";}});
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
   const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["walk","nursing","certs","toilet","health","meds","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
@@ -1342,6 +1342,8 @@ function App(){
       if(state.meColor)setMeColor(state.meColor);
       if(state.meName)setMeName(state.meName);
       if(state.meAvatar)setMeAvatar(state.meAvatar);
+      // 前回メンバーの画面を見ていたら、その子で再開する（毎回「自分」に戻らないように）。
+      try{const lt=localStorage.getItem("loalife-tab");if(lt&&state.members.some(m=>m.id===lt))setTab(lt);}catch(e){}
       setLoaded(true);
       // 旧キー由来 / バージョンが古い場合のみ現行キーへ保存（旧キーは残す＝バックアップ）。
       try{
@@ -1886,6 +1888,10 @@ function App(){
 
   // 授乳タイマー稼働中は1秒ごとに表示を更新する。
   useEffect(()=>{if(!nursing)return;const id=setInterval(()=>setNursingNow(Date.now()),1000);return()=>clearInterval(id);},[nursing]);
+  // 選択中メンバー・セグメント・タブを保存し、次回起動時に前回の画面で再開できるように。
+  useEffect(()=>{try{localStorage.setItem("loalife-membersel",memberSel);}catch(e){}},[memberSel]);
+  useEffect(()=>{try{localStorage.setItem("loalife-personseg",personSeg);}catch(e){}},[personSeg]);
+  useEffect(()=>{if(loaded){try{localStorage.setItem("loalife-tab",tab);}catch(e){}}},[tab,loaded]);
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
