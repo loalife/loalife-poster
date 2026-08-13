@@ -299,6 +299,9 @@ function itemDate(it){
   if(it.type==="bday")return null;
   return it.dueDate||null;
 }
+// ケア種別ごとの日付ラベル（表示のみ。保存先は常に dueDate のまま・データ構造は不変）。
+// 健康系（ワクチン・投薬等）は「実施日」、受診系は「受診日」、それ以外は「期限」。
+const careDateLabel=(k)=>({vaccine:"実施日",rabies:"実施日",filaria:"実施日",med:"実施日",trim:"実施日",groom:"実施日",daycare:"日付",checkup:"受診日",hospital:"受診日",dental:"受診日"}[k]||"期限");
 // カレンダー区分（色・アイコン）。予定/ケア/ストック/思い出。
 function calCategory(it){
   if(!it)return"event";
@@ -1107,6 +1110,7 @@ function App(){
   const[draftType,setDraftType]=useState("work");
   const[draftKind,setDraftKind]=useState("vaccine");
   const[draftDate,setDraftDate]=useState("");
+  const[draftPhoto,setDraftPhoto]=useState(null); // ケア・予定追加フォーム内で先に選ぶ写真（証明書）。保存時に既存の photoStorage へ書き込む
   const[draftTime,setDraftTime]=useState("");
   const[draftRepeat,setDraftRepeat]=useState("none");
   const[draftReminders,setDraftReminders]=useState([]);
@@ -1218,6 +1222,7 @@ function App(){
   const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",note:"",symptoms:[],photo:null});
   const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
   const[profileOpen,setProfileOpen]=useState(false); // プロフィール詳細（顔写真・説明・誕生日・編集）の開閉。既定=畳む
+  const[profilePrompt,setProfilePrompt]=useState(null); // メンバー追加直後の「プロフィールを設定しませんか？」案内（対象 member id）
   const[memListOpen,setMemListOpen]=useState(false); // メンバー切替のドロップアップ一覧の開閉
   // 支出入力（記録は常に今日の日付で即記録。日付変更は編集画面のみ＝例外用途）
   const[expAmount,setExpAmount]=useState("");
@@ -2031,17 +2036,19 @@ function App(){
   const toggleReminder=(mins)=>setDraftReminders(prev=>prev.includes(mins)?prev.filter(m=>m!==mins):[...prev,mins].sort((a,b)=>a-b));
   const pickCareKind=(k)=>{setDraftKind(k.key);if(k.key==="other"){if(draftAuto){setDraft("");setDraftAuto(false);}return;}if(draft===""||draftAuto){setDraft(k.label);setDraftAuto(true);}};
 
-  const addItem=()=>{
+  const addItem=async()=>{
     let title=draft.trim();let careMeta=null;
     if(isMemberTab){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=(careMeta||{}).label||"";}
     if(!title)return;
     let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined};
     if(isMemberTab){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,careMeta.emoji)};}
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
+    // ケア追加フォームで先に写真（証明書）を選んでいた場合、既存の photoStorage / photos をそのまま利用して保存前に添付（onFilePicked と同じ保存先）。
+    if(isMemberTab&&draftPhoto){try{const ok=await photoStorage.set(`photo:${base.id}`,draftPhoto);if(ok){setPhotos(p=>({...p,[base.id]:draftPhoto}));base.photo=true;base.photos=[base.id];}}catch(e){}}
     const uKey=tab+" "+title;
     persist(members,[...items,base],{...usage,[uKey]:(usage[uKey]||0)+1});
     saveItemToFs(base).catch(()=>{});
-    setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);
+    setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);setDraftPhoto(null);
     if(isMemberTab&&careMeta&&draftKind!=="other"){setDraft(careMeta.label);setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
   };
 
@@ -2057,7 +2064,13 @@ function App(){
     persist([...members,member],items);
     saveMemberToFs(member).catch(()=>{});
     setNewName("");setNewBirthday("");setNewVisibility("household");setNewAvatar("");setAdding(false);setTab(id);setMemberSel(id);
+    setProfilePrompt(id); // 追加直後にプロフィール充実をやさしく案内（強制遷移はしない）
   };
+  // ケア・予定フォーム内の写真選択（保存前）。既存の downscaleImage をそのまま利用。
+  const pickDraftPhoto=async(e)=>{const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}try{const dataUrl=await downscaleImage(file);setDraftPhoto(dataUrl);}catch(er){showFlash("画像を読み込めませんでした");}};
+  // 指定メンバーのプロフィール編集を開く（追加直後の案内から利用）。編集state群を対象メンバーで初期化。
+  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(m.visibility||"household");setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setProfileOpen(true);setEditingId(m.id);};
+  useEffect(()=>{if(inputSheet!=="schedule")setDraftPhoto(null);},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真をクリア
 
   const removeMember=(id)=>{
     const m=members.find(x=>x.id===id);
@@ -2984,6 +2997,7 @@ function App(){
                 {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
               </button>
             )}
+            <button className="yl-menu-btn" onClick={()=>setHelpOpen(true)} aria-label="使い方・機能紹介" title="使い方・機能紹介"><Icon name="note" size={20}/></button>
             <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー"><Icon name="menu" size={22}/></button>
           </div>
         </header>
@@ -3020,6 +3034,18 @@ function App(){
               <section className="yl-ai">
                 <p className="yl-ai-greet"><Icon name={new Date().getHours()<11?"sun":new Date().getHours()<18?"sun":"moon"} size={18}/> {aiSummary.greet}{aiSummary.name?`、${aiSummary.name}`:""}</p>
                 {aiSummary.lines.map((l,i)=><p key={i} className="yl-ai-line">{l}</p>)}
+              </section>
+            )}
+
+            {/* 安全・緊急：既存の誤食中毒/夜間救急/防災モーダルへの常設ショートカット（ペット飼いのみ） */}
+            {petMembers.length>0&&(
+              <section className="yl-batch">
+                <div className="yl-batch-head"><span className="yl-batch-title"><Icon name="shield" size={15}/> 安全・緊急</span></div>
+                <div className="yl-batch-acts">
+                  <button className="yl-batch-act" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><span className="yl-batch-act-emoji"><Icon name="alert" size={18}/></span>誤食・中毒</button>
+                  <button className="yl-batch-act" onClick={()=>setEmergencyOpen(true)}><span className="yl-batch-act-emoji"><Icon name="activity" size={18}/></span>夜間・救急</button>
+                  <button className="yl-batch-act" onClick={()=>setDisasterOpen(true)}><span className="yl-batch-act-emoji"><Icon name="home" size={18}/></span>防災・避難</button>
+                </div>
               </section>
             )}
 
@@ -3087,7 +3113,7 @@ function App(){
                 <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
                   <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
                 </div>
-                <div className="yl-batch-acts">{BATCH_ACTIONS.map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
+                <div className="yl-batch-acts">{BATCH_ACTIONS.filter(a=>a.title!=="散歩"||hasWalker).map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
               </section>);})()}
 
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
@@ -3441,13 +3467,13 @@ function App(){
                       </div>
                       <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder={activeMember.kind==="person"?"例：ご家族 / 2階の親 / 実家":"例：犬たち / ハムスター / 2階の子"}/></label>
-                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span></div>
+                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>予定表で誰の予定か見分けやすくなります。</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/></label>}
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-breed-list" value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-breed-list">{breedOptionsFor(activeMember.species).map(b=><option key={b} value={b}/>)}</datalist></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>お迎え記念日などのお祝いに使えます。</span></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-breed-list" value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-breed-list">{breedOptionsFor(activeMember.species).map(b=><option key={b} value={b}/>)}</datalist><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>{activeMember.species==="dog"?"散歩のめやすなどに活用できます。":"体格に合わせた記録に役立ちます。"}</span></label>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> 毛の色（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-coat-list" value={editCoat} onChange={e=>setEditCoat(e.target.value)} placeholder="タップして選択（自由入力も可）"/><datalist id="yl-coat-list">{COAT_COLORS.map(c=><option key={c} value={c}/>)}</datalist></label>}
                       {activeMember.kind==="pet"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="scissors" size={14}/> 避妊・去勢<span className="yl-seg-mini">{[{k:"done",l:"済み"},{k:"not",l:"まだ"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editNeuter===o.k?" on":"")} onClick={()=>setEditNeuter(editNeuter===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
-                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/></label>}
+                      {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="hash" size={14}/> マイクロチップ番号（任意）<input className="yl-input sm" style={{marginTop:4}} inputMode="numeric" value={editMicrochip} onChange={e=>setEditMicrochip(e.target.value)} placeholder="15桁の番号（例：392...）"/><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>迷子・防災時の大切な情報として保存できます。</span></label>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="users" size={14}/> 種別（記録項目の出し分け）<span className="yl-seg-mini">{PERSON_TYPES.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editPersonType===o.k?" on":"")} onClick={()=>setEditPersonType(o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> 性別（任意）<span className="yl-seg-mini">{genderOptsFor(editPersonType).map(o=><button key={o.k} className={"yl-seg-mini-btn"+(editGender===o.k?" on":"")} onClick={()=>setEditGender(editGender===o.k?"":o.k)}>{o.l}</button>)}</span></div>}
                       {activeMember.kind==="person"&&<div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="droplet" size={14}/> 血液型（任意）<span className="yl-seg-mini">{BLOOD_OPTS.map(o=><button key={o} className={"yl-seg-mini-btn"+(editBlood===o?" on":"")} onClick={()=>setEditBlood(editBlood===o?"":o)}>{o}</button>)}</span></div>}
@@ -3524,7 +3550,8 @@ function App(){
               )});
               defs.push({key:"chore",el:(
                 <section className="yl-chore">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{curKind==="pet"?"お世話ログ":"やることログ"}</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:4}}>{curKind==="pet"?"毎日のお世話":"やることログ"}</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>{curKind==="pet"?"毎日くり返すお世話を記録できます。前回からの経過が色でわかります。":"毎日くり返すことを記録できます。"}</p>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
                       {chores.map(c=>{const el=elapsedLabel(c.lastDone,colorDays.warn,colorDays.alert);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
@@ -3823,7 +3850,7 @@ function App(){
                   )}
                 </section>
               )});
-              if(curKind==="pet")defs.push({key:"walk",el:(
+              if(curKind==="pet"&&(activeMember.species==="dog"||items.some(x=>x.space===tab&&x.type==="walk")))defs.push({key:"walk",el:(
                 <section className="yl-walkrec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>おさんぽ記録</h2>
                   {(()=>{const g=walkGoalFor(activeMember);if(!g)return null;const kmPct=Math.min(100,Math.round(walkMonthStats.km/g.monthlyKm*100));const cntPct=Math.min(100,Math.round(walkMonthStats.count/g.monthlyWalks*100));return(
@@ -4296,7 +4323,7 @@ function App(){
               {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップしてふりかえりも。"},
               {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを残せます。お薬手帳や通院前のメモに。"},
               {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・投薬・通院などを登録。周期ケアは記録で次回へ自動更新。"},
-              {emoji:"🧹",title:"お世話ログ",desc:"「やった」で記録。前回からの経過がひと目で分かります。"},
+              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」で記録。前回からの経過がひと目で分かります。"},
               {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・体調をグラフで管理。目標体重の差分も表示。"},
               {emoji:"📸",title:"思い出",desc:"写真や日記がアルバムに並び、あとから振り返れます。"},
               {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"思い出に #発表会 などのタグや「はじめて」を付けて、成長をあとから振り返れます。"},
@@ -4417,8 +4444,19 @@ function App(){
             {!isMemberTab?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {k.label}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
             <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
-            <div className="yl-optrow"><label className="yl-opt">{isMemberTab?"期限":"日付・期限（任意）"}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
+            <div className="yl-optrow"><label className="yl-opt">{isMemberTab?careDateLabel(draftKind):"日付・期限（任意）"}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
             {!isMemberTab&&<p className="yl-foot" style={{marginTop:2}}>日付・期限を入れると、その日のカレンダーに表示されます。</p>}
+            {isMemberTab&&(
+              <div className="yl-optrow" style={{marginTop:4}}>
+                <label className="yl-opt" style={{width:"100%"}}><Icon name="camera" size={14}/> 証明書・写真（任意）
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
+                    {draftPhoto&&<img src={draftPhoto} alt="" style={{width:52,height:52,objectFit:"cover",borderRadius:8,border:"1px solid #e7dfd3"}}/>}
+                    <label className="yl-addbtn sm" style={{cursor:"pointer"}}>{draftPhoto?"写真を変更":"＋ 写真を添付"}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickDraftPhoto}/></label>
+                    {draftPhoto&&<button className="yl-linkbtn" onClick={()=>setDraftPhoto(null)}>削除</button>}
+                  </div>
+                </label>
+              </div>
+            )}
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
             {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">1タップ追加（前回コピー）</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,k.label,activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{k.label}</span><span className="yl-quickbar-prev">{prev?`前回 ${fmtDate(prev.dueDate)}`:"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
@@ -4649,6 +4687,14 @@ function App(){
         );
       })()}
       {confirmAct&&<div className="yl-overlay" onClick={()=>setConfirmAct(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="trash" size={30}/></div><h3 className="yl-modal-title">本当に削除しますか？</h3>{confirmAct.label?<p className="yl-modal-body">「{confirmAct.label}」を削除します。この操作は元に戻せません。</p>:<p className="yl-modal-body">この操作は元に戻せません。</p>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmAct(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{const f=confirmAct.fn;setConfirmAct(null);f&&f();}}>削除する</button></div></div></div>}
+      {profilePrompt&&(()=>{const m=members.find(x=>x.id===profilePrompt);return(
+        <div className="yl-overlay" onClick={()=>setProfilePrompt(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
+          <div className="yl-modal-emoji"><Icon name="sparkles" size={28}/></div>
+          <h3 className="yl-modal-title">プロフィールを設定しませんか？</h3>
+          <p className="yl-modal-body">{m&&m.kind==="pet"?"カレンダーの色・犬種・お迎え日・マイクロチップなどを登録すると、もっと便利に使えます。":"カレンダーの色や誕生日などを登録すると、もっと便利に使えます。"}</p>
+          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>あとで</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>プロフィールを設定</button></div>
+        </div></div>
+      );})()}
       {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="alert" size={30}/></div><h3 className="yl-modal-title">本当に消して良いですか？</h3><p className="yl-modal-body">登録した予定・ケア・消耗品・家族の情報がすべて消えて、最初の状態に戻ります。この操作は元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{setConfirmReset(false);resetApp();}}>消して最初から</button></div></div></div>}
       {calPicker&&(()=>{
         const it=calPicker.item;
