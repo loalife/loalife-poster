@@ -282,7 +282,7 @@ function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resol
 const SENIOR_KINDS=[{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"服薬",emoji:"💊"},{key:"pickup",label:"薬の受け取り",emoji:"💊"},{key:"care",label:"介護サービス",emoji:"🧑"},{key:"daycare",label:"デイサービス",emoji:"🏫"},{key:"rehab",label:"リハビリ",emoji:"🩹"},{key:"nurse",label:"訪問看護",emoji:"🩺"},{key:"checkup",label:"健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
 // 赤ちゃん（乳児）向けの予定・ケアの種別（乳児健診・予防接種・通院など）。日々のミルク/おむつ等は「お世話ログ」で扱う。
 const BABY_KINDS=[{key:"checkup",label:"乳児健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"投薬",emoji:"💊"},{key:"event",label:"予定",emoji:"📅"},{key:"other",label:"その他",emoji:"✨"}];
-const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return DOG_KINDS;};
+const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
 // ケア種別 → ラインアイコン名（SF Symbols相当）
 const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
@@ -1160,7 +1160,7 @@ function App(){
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
   const askDelete=(label,fn)=>setConfirmAct({label,fn});
-  const[memberSel,setMemberSel]=useState("me"); // メンバーモードで選択中の人
+  const[memberSel,setMemberSel]=useState(()=>{try{return localStorage.getItem("loalife-membersel")||"me";}catch(e){return"me";}}); // メンバーモードで選択中の人（再訪時に復元）
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
@@ -1237,7 +1237,7 @@ function App(){
   // ホーム「記録」層の開閉（低頻度の情報は既定で畳む）
   const[recOpen,setRecOpen]=useState(false);
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
-  const[personSeg,setPersonSeg]=useState("record");
+  const[personSeg,setPersonSeg]=useState(()=>{try{return localStorage.getItem("loalife-personseg")||"record";}catch(e){return"record";}});
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
   const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["walk","nursing","certs","toilet","health","meds","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地域の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
@@ -1342,6 +1342,8 @@ function App(){
       if(state.meColor)setMeColor(state.meColor);
       if(state.meName)setMeName(state.meName);
       if(state.meAvatar)setMeAvatar(state.meAvatar);
+      // 前回メンバーの画面を見ていたら、その子で再開する（毎回「自分」に戻らないように）。
+      try{const lt=localStorage.getItem("loalife-tab");if(lt&&state.members.some(m=>m.id===lt))setTab(lt);}catch(e){}
       setLoaded(true);
       // 旧キー由来 / バージョンが古い場合のみ現行キーへ保存（旧キーは残す＝バックアップ）。
       try{
@@ -1715,6 +1717,15 @@ function App(){
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
   const finishOnboarding=()=>{
+    // 「自分」を選んだ場合はメンバーを作らず、既存の me* にだけ反映する（me→member化はしない）。
+    if(obKind==="me"){
+      const nm2=obName.trim()||meName;const em=obEmoji||meEmoji;const bd=obBirthday||meBirthday;const av=obAvatar||meAvatar;
+      setMeName(nm2);setMeEmoji(em);setMeBirthday(bd);setMeAvatar(av);
+      try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:em,meBirthday:bd,meColor,meName:nm2,meAvatar:av})).catch(()=>{});}catch(e){}
+      if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:em,meBirthday:bd,meName:nm2,meAvatar:av},{merge:true}).catch(()=>{});}catch(e){}}
+      setOnboarding(false);setObStep(0);setTab("home");
+      return;
+    }
     const nm=[];const ni=[];
     if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;else if(obKind==="person")m.personType=obPersonType;nm.push(m);}
     persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
@@ -1886,6 +1897,10 @@ function App(){
 
   // 授乳タイマー稼働中は1秒ごとに表示を更新する。
   useEffect(()=>{if(!nursing)return;const id=setInterval(()=>setNursingNow(Date.now()),1000);return()=>clearInterval(id);},[nursing]);
+  // 選択中メンバー・セグメント・タブを保存し、次回起動時に前回の画面で再開できるように。
+  useEffect(()=>{try{localStorage.setItem("loalife-membersel",memberSel);}catch(e){}},[memberSel]);
+  useEffect(()=>{try{localStorage.setItem("loalife-personseg",personSeg);}catch(e){}},[personSeg]);
+  useEffect(()=>{if(loaded){try{localStorage.setItem("loalife-tab",tab);}catch(e){}}},[tab,loaded]);
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
@@ -2949,7 +2964,7 @@ function App(){
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">一緒に見守りたい家族はいますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐶 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="person"?PERSON_EMOJIS:petEmojisFor(obSpecies)).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">まず、だれのことを管理しますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("me");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👤 自分（自分のケアも）</button><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐾 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👨‍👩‍👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="pet"?petEmojisFor(obSpecies):PERSON_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="pet"?"名前（例：ぽち）":obKind==="me"?"あなたの名前（例：かおり）":"名前（例：ゆうと）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -2980,7 +2995,7 @@ function App(){
 
         {adding&&(
           <div className="yl-petform">
-            <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);setNewAvatar("");}}>🐶 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
+            <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);setNewAvatar("");}}>🐾 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
             {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}
             {newKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(newPersonType===pt.k?" on":"")} onClick={()=>{setNewPersonType(pt.k);setNewAvatar("");setNewEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(!newAvatar&&newEmoji===e?" on":"")} onClick={()=>{setNewAvatar("");setNewEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(newAvatar?" on":"")} title="写真をアイコンにする">{newAvatar&&photos[newAvatar]?<img className="yl-emoji-photoimg" src={photos[newAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickNewAvatar}/></label></div>
@@ -3006,7 +3021,8 @@ function App(){
               </section>
             )}
 
-            {weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+            {/* 天気・お散歩カードは犬がいる時(hasWalker)だけ表示。犬なしユーザーの主役にしない */}
+            {hasWalker&&(weatherLoc?(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
@@ -3060,7 +3076,7 @@ function App(){
               </div>
             );})():(
               <button className="yl-weather-setup" onClick={()=>setTab("settings")}><Icon name="thermometer" size={16}/> 地域を登録して天気・お散歩判定を表示</button>
-            )}
+            ))}
 
             {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
             {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
