@@ -2898,6 +2898,16 @@ function App(){
     return{bombs,todos,upcoming};
   },[items,todayIso,memorialIds]);
 
+  // 今日やることを「誰の」でまとめる（横断表示）。自分→登録メンバー順。既存の space をそのまま利用。
+  const todayByMember=useMemo(()=>{
+    const groups={};
+    homeData.todos.forEach(t=>{(groups[t.space]=groups[t.space]||[]).push(t);});
+    const order=["me",...members.map(m=>m.id)];
+    return order.filter(sp=>groups[sp]&&groups[sp].length).map(sp=>({space:sp,av:spaces.find(s=>s.id===sp)||null,name:nameOf(sp)||"わたし",todos:groups[sp]}));
+  },[homeData.todos,members,spaces]);
+  // 完了：タスク種別に応じて既存ハンドラへ振り分け（ルーティン=doneDate／お世話=履歴／ケア・予定=記録・完了）。
+  const completeHomeTask=(id)=>{const it=items.find(x=>x.id===id);if(!it)return;if(it.type==="routine")toggleRoutine(id);else if(it.type==="chore")logChore(id);else toggle(id);};
+
   // AIサマリー：今日の要点を1〜3行で。あいさつ＋やること件数＋お散歩おすすめ＋直近の締切。
   const aiSummary=useMemo(()=>{
     const hr=new Date().getHours();
@@ -3279,16 +3289,27 @@ function App(){
                     <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
                     <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート"><Icon name="calendar" size={14}/> 出力</button>
                   </div>
-                  <ul className="yl-todo-list">
-                    {homeData.todos.slice(0,3).map(t=>(
-                      <li key={t.key} className="yl-todo-item" onClick={()=>setTab(t.space)}>
-                        <span className="yl-todo-emoji"><Icon name={guessIcon(t.title)} size={18}/></span>
-                        <span className="yl-todo-body"><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span><span className="yl-todo-who">{nameOf(t.space)}</span></span>
-                        <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {homeData.todos.length>3&&<p className="yl-todo-more">ほかに {homeData.todos.length-3} 件</p>}
+                  {/* 「誰の」でまとめて横断表示。チェックで完了（種別ごとの既存ハンドラへ）。 */}
+                  {todayByMember.map(g=>(
+                    <div key={g.space} className="yl-todo-group">
+                      <button className="yl-todo-ghead" onClick={()=>setTab(g.space)}>
+                        {g.av?avatarNode(g.av,"xs"):<span className="yl-todo-gemoji">👤</span>}
+                        <span className="yl-todo-gname">{g.name}</span>
+                        <span className="yl-todo-gcount">{g.todos.length}</span>
+                      </button>
+                      <ul className="yl-todo-list">
+                        {g.todos.slice(0,5).map(t=>(
+                          <li key={t.key} className="yl-todo-item">
+                            <button className="yl-check" onClick={()=>completeHomeTask(t.key)} aria-label="完了にする"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                            <span className="yl-todo-emoji"><Icon name={guessIcon(t.title)} size={16}/></span>
+                            <span className="yl-todo-body" onClick={()=>setTab(g.space)}><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span></span>
+                            <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
+                          </li>
+                        ))}
+                        {g.todos.length>5&&<li className="yl-todo-more2" onClick={()=>setTab(g.space)}>ほかに {g.todos.length-5} 件</li>}
+                      </ul>
+                    </div>
+                  ))}
                 </section>
               )}
               {homeData.bombs.length>0&&(
