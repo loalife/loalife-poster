@@ -2751,6 +2751,13 @@ function App(){
     return list.sort((a,b)=>a.daysUntil-b.daysUntil);
   },[members,meBirthday,meEmoji,items]);
 
+  // 今日の「大切な日」＝ホームでお祝いする対象。今は誕生日（本人・家族・ペット・自分の登録誕生日）のみ。
+  // upcomingAnniv の kind でイベント種別を持たせてあるので、将来「お迎え記念日」「ワクチン記念日」等へ
+  // ここの filter を広げるだけで拡張できる（gotcha 等は既に kind として存在）。
+  const todayBirthdays=useMemo(()=>upcomingAnniv.filter(a=>a.daysUntil===0&&(a.kind==="birthday"||a.kind==="self")),[upcomingAnniv]);
+  // お祝いカードに出した誕生日は下の「もうすぐ」一覧から除いて重複を避ける（記念日など他は残す）。
+  const upcomingAnnivRest=useMemo(()=>upcomingAnniv.filter(a=>!(a.daysUntil===0&&(a.kind==="birthday"||a.kind==="self"))),[upcomingAnniv]);
+
   const showNotifBanner=notifSupported&&notifPerm==="default";
   const hasReminders=items.some(x=>x.reminders?.length);
 
@@ -3134,9 +3141,18 @@ function App(){
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
             <div className="yl-layer">
               <span className="yl-layer-label">今日</span>
-              {upcomingAnniv.length>0&&(
+              {todayBirthdays.length>0&&(
+                <section className="yl-bday-cheer">
+                  <span className="yl-bday-cheer-ico">🎂</span>
+                  <div className="yl-bday-cheer-body">
+                    <p className="yl-bday-cheer-title">今日は{todayBirthdays.map(a=>`${a.name}${a.years?`（${a.years}歳）`:""}`).join("・")}のお誕生日です</p>
+                    <p className="yl-bday-cheer-sub">おめでとうございます。すてきな一日になりますように。</p>
+                  </div>
+                </section>
+              )}
+              {upcomingAnnivRest.length>0&&(
                 <section className="yl-bday-section compact">
-                  {upcomingAnniv.slice(0,3).map(a=>(
+                  {upcomingAnnivRest.slice(0,3).map(a=>(
                     <div key={a.key} className="yl-bday-row">
                       <span className="yl-bday-emoji">{a.emoji}</span>
                       <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
@@ -3469,7 +3485,7 @@ function App(){
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>{isMemberTab?activeMember.name:(meName||"わたし")}のプロフィール {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
-            {!isMemberTab?<section className="yl-melead"><div className="yl-melead-row"><button className="yl-melead-avatar" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} title="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:meEmoji}</button><div className="yl-melead-body"><p className="yl-melead-title">{meName||"わたし"}</p><p className="yl-melead-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p></div></div><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}><Icon name="cake" size={13}/> {meBirthday?`${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:"自分の誕生日を登録"}</button>}</div></section>:(
+            {!isMemberTab?<section className="yl-hero"><button className="yl-hero-photo" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label="アイコン・名前を変更">{meAvatar&&photos[meAvatar]?<img src={photos[meAvatar]} alt=""/>:<span className="yl-hero-emoji">{meEmoji}</span>}</button><div className="yl-hero-body"><h2 className="yl-hero-name">{meName||"わたし"}</h2><p className="yl-hero-sub">{personSeg==="manage"?"予定・ケア・ストック・支出などを管理":"体重・体調・日記・思い出などの記録"}</p><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-addbtn sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setMeBdayEdit(false)}>キャンセル</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}><Icon name="cake" size={13}/> {meBirthday?`${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:"自分の誕生日を登録"}</button>}</div></div><button className="yl-hero-edit" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label="アイコン・名前を変更"><Icon name="pencil" size={17}/></button></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
