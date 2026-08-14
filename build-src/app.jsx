@@ -341,6 +341,23 @@ const choreTemplatesFor=(m)=>{
   if(m.kind==="person"){const pt=m.personType||"child";return pt==="senior"?CHORE_TPL_SENIOR:pt==="adult"?CHORE_TPL_ADULT:pt==="baby"?CHORE_TPL_BABY:CHORE_TPL_CHILD;}
   return CHORE_TPL_ME;
 };
+
+// フード・食事：種別・単位・食事の時間帯。犬・猫・その他ペット共通（種別依存を持ち込まない汎用設計）。
+const FOOD_TYPES=[{k:"dry",l:"ドライ",ic:"utensils"},{k:"wet",l:"ウェット",ic:"droplet"},{k:"homemade",l:"手作り",ic:"utensils"},{k:"treat",l:"おやつ",ic:"cake"},{k:"supplement",l:"サプリ",ic:"pill"},{k:"other",l:"その他",ic:"utensils"}];
+const FOOD_UNITS=[{k:"g",l:"g"},{k:"ml",l:"ml"},{k:"piece",l:"個"}];
+const MEAL_SLOTS=[{k:"morning",l:"朝"},{k:"noon",l:"昼"},{k:"night",l:"夜"},{k:"treat",l:"おやつ"}];
+const foodTypeMeta=(k)=>FOOD_TYPES.find(t=>t.k===k)||FOOD_TYPES[FOOD_TYPES.length-1];
+const foodUnitLabel=(k)=>({serving:"回",g:"g",ml:"ml",grain:"粒",piece:"個"}[k]||k||"");
+const mealSlotLabel=(k)=>(MEAL_SLOTS.find(s=>s.k===k)||{}).l||"";
+// 摂取カロリー：kcalが登録されている場合のみ計算。per100はg/mlのみ、perUnitは個で計算。
+// 手作り・おやつ等でkcal未登録なら無理に計算しない（null＝量だけ記録）。
+function computeMealKcal(def,amount){
+  if(!def)return null;const k=Number(def.kcal);if(def.kcal===""||def.kcal==null||isNaN(k)||k<=0)return null;
+  const amt=Number(amount);if(!(amt>0))return null;
+  if(def.kcalBasis==="perUnit")return Math.round(k*amt);
+  if(def.unit==="g"||def.unit==="ml")return Math.round(k*amt/100);
+  return null;
+}
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
 const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
@@ -1183,6 +1200,8 @@ function App(){
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState(""); // 高齢者バイタル（血圧上/下・体温・血糖値）
   const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
+  const[foodForm,setFoodForm]=useState(null); // フード詳細の登録フォーム null|{id?,name,brand,foodType,amount,unit,times,feedTime,kcal,kcalBasis}
+  const[mealForm,setMealForm]=useState(null); // 今日の食事の記録フォーム null|{foodId,slot,amount}
   // 授乳タイマー（赤ちゃん）：稼働中タイマーは localStorage に持たせてアプリを閉じても続く。
   const[nursing,setNursing]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-nursing")||"null");}catch(e){return null;}}); // {space,side,start}
   // 散歩記録：稼働中の散歩（GPSルート・距離）。アプリを閉じても復帰できるよう localStorage に保持。
@@ -2318,6 +2337,34 @@ function App(){
     showFlash(grams!=null?`ごはんを記録しました（約${grams}g）🍚`:"ごはんを記録しました 🍚");
   };
   const removeFeed=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  // --- フード・食事：フード登録（fooddef）＋ 今日の食事記録（feed に食事情報を付与） ---
+  const foodDefs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="fooddef").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
+  const foodDefText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);if(d.kcal!==""&&d.kcal!=null)parts.push(d.kcalBasis==="perUnit"?`${d.kcal}kcal/${foodUnitLabel(d.unit)}`:`${d.kcal}kcal/100${d.unit==="ml"?"ml":"g"}`);return parts.join(" ・ ");};
+  const openFoodNew=()=>setFoodForm({name:"",brand:"",foodType:"dry",amount:"",unit:"g",times:"",feedTime:"",kcal:"",kcalBasis:"per100"});
+  const openFoodEdit=(d)=>setFoodForm({id:d.id,name:d.name||"",brand:d.brand||"",foodType:d.foodType||"dry",amount:d.amount??"",unit:d.unit||"g",times:d.timesPerDay??"",feedTime:d.feedTime||"",kcal:d.kcal??"",kcalBasis:d.kcalBasis||"per100"});
+  const saveFoodDef=()=>{const f=foodForm;if(!f)return;const name=(f.name||"").trim();if(!name){showFlash("フード・食事名を入力してください");return;}
+    const numOrBlank=(v)=>{if(v===""||v==null)return"";const n=Number(v);return isNaN(n)?"":n;};
+    const base={name,brand:(f.brand||"").trim(),foodType:f.foodType||"other",amount:numOrBlank(f.amount),unit:f.unit||"g",timesPerDay:numOrBlank(f.times),feedTime:(f.feedTime||"").trim(),kcal:numOrBlank(f.kcal),kcalBasis:f.kcalBasis||"per100"};
+    if(f.id){const old=items.find(x=>x.id===f.id)||{};const rec={...old,...base};persist(members,items.map(x=>x.id===f.id?rec:x));saveItemToFs(rec).catch(()=>{});}
+    else{const rec={id:"food"+Date.now(),space:tab,type:"fooddef",...base,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});}
+    setFoodForm(null);showFlash("フードを登録しました 🍚");};
+  const removeFoodDef=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
+  const openMeal=(foodId)=>{const d=foodDefs.find(x=>x.id===foodId)||foodDefs[0];if(!d){openFoodNew();return;}const h=new Date().getHours();const slot=d.foodType==="treat"?"treat":(h<11?"morning":h<15?"noon":"night");setMealForm({foodId:d.id,slot,amount:(d.amount!==""&&d.amount!=null)?String(d.amount):""});};
+  const saveMeal=()=>{const f=mealForm;if(!f)return;const d=foodDefs.find(x=>x.id===f.foodId);if(!d){showFlash("フードを選んでください");return;}
+    const amt=Number(f.amount);if(f.amount===""||isNaN(amt)||amt<=0){showFlash("量を入力してください");return;}
+    const kcal=computeMealKcal(d,amt);
+    const rec={id:"fd"+Date.now(),space:tab,type:"feed",date:todayIso,unit:d.unit,amount:amt,foodId:d.id,foodName:d.name,foodType:d.foodType,slot:f.slot,createdAt:Date.now()};
+    if(d.unit==="g"||d.unit==="ml")rec.grams=amt; // 同単位の合計量集計に使用
+    if(kcal!=null)rec.kcal=kcal;
+    persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    setMealForm(null);showFlash(kcal!=null?`記録しました（約${kcal}kcal）🍚`:"食事を記録しました 🍚");};
+  // 今日の食事サマリー：回数／同単位ごとの合計量／合計kcal（計算可能な分のみ）。異なる単位は合算しない。
+  const mealSummary=useMemo(()=>{
+    const byUnit={};let kcal=0,hasKcal=false;
+    feedToday.forEach(x=>{const u=x.unit;if(u&&u!=="serving"&&x.amount!=null)byUnit[u]=(byUnit[u]||0)+Number(x.amount);if(x.kcal!=null){kcal+=Number(x.kcal);hasKcal=true;}});
+    return{count:feedToday.length,byUnit,kcal:hasKcal?Math.round(kcal):null};
+  },[feedToday]);
+  const mealAmountText=(m)=>Object.entries(m.byUnit).map(([u,v])=>`${Math.round(v*10)/10}${foodUnitLabel(u)}`).join(" ・ ");
   // --- 授乳タイマー（赤ちゃん）：母乳は左右のタイマー、ミルクは量(ml)で記録。前回からの経過が出る ---
   const nursingRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="nursing").sort((a,b)=>(b.ts||0)-(a.ts||0)),[items,tab]);
   const nursingToday=useMemo(()=>nursingRecords.filter(x=>x.date===todayIso),[nursingRecords,todayIso]);
@@ -3994,26 +4041,44 @@ function App(){
               if(curKind==="pet")defs.push({key:"feed",el:(
                 <section className="yl-feedsec">
                   <div className="yl-toilet-head">
-                    <h2 className="yl-routine-title" style={{margin:0}}>ごはん</h2>
-                    {feedTodayG>0&&<span className="yl-feed-todaytotal">今日 合計 約{feedTodayG}g</span>}
+                    <h2 className="yl-routine-title" style={{margin:0}}>フード・食事</h2>
+                    {foodDefs.length>0&&<button className="yl-linkbtn" onClick={openFoodNew}>＋ フード登録</button>}
                   </div>
                   {feedToday.length>0?(
-                    <p className="yl-feed-todaysub">今日 {feedToday.length}回{servingG!=null?` ・ 1回分=${servingG}g`:""}</p>
+                    <div className="yl-meal-summary">
+                      <span className="yl-meal-sumchip">今日 {mealSummary.count}回</span>
+                      {Object.entries(mealSummary.byUnit).map(([u,v])=><span key={u} className="yl-meal-sumchip">{Math.round(v*10)/10}{foodUnitLabel(u)}</span>)}
+                      {mealSummary.kcal!=null&&<span className="yl-meal-sumchip kcal">約{mealSummary.kcal}kcal</span>}
+                    </div>
                   ):(
-                    <p className="yl-routine-empty" style={{padding:"4px 0 0"}}>「回」でワンタップ記録。1回分＝◯g を設定すると総量に反映されます。</p>
+                    <p className="yl-routine-empty" style={{padding:"4px 0 0"}}>登録したフードを選んで、今日の食事をかんたんに記録できます。</p>
                   )}
-                  {feedRecords.length>0&&(
-                    <ul className="yl-feed-list">
-                      {feedRecords.slice(0,5).map(x=>(
-                        <li key={x.id} className="yl-feed-item">
-                          <span className="yl-feed-emoji"><Icon name="utensils" size={16}/></span>
-                          <span className="yl-feed-body"><span className="yl-feed-amt">{feedEntryText(x)}</span><span className="yl-feed-date">{fmtDate(x.date)}</span></span>
-                          <button className="yl-feed-del" onClick={()=>askDelete("ごはんの記録",()=>removeFeed(x.id))} aria-label="削除">×</button>
-                        </li>
-                      ))}
-                    </ul>
+                  {feedToday.length>0&&(
+                    <div className="yl-meal-today">
+                      {MEAL_SLOTS.map(s=>{const rows=feedToday.filter(x=>x.slot===s.k);if(rows.length===0)return null;return(
+                        <div key={s.k} className="yl-meal-slot">
+                          <span className="yl-meal-slotlabel">{s.l}</span>
+                          <div className="yl-meal-rows">{rows.map(x=>(
+                            <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||"ごはん"}</span><span className="yl-meal-amt">{x.amount}{foodUnitLabel(x.unit)}{x.kcal!=null?` ・ ${x.kcal}kcal`:""}</span><button className="yl-feed-del" onClick={()=>askDelete("食事の記録",()=>removeFeed(x.id))} aria-label="削除">×</button></div>
+                          ))}</div>
+                        </div>
+                      );})}
+                      {(()=>{const other=feedToday.filter(x=>!x.slot);if(other.length===0)return null;return(
+                        <div className="yl-meal-slot"><span className="yl-meal-slotlabel">記録</span><div className="yl-meal-rows">{other.map(x=>(
+                          <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||"ごはん"}</span><span className="yl-meal-amt">{feedEntryText(x)}</span><button className="yl-feed-del" onClick={()=>askDelete("記録",()=>removeFeed(x.id))} aria-label="削除">×</button></div>
+                        ))}</div></div>
+                      );})()}
+                    </div>
                   )}
-                  <button className="yl-quick-big" style={{marginTop:10}} onClick={openFeed}><Icon name="utensils" size={18}/> ごはんを記録する</button>
+                  {foodDefs.length>0?(<>
+                    <p className="yl-meal-pick-label">タップして記録</p>
+                    <div className="yl-meal-pick">{foodDefs.map(d=>(
+                      <button key={d.id} className="yl-meal-chip" onClick={()=>openMeal(d.id)}><Icon name={foodTypeMeta(d.foodType).ic} size={13}/> <span className="yl-meal-chipname">{d.name}</span></button>
+                    ))}</div>
+                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>フードをタップ→量を入力で記録。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
+                  </>):(
+                    <button className="yl-quick-big" style={{marginTop:10}} onClick={openFoodNew}><Icon name="utensils" size={18}/> フード・食事を登録する</button>
+                  )}
                 </section>
               )});
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
@@ -4168,6 +4233,21 @@ function App(){
                     </div>
                   )}
                   {belongings.length===0&&<p className="yl-routine-empty">右下の ＋ から持ち物を登録</p>}
+                </section>
+              )});
+              if(curKind==="pet")defs.push({key:"foodreg",el:(
+                <section className="yl-foodreg">
+                  <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>フード・食事</h2></div>
+                  <p className="yl-set-desc">普段のフード・おやつ・サプリなどを登録すると、「記録」タブから今日の食事をかんたんに残せます。</p>
+                  {foodDefs.length>0&&<ul className="yl-foodlist">{foodDefs.map(d=>(
+                    <li key={d.id} className="yl-fooditem">
+                      <span className={"yl-food-badge t-"+d.foodType}><Icon name={foodTypeMeta(d.foodType).ic} size={12}/> {foodTypeMeta(d.foodType).l}</span>
+                      <span className="yl-food-body"><span className="yl-food-name">{d.name}</span>{[d.brand,foodDefText(d)].filter(Boolean).length>0&&<span className="yl-food-meta">{[d.brand,foodDefText(d)].filter(Boolean).join(" ・ ")}</span>}</span>
+                      <button className="yl-food-edit" onClick={()=>openFoodEdit(d)} aria-label="編集"><Icon name="pencil" size={13}/></button>
+                      <button className="yl-health-del" onClick={()=>askDelete(d.name,()=>removeFoodDef(d.id))} aria-label="削除">×</button>
+                    </li>
+                  ))}</ul>}
+                  <button className="yl-addbtn sm" style={{marginTop:foodDefs.length?4:8}} onClick={openFoodNew}><Icon name="plus" size={14}/> フード・食事を登録</button>
                 </section>
               )});
               defs.push({key:"cards",el:(
@@ -4784,6 +4864,31 @@ function App(){
           </div>
         </div>
       )}
+      {foodForm&&(
+        <div className="yl-overlay" onClick={()=>setFoodForm(null)}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title"><Icon name="utensils" size={18}/> {foodForm.id?"フードを編集":"フード・食事を登録"}</h3>
+            <input className="yl-input" value={foodForm.name} onChange={e=>setFoodForm(f=>({...f,name:e.target.value}))} placeholder="フード・食事名（例：○○チキン ドライ）" autoFocus/>
+            <input className="yl-input sm" style={{marginTop:8}} value={foodForm.brand} onChange={e=>setFoodForm(f=>({...f,brand:e.target.value}))} placeholder="メーカー・ブランド（任意）"/>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>種類<span className="yl-seg-mini yl-food-typeseg">{FOOD_TYPES.map(t=><button key={t.k} className={"yl-seg-mini-btn"+(foodForm.foodType===t.k?" on":"")} onClick={()=>setFoodForm(f=>({...f,foodType:t.k}))}>{t.l}</button>)}</span></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>1回の量・単位（任意）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodForm.amount} onChange={e=>setFoodForm(f=>({...f,amount:e.target.value}))} placeholder="量"/><span className="yl-seg-mini">{FOOD_UNITS.map(u=><button key={u.k} className={"yl-seg-mini-btn"+(foodForm.unit===u.k?" on":"")} onClick={()=>setFoodForm(f=>({...f,unit:u.k}))}>{u.l}</button>)}</span></div></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>1日の回数・時間（任意）<div className="yl-food-amtrow"><input type="number" inputMode="numeric" className="yl-health-num" value={foodForm.times} onChange={e=>setFoodForm(f=>({...f,times:e.target.value}))} placeholder="回"/><input className="yl-input sm" style={{flex:1}} value={foodForm.feedTime} onChange={e=>setFoodForm(f=>({...f,feedTime:e.target.value}))} placeholder="時間（例：朝7時・夜19時）"/></div></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>カロリー（任意・分かる場合）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodForm.kcal} onChange={e=>setFoodForm(f=>({...f,kcal:e.target.value}))} placeholder="kcal"/><span className="yl-seg-mini">{[{k:"per100",l:"/100"+(foodForm.unit==="ml"?"ml":"g")},{k:"perUnit",l:"/"+foodUnitLabel(foodForm.unit)}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodForm.kcalBasis===o.k?" on":"")} onClick={()=>setFoodForm(f=>({...f,kcalBasis:o.k}))}>{o.l}</button>)}</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>登録すると摂取カロリーを自動計算します。手作り・おやつ等は未入力でもOK（量だけ記録）。</span></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setFoodForm(null)}>とじる</button><button className="yl-addbtn modal" onClick={saveFoodDef}><Icon name="check" size={15}/> 保存</button></div>
+          </div>
+        </div>
+      )}
+      {mealForm&&(()=>{const d=foodDefs.find(x=>x.id===mealForm.foodId);if(!d)return null;const kc=computeMealKcal(d,mealForm.amount);return(
+        <div className="yl-overlay" onClick={()=>setMealForm(null)}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title"><Icon name={foodTypeMeta(d.foodType).ic} size={18}/> 食事を記録</h3>
+            {foodDefs.length>1&&<div className="yl-opt" style={{width:"100%"}}>フード<div className="yl-meal-pick" style={{marginTop:6}}>{foodDefs.map(fd=><button key={fd.id} className={"yl-meal-chip"+(fd.id===mealForm.foodId?" on":"")} onClick={()=>setMealForm(f=>({...f,foodId:fd.id,amount:(fd.amount!==""&&fd.amount!=null)?String(fd.amount):f.amount}))}><Icon name={foodTypeMeta(fd.foodType).ic} size={12}/> <span className="yl-meal-chipname">{fd.name}</span></button>)}</div></div>}
+            <div className="yl-opt" style={{marginTop:foodDefs.length>1?10:0,width:"100%"}}>いつ<span className="yl-seg-mini">{MEAL_SLOTS.map(s=><button key={s.k} className={"yl-seg-mini-btn"+(mealForm.slot===s.k?" on":"")} onClick={()=>setMealForm(f=>({...f,slot:s.k}))}>{s.l}</button>)}</span></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>量<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={mealForm.amount} onChange={e=>setMealForm(f=>({...f,amount:e.target.value}))} placeholder="量" autoFocus/><span className="yl-food-unit">{foodUnitLabel(d.unit)}</span>{kc!=null&&<span className="yl-food-kcal">約{kc}kcal</span>}</div></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setMealForm(null)}>とじる</button><button className="yl-addbtn modal" onClick={saveMeal}><Icon name="check" size={15}/> 記録</button></div>
+          </div>
+        </div>
+      );})()}
       {inputSheet==="bday"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
@@ -4801,7 +4906,7 @@ function App(){
         const OPTS=[
           {key:"schedule",icon:"calendar",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
           {key:"diary",icon:"note",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
-          ...(curKind==="pet"?[{key:"feed",icon:"utensils",label:"ごはん",freq:1,used:has("feed"),act:openFeed}]:[]),
+          ...(curKind==="pet"?[{key:"feed",icon:"utensils",label:"フード・食事",freq:1,used:has("feed"),act:()=>openMeal(foodDefs[0]?.id)}]:[]),
           ...(curKind==="pet"?[{key:"toilet",icon:"paw",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
           {key:"routine",icon:"repeat",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
           {key:"health",icon:"scale",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
