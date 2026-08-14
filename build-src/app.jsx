@@ -282,7 +282,9 @@ function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resol
 const SENIOR_KINDS=[{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"服薬",emoji:"💊"},{key:"pickup",label:"薬の受け取り",emoji:"💊"},{key:"care",label:"介護サービス",emoji:"🧑"},{key:"daycare",label:"デイサービス",emoji:"🏫"},{key:"rehab",label:"リハビリ",emoji:"🩹"},{key:"nurse",label:"訪問看護",emoji:"🩺"},{key:"checkup",label:"健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
 // 赤ちゃん（乳児）向けの予定・ケアの種別（乳児健診・予防接種・通院など）。日々のミルク/おむつ等は「お世話ログ」で扱う。
 const BABY_KINDS=[{key:"checkup",label:"乳児健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"投薬",emoji:"💊"},{key:"event",label:"予定",emoji:"📅"},{key:"other",label:"その他",emoji:"✨"}];
-const careKindsFor=(m)=>{if(!m)return[];if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
+// 「自分」の健康・ケア記録用の種別（証明書写真も保存できる）。データ構造は members と同じ care/careKind を流用。
+const SELF_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"投薬・服薬",emoji:"💊"},{key:"dental",label:"歯科",emoji:"🦷"},{key:"other",label:"その他",emoji:"📄"}];
+const careKindsFor=(m)=>{if(!m)return SELF_KINDS;if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
 // ケア種別 → ラインアイコン名（SF Symbols相当）
 const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
@@ -1111,6 +1113,7 @@ function App(){
   const[draftKind,setDraftKind]=useState("vaccine");
   const[draftDate,setDraftDate]=useState("");
   const[draftPhoto,setDraftPhoto]=useState(null); // ケア・予定追加フォーム内で先に選ぶ写真（証明書）。保存時に既存の photoStorage へ書き込む
+  const[selfCare,setSelfCare]=useState(false); // 「自分」の健康・ケア記録を追加する時だけ true（ケアフォームを自分にも開放。既存の予定・ToDoとは別導線）
   const[draftTime,setDraftTime]=useState("");
   const[draftRepeat,setDraftRepeat]=useState("none");
   const[draftReminders,setDraftReminders]=useState([]);
@@ -1232,6 +1235,7 @@ function App(){
   const[expEdit,setExpEdit]=useState(null); // {id,amount,category,note,date}
   // 使い方・機能紹介ページ
   const[helpOpen,setHelpOpen]=useState(false);
+  const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
   // 大切な情報カード 編集
   const[cardEdit,setCardEdit]=useState(null); // {id?,space,kind,title,body,photo}
   // 持ち物（曜日ごと）入力
@@ -1731,9 +1735,9 @@ function App(){
       setOnboarding(false);setObStep(0);setTab("home");
       return;
     }
-    const nm=[];const ni=[];
-    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;else if(obKind==="person")m.personType=obPersonType;nm.push(m);}
-    persist(nm,ni);setOnboarding(false);setObStep(0);setTab("home");
+    const nm=[];const ni=[];let newId=null;
+    if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;else if(obKind==="person")m.personType=obPersonType;nm.push(m);newId=m.id;}
+    persist(nm,ni);if(newId)setMemberSel(newId);setOnboarding(false);setObStep(0);setTab("home"); // 追加した本人を選択中にして、記録/管理タブが「自分」ではなく登録した子を表示するように
   };
 
   const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObAvatar("");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
@@ -2037,19 +2041,20 @@ function App(){
   const pickCareKind=(k)=>{setDraftKind(k.key);if(k.key==="other"){if(draftAuto){setDraft("");setDraftAuto(false);}return;}if(draft===""||draftAuto){setDraft(k.label);setDraftAuto(true);}};
 
   const addItem=async()=>{
+    const asCare=isMemberTab||selfCare; // 「自分」でも selfCare の時は members と同じ care/careKind で保存
     let title=draft.trim();let careMeta=null;
-    if(isMemberTab){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=(careMeta||{}).label||"";}
+    if(asCare){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=(careMeta||{}).label||"";}
     if(!title)return;
     let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined};
-    if(isMemberTab){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,careMeta.emoji)};}
+    if(asCare){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,(careMeta||{}).emoji||"📄")};}
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
     // ケア追加フォームで先に写真（証明書）を選んでいた場合、既存の photoStorage / photos をそのまま利用して保存前に添付（onFilePicked と同じ保存先）。
-    if(isMemberTab&&draftPhoto){try{const ok=await photoStorage.set(`photo:${base.id}`,draftPhoto);if(ok){setPhotos(p=>({...p,[base.id]:draftPhoto}));base.photo=true;base.photos=[base.id];}}catch(e){}}
+    if(asCare&&draftPhoto){try{const ok=await photoStorage.set(`photo:${base.id}`,draftPhoto);if(ok){setPhotos(p=>({...p,[base.id]:draftPhoto}));base.photo=true;base.photos=[base.id];}}catch(e){}}
     const uKey=tab+" "+title;
     persist(members,[...items,base],{...usage,[uKey]:(usage[uKey]||0)+1});
     saveItemToFs(base).catch(()=>{});
     setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);setDraftPhoto(null);
-    if(isMemberTab&&careMeta&&draftKind!=="other"){setDraft(careMeta.label);setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
+    if(asCare&&careMeta&&draftKind!=="other"){setDraft(careMeta.label);setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
   };
 
   const addMember=()=>{
@@ -2070,7 +2075,7 @@ function App(){
   const pickDraftPhoto=async(e)=>{const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}try{const dataUrl=await downscaleImage(file);setDraftPhoto(dataUrl);}catch(er){showFlash("画像を読み込めませんでした");}};
   // 指定メンバーのプロフィール編集を開く（追加直後の案内から利用）。編集state群を対象メンバーで初期化。
   const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(m.visibility||"household");setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setProfileOpen(true);setEditingId(m.id);};
-  useEffect(()=>{if(inputSheet!=="schedule")setDraftPhoto(null);},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真をクリア
+  useEffect(()=>{if(inputSheet!=="schedule"){setDraftPhoto(null);setSelfCare(false);}},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真・自分ケアフラグをクリア
 
   const removeMember=(id)=>{
     const m=members.find(x=>x.id===id);
@@ -2985,7 +2990,7 @@ function App(){
 
       <div className="yl-wrap">
         <header className="yl-head">
-          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"家族":"記録"}</h1>
+          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"記録"}</h1>
           <div className="yl-head-actions">
             {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
             {FB_READY&&(
@@ -3422,8 +3427,9 @@ function App(){
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
               <div className="yl-set-actions">
-                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>つかい方・機能紹介</button>
+                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>使い方・機能紹介</button>
                 <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
+                <button className="yl-addbtn sm" onClick={()=>setAboutOpen(true)}><Icon name="note" size={14}/> このアプリについて</button>
                 <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
               </div>
             </section>
@@ -3743,11 +3749,11 @@ function App(){
             })()}
 
             {personSeg==="record"&&(()=>{const defs=[];
-              if(isMemberTab)defs.push({key:"certs",el:(
+              if(isMemberTab||curKind==="me")defs.push({key:"certs",el:(
                 <section className="yl-certs">
                   <div className="yl-routine-head">
                     <h2 className="yl-routine-title">健康・ケアの記録</h2>
-                    {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>setInputSheet("schedule")}>＋ 追加</button>}
+                    {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>＋ 追加</button>}
                   </div>
                   <p className="yl-set-desc" style={{marginBottom:10}}>ワクチン・通院・お薬・証明書などの記録をまとめて管理できます。</p>
                   {(certs.length>0||careNoPhoto.length>0)&&(()=>{
@@ -3758,8 +3764,8 @@ function App(){
                   })()}
                   {certs.length===0&&careNoPhoto.length===0?(
                     <div className="yl-cert-empty">
-                      <button className="yl-quick-big" onClick={()=>setInputSheet("schedule")}><Icon name="camera" size={18}/> ＋ 証明書を追加</button>
-                      <p className="yl-routine-empty" style={{marginTop:10}}>＋から「狂犬病」などを選び、過去の日付にして証明書の写真を保存できます。</p>
+                      <button className="yl-quick-big" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}><Icon name="camera" size={18}/> ＋ 証明書を追加</button>
+                      <p className="yl-routine-empty" style={{marginTop:10}}>＋から種類（予防接種・通院など）を選び、日付を入れて証明書の写真を保存できます。</p>
                     </div>
                   ):(<>
                     {certs.length>0&&(<>
@@ -4106,7 +4112,6 @@ function App(){
             })()}
           </>
         )}
-        <div className="yl-help-foot"><button className="yl-help-btn" onClick={()=>setHelpOpen(true)}><Icon name="note" size={15}/> つかい方・機能紹介</button></div>
         <p className="yl-foot">大切な家族の毎日を、ひとつの場所で。</p>
       </div>
 
@@ -4158,7 +4163,7 @@ function App(){
           {key:"home",icon:"home",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
           {key:"cal",icon:"calendar",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
           {key:"record",icon:"record",label:"記録",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
-          {key:"manage",icon:"users",label:"家族",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
+          {key:"manage",icon:"users",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
           {key:"settings",icon:"settings",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
         ];
         return(
@@ -4193,10 +4198,10 @@ function App(){
             </div>
             <div className="yl-drawer-sep"/>
             <div className="yl-drawer-group">
-              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setHelpOpen(true);}}><Icon name="note" size={19}/> つかい方・機能紹介</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setHelpOpen(true);}}><Icon name="note" size={19}/> 使い方・機能紹介</button>
               <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setTab("settings");}}><Icon name="settings" size={19}/> 設定</button>
             </div>
-            <p className="yl-drawer-foot">LoaLife・試作版</p>
+            <p className="yl-drawer-foot">LOALIFE β版</p>
           </div>
         </div>
       )}
@@ -4322,11 +4327,44 @@ function App(){
           </div>
         </div>
       )}
+      {aboutOpen&&(
+        <div className="yl-help-ov" onClick={()=>setAboutOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> このアプリについて</h2><button className="yl-help-close" onClick={()=>setAboutOpen(false)} aria-label="閉じる">×</button></div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="paw" size={15}/> LOALIFE</span></div>
+              <p className="yl-set-desc">自分・家族・ペットの予定や記録を、ひとつの場所でまとめて管理できるアプリです。</p>
+              <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版</strong></p>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> データの保存</span></div>
+              <p className="yl-set-desc">記録・写真は<strong>この端末内にのみ</strong>保存され、外部サーバーには送信されません。機種変更や削除に備え、設定の「バックアップ」から手動で書き出せます。</p>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="users" size={15}/> 家族での共有</span></div>
+              <p className="yl-set-desc"><strong>現在はオフ</strong>（個人利用向け）です。今後、家族と記録を共有できる機能を提供予定です。</p>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="alert" size={15}/> ご利用にあたって</span></div>
+              <p className="yl-set-desc">本アプリはβ版です。記録や目安は<strong>参考情報</strong>であり、獣医療・医療の診断や治療の代替ではありません。体調が気になるときや緊急時は、必ずかかりつけ・専門機関にご相談ください。</p>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> プライバシー</span></div>
+              <p className="yl-set-desc">入力した情報・写真は端末内（ブラウザのローカル保存）に保管され、開発者や第三者に自動送信されることはありません。</p>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="note" size={15}/> 利用規約・お問い合わせ</span></div>
+              <p className="yl-set-desc">正式な利用規約・プライバシーポリシー・お問い合わせ窓口は、正式公開に向けて準備中です。ご意見・不具合のご連絡先は追ってご案内します。</p>
+            </div>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setAboutOpen(false)}>とじる</button>
+          </div>
+        </div>
+      )}
       {helpOpen&&(
         <div className="yl-help-ov" onClick={()=>setHelpOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="note" size={18}/> LoaLife のつかい方</h2>
+              <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label="閉じる">×</button>
             </div>
             <p className="yl-help-lead">家族みんな・ペット・自分の毎日を、ひとつのアプリでまとめて見守れます。主な機能を紹介します。</p>
@@ -4453,13 +4491,13 @@ function App(){
       {inputSheet==="schedule"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">{isMemberTab?"ケア・予定を追加":"予定・ToDoを追加"}</h3>
-            {!isMemberTab?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:KIND_STYLE[activeMember.kind].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {k.label}</button>)}</div>}
+            <h3 className="yl-modal-title">{isMemberTab?"ケア・予定を追加":selfCare?"健康・ケアを追加":"予定・ToDoを追加"}</h3>
+            {!(isMemberTab||selfCare)?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {TYPE_META[t].label}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:(KIND_STYLE[activeMember?activeMember.kind:"person"]||{}).fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {k.label}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">よく使う</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
-            <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={isMemberTab?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
-            <div className="yl-optrow"><label className="yl-opt">{isMemberTab?careDateLabel(draftKind):"日付・期限（任意）"}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
-            {!isMemberTab&&<p className="yl-foot" style={{marginTop:2}}>日付・期限を入れると、その日のカレンダーに表示されます。</p>}
-            {isMemberTab&&(
+            <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={(isMemberTab||selfCare)?(draftKind==="other"?"内容を入力…":`${(careKindsFor(activeMember).find(k=>k.key===draftKind)||{}).label||"内容"}を追加…`):`${TYPE_META[draftType].label}を追加…`}/><button className="yl-addbtn" onClick={addItem}>追加</button></div>
+            <div className="yl-optrow"><label className="yl-opt">{(isMemberTab||selfCare)?careDateLabel(draftKind):"日付・期限（任意）"}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div>
+            {!(isMemberTab||selfCare)&&<p className="yl-foot" style={{marginTop:2}}>日付・期限を入れると、その日のカレンダーに表示されます。</p>}
+            {(isMemberTab||selfCare)&&(
               <div className="yl-optrow" style={{marginTop:4}}>
                 <label className="yl-opt" style={{width:"100%"}}><Icon name="camera" size={14}/> 証明書・写真（任意）
                   <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
