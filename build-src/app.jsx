@@ -286,7 +286,7 @@ const BABY_KINDS=[{key:"checkup",label:"乳児健診",emoji:"🩺"},{key:"vaccin
 const SELF_KINDS=[{key:"checkup",label:"健康診断",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"投薬・服薬",emoji:"💊"},{key:"dental",label:"歯科",emoji:"🦷"},{key:"other",label:"その他",emoji:"📄"}];
 const careKindsFor=(m)=>{if(!m)return SELF_KINDS;if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
 // ケア種別 → ラインアイコン名（SF Symbols相当）
-const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"paw",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
+const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"filetext",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
 
 // ライフログ・カレンダー用：各アイテムが「どの日に紐づくか」を1つに正規化する。
@@ -556,18 +556,23 @@ const PICKER_EMOJIS=["✨","🌈","💪","🏃","🚴","🏋️","🧘","🎹","
 function guessEmoji(title,fallback){const t=(title||"").toLowerCase();for(const[keys,emo]of EMOJI_RULES){if(keys.some(k=>t.includes(k.toLowerCase())))return emo;}return fallback;}
 // タイトル文字列 → ラインアイコン名。お世話ログ・ストック・ルーティン等の自由入力項目を
 // 絵文字に頼らずアイコン表示するための推定表（データは温存、表示のみ）。
+// ルール：「アイコン＝その行動・ケアの内容」。足跡(paw)はペット固有の散歩だけに使い、
+// 検温・寝かしつけなど人にも共通するケアは、対象（犬/子ども/自分）に関わらず同じ行動アイコンに統一する。
 const ICON_RULES=[
   [["散歩","おさんぽ","お散歩","ウォーキング","さんぽ"],"paw"],
-  [["ごはん","ご飯","フード","餌","えさ","おやつ","食事","ミルク","ふりかけ"],"utensils"],
-  [["水","お水","飲水","給水"],"droplet"],
+  [["ごはん","ご飯","フード","餌","えさ","おやつ","食事","ミルク","ふりかけ","母乳","授乳","離乳"],"utensils"],
+  [["水分","水","お水","飲水","給水"],"droplet"],
   [["トイレ","うんち","おしっこ"],"droplet"],
   [["掃除","そうじ","片付","かたづけ","ゴミ","ごみ"],"sparkles"],
   [["洗濯","洗剤","せんたく"],"droplet"],
   [["シャンプー","お風呂","風呂","入浴","バス","沐浴"],"droplet"],
-  [["ブラッシング","ブラシ","毛づくろい","コーミング"],"paw"],
+  [["検温","体温","平熱","発熱"],"thermometer"],
+  [["体重"],"scale"],
+  [["血圧","体調","調子","バイタル","脈拍","心拍"],"activity"],
+  [["ブラッシング","ブラシ","毛づくろい","コーミング","お手入れ","手入れ"],"sparkles"],
   [["爪","つめ","カット","トリミング","美容","サロン","ヘア","髪"],"scissors"],
   [["歯","はみがき","歯みがき","歯磨き","デンタル"],"tooth"],
-  [["耳","目薬","点眼"],"paw"],
+  [["耳","目薬","点眼"],"droplet"],
   [["薬","くすり","サプリ","投薬","服薬"],"pill"],
   [["ワクチン","予防接種","注射","接種"],"syringe"],
   [["フィラリア","蚊","ノミ","ダニ","駆虫"],"bug"],
@@ -575,16 +580,17 @@ const ICON_RULES=[
   [["換気","窓"],"wind"],
   [["ストレッチ","ヨガ","瞑想","運動","ジム","筋トレ","ラン","走","散歩以外"],"activity"],
   [["コーヒー","カフェ","珈琲","お茶","ティー"],"coffee"],
-  [["夜","寝る","就寝","睡眠","おやすみ","ねんね"],"moon"],
+  [["夜","寝る","就寝","睡眠","おやすみ","ねんね","寝かし","昼寝","お昼寝"],"moon"],
   [["朝","起床","起きる"],"sun"],
-  [["習い事","レッスン","塾","スクール","保育園","幼稚園","学校","授業","宿題","勉強"],"bag"],
+  [["習い事","レッスン","塾","スクール","保育園","幼稚園","学校","授業","宿題","勉強","持ち物","上履き","上ばき","支度"],"bag"],
   [["写真","カメラ","撮影"],"camera"],
   [["お金","貯金","支出","費用","会計"],"wallet"],
   [["フード在庫","ストック","シーツ","おむつ","ティッシュ","詰め替え","買い"],"package"],
   [["コンタクト","眼鏡","メガネ","視力"],"glasses"],
   [["予定","イベント","記念","誕生"],"calendar"],
 ];
-function guessIcon(title,fallback="paw"){const t=(title||"").toLowerCase();for(const[keys,ic]of ICON_RULES){if(keys.some(k=>t.includes(k.toLowerCase())))return ic;}return fallback;}
+// 未マッチ時は動物を連想させない中立アイコン（sparkles）を既定に。散歩など paw が必要な項目はルールで明示。
+function guessIcon(title,fallback="sparkles"){const t=(title||"").toLowerCase();for(const[keys,ic]of ICON_RULES){if(keys.some(k=>t.includes(k.toLowerCase())))return ic;}return fallback;}
 
 const storage={get:k=>Promise.resolve().then(()=>{const v=localStorage.getItem(k);return v!=null?{value:v}:null;}),set:(k,v)=>Promise.resolve().then(()=>localStorage.setItem(k,v)),delete:k=>Promise.resolve().then(()=>localStorage.removeItem(k))};
 
