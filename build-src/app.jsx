@@ -3023,6 +3023,15 @@ function App(){
 
         {tab==="home"?(
           <div className="yl-home">
+            {/* 初見（メンバー未登録）だけに出す追加導線。登録済みユーザーには表示しない */}
+            {members.length===0&&(
+              <section style={{background:"#fff",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
+                <div style={{fontSize:34,lineHeight:1.1,marginBottom:8}}>👨‍👩‍👧🐶🐱</div>
+                <p style={{margin:"0 0 4px",fontSize:17,fontWeight:800,color:"#3A342E"}}>まずは家族やペットを登録しましょう</p>
+                <p style={{margin:"0 0 14px",fontSize:13,fontWeight:700,lineHeight:1.6,color:"#8A8178"}}>自分・家族・ペットの予定や記録を、まとめて管理できます。</p>
+                <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> 家族・ペットを追加</button>
+              </section>
+            )}
             {showNotifBanner&&(hasReminders||members.some(m=>m.birthday))&&(
               <div className="yl-notif-banner">
                 <span>通知を許可すると、リマインダーや誕生日をお知らせします</span>
@@ -3516,6 +3525,10 @@ function App(){
               </section>
             )}</>)}
 
+            {/* 「家族」タブから家族・ペットを追加できることを明示する導線（ラベル付きCTA） */}
+            {personSeg==="manage"&&(
+              <div style={{marginBottom:12}}><button className="yl-chore-add" onClick={()=>setAdding(true)}><Icon name="plus" size={13}/> 家族・ペットを追加</button></div>
+            )}
             {personSeg==="manage"&&(()=>{const defs=[];
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
@@ -4125,7 +4138,7 @@ function App(){
                   {g.members.map(m=>memRow(m))}
                 </Fragment>
               ))}
-              <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ メンバーを追加</button>
+              <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ 家族・ペットを追加</button>
             </div>
           )}
           <button className="yl-membar" data-tour="membar" onClick={()=>setMemListOpen(o=>!o)} aria-expanded={memListOpen} aria-label="メンバーを切り替え">
