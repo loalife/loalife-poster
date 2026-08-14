@@ -3433,7 +3433,6 @@ function App(){
                 <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
               </div>
             </section>
-            <p className="yl-foot">大切な家族の毎日を、ひとつの場所で。</p>
           </div>
         ):(
           <>
