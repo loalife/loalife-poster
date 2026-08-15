@@ -614,6 +614,9 @@ const ICON_RULES=[
 // 未マッチ時は動物を連想させない中立アイコン（sparkles）を既定に。散歩など paw が必要な項目はルールで明示。
 function guessIcon(title,fallback="sparkles"){const t=(title||"").toLowerCase();for(const[keys,ic]of ICON_RULES){if(keys.some(k=>t.includes(k.toLowerCase())))return ic;}return fallback;}
 
+// Google Analytics 4：本番のみ計測。gtag未定義（＝開発環境）では無害なno-op。GA4推奨のsnake_caseイベント名を使う。
+function track(name,params){try{if(typeof window!=="undefined"&&typeof window.gtag==="function")window.gtag("event",name,params||{});}catch(e){}}
+
 const storage={get:k=>Promise.resolve().then(()=>{const v=localStorage.getItem(k);return v!=null?{value:v}:null;}),set:(k,v)=>Promise.resolve().then(()=>localStorage.setItem(k,v)),delete:k=>Promise.resolve().then(()=>localStorage.removeItem(k))};
 
 // ---------------------------------------------------------------------------
@@ -1801,12 +1804,13 @@ function App(){
       setMeName(nm2);setMeEmoji(em);setMeBirthday(bd);setMeAvatar(av);
       try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:em,meBirthday:bd,meColor,meName:nm2,meAvatar:av})).catch(()=>{});}catch(e){}
       if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:em,meBirthday:bd,meName:nm2,meAvatar:av},{merge:true}).catch(()=>{});}catch(e){}}
+      track("app_start",{first_kind:"me"});
       setOnboarding(false);setObStep(0);setTab("home");
       return;
     }
     const nm=[];const ni=[];let newId=null;
     if(obKind&&obName.trim()){const m={id:"f"+Date.now(),name:obName.trim(),emoji:obEmoji,avatar:obAvatar||"",kind:obKind,birthday:obBirthday||"",visibility:"household"};if(obKind==="pet")m.species=obSpecies;else if(obKind==="person")m.personType=obPersonType;nm.push(m);newId=m.id;}
-    persist(nm,ni);if(newId)setMemberSel(newId);setOnboarding(false);setObStep(0);setTab("home"); // 追加した本人を選択中にして、記録/管理タブが「自分」ではなく登録した子を表示するように
+    persist(nm,ni);if(newId)setMemberSel(newId);track("app_start",{first_kind:obKind||"none"});if(newId)track("member_add",{member_kind:obKind,via:"onboarding"});setOnboarding(false);setObStep(0);setTab("home"); // 追加した本人を選択中にして、記録/管理タブが「自分」ではなく登録した子を表示するように
   };
 
   const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObAvatar("");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
@@ -1979,6 +1983,16 @@ function App(){
   useEffect(()=>{try{localStorage.setItem("loalife-membersel",memberSel);}catch(e){}},[memberSel]);
   useEffect(()=>{try{localStorage.setItem("loalife-personseg",personSeg);}catch(e){}},[personSeg]);
   useEffect(()=>{if(loaded){try{localStorage.setItem("loalife-tab",tab);}catch(e){}}},[tab,loaded]);
+  // GA4：SPA画面遷移のページビュー。tab / personSeg が変わるたびに仮想パスで送信（初回マウント時も送る）。
+  useEffect(()=>{
+    const key=tab==="home"?"home":tab==="cal"?"calendar":tab==="settings"?"settings":isPersonMode?(personSeg==="manage"?"manage":"record"):"record";
+    const title=tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":isPersonMode?(personSeg==="manage"?"管理":"記録"):"記録";
+    track("page_view",{page_title:"LoaLife｜"+title,page_location:location.origin+location.pathname+"#"+key,page_path:"/"+key});
+  },[tab,personSeg,isPersonMode]);
+  // GA4：安全・緊急ページの閲覧。開いた時に1回。
+  useEffect(()=>{if(toxicOpen)track("safety_view",{safety_type:"toxic"});},[toxicOpen]);
+  useEffect(()=>{if(emergencyOpen)track("safety_view",{safety_type:"emergency"});},[emergencyOpen]);
+  useEffect(()=>{if(disasterOpen)track("safety_view",{safety_type:"disaster"});},[disasterOpen]);
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=(list.find(k=>k.key===kind)||{}).label||"";if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
 
   const toggle=(id)=>{
@@ -1989,8 +2003,9 @@ function App(){
       const today=iso(new Date());const newDue=addInterval(today,cyc);
       next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false}:x);
       showFlash(`✓ 記録しました。次は ${fmtDate(newDue)} ごろ 🗓`);
+      track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});
     }
-    else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);}
+    else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);if(!it.done)track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});}
     persist(members,next);
     const updated=next.find(x=>x.id===id);
     if(updated)saveItemToFs(updated).catch(()=>{});
@@ -2121,6 +2136,7 @@ function App(){
     if(asCare&&draftPhoto){try{const ok=await photoStorage.set(`photo:${base.id}`,draftPhoto);if(ok){setPhotos(p=>({...p,[base.id]:draftPhoto}));base.photo=true;base.photos=[base.id];}}catch(e){}}
     const uKey=tab+" "+title;
     persist(members,[...items,base],{...usage,[uKey]:(usage[uKey]||0)+1});
+    if(asCare)track("care_record",{care_kind:draftKind});else track("task_add",{task_type:draftType});
     saveItemToFs(base).catch(()=>{});
     setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);setDraftPhoto(null);
     if(asCare&&careMeta&&draftKind!=="other"){setDraft(careMeta.label);setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
@@ -2136,6 +2152,7 @@ function App(){
     if(newKind==="pet")member.species=newSpecies;
     if(newKind==="person")member.personType=newPersonType;
     persist([...members,member],items);
+    track("member_add",{member_kind:newKind,species:newKind==="pet"?newSpecies:undefined});
     saveMemberToFs(member).catch(()=>{});
     setNewName("");setNewBirthday("");setNewVisibility("household");setNewAvatar("");setAdding(false);setTab(id);setMemberSel(id);
     setProfilePrompt(id); // 追加直後にプロフィール充実をやさしく案内（強制遷移はしない）
@@ -2219,6 +2236,7 @@ function App(){
       next=[...items,{id:savedId,space:routineEdit.space,type:"routine",title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem,repeat:"daily",doneDate:null,createdAt:Date.now()}];
     }
     persist(members,next);
+    if(!routineEdit.id)track("task_add",{task_type:"routine"});
     const saved=next.find(x=>x.id===savedId);
     if(saved)saveItemToFs(saved).catch(()=>{});
     setRoutineEdit(null);showFlash("ルーティンを保存しました 🗓");
@@ -2226,6 +2244,7 @@ function App(){
   const toggleRoutine=(id)=>{
     const r=items.find(x=>x.id===id);if(!r)return;
     const done=r.doneDate===todayIso;
+    if(!done)track("task_complete",{task_type:"routine"});
     const next=items.map(x=>x.id===id?{...x,doneDate:done?null:todayIso}:x);
     persist(members,next);
     const u=next.find(x=>x.id===id);if(u)saveItemToFs(u).catch(()=>{});
@@ -2300,6 +2319,7 @@ function App(){
     if(w!=null){rec.weight=w;rec.wunit=weightUnit;}if(h!=null)rec.height=h;if(healthCond)rec.condition=healthCond;
     if(bpS!=null)rec.bpSys=bpS;if(bpD!=null)rec.bpDia=bpD;if(temp!=null)rec.temp=temp;if(glu!=null)rec.glucose=glu;
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    if(w!=null)track("weight_record");else track("body_record");
     setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");
     showFlash("からだの記録を保存しました 📈");
   };
@@ -2347,6 +2367,7 @@ function App(){
     const base={name,brand:(f.brand||"").trim(),foodType:f.foodType||"other",amount:numOrBlank(f.amount),unit:f.unit||"g",timesPerDay:numOrBlank(f.times),feedTime:(f.feedTime||"").trim(),kcal:numOrBlank(f.kcal),kcalBasis:f.kcalBasis||"per100"};
     if(f.id){const old=items.find(x=>x.id===f.id)||{};const rec={...old,...base};persist(members,items.map(x=>x.id===f.id?rec:x));saveItemToFs(rec).catch(()=>{});}
     else{const rec={id:"food"+Date.now(),space:tab,type:"fooddef",...base,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});}
+    track("food_register",{food_type:base.foodType});
     setFoodForm(null);showFlash("フードを登録しました 🍚");};
   const removeFoodDef=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   const openMeal=(foodId)=>{const d=foodDefs.find(x=>x.id===foodId)||foodDefs[0];if(!d){openFoodNew();return;}const h=new Date().getHours();const slot=d.foodType==="treat"?"treat":(h<11?"morning":h<15?"noon":"night");setMealForm({foodId:d.id,slot,amount:(d.amount!==""&&d.amount!=null)?String(d.amount):""});};
@@ -2383,7 +2404,7 @@ function App(){
   const onWalkErr=(e)=>{setWalkGpsErr(e&&e.code===1?"位置情報が許可されていません（時間は記録できます）":"位置情報を取得できませんでした");};
   const startWalkWatch=()=>{if(walkWatchRef.current!=null||!navigator.geolocation)return;try{walkWatchRef.current=navigator.geolocation.watchPosition(onWalkPos,onWalkErr,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});}catch(e){}};
   const stopWalkWatch=()=>{if(walkWatchRef.current!=null&&navigator.geolocation){try{navigator.geolocation.clearWatch(walkWatchRef.current);}catch(e){}}walkWatchRef.current=null;};
-  const startWalk=()=>{if(walk){showFlash("すでに散歩を記録中です");return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
+  const startWalk=()=>{if(walk){showFlash("すでに散歩を記録中です");return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());track("walk_start");startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
   const cancelWalk=()=>{stopWalkWatch();setWalk(null);walkPersist(null);setWalkGpsErr("");};
   const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,Math.round((Date.now()-walk.start)/1000));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(`おさんぽ記録：${fmtDur(durationSec)}・${fmtDist(distanceM)} 🐾`);};
   const removeWalk=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
@@ -2570,10 +2591,10 @@ function App(){
   // お世話ログ（トイレ掃除・シャンプー等）：やった履歴と前回からの経過
   const chores=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="chore").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const petMembers=useMemo(()=>members.filter(m=>m.kind==="pet"),[members]);
-  const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});};
+  const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);track("task_add",{task_type:"chore"});saveItemToFs(rec).catch(()=>{});};
   // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
   const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash("同じ項目があります");setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash("追加しました ✓");};
-  const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
+  const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);track("task_complete",{task_type:"chore"});const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash("記録しました ✓");};
   // まとめて記録：選択中の子（複数）に、日課（ご飯/お薬/散歩/トイレ）を一括でお世話ログに記録。
   const batchLog=(action,ids)=>{
     const sel=ids.filter(id=>members.some(m=>m.id===id&&m.kind==="pet"));
@@ -2596,6 +2617,7 @@ function App(){
     const now=new Date();const time=`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
     const rec={id:"t"+Date.now(),space:tab,type:"toilet",tkind:tk,success:!!success,bristol:tk==="poop"?(bristol||null):null,title,emoji,date:todayIso,time,createdAt:Date.now()};
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
+    track("poop_record",{toilet_kind:tk});
     showFlash(`${emoji} ${title} を記録 ✓`);
   };
   const removeToilet=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
