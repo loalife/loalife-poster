@@ -3721,7 +3721,7 @@ function App(){
               defs.push({key:"chore",el:(
                 <section className="yl-chore">
                   <h2 className="yl-routine-title" style={{marginBottom:4}}>{curKind==="pet"?"毎日のお世話":"やることログ"}</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>{curKind==="pet"?"毎日くり返すお世話を記録できます。前回からの経過が色でわかります。":"毎日くり返すことを記録できます。"}</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>{curKind==="pet"?"毎日くり返すお世話を記録できます。前回からの経過が色でわかります。":"「やった」で記録。前回からの経過がひと目で分かります。"}</p>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
                       {chores.map(c=>{const el=elapsedLabel(c.lastDone,colorDays.warn,colorDays.alert);const editing=choreDateEdit&&choreDateEdit.id===c.id;return(
