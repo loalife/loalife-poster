@@ -422,12 +422,19 @@ function weatherCodeMeta(code){
 function walkAdvice(w){
   if(!w||w.error||typeof w.temp!=="number")return null;
   const t=w.temp,h=w.humidity,road=(typeof w.roadTemp==="number")?w.roadTemp:null,app=(typeof w.apparent==="number")?w.apparent:t;
+  const code=w.code,precip=(typeof w.precip==="number")?w.precip:null,pop=(typeof w.pop==="number")?w.pop:null;
   if((road!=null&&road>=50)||app>=35||t>=35)
     return{level:"danger",emoji:"🚫",label:"いまは控えて",msg:"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。"};
+  if([95,96,99].includes(code)||(precip!=null&&precip>=4))
+    return{level:"danger",emoji:"⛈",label:"いまは控えて",msg:"雷雨・大雨のおそれ。落ち着いてからにしましょう。"};
+  if((precip!=null&&precip>=0.3)||[61,63,65,66,67,80,81,82].includes(code))
+    return{level:"warn",emoji:"🌧",label:"雨に注意",msg:"雨で足元がすべりやすく、体も冷えます。無理せず短めに・雨具を。"};
   if((road!=null&&road>=40)||app>=28||t>26||(typeof h==="number"&&h>=85))
     return{level:"warn",emoji:"⚠️",label:"注意して",msg:"地面が熱め。短めに・日陰を選び、水分を持って。"};
   if(t<=0||(road!=null&&road<=0))
     return{level:"warn",emoji:"❄️",label:"寒さ注意",msg:"路面凍結や冷えに注意。防寒して短めに。"};
+  if((pop!=null&&pop>=70)||[51,53,55].includes(code))
+    return{level:"warn",emoji:"🌧",label:"雨のおそれ",msg:"降り出しそうです。短時間で切り上げられるように。"};
   return{level:"ok",emoji:"🐾",label:"お散歩日和",msg:"いまは比較的お散歩に向いています。"};
 }
 // お散歩指数：気温・蒸し暑さ・路面・雨・寒さ・風・紫外線・乾燥から0〜100で採点。
@@ -452,13 +459,18 @@ function walkIndex(w){
   // 路面の暑さ
   let rh=0;if(road!=null){if(road>=55)rh=40;else if(road>=50)rh=30;else if(road>=45)rh=20;else if(road>=40)rh=10;}
   add("road","路面の暑さ","paw",rh);
-  // 雨・雪・雷・霧
+  // 雨・雪・雷・霧：天気コードに加え、実際の降水量と現在時間帯の降水確率も反映
+  // （大雨警報級で降水確率が高い場合、今の天気コードが雨でなくても「日和」にしない）
   let wx=0,wxl="雨",wxi="cloudrain";
-  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";wxi="cloudrain";}
-  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";wxi="cloudrain";}
+  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";}
+  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";}
   else if([71,73,75,77,85,86].includes(code)){wx=42;wxl="雪";wxi="snow";}
-  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";wxi="cloudrain";}
-  else if([45,48].includes(code)){wx=14;wxl="霧";wxi="cloudrain";}
+  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";}
+  else if([45,48].includes(code)){wx=14;wxl="霧";}
+  const precip=(typeof w.precip==="number")?w.precip:null;
+  const pop=(typeof w.pop==="number")?w.pop:null;
+  if(precip!=null&&precip>0){const p=precip>=4?72:precip>=1?55:38;if(p>wx){wx=p;wxl=precip>=4?"強い雨":"雨";wxi="cloudrain";}} // 実際に降っている
+  if(pop!=null){let p=0;if(pop>=90)p=60;else if(pop>=70)p=50;else if(pop>=60)p=42;else if(pop>=40)p=22;if(p>wx){wx=p;wxl=pop>=70?"雨のおそれ":"雨の可能性";wxi="cloudrain";}} // 降水確率
   add("wx",wxl,wxi,wx);
   // 風
   let vp=0;if(wind!=null){if(wind>=12)vp=52;else if(wind>=8)vp=32;else if(wind>=5)vp=16;else if(wind>=3.5)vp=6;}
@@ -1559,7 +1571,7 @@ function App(){
   const fetchWeather=useCallback(async(loc)=>{
     if(!loc)return;setWeatherLoading(true);
     try{
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=2&timezone=auto`);
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,weather_code,wind_speed_10m,uv_index,precipitation&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,uv_index,soil_temperature_0cm&daily=temperature_2m_max,temperature_2m_min,weather_code,uv_index_max&wind_speed_unit=ms&forecast_days=2&timezone=auto`);
       if(!r.ok)throw new Error("bad");
       const j=await r.json();const c=j.current||{};const d=j.daily||{};const H=j.hourly||{};
       // 路面（地表）温度：Open-Meteo の地表温度(0cm)を現在の時刻で取得。無ければ日射モデルで推定。
@@ -1567,6 +1579,9 @@ function App(){
       const ht=H.time,hs=H.soil_temperature_0cm;
       if(Array.isArray(ht)&&Array.isArray(hs)&&c.time){const idx=ht.findIndex(t=>t.slice(0,13)===c.time.slice(0,13));if(idx>=0&&typeof hs[idx]==="number")road=hs[idx];}
       if(road==null&&typeof c.temperature_2m==="number"){const isDay=c.is_day===1;const cloud=typeof c.cloud_cover==="number"?c.cloud_cover:50;const delta=!isDay?2:(cloud<30?25:cloud<70?15:8);road=c.temperature_2m+delta;roadEstimated=true;}
+      // 現在時間帯の降水確率（大雨警報級＝今の天気コードが雨でなくても高い確率を見逃さない）
+      let curPop=null;
+      if(Array.isArray(ht)&&Array.isArray(H.precipitation_probability)&&c.time){const pidx=ht.findIndex(t=>t.slice(0,13)===c.time.slice(0,13));if(pidx>=0&&typeof H.precipitation_probability[pidx]==="number")curPop=H.precipitation_probability[pidx];}
       const hi=Array.isArray(d.temperature_2m_max)?d.temperature_2m_max[0]:null;
       const lo=Array.isArray(d.temperature_2m_min)?d.temperature_2m_min[0]:null;
       const code=typeof c.weather_code==="number"?c.weather_code:(Array.isArray(d.weather_code)?d.weather_code[0]:null);
@@ -1592,7 +1607,7 @@ function App(){
         const tuv=Array.isArray(d.uv_index_max)?d.uv_index_max[1]:null;
         if(thi!=null||th.length)tomorrow={hi:thi,lo:tlo,code:tcode,uv:tuv,hours:th.length?th:null};
       }
-      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,tomorrow,time:c.time,fetchedAt:Date.now()});
+      setWeather({temp:c.temperature_2m,humidity:c.relative_humidity_2m,apparent:c.apparent_temperature,isDay:c.is_day===1,cloud:c.cloud_cover,wind:c.wind_speed_10m,uv,precip:(typeof c.precipitation==="number"?c.precipitation:null),pop:curPop,roadTemp:road==null?null:Math.round(road*10)/10,roadEstimated,hi,lo,code,hours,tomorrow,time:c.time,fetchedAt:Date.now()});
     }catch(e){setWeather({error:true});}
     setWeatherLoading(false);
   },[]);
