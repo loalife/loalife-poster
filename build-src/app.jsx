@@ -418,6 +418,37 @@ function weatherCodeMeta(code){
   const m={0:["☀️","快晴"],1:["🌤","晴れ"],2:["⛅","一部くもり"],3:["☁️","くもり"],45:["🌫","霧"],48:["🌫","霧氷"],51:["🌦","霧雨"],53:["🌦","霧雨"],55:["🌦","強い霧雨"],56:["🌧","着氷性の霧雨"],57:["🌧","着氷性の霧雨"],61:["🌧","小雨"],63:["🌧","雨"],65:["🌧","強い雨"],66:["🌧","着氷性の雨"],67:["🌧","着氷性の雨"],71:["🌨","小雪"],73:["🌨","雪"],75:["🌨","大雪"],77:["🌨","霧雪"],80:["🌦","にわか雨"],81:["🌦","にわか雨"],82:["🌦","激しいにわか雨"],85:["🌨","にわか雪"],86:["🌨","にわか雪"],95:["⛈","雷雨"],96:["⛈","雹を伴う雷雨"],99:["⛈","雹を伴う雷雨"]};
   const e=m[code];return e?{emoji:e[0],label:e[1]}:{emoji:"🌡️",label:""};
 }
+// 気象庁（JMA）警報・注意報：府県予報区コード＋代表座標。緯度経度から最寄りを選ぶ（府県単位の概況）。
+// 北海道・沖縄は地方ごとに分割。取得先: https://www.jma.go.jp/bosai/warning/data/warning/{code}.json
+const JMA_AREAS=[
+  ["011000","宗谷地方",45.42,141.67],["012000","上川・留萌地方",43.77,142.36],["013000","網走・北見・紋別地方",44.02,144.27],["014100","釧路・根室・十勝地方",42.98,144.38],["015000","胆振・日高地方",42.32,140.97],["016000","石狩・空知・後志地方",43.06,141.35],["017000","渡島・檜山地方",41.77,140.73],
+  ["020000","青森県",40.82,140.74],["030000","岩手県",39.70,141.15],["040000","宮城県",38.27,140.87],["050000","秋田県",39.72,140.10],["060000","山形県",38.24,140.36],["070000","福島県",37.75,140.47],
+  ["080000","茨城県",36.34,140.45],["090000","栃木県",36.57,139.88],["100000","群馬県",36.39,139.06],["110000","埼玉県",35.86,139.65],["120000","千葉県",35.61,140.12],["130000","東京都",35.69,139.69],["140000","神奈川県",35.45,139.64],
+  ["150000","新潟県",37.90,139.02],["160000","富山県",36.70,137.21],["170000","石川県",36.59,136.63],["180000","福井県",36.07,136.22],["190000","山梨県",35.66,138.57],["200000","長野県",36.65,138.18],["210000","岐阜県",35.39,136.72],["220000","静岡県",34.98,138.38],["230000","愛知県",35.18,136.91],["240000","三重県",34.73,136.51],
+  ["250000","滋賀県",35.00,135.87],["260000","京都府",35.02,135.76],["270000","大阪府",34.69,135.52],["280000","兵庫県",34.69,135.20],["290000","奈良県",34.69,135.83],["300000","和歌山県",34.23,135.17],
+  ["310000","鳥取県",35.50,134.24],["320000","島根県",35.47,133.05],["330000","岡山県",34.66,133.93],["340000","広島県",34.40,132.46],["350000","山口県",34.19,131.47],
+  ["360000","徳島県",34.07,134.56],["370000","香川県",34.34,134.04],["380000","愛媛県",33.84,132.77],["390000","高知県",33.56,133.53],
+  ["400000","福岡県",33.61,130.42],["410000","佐賀県",33.25,130.30],["420000","長崎県",32.74,129.87],["430000","熊本県",32.79,130.74],["440000","大分県",33.24,131.61],["450000","宮崎県",31.91,131.42],["460100","鹿児島県",31.56,130.56],
+  ["471000","沖縄本島地方",26.21,127.68],["473000","宮古島地方",24.80,125.28],["474000","八重山地方",24.34,124.16],
+];
+function nearestJmaArea(lat,lon){
+  if(typeof lat!=="number"||typeof lon!=="number")return null;
+  let best=null,bd=Infinity;
+  for(const a of JMA_AREAS){const dLat=lat-a[2],dLon=(lon-a[3])*Math.cos(lat*Math.PI/180);const d=dLat*dLat+dLon*dLon;if(d<bd){bd=d;best=a;}}
+  return best?{code:best[0],name:best[1]}:null;
+}
+// 気象警報・注意報の種類コード → 名称。level: 3=特別警報 / 2=警報 / 1=注意報。
+const JMA_WARN={"02":["暴風雪警報",2],"03":["大雨警報",2],"04":["洪水警報",2],"05":["暴風警報",2],"06":["大雪警報",2],"07":["波浪警報",2],"08":["高潮警報",2],"10":["大雨注意報",1],"12":["大雪注意報",1],"13":["風雪注意報",1],"14":["雷注意報",1],"15":["強風注意報",1],"16":["波浪注意報",1],"17":["融雪注意報",1],"18":["洪水注意報",1],"19":["高潮注意報",1],"20":["濃霧注意報",1],"21":["乾燥注意報",1],"22":["なだれ注意報",1],"23":["低温注意報",1],"24":["霜注意報",1],"25":["着氷注意報",1],"26":["着雪注意報",1],"32":["暴風雪特別警報",3],"33":["大雨特別警報",3],"35":["暴風特別警報",3],"36":["大雪特別警報",3],"37":["波浪特別警報",3],"38":["高潮特別警報",3]};
+// 警報JSONをパース：解除以外の有効な警報・注意報を種類ごとに1件へ集約（府県内のいずれかで発表）。
+function parseJmaWarnings(j){
+  const seen=new Map();
+  (j&&j.areaTypes||[]).forEach(at=>(at.areas||[]).forEach(a=>(a.warnings||[]).forEach(w=>{
+    if(!w||!w.code||w.status==="解除"||w.status==="発表警報・注意報はなし")return;
+    const meta=JMA_WARN[w.code];if(!meta)return;
+    if(!seen.has(w.code))seen.set(w.code,{code:w.code,name:meta[0],level:meta[1]});
+  })));
+  return[...seen.values()].sort((a,b)=>b.level-a.level);
+}
 // お散歩の目安：気温・湿度・体感・路面(地表)温度から、いま散歩に出てよいかを3段階で判定。
 function walkAdvice(w){
   if(!w||w.error||typeof w.temp!=="number")return null;
@@ -1306,6 +1337,7 @@ function App(){
   const weatherLoc=useMemo(()=>weatherLocs.length?(weatherLocs.find(l=>l.id===weatherLocId)||weatherLocs[0]):null,[weatherLocs,weatherLocId]);
   const[weather,setWeather]=useState(null); // {temp,humidity,time}|{error:true}
   const[weatherLoading,setWeatherLoading]=useState(false);
+  const[jmaWarn,setJmaWarn]=useState(null); // 気象庁の警報・注意報 {area,warnings:[{code,name,level}],at}|null
   const[wxQuery,setWxQuery]=useState("");
   const[wxResults,setWxResults]=useState(null); // null=未検索, []=該当なし
   const[wxSearching,setWxSearching]=useState(false);
@@ -1612,6 +1644,19 @@ function App(){
     setWeatherLoading(false);
   },[]);
   useEffect(()=>{if(weatherLoc)fetchWeather(weatherLoc);},[weatherLoc,fetchWeather]);
+  // 気象庁（JMA）の警報・注意報を取得。Open-Meteoの予報が晴れでも、実際の警報を反映するため。
+  // 取得不可（CORS/障害/開発環境のプロキシ制限）は静かにnull＝Open-Meteoのみで動作（既存機能は不変）。
+  const fetchJmaWarnings=useCallback(async(loc)=>{
+    if(!loc||loc.lat==null){setJmaWarn(null);return;}
+    const area=nearestJmaArea(loc.lat,loc.lon);if(!area){setJmaWarn(null);return;}
+    try{
+      const r=await fetch(`https://www.jma.go.jp/bosai/warning/data/warning/${area.code}.json`,{cache:"no-store"});
+      if(!r.ok)throw new Error("bad");
+      const j=await r.json();
+      setJmaWarn({area:area.name,warnings:parseJmaWarnings(j),at:Date.now()});
+    }catch(e){setJmaWarn(null);}
+  },[]);
+  useEffect(()=>{if(weatherLoc)fetchJmaWarnings(weatherLoc);else setJmaWarn(null);},[weatherLoc,fetchJmaWarnings]);
   // アプリを再び前面にしたとき（PWAは開きっぱなしになりがち）、天気が古ければ自動で更新して実況とのズレを防ぐ。
   useEffect(()=>{
     const onVis=()=>{if(document.visibilityState==="visible"&&weatherLoc){setWeather(w=>{if(!w||!w.fetchedAt||Date.now()-w.fetchedAt>10*60*1000)fetchWeather(weatherLoc);return w;});}};
@@ -2952,7 +2997,10 @@ function App(){
     const lines=[];
     const cnt=homeData.todos.length+homeData.bombs.length;
     lines.push(cnt>0?`今日は ${cnt}件 やることがあります。`:"今日はゆっくり過ごせそうです。");
-    if(hasWalker&&weather&&!weather.error&&weather.hours){
+    const jmaSevere=hasWalker&&jmaWarn&&jmaWarn.warnings.length&&jmaWarn.warnings[0].level>=2;
+    if(jmaSevere){
+      lines.push(`${jmaWarn.warnings[0].name}発表中。お散歩は控えてください。`);
+    }else if(hasWalker&&weather&&!weather.error&&weather.hours){
       const wt=walkTimeline(weather.hours);
       const pet=petMembers.find(m=>m.species==="dog"&&!m.memorial);
       if(wt&&wt.best&&pet)lines.push(`${pet.name}のお散歩は ${wt.best.from===wt.best.to?wt.best.from+"時ごろ":wt.best.from+"〜"+wt.best.to+"時"} がおすすめです。`);
@@ -2961,7 +3009,7 @@ function App(){
     const nb=homeData.bombs[0];
     if(nb&&lines.length<3){const d=nb.d;const w=nameOf(nb.item.space);const who=w?w+"の":"";lines.push(d<0?`${who}${nb.item.title} が ${-d}日 過ぎています。`:d===0?`${who}${nb.item.title} は今日です。`:`${who}${nb.item.title} まで あと${d}日 です。`);}
     return{greet,name:meName||"",lines:lines.slice(0,3)};
-  },[homeData,hasWalker,weather,petMembers,meName]);
+  },[homeData,hasWalker,weather,petMembers,meName,jmaWarn]);
 
   // ② 安心ステータス：各メンバーのレベルと一言
   // 「注意」は本当のケア漏れだけに絞る：期限切れ・在庫切れ＝要対応、重要ケアが迫る/在庫少＝注意。
@@ -3223,13 +3271,19 @@ function App(){
                 ))}
                 {weatherLocs.length<LOC_MAX&&<button className="yl-wxchip add" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={12}/> 地点を追加</button>}
               </div>
-              {(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const cardLv=(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+              {(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const jmaHi=(jmaWarn&&jmaWarn.warnings.length)?jmaWarn.warnings[0].level:0;const cardLv=jmaHi>=2?"danger":(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
                   <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
-                </>):weather?(()=>{const advShort=wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
+                </>):weather?(()=>{const advShort=(jmaHi>=2)?`${jmaWarn.warnings[0].name}発表中。お散歩は控えて`:wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新" disabled={weatherLoading}>↻</button></div>
+                  {jmaWarn&&jmaWarn.warnings.length>0&&(
+                    <div className="yl-jma">
+                      <span className="yl-jma-head"><Icon name="alert" size={12}/> 気象庁・{jmaWarn.area}</span>
+                      <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{w.name}</span>)}</span>
+                    </div>
+                  )}
                   <div className="yl-wx-hero">
                     <span className="yl-wx-temp">{Math.round(weather.temp)}°</span>
                     <div className="yl-wx-heroright">
