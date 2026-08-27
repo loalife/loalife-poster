@@ -364,18 +364,37 @@ const LIFESTAGE={
   cat:[{k:"kitten",l:"子猫（成長期）",f:2.5},{k:"adult_n",l:"成猫（避妊・去勢済み）",f:1.2},{k:"adult",l:"成猫（未避妊・未去勢）",f:1.4},{k:"senior",l:"高齢猫",f:1.1},{k:"diet",l:"減量が必要",f:0.8}],
 };
 const bcsAdjust=(bcs)=>1+0.1*(bcs-5); // 補正値（BCS5=適正=1.0、1段階=約10%）
-// BCS（ボディ・コンディション・スコア）9段階。適正はBCS4〜5。
-const BCS_GUIDE=[
-  [1,"削痩","肋骨・腰椎・骨盤が浮き出て、体脂肪がほとんどない。"],
-  [2,"低体重","肋骨が容易に触れ、脂肪はごくわずか。腰のくびれが顕著。"],
-  [3,"やや低体重","肋骨が触れ、上から見て腰のくびれが明瞭。"],
-  [4,"理想の手前","肋骨が触れ、上から見て腰にくびれ、横から腹部の吊り上がりあり。"],
-  [5,"理想","肋骨が過剰な脂肪なく触れる。腰のくびれ・腹部の吊り上がりが自然。"],
-  [6,"やや過体重","肋骨がやや触れにくい。くびれが不明瞭になりはじめる。"],
-  [7,"過体重","肋骨が触れにくく脂肪の沈着。くびれがほぼ無い。"],
-  [8,"肥満","肋骨が触れず、腰・腹部・尾の付け根に脂肪。腹部が張る。"],
-  [9,"重度肥満","厚い脂肪で肋骨が触れない。腹部が大きく膨らむ。"],
-];
+// BCS（ボディ・コンディション・スコア）9段階。適正は犬BCS4〜5・猫BCS5。犬・猫で説明を分ける。
+const BCS_GUIDE={
+  dog:[
+    [1,"削痩","遠距離からでも肋骨・腰椎・骨盤などの隆起がはっきり見える。体脂肪が全く認められない。明らかな筋肉量低下。"],
+    [2,"低体重","肋骨・腰椎・骨盤を容易に見ることができる。体脂肪が触知できない。筋肉量低下はごくわずか。"],
+    [3,"やや低体重","肋骨は容易に触知でき体脂肪が触れない。腰椎上部が見え、骨盤が骨ばって見える。腰がはっきりくびれる。"],
+    [4,"理想","わずかな体脂肪が肋骨を被い、肋骨は容易に触れる。上から見て腰のくびれが容易に認められ、腹部のへこみがはっきり見える。"],
+    [5,"理想","肋骨を被う余分な脂肪はなく容易に触れる。上から見て肋骨の後ろに腰のくびれ、腹部が引き締まっている。"],
+    [6,"やや過体重","肋骨はわずかな過剰脂肪に覆われるが触れる。上から見て腰のくびれはあまりはっきりしない。腹部のへこみははっきり。"],
+    [7,"過体重","肋骨の触知は困難だが可能。かなりの脂肪。腰椎部・尾の付け根に脂肪沈着。腰のくびれはほとんど無い。"],
+    [8,"肥満","過剰な脂肪で肋骨が触れない、または触知にかなりの力を要す。腰椎部・尾の付け根にかなりの脂肪沈着。腰のくびれ・腹部のへこみなし。"],
+    [9,"重度肥満","胸部・脊椎・尾の付け根に大量の脂肪沈着。腰のくびれ・腹部のへこみなし。首と四肢にも脂肪沈着。腹部膨張が明らか。"],
+  ],
+  cat:[
+    [1,"削痩","短毛種で肋骨が見える。体脂肪が触知できない。著しい腹部のへこみ。腰椎・腸骨がはっきり見え容易に触れる。"],
+    [2,"低体重","短毛種で肋骨が容易に見える。筋肉量がごくわずかで腰椎がはっきり見える。腹部のへこみが顕著。体脂肪が触れない。"],
+    [3,"やや低体重","ごく薄い体脂肪が肋骨を被い容易に触れる。腰椎がはっきり見える。肋骨の後ろに腰がはっきりくびれる。腹部の体脂肪はごくわずか。"],
+    [4,"やや低体重","ごく薄い体脂肪が肋骨を被い触れる。肋骨の後ろに腰がくびれて見える。腹部のくびれはわずか。腹部の脂肪層がない。"],
+    [5,"理想","均整が取れている。肋骨の後ろに腰のくびれ。肋骨はわずかに脂肪に覆われ触れる。腹部はごく薄い脂肪層に覆われる。"],
+    [6,"やや過体重","肋骨はわずかに余分な脂肪に覆われるが触れる。ウエスト・腹部の脂肪層がそれほどはっきりでないが見える。腰のくびれはない。"],
+    [7,"過体重","肋骨は中程度の脂肪に覆われ触知困難。腰のくびれはほとんどない。腹部は丸みを帯び中程度の脂肪に覆われる。"],
+    [8,"肥満","肋骨は余分な脂肪に覆われ触れない。ウエストがない。腹部の丸みが明らかで脂肪層が目立つ。腰椎部に脂肪沈着。"],
+    [9,"重度肥満","肋骨は厚い脂肪に覆われ触れない。腰椎部・顔・四肢にかなりの脂肪沈着。腹部が膨張し腰のくびれがない。"],
+  ],
+};
+const bcsIdeal=(species,n)=>species==="cat"?(n===5):(n===4||n===5);
+// ME（100gあたりkcal）の目安。市販の療法食リスト等から代表的なレンジ。実値は必ずパッケージで確認。
+const ME_GUIDE={
+  dog:[["総合栄養食 ドライ","約350〜420"],["ドライ（減量・満腹感タイプ）","約270〜340"],["ウェット（缶・パウチ）","約70〜170"],["リキッド","約100〜150"],["療法食","製品ごとに大きく異なる（要確認）"]],
+  cat:[["総合栄養食 ドライ","約350〜430"],["ドライ（減量・体重ケア）","約290〜350"],["ウェット（缶・パウチ）","約60〜140"],["療法食","製品ごとに大きく異なる（要確認）"]],
+};
 function calcFoodAmount(species,bw,stageKey,bcs,me){
   const w=Number(bw),m=Number(me),bc=Number(bcs);
   if(!(w>0)||!(bc>=1&&bc<=9))return null;
@@ -1279,6 +1298,7 @@ function App(){
   const[mealForm,setMealForm]=useState(null); // 今日の食事の記録フォーム null|{foodId,slot,amount}
   const[foodCalc,setFoodCalc]=useState(null); // 1日のフード量計算 null|{species,bw,stage,bcs,me}
   const[foodCalcGuide,setFoodCalcGuide]=useState(false); // BCSの見かたガイド開閉
+  const[foodCalcMeGuide,setFoodCalcMeGuide]=useState(false); // MEの目安ガイド開閉
   // 授乳タイマー（赤ちゃん）：稼働中タイマーは localStorage に持たせてアプリを閉じても続く。
   const[nursing,setNursing]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-nursing")||"null");}catch(e){return null;}}); // {space,side,start}
   // 散歩記録：稼働中の散歩（GPSルート・距離）。アプリを閉じても復帰できるよう localStorage に保持。
@@ -2460,7 +2480,21 @@ function App(){
     const bw=ws[0]&&ws[0].weight!=null?String(ws[0].weight):"";
     const food=foodDefs.find(f=>f.kcalBasis==="per100"&&f.kcal!==""&&f.kcal!=null);
     setFoodCalc({species:sp,bw,stage:"",bcs:5,me:food?String(food.kcal):""});
-    setFoodCalcGuide(false);
+    setFoodCalcGuide(false);setFoodCalcMeGuide(false);
+  };
+  // 計算結果の1回分（g）を登録フードの「1回の量」へ反映。対象は計算に使ったフード（無ければ新規登録フォームへ）。
+  const applyCalcToFood=(grams,times)=>{
+    if(!(grams>0)){showFlash("先に体重・BCS・ME を入れてください");return;}
+    const me=Number(foodCalc.me);
+    const food=foodDefs.find(f=>f.kcalBasis==="per100"&&String(f.kcal)===String(foodCalc.me))||foodDefs.find(f=>f.kcalBasis==="per100");
+    if(food){
+      const rec={...food,amount:grams,unit:"g",timesPerDay:times};
+      persist(members,items.map(x=>x.id===food.id?rec:x));saveItemToFs(rec).catch(()=>{});
+      setFoodCalc(null);showFlash(`「${food.name}」を 1回${grams}g・1日${times}回 に設定しました 🍚`);
+    }else{
+      setFoodCalc(null);
+      setFoodForm({name:"",brand:"",foodType:"dry",amount:String(grams),unit:"g",times:String(times),feedTime:"",kcal:me>0?String(me):"",kcalBasis:"per100"});
+    }
   };
   const openFoodEdit=(d)=>setFoodForm({id:d.id,name:d.name||"",brand:d.brand||"",foodType:d.foodType||"dry",amount:d.amount??"",unit:d.unit||"g",times:d.timesPerDay??"",feedTime:d.feedTime||"",kcal:d.kcal??"",kcalBasis:d.kcalBasis||"per100"});
   const saveFoodDef=()=>{const f=foodForm;if(!f)return;const name=(f.name||"").trim();if(!name){showFlash("フード・食事名を入力してください");return;}
@@ -5094,12 +5128,15 @@ function App(){
             <div className="yl-opt" style={{marginTop:12,width:"100%"}}>動物種<span className="yl-seg-mini">{[{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodCalc.species===o.k?" on":"")} onClick={()=>setFoodCalc(f=>({...f,species:o.k,stage:""}))}>{o.l}</button>)}</span></div>
             <div className="yl-opt" style={{marginTop:10,width:"100%"}}>現在の体重（BW）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.bw} onChange={e=>setFoodCalc(f=>({...f,bw:e.target.value}))} placeholder="体重"/><span className="yl-food-unit">kg</span></div></div>
             <label className="yl-opt" style={{marginTop:10,width:"100%"}}>ライフステージ・活動量<select className="yl-input sm" style={{marginTop:4}} value={foodCalc.stage} onChange={e=>setFoodCalc(f=>({...f,stage:e.target.value}))}><option value="">選択してください</option>{stages.map(s=><option key={s.k} value={s.k}>{s.l}（係数{s.f}）</option>)}</select></label>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"#8A8178",fontSize:12}}>適正は4〜5</span>
-              <span className="yl-bcs-row">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className={"yl-bcs-btn"+(foodCalc.bcs===n?" on":"")+((n===4||n===5)?" ideal":"")} onClick={()=>setFoodCalc(f=>({...f,bcs:n}))}>{n}</button>)}</span>
-              <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?"BCSの見かたを閉じる":"BCSの見かたを見る"}</button>
-              {foodCalcGuide&&<ul className="yl-bcs-guide">{BCS_GUIDE.map(g=><li key={g[0]} className={(g[0]===4||g[0]===5)?"ideal":""}><b>{g[0]}：{g[1]}</b>{g[2]}</li>)}</ul>}
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"#8A8178",fontSize:12}}>適正は{foodCalc.species==="cat"?"5":"4〜5"}</span>
+              <span className="yl-bcs-row">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className={"yl-bcs-btn"+(foodCalc.bcs===n?" on":"")+(bcsIdeal(foodCalc.species,n)?" ideal":"")} onClick={()=>setFoodCalc(f=>({...f,bcs:n}))}>{n}</button>)}</span>
+              <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?"BCSの見かたを閉じる":`${foodCalc.species==="cat"?"猫":"犬"}のBCSの見かたを見る`}</button>
+              {foodCalcGuide&&<ul className="yl-bcs-guide">{(BCS_GUIDE[foodCalc.species]||BCS_GUIDE.dog).map(g=><li key={g[0]} className={bcsIdeal(foodCalc.species,g[0])?"ideal":""}><b>{g[0]}：{g[1]}</b>{g[2]}</li>)}</ul>}
             </div>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>フードの代謝エネルギー（ME）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.me} onChange={e=>setFoodCalc(f=>({...f,me:e.target.value}))} placeholder="kcal"/><span className="yl-food-unit">kcal / 100g</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4,fontSize:12}}>今あげているフードの100gあたりのカロリー（パッケージ記載）。未入力でも理想体重・必要カロリーは計算します。</span></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>フードの代謝エネルギー（ME）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.me} onChange={e=>setFoodCalc(f=>({...f,me:e.target.value}))} placeholder="kcal"/><span className="yl-food-unit">kcal / 100g</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4,fontSize:12}}>今あげているフードの100gあたりのカロリー（パッケージ記載）。未入力でも理想体重・必要カロリーは計算します。</span>
+              <button className="yl-linkbtn" onClick={()=>setFoodCalcMeGuide(g=>!g)}>{foodCalcMeGuide?"MEの目安を閉じる":`${foodCalc.species==="cat"?"猫":"犬"}のMEの目安を見る`}</button>
+              {foodCalcMeGuide&&<><ul className="yl-me-guide">{(ME_GUIDE[foodCalc.species]||ME_GUIDE.dog).map((r,i)=><li key={i}><span>{r[0]}</span><b>{r[1]}</b></li>)}</ul><p className="yl-set-desc" style={{fontSize:11.5,marginTop:4}}>※ 目安のレンジです。実際の値はパッケージの「100gあたり」を確認してください。療法食は製品ごとに異なります。</p></>}
+            </div>
             <div className="yl-foodcalc-res">
               {res?(<>
                 <div className="yl-fcr-row"><span className="yl-fcr-l">理想的な体重</span><span className="yl-fcr-v">{res.ideal} kg</span></div>
@@ -5107,6 +5144,14 @@ function App(){
                 {res.grams!=null?(<>
                   <div className="yl-fcr-row big"><span className="yl-fcr-l">1日のフード量</span><span className="yl-fcr-v">{res.grams} g</span></div>
                   <div className="yl-fcr-splits"><span>2回：{res.per2}g</span><span>3回：{res.per3}g</span><span>4回：{res.per4}g</span></div>
+                  <p className="yl-fcr-apply-label">1回の量をフードに反映</p>
+                  <div className="yl-fcr-apply">
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.grams,1)}>1回 {res.grams}g</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per2,2)}>2回 {res.per2}g</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per3,3)}>3回 {res.per3}g</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per4,4)}>4回 {res.per4}g</button>
+                  </div>
+                  <p className="yl-set-desc" style={{fontSize:11.5,marginTop:6}}>{foodDefs.some(f=>f.kcalBasis==="per100")?"登録済みフードの1回の量・回数に設定します。":"タップすると、この分量で新しいフードを登録できます。"}</p>
                 </>):(<p className="yl-set-desc" style={{marginTop:6}}>フードのME（100gあたりkcal）を入れると、1日のフード量（g）も計算します。</p>)}
               </>):(<p className="yl-set-desc">体重と BCS を入れると計算します。</p>)}
             </div>
