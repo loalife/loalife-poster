@@ -1153,7 +1153,7 @@ const TOUR_STEPS=[
 const COACH_HINTS={
   cal:{sel:".yl-cal-grid",title:"日付をタップ",body:"色つきドットはその日の予定。タップでふりかえり。"},
   record:{sel:'[data-tour="fab"]',title:"からだ・ようすを記録",body:"右下の＋から、体重・体調・ごはん・日記を記録。"},
-  manage:{sel:".yl-chore, .yl-routine, .yl-list",title:"毎日のお世話・予定",body:"やること・予定を管理。「やった」で経過がわかります。"},
+  manage:{sel:".yl-chore, .yl-routine, .yl-list",title:"毎日のお世話・予定",body:"やることや予定はここに。「やった」で経過がわかる。"},
 };
 // 永続フラグ（UI設定なのでローカル保存。ツアーAと画面案内Bは別キーで管理）。
 const tourIsDone=()=>{try{return localStorage.getItem("loalife-tour-v1")==="1";}catch(e){return true;}};
@@ -3362,7 +3362,7 @@ function App(){
       {onboarding&&(
         <div className="yl-ob">
           {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">家族の「今」が、ひと目でわかる。</h1><p className="yl-ob-sub">家族もペットも、ひとつの場所で。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">まず、だれのことを管理しますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("me");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👤 自分（自分のケアも）</button><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐾 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👨‍👩‍👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="pet"?petEmojisFor(obSpecies):PERSON_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="pet"?"名前（例：ぽち）":obKind==="me"?"あなたの名前（例：かおり）":"名前（例：ゆうと）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">まず、だれのことから始めますか？</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("me");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👤 自分（自分のケアも）</button><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐾 ペット</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👨‍👩‍👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="pet"?petEmojisFor(obSpecies):PERSON_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="pet"?"名前（例：ぽち）":obKind==="me"?"あなたの名前（例：かおり）":"名前（例：ゆうと）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -3798,7 +3798,7 @@ function App(){
             <h2 className="yl-sec-title" style={{marginBottom:12}}>設定</h2>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="sun" size={16}/> 外観・テーマ</h3>
-              <p className="yl-set-desc">明るさを選べます。「端末に合わせる」は端末の設定に追従。</p>
+              <p className="yl-set-desc">画面の明るさ。端末に合わせることも。</p>
               <div className="yl-theme-seg" role="group" aria-label="テーマ">
                 {[["system","端末に合わせる","phone"],["light","ライト","sun"],["dark","ダーク","moon"]].map(([v,label,ic])=>(
                   <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>setTheme(v)} aria-pressed={theme===v}>
@@ -3809,12 +3809,12 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="bell" size={16}/> 通知</h3>
-              <p className="yl-set-desc">予定やリマインド・誕生日をお知らせします。</p>
+              <p className="yl-set-desc">予定や誕生日を、通知でそっと。</p>
               {notifPerm==="granted"?<p className="yl-set-ok"><Icon name="check" size={13}/> 通知は許可されています</p>:notifPerm==="denied"?<p className="yl-set-warn">端末の設定で通知がオフになっています</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>通知を許可する</button>}
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="thermometer" size={16}/> 天気の地点</h3>
-              <p className="yl-set-desc">自宅・実家・公園・旅行先などを登録（最大{LOC_MAX}件）。ホームで切り替え。</p>
+              <p className="yl-set-desc">自宅も実家も公園も、気になる場所の天気を（最大{LOC_MAX}件）。</p>
               {weatherLocs.length>0&&<ul className="yl-wxmanage">{weatherLocs.map((l,i)=>(
                 <li key={l.id} className="yl-wxmrow">
                   {wxRename&&wxRename.id===l.id?(
@@ -3844,7 +3844,7 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
-              <p className="yl-set-desc">食べてはいけないもの・危険物と、いざという時の備え。</p>
+              <p className="yl-set-desc">食べちゃダメなもの、もしもの備え。</p>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
                 <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
@@ -3853,7 +3853,7 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">データは端末内に保存。<span className="yl-nowrap">バックアップ（.json）で</span>写真ごと書き出せます。<span className="yl-nowrap">記録はCSVでも</span>書き出せます。</p>
+              <p className="yl-set-desc">写真も記録も、この端末の中だけ。<span className="yl-nowrap">バックアップ（.json）で</span>写真ごと書き出せます。<span className="yl-nowrap">記録はCSVでも</span>書き出せます。</p>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
                 <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
@@ -3932,7 +3932,7 @@ function App(){
                       </div>
                       <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder={activeMember.kind==="person"?"例：ご家族 / 2階の親 / 実家":"例：犬たち / ハムスター / 2階の子"}/></label>
-                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>予定表で見分けやすく。</span></div>
+                      <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>カレンダーで見分けやすく。</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> うちの子記念日（年は任意）<BdayInput value={editGotcha} onChange={setEditGotcha}/><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>お迎え記念日のお祝いに。</span></label>}
                       {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="paw" size={14}/> {activeMember.species==="cat"?"猫種":activeMember.species==="dog"?"犬種":"種類"}（任意）<input className="yl-input sm" style={{marginTop:4}} list="yl-breed-list" value={editBreed} onChange={e=>setEditBreed(e.target.value)} placeholder={activeMember.species==="dog"?"犬種を検索・入力（一覧にない種類も登録OK）":activeMember.species==="cat"?"猫種を検索・入力（一覧にない種類も登録OK）":"種類を入力（自由入力）"}/><datalist id="yl-breed-list">{breedOptionsFor(activeMember.species).map(b=><option key={b} value={b}/>)}</datalist><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>{activeMember.species==="dog"?"散歩のめやすに。":"体格に合わせた記録に。"}</span></label>}
@@ -4102,7 +4102,7 @@ function App(){
                     <h2 className="yl-routine-title">ストック</h2>
                   </div>
                   {supplies.length===0?(
-                    <p className="yl-routine-empty">{tab==="me"?"サプリや日用品のストックを管理。":"フードなどを登録すると、残りを自動でお知らせ"}</p>
+                    <p className="yl-routine-empty">{tab==="me"?"サプリや日用品、切らさないように。":"フードなどを登録すると、残りを自動でお知らせ"}</p>
                   ):(
                     <ul className="yl-supply-list">
                       {supplies.map(s=>{
@@ -4205,7 +4205,7 @@ function App(){
                     <h2 className="yl-routine-title">健康・ケアの記録</h2>
                     {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>＋ 追加</button>}
                   </div>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>ワクチン・通院・お薬・証明書をまとめて。</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>ワクチンも通院も、まとめてここに。</p>
                   {(certs.length>0||careNoPhoto.length>0)&&(()=>{
                     const allCare=[...certs,...careNoPhoto];
                     const chips=careKindsFor(activeMember).filter(k=>k.key!=="other"&&allCare.some(c=>c.careKind===k.key)).map(k=>({key:k.key,label:k.label,icon:careIcon(k.key)}));
@@ -4280,7 +4280,7 @@ function App(){
               if(curKind==="me")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬・サプリの服用</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>ピル・サプリ・処方薬などを、日数つきで管理。飲み忘れ防止に。</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>お薬とサプリ、飲み忘れを防ぐ。</p>
                   {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
                   <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder="お薬・サプリ名（例：ビタミン・処方薬）"/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>日間</span><button className="yl-addbtn sm" onClick={addMedCourse}>＋ 登録</button></div>
                 </section>
@@ -4288,7 +4288,7 @@ function App(){
               if(curKind==="pet")defs.push({key:"vet",el:(
                 <section className="yl-vetcard">
                   <h2 className="yl-routine-title" style={{marginBottom:8}}>獣医さん用サマリー</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>記録を1枚にまとめて印刷・PDF保存。</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>通院前に、記録を1枚にまとめて。</p>
                   <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> サマリーを作成</button>
                 </section>
               )});
@@ -4395,7 +4395,7 @@ function App(){
                     <div className="yl-meal-pick">{foodDefs.map(d=>(
                       <button key={d.id} className="yl-meal-chip" onClick={()=>openMeal(d.id)}><Icon name={foodTypeMeta(d.foodType).ic} size={13}/> <span className="yl-meal-chipname">{d.name}</span></button>
                     ))}</div>
-                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>フードをタップ→量を入力で記録。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
+                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>フードを選んで、今日のごはんを。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
                   </>):(
                     <button className="yl-quick-big" style={{marginTop:10}} onClick={openFoodNew}><Icon name="utensils" size={18}/> フード・食事を登録する</button>
                   )}
@@ -4472,7 +4472,7 @@ function App(){
               if(curKind==="person"&&["child","baby"].includes(activeMember.personType||"child"))defs.push({key:"growth",el:(
                 <section className="yl-growth">
                   <h2 className="yl-routine-title" style={{marginBottom:6}}>成長の記録</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめて・できたこと・作品を記録（写真もOK）。</p>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめてできた瞬間を、写真とともに。</p>
                   <div className="yl-growth-cats">{MILESTONE_CATS.map(c=><button key={c.key} className={"yl-growth-cat"+(msCat===c.key?" on":"")} onClick={()=>setMsCat(c.key)}><Icon name={c.icon} size={14}/> {c.label}</button>)}</div>
                   <div className="yl-growth-presets">{MILESTONE_PRESETS[msCat].filter(p=>!growthRecords.some(g=>g.title===p)).map(p=><button key={p} className="yl-growth-preset" onClick={()=>addMilestone(msCat,p)}>＋ {p}</button>)}</div>
                   <div className="yl-growth-custom"><input className="yl-input sm" value={msDraft} onChange={e=>setMsDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMilestone(msCat,msDraft)} placeholder="自分で追加（例：逆上がりができた）"/><button className="yl-addbtn sm" onClick={()=>addMilestone(msCat,msDraft)}>＋ 記録</button></div>
@@ -4579,7 +4579,7 @@ function App(){
               if(curKind==="pet")defs.push({key:"foodreg",el:(
                 <section className="yl-foodreg">
                   <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>フード・食事</h2></div>
-                  <p className="yl-set-desc">フード・おやつ・サプリを登録して、食事をかんたん記録。</p>
+                  <p className="yl-set-desc">よく使うフードを登録しておく。</p>
                   {foodDefs.length>0&&<ul className="yl-foodlist">{foodDefs.map(d=>(
                     <li key={d.id} className="yl-fooditem">
                       <span className={"yl-food-badge t-"+d.foodType}><Icon name={foodTypeMeta(d.foodType).ic} size={12}/> {foodTypeMeta(d.foodType).l}</span>
@@ -4744,7 +4744,7 @@ function App(){
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> あなたの緊急連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 連絡先を登録</button></div>
               {contacts.length===0?(
-                <p className="yl-set-desc">かかりつけ・夜間救急の連絡先を登録。番号はここから発信でき、カードにも保存。</p>
+                <p className="yl-set-desc">いざという時の番号を、すぐ手元に。ここから発信でき、カードにも残ります。</p>
               ):(
                 <ul className="yl-emg-contacts">{contacts.map(c=>{const tel=extractTel(c.body);return(
                   <li key={c.id} className="yl-emg-contact">
@@ -4783,7 +4783,7 @@ function App(){
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> わが家の避難先</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>＋ 避難先を登録</button></div>
               {shelters.length===0?(
-                <p className="yl-set-desc">避難所・避難場所・預け先を登録。カードにも保存。</p>
+                <p className="yl-set-desc">避難先や預け先を、家族で共有。カードにも残ります。</p>
               ):(
                 <ul className="yl-emg-contacts">{shelters.map(c=>{const tel=extractTel(c.body);return(
                   <li key={c.id} className="yl-emg-contact">
@@ -4920,23 +4920,23 @@ function App(){
               <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label="閉じる">×</button>
             </div>
-            <p className="yl-help-lead">自分・家族・ペットの毎日を、ひとつのアプリで。主な機能はこちら。</p>
+            <p className="yl-help-lead">自分も家族もうちのこも。毎日をここでまとめて。</p>
             {[
-              {emoji:"🏠",title:"ホーム",desc:"今日やること・期限切れ・もうすぐを、ひと目で。"},
-              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・家族・ペットを追加。アイコンは絵文字も写真もOK、多頭飼いはフォルダ分けも。"},
-              {emoji:"📅",title:"カレンダー",desc:"みんなの予定・Todoを1か所に。色分け＆日付タップでふりかえり。"},
-              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気・食欲・うんち・症状・写真・ひとことを記録。通院メモに。"},
-              {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・投薬・通院を登録。周期ケアは次回へ自動更新。"},
-              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」で記録。前回からの経過が色でわかります。"},
-              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・体調をグラフで。目標体重との差も表示。"},
-              {emoji:"📸",title:"思い出",desc:"写真や日記がアルバムに。あとから振り返れます。"},
-              {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"#発表会 などのタグや「はじめて」で成長を記録。"},
-              {emoji:"💰",title:"支出",desc:"病院代・餌代などをカテゴリ別に記録・グラフ化。"},
-              {emoji:"🛍",title:"ストック管理",desc:"フード・サプリなどの在庫を登録。少なくなるとお知らせ。"},
-              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を、前日にチェックリスト表示。"},
-              {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー・かかりつけを写真付きで保存。"},
-              {emoji:"🔔",title:"通知・リマインド",desc:"予定ごとに通知を設定（何件でも）。"},
-              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目も大項目も、長押しドラッグで並び替え。"},
+              {emoji:"🏠",title:"ホーム",desc:"今日やること、うっかり忘れ。ぜんぶここに。"},
+              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分も家族もうちのこも。絵文字や写真でにぎやかに。"},
+              {emoji:"📅",title:"カレンダー",desc:"みんなの予定が、色分けで見わたせる。"},
+              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気・食欲・うんち・写真…今日のことをそのまま。"},
+              {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチンも通院もお薬も、忘れずに。"},
+              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」をタップ。前回からの日数が色でわかる。"},
+              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重の変化をグラフで見守る。目標との差も。"},
+              {emoji:"📸",title:"思い出",desc:"とっておきの一枚を、そっと残しておく。"},
+              {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"「はじめて」やタグで、成長をたどる。"},
+              {emoji:"💰",title:"支出",desc:"病院代も餌代も、何にいくらか見える。"},
+              {emoji:"🛍",title:"ストック管理",desc:"フードやサプリ、切らす前にお知らせ。"},
+              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"明日の持ち物を、前の日にチェック。"},
+              {emoji:"📌",title:"大切な情報カード",desc:"いざという時の連絡先を、手元に。"},
+              {emoji:"🔔",title:"通知・リマインド",desc:"大事な予定は、通知でそっとお知らせ。"},
+              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"長押しでドラッグ。好きな順番に。"},
             ].map((f,i)=>(
               <div key={i} className="yl-help-item">
                 <span className="yl-help-emoji">{f.emoji}</span>
@@ -5377,7 +5377,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setProfilePrompt(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <div className="yl-modal-emoji"><Icon name="sparkles" size={28}/></div>
           <h3 className="yl-modal-title">プロフィールを設定しませんか？</h3>
-          <p className="yl-modal-body">{m&&m.kind==="pet"?"カレンダーの色・犬種・お迎え日・マイクロチップなどを登録すると、もっと便利に使えます。":"カレンダーの色や誕生日などを登録すると、もっと便利に使えます。"}</p>
+          <p className="yl-modal-body">{m&&m.kind==="pet"?"犬種やお迎え日も入れておくと、記録がもっと楽しく。":"色や誕生日も入れておくと、ぐっと見やすく。"}</p>
           <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>あとで</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>プロフィールを設定</button></div>
         </div></div>
       );})()}
