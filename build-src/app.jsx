@@ -1312,6 +1312,7 @@ function App(){
   // 使い方・機能紹介ページ
   const[helpOpen,setHelpOpen]=useState(false);
   const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
+  const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
   // 大切な情報カード 編集
   const[cardEdit,setCardEdit]=useState(null); // {id?,space,kind,title,body,photo}
   // 持ち物（曜日ごと）入力
@@ -3696,6 +3697,7 @@ function App(){
               <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>使い方・機能紹介</button>
+                <button className="yl-addbtn sm" onClick={()=>setWhatsNewOpen(true)}><Icon name="sparkles" size={14}/> 変更点・新機能</button>
                 <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
                 <button className="yl-addbtn sm" onClick={()=>setAboutOpen(true)}><Icon name="note" size={14}/> このアプリについて</button>
                 <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
@@ -4640,6 +4642,48 @@ function App(){
             {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=>{const sub=[...placeParts(r),r.country&&r.country!=="日本"?r.country:""].filter(Boolean).join(" ");return(<li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={14}/><span className="yl-wxrow-body"><span className="yl-wxrow-name">{r.name}</span>{sub&&<span className="yl-wxrow-sub">{sub}</span>}</span>{r.population?<span className="yl-wxrow-pop">人口{r.population>=10000?`${Math.round(r.population/10000)}万`:r.population.toLocaleString()}</span>:null}</button></li>);})}</ul>)}
             <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>同じ地名が各地にあります。都道府県名を確かめて選んでください（例：新宿→東京都）。登録後、設定で名前を変更できます。</p>
             <button className="yl-addbtn" style={{width:"100%",marginTop:10}} onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>とじる</button>
+          </div>
+        </div>
+      )}
+      {whatsNewOpen&&(
+        <div className="yl-help-ov" onClick={()=>setWhatsNewOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="sparkles" size={18}/> 変更点・新機能</h2><button className="yl-help-close" onClick={()=>setWhatsNewOpen(false)} aria-label="閉じる">×</button></div>
+            <p className="yl-set-desc" style={{marginBottom:2}}>バージョン：<strong>β版</strong></p>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近の更新</span></div>
+              <ul className="yl-whatsnew-list">
+                {[
+                  ["🍚","フード・食事管理","種類・量・単位・カロリー・今日の食事をまとめて記録"],
+                  ["📋","「今日やること」を横断表示","自分・家族・ペットのやることを1か所で、チェックで完了"],
+                  ["💊","お薬の管理","フィラリア・その他のお薬を登録、「のんだ」記録で飲み忘れ防止"],
+                  ["🏥","通院・健診・証明書","通院記録と次回予定、健診結果やワクチン証明書を写真で保存"],
+                  ["🧼","お世話ログ","シャンプー等の実施日と「前回からの経過」を色で表示"],
+                  ["🐶🐱","まとめてお世話","複数のうちのこへ一括でお世話を記録"],
+                  ["🌈","虹の橋（お別れの記録）","そっと思い出を振り返るモードに切り替え"],
+                  ["📸","「1年前の今日」の思い出","過去の同じ日の写真・記録をホームで振り返り"],
+                  ["🌦","お散歩判定に気象庁の警報を反映","警報発表中は「お散歩は控えて」を表示"],
+                ].map((r,i)=>(
+                  <li key={i} className="yl-whatsnew-item"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span><span className="yl-whatsnew-desc">{r[2]}</span></span></li>
+                ))}
+              </ul>
+            </div>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> 近日対応予定</span></div>
+              <ul className="yl-whatsnew-list">
+                {[
+                  ["🌙","ダークモード"],
+                  ["🗓","写真カレンダー（撮影日で自動振り分け）"],
+                  ["🖼","写真を最大30枚まとめて選択・別のこへ移動"],
+                  ["🐶","登録できる子の上限を拡大"],
+                ].map((r,i)=>(
+                  <li key={i} className="yl-whatsnew-item soon"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span></span></li>
+                ))}
+              </ul>
+              <p className="yl-set-desc" style={{marginTop:6,fontSize:12}}>※ 予定は変更になる場合があります。</p>
+            </div>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>{setWhatsNewOpen(false);setHelpOpen(true);}}><Icon name="note" size={15}/> 使い方・機能紹介を見る</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"#F3EFE8",color:"#6E6862"}} onClick={()=>setWhatsNewOpen(false)}>とじる</button>
           </div>
         </div>
       )}
