@@ -1446,6 +1446,9 @@ function App(){
   },[items]);
   // 思い出アルバムのタグ絞り込み
   const[albumTag,setAlbumTag]=useState("");
+  // 思い出の一括選択・移動（selMode=選択中の思い出ID配列 or null＝通常）／moveOpen=移動先ピッカー
+  const[albumSel,setAlbumSel]=useState(null);
+  const[albumMoveOpen,setAlbumMoveOpen]=useState(false);
   // 思い出に付けるタグ入力（ライフエディタ）
   const[tagInput,setTagInput]=useState("");
   const timerIds=useRef([]);
@@ -1541,6 +1544,7 @@ function App(){
 
   // Firebase Auth state
   useEffect(()=>{setMemListOpen(false);setAdding(false);},[tab,personSeg]); // 画面切替でメンバー一覧・追加フォームを閉じる
+  useEffect(()=>{setAlbumSel(null);setAlbumMoveOpen(false);},[tab,personSeg]); // メンバー切替で思い出の選択状態をリセット（他メンバーへ持ち越さない）
   useEffect(()=>{
     if(!FB_READY){setFireLoading(false);return;}
     return onAuthStateChanged(fbAuth,async(user)=>{
@@ -2182,6 +2186,20 @@ function App(){
     try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src,isMemory:true});}catch(e){setViewer({id,src:null,isMemory:true});}
   };
   const removeMemory=(id)=>{try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setViewer(null);showFlash("思い出を削除しました");};
+
+  // --- 思い出の一括選択・別の子へ移動 ---
+  const ALBUM_SEL_MAX=30; // 一度に選べる上限
+  const toggleAlbumSel=(id)=>{setAlbumSel(sel=>{const cur=sel||[];if(cur.includes(id))return cur.filter(x=>x!==id);if(cur.length>=ALBUM_SEL_MAX){showFlash(`一度に選べるのは${ALBUM_SEL_MAX}枚までです`);return cur;}return[...cur,id];});};
+  const moveMemoriesTo=(targetSpace)=>{
+    const ids=albumSel||[];if(ids.length===0||!targetSpace)return;
+    const idset=new Set(ids);
+    const next=items.map(x=>idset.has(x.id)?{...x,space:targetSpace}:x);
+    persist(members,next);
+    next.forEach(x=>{if(idset.has(x.id))saveItemToFs(x).catch(()=>{});});
+    const tName=targetSpace==="me"?(meName||"わたし"):(members.find(m=>m.id===targetSpace)?.name||"");
+    setAlbumMoveOpen(false);setAlbumSel(null);
+    showFlash(`${ids.length}枚を「${tName}」へ移動しました 📸`);
+  };
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
   const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
@@ -4408,18 +4426,33 @@ function App(){
                 <section className="yl-album">
                   <div className="yl-routine-head">
                     <h2 className="yl-routine-title">思い出</h2>
-                    <button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>
+                    <div className="yl-album-headacts">
+                      {memories.length>0&&(albumSel?(
+                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel(null)}>選択をやめる</button>
+                      ):(
+                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel([])}>選択</button>
+                      ))}
+                      {!albumSel&&<button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>}
+                    </div>
                   </div>
+                  {albumSel&&<p className="yl-album-selhint">写真をタップして選択（最大{ALBUM_SEL_MAX}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。</p>}
                   {memories.length===0?(
                     <p className="yl-routine-empty">写真とひとことで残せます</p>
                   ):(
-                    <div className="yl-album-grid">
-                      {memories.map(mem=>(
-                        <button key={mem.id} className="yl-album-cell" onClick={()=>openLifeEdit(mem)}>
+                    <div className={"yl-album-grid"+(albumSel?" selecting":"")}>
+                      {memories.map(mem=>{const on=albumSel&&albumSel.includes(mem.id);return(
+                        <button key={mem.id} className={"yl-album-cell"+(on?" sel":"")} onClick={()=>albumSel?toggleAlbumSel(mem.id):openLifeEdit(mem)}>
                           {firstPhotoId(mem)&&photos[firstPhotoId(mem)]?<><img className="yl-album-img" src={photos[firstPhotoId(mem)]} alt=""/>{photoIdsOf(mem).length>1&&<span className="yl-photo-badge">+{photoIdsOf(mem).length-1}</span>}</>:<span className="yl-album-ph">{mem.note?"📝":(mem.emoji||"📸")}</span>}
+                          {albumSel&&<span className={"yl-album-check"+(on?" on":"")}>{on?"✓":""}</span>}
                           <span className="yl-album-cap">{fmtDate(mem.date)}{mem.title&&mem.title!=="思い出"?`・${mem.title}`:""}</span>
                         </button>
-                      ))}
+                      );})}
+                    </div>
+                  )}
+                  {albumSel&&(
+                    <div className="yl-album-selbar">
+                      <span className="yl-album-selcount">{albumSel.length}枚を選択中</span>
+                      <button className="yl-album-movebtn" disabled={albumSel.length===0} onClick={()=>setAlbumMoveOpen(true)}><Icon name="users" size={15}/> 別の子へ移動</button>
                     </div>
                   )}
                 </section>
@@ -4761,6 +4794,7 @@ function App(){
                   ["🌦","お散歩判定に気象庁の警報を反映","警報発表中は「お散歩は控えて」を表示"],
                   ["🌙","ダークモード","端末に合わせる／ライト／ダークを設定から選べます"],
                   ["🐶","たくさんの家族・うちのこを登録OK","登録数の制限なし。識別カラーを拡充し、大家族・多頭飼いでも見分けやすく"],
+                  ["🖼","思い出をまとめて別の子へ移動","「思い出」で写真を最大30枚選んで、他の家族・うちのこへ一括で移せます"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span><span className="yl-whatsnew-desc">{r[2]}</span></span></li>
                 ))}
@@ -4771,7 +4805,6 @@ function App(){
               <ul className="yl-whatsnew-list">
                 {[
                   ["🗓","写真カレンダー（撮影日で自動振り分け）"],
-                  ["🖼","写真を最大30枚まとめて選択・別のこへ移動"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item soon"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span></span></li>
                 ))}
@@ -4853,6 +4886,24 @@ function App(){
       )}
       {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> 場所</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder="例：〇〇病院 3F・△△公園"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder="予約ページ等のリンク"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> メモ</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder="持ち物・注意点など自由に" rows={3}/></label><div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> チェックリスト（持ち物など）</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label="チェック"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label="削除">×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder="項目を追加（例：保険証）"/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>閉じる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
       {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?"思い出":"証明書"}</h3>{viewer.loading?<p className="yl-loading">読み込み中…</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?"思い出":"証明書"}/>:<p className="yl-empty">画像が見つかりませんでした</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>この写真を削除しますか？元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>やめる</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>削除する</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>削除</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>閉じる</button></div>}</div></div>}
+      {albumMoveOpen&&(()=>{const targets=spaces.filter(s=>s.id!==tab);return(
+        <div className="yl-overlay" onClick={()=>setAlbumMoveOpen(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
+          <h3 className="yl-modal-title">どの子へ移動しますか？</h3>
+          <p className="yl-modal-body" style={{margin:"0 0 14px"}}>選択した {(albumSel||[]).length}枚 の思い出を、まとめて移動します。</p>
+          {targets.length===0?(
+            <p className="yl-empty" style={{marginBottom:14}}>移動できる相手がいません。先に家族・うちのこを登録してください。</p>
+          ):(
+            <div className="yl-album-movelist">{targets.map(s=>(
+              <button key={s.id} className="yl-album-moverow" onClick={()=>moveMemoriesTo(s.id)}>
+                <span className="yl-album-moveava" style={{background:colorOf(s.id)+"22"}}>{avatarNode(s,"xs")}</span>
+                <span className="yl-album-movename">{s.name}</span>
+                <span className="yl-album-movearrow">→</span>
+              </button>
+            ))}</div>
+          )}
+          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setAlbumMoveOpen(false)}>やめる</button></div>
+        </div></div>
+      );})()}
       {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたのアイコン・名前</h3>
         <div className="yl-editavatar">
