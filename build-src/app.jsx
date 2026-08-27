@@ -3798,7 +3798,6 @@ function App(){
             <h2 className="yl-sec-title" style={{marginBottom:12}}>設定</h2>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="sun" size={16}/> 外観・テーマ</h3>
-              <p className="yl-set-desc">画面の明るさ。端末に合わせることも。</p>
               <div className="yl-theme-seg" role="group" aria-label="テーマ">
                 {[["system","端末に合わせる","phone"],["light","ライト","sun"],["dark","ダーク","moon"]].map(([v,label,ic])=>(
                   <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>setTheme(v)} aria-pressed={theme===v}>
@@ -3835,7 +3834,6 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="clock" size={16}/> 色が変わる時間（お世話・やることログ）</h3>
-              <p className="yl-set-desc">色が<span className="yl-legend-dot warn"/>→<span className="yl-legend-dot alert"/>に変わる日数を設定します。</p>
               <div className="yl-colordays">
                 <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> 黄色になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>日</span></label>
                 <label className="yl-colordays-field"><span className="yl-legend-dot alert"/> 赤になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>日</span></label>
@@ -3844,7 +3842,6 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
-              <p className="yl-set-desc">食べちゃダメなもの、もしもの備え。</p>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
                 <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
@@ -3853,7 +3850,7 @@ function App(){
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">写真も記録も、この端末の中だけ。<span className="yl-nowrap">バックアップ（.json）で</span>写真ごと書き出せます。<span className="yl-nowrap">記録はCSVでも</span>書き出せます。</p>
+              <p className="yl-set-desc">写真も記録も、この端末の中だけ。<span className="yl-nowrap">書き出して保管を。</span></p>
               <div className="yl-set-actions">
                 <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
                 <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
@@ -4205,7 +4202,6 @@ function App(){
                     <h2 className="yl-routine-title">健康・ケアの記録</h2>
                     {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>＋ 追加</button>}
                   </div>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>ワクチンも通院も、まとめてここに。</p>
                   {(certs.length>0||careNoPhoto.length>0)&&(()=>{
                     const allCare=[...certs,...careNoPhoto];
                     const chips=careKindsFor(activeMember).filter(k=>k.key!=="other"&&allCare.some(c=>c.careKind===k.key)).map(k=>({key:k.key,label:k.label,icon:careIcon(k.key)}));
@@ -4280,7 +4276,6 @@ function App(){
               if(curKind==="me")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬・サプリの服用</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>お薬とサプリ、飲み忘れを防ぐ。</p>
                   {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
                   <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder="お薬・サプリ名（例：ビタミン・処方薬）"/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>日間</span><button className="yl-addbtn sm" onClick={addMedCourse}>＋ 登録</button></div>
                 </section>
@@ -4395,7 +4390,7 @@ function App(){
                     <div className="yl-meal-pick">{foodDefs.map(d=>(
                       <button key={d.id} className="yl-meal-chip" onClick={()=>openMeal(d.id)}><Icon name={foodTypeMeta(d.foodType).ic} size={13}/> <span className="yl-meal-chipname">{d.name}</span></button>
                     ))}</div>
-                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>フードを選んで、今日のごはんを。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
+                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>タップで今日のごはん。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
                   </>):(
                     <button className="yl-quick-big" style={{marginTop:10}} onClick={openFoodNew}><Icon name="utensils" size={18}/> フード・食事を登録する</button>
                   )}
