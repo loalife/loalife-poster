@@ -4854,30 +4854,30 @@ function App(){
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="sparkles" size={18}/> 変更点・新機能</h2><button className="yl-help-close" onClick={()=>setWhatsNewOpen(false)} aria-label="閉じる">×</button></div>
             <p className="yl-set-desc" style={{marginBottom:2}}>バージョン：<strong>β版</strong></p>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近の更新</span></div>
+              <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
                 {[
-                  ["🍚","フード・食事管理","種類・量・単位・カロリー・今日の食事をまとめて記録"],
-                  ["📋","「今日やること」を横断表示","自分・家族・ペットのやることを1か所で、チェックで完了"],
-                  ["💊","お薬の管理","フィラリア・その他のお薬を登録、「のんだ」記録で飲み忘れ防止"],
-                  ["🏥","通院・健診・証明書","通院記録と次回予定、健診結果やワクチン証明書を写真で保存"],
-                  ["🧼","お世話ログ","シャンプー等の実施日と「前回からの経過」を色で表示"],
-                  ["🐶🐱","まとめてお世話","複数のうちのこへ一括でお世話を記録"],
-                  ["🌈","虹の橋（お別れの記録）","そっと思い出を振り返るモードに切り替え"],
-                  ["📸","「1年前の今日」の思い出","過去の同じ日の写真・記録をホームで振り返り"],
-                  ["🌦","お散歩判定に気象庁の警報を反映","警報発表中は「お散歩は控えて」を表示"],
-                  ["🌙","ダークモード","端末に合わせる／ライト／ダークを設定から選べます"],
-                  ["🐶","たくさんの家族・うちのこを登録OK","登録数の制限なし。識別カラーを拡充し、大家族・多頭飼いでも見分けやすく"],
-                  ["🖼","思い出をまとめて別の子へ移動","「思い出」で写真を最大30枚選んで、他の家族・うちのこへ一括で移せます"],
-                  ["🗓","写真カレンダー（撮影日で自動振り分け）","「思い出」で写真をまとめて追加すると、撮影日ごとにカレンダーへ自動で並びます"],
+                  ["🍚","フード・食事管理","種類・量・カロリー・今日の食事を記録"],
+                  ["📋","「今日やること」を横断表示","自分・家族・ペットのやることを1か所で"],
+                  ["💊","お薬の管理","登録して「のんだ」で飲み忘れ防止"],
+                  ["🏥","通院・健診・証明書","通院・次回予定・証明書を写真で保存"],
+                  ["🧼","お世話ログ","実施日と前回からの経過を色で表示"],
+                  ["🐶🐱","まとめてお世話","複数のうちのこへ一括で記録"],
+                  ["🌈","虹の橋（お別れの記録）","そっと思い出を振り返るモードに"],
+                  ["📸","「1年前の今日」の思い出","過去の同じ日をホームで振り返り"],
+                  ["🌦","お散歩判定に気象庁の警報を反映","警報中は「お散歩は控えて」を表示"],
+                  ["🌙","ダークモード","端末に合わせる／ライト／ダーク"],
+                  ["🐶","家族・うちのこは登録数に上限なし","色を増やして大家族・多頭飼いも見分けやすく"],
+                  ["🖼","思い出をまとめて別の子へ移動","写真を最大30枚選んで一括で移動"],
+                  ["🗓","写真カレンダー","まとめて追加で、撮影日ごとに自動整理"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span><span className="yl-whatsnew-desc">{r[2]}</span></span></li>
                 ))}
               </ul>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> これから</span></div>
-              <p className="yl-set-desc" style={{marginTop:2}}>予定していた機能はひととおり公開できました 🎉 「こんな機能がほしい」というご要望があれば、ぜひお聞かせください。順次かたちにしていきます。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> 近日対応予定</span></div>
+              <p className="yl-set-desc" style={{marginTop:2}}>予定していた機能はひととおり公開ずみ 🎉<br/>「こんな機能がほしい」があれば、ぜひお聞かせください。</p>
             </div>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>{setWhatsNewOpen(false);setHelpOpen(true);}}><Icon name="note" size={15}/> 使い方・機能紹介を見る</button>
             <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"var(--line3)",color:"var(--ink2)"}} onClick={()=>setWhatsNewOpen(false)}>とじる</button>
@@ -4890,28 +4890,24 @@ function App(){
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> このアプリについて</h2><button className="yl-help-close" onClick={()=>setAboutOpen(false)} aria-label="閉じる">×</button></div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="paw" size={15}/> LOALIFE</span></div>
-              <p className="yl-set-desc">自分・家族・ペットの予定や記録を、ひとつの場所でまとめて管理できるアプリです。</p>
+              <p className="yl-set-desc">自分・家族・ペットの予定や記録を、ひとつの場所でまとめて。<br/>家族の暮らしをまるごと見守るアプリです。</p>
               <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版</strong></p>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> データの保存</span></div>
-              <p className="yl-set-desc">記録・写真は<strong>この端末内にのみ</strong>保存され、外部サーバーには送信されません。機種変更や削除に備え、設定の「バックアップ」から手動で書き出せます。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> データとプライバシー</span></div>
+              <p className="yl-set-desc">記録・写真は<strong>この端末内だけ</strong>に保存され、外部には送信されません。機種変更・削除に備えて、設定の「バックアップ」から書き出せます。</p>
             </div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="users" size={15}/> 家族での共有</span></div>
-              <p className="yl-set-desc"><strong>現在はオフ</strong>（個人利用向け）です。今後、家族と記録を共有できる機能を提供予定です。</p>
+              <p className="yl-set-desc"><strong>現在はオフ</strong>（個人利用向け）。今後、家族と記録を共有できる機能を予定しています。</p>
             </div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="alert" size={15}/> ご利用にあたって</span></div>
-              <p className="yl-set-desc">本アプリはβ版です。記録や目安は<strong>参考情報</strong>であり、獣医療・医療の診断や治療の代替ではありません。体調が気になるときや緊急時は、必ずかかりつけ・専門機関にご相談ください。</p>
-            </div>
-            <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> プライバシー</span></div>
-              <p className="yl-set-desc">入力した情報・写真は端末内（ブラウザのローカル保存）に保管され、開発者や第三者に自動送信されることはありません。</p>
+              <p className="yl-set-desc">記録や目安は<strong>参考情報</strong>で、診断・治療の代わりにはなりません。気になるとき・緊急時は、かかりつけや専門機関にご相談ください。</p>
             </div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="note" size={15}/> 利用規約・お問い合わせ</span></div>
-              <p className="yl-set-desc">正式な利用規約・プライバシーポリシー・お問い合わせ窓口は、正式公開に向けて準備中です。ご意見・不具合のご連絡先は追ってご案内します。</p>
+              <p className="yl-set-desc">利用規約・プライバシーポリシー・お問い合わせ窓口は準備中です。連絡先は追ってご案内します。</p>
             </div>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setAboutOpen(false)}>とじる</button>
           </div>
@@ -4924,30 +4920,30 @@ function App(){
               <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label="閉じる">×</button>
             </div>
-            <p className="yl-help-lead">家族みんな・ペット・自分の毎日を、ひとつのアプリでまとめて見守れます。主な機能を紹介します。</p>
+            <p className="yl-help-lead">自分・家族・ペットの毎日を、ひとつのアプリで。主な機能はこちら。</p>
             {[
-              {emoji:"🏠",title:"ホーム",desc:"家族みんなの「今日やること」や、気にかけたいこと（期限切れ・もうすぐ）をひと目で確認できます。"},
-              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・お子さま・ペットを追加して、それぞれの予定やケアをまとめられます。アイコンは絵文字でも写真でもOK。多頭飼いはフォルダで分類できます。"},
-              {emoji:"📅",title:"カレンダー",desc:"家族みんなの予定やTodoを1か所に。メンバーごとに色を選べて、誰の予定かひと目でわかります。日付をタップしてふりかえりも。"},
-              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気（5段階グラフ）・食欲・うんち・症状（熱/咳など）・写真・ひとことを残せます。お薬手帳や通院前のメモに。"},
-              {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・投薬・通院などを登録。周期ケアは記録で次回へ自動更新。"},
-              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」で記録。前回からの経過がひと目で分かります。"},
-              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・体調をグラフで管理。目標体重の差分も表示。"},
-              {emoji:"📸",title:"思い出",desc:"写真や日記がアルバムに並び、あとから振り返れます。"},
-              {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"思い出に #発表会 などのタグや「はじめて」を付けて、成長をあとから振り返れます。"},
+              {emoji:"🏠",title:"ホーム",desc:"今日やること・期限切れ・もうすぐを、ひと目で。"},
+              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分・家族・ペットを追加。アイコンは絵文字も写真もOK、多頭飼いはフォルダ分けも。"},
+              {emoji:"📅",title:"カレンダー",desc:"みんなの予定・Todoを1か所に。色分け＆日付タップでふりかえり。"},
+              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気・食欲・うんち・症状・写真・ひとことを記録。通院メモに。"},
+              {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・投薬・通院を登録。周期ケアは次回へ自動更新。"},
+              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」で記録。前回からの経過が色でわかります。"},
+              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重・体調をグラフで。目標体重との差も表示。"},
+              {emoji:"📸",title:"思い出",desc:"写真や日記がアルバムに。あとから振り返れます。"},
+              {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"#発表会 などのタグや「はじめて」で成長を記録。"},
               {emoji:"💰",title:"支出",desc:"病院代・餌代などをカテゴリ別に記録・グラフ化。"},
-              {emoji:"🛍",title:"ストック管理",desc:"フード・トイレ用品・サプリなどの在庫を登録。なくなりそうな頃にお知らせします。"},
-              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を前日にチェックリスト表示。"},
-              {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー・かかりつけ等を写真付きカードで保存。"},
-              {emoji:"🔔",title:"通知・リマインド",desc:"予定ごとに通知を設定できます（何件でもOK）。"},
-              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目も大項目（⠿ハンドル）も長押しドラッグで並び替え。"},
+              {emoji:"🛍",title:"ストック管理",desc:"フード・サプリなどの在庫を登録。少なくなるとお知らせ。"},
+              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"曜日ごとの持ち物を、前日にチェックリスト表示。"},
+              {emoji:"📌",title:"大切な情報カード",desc:"緊急連絡先・アレルギー・かかりつけを写真付きで保存。"},
+              {emoji:"🔔",title:"通知・リマインド",desc:"予定ごとに通知を設定（何件でも）。"},
+              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"項目も大項目も、長押しドラッグで並び替え。"},
             ].map((f,i)=>(
               <div key={i} className="yl-help-item">
                 <span className="yl-help-emoji">{f.emoji}</span>
                 <div className="yl-help-body"><span className="yl-help-itemtitle">{f.title}</span><span className="yl-help-desc">{f.desc}</span></div>
               </div>
             ))}
-            <p className="yl-help-note">データはこの端末に保存されます。ホーム画面に追加して使うと、より快適で安心です。</p>
+            <p className="yl-help-note">データはこの端末に保存されます。ホーム画面に追加すると、より安心して使えます。</p>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setHelpOpen(false)}>とじる</button>
           </div>
         </div>
