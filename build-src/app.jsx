@@ -1364,6 +1364,16 @@ function App(){
   const[helpOpen,setHelpOpen]=useState(false);
   const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
   const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
+  // 外観テーマ（system=端末に追従 / light / dark）。UI設定なのでローカル保存。
+  const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("loalife-theme-v1")||"system";}catch(e){return "system";}});
+  useEffect(()=>{
+    const root=document.documentElement;
+    const mq=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)");
+    const apply=()=>{const dark=theme==="dark"||(theme==="system"&&mq&&mq.matches);if(dark)root.setAttribute("data-theme","dark");else root.removeAttribute("data-theme");};
+    apply();
+    try{localStorage.setItem("loalife-theme-v1",theme);}catch(e){}
+    if(theme==="system"&&mq&&mq.addEventListener){mq.addEventListener("change",apply);return()=>mq.removeEventListener("change",apply);}
+  },[theme]);
   // 大切な情報カード 編集
   const[cardEdit,setCardEdit]=useState(null); // {id?,space,kind,title,body,photo}
   // 持ち物（曜日ごと）入力
@@ -3700,6 +3710,17 @@ function App(){
         ):tab==="settings"?(
           <div className="yl-settings">
             <h2 className="yl-sec-title" style={{marginBottom:12}}>設定</h2>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title"><Icon name="sun" size={16}/> 外観・テーマ</h3>
+              <p className="yl-set-desc">画面の明るさを選べます。「端末に合わせる」は、お使いの端末のダーク／ライト設定に自動で追従します。</p>
+              <div className="yl-theme-seg" role="group" aria-label="テーマ">
+                {[["system","端末に合わせる","phone"],["light","ライト","sun"],["dark","ダーク","moon"]].map(([v,label,ic])=>(
+                  <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>setTheme(v)} aria-pressed={theme===v}>
+                    <Icon name={ic} size={16}/> <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="bell" size={16}/> 通知</h3>
               <p className="yl-set-desc">予定やリマインド・誕生日をお知らせします。</p>
