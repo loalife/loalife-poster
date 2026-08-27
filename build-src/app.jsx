@@ -3456,18 +3456,6 @@ function App(){
               </section>
             )}
 
-            {/* 安全・緊急：既存の誤食中毒/夜間救急/防災モーダルへの常設ショートカット（ペット飼いのみ） */}
-            {petMembers.length>0&&(
-              <section className="yl-batch">
-                <div className="yl-batch-head"><span className="yl-batch-title"><Icon name="shield" size={15}/> 安全・緊急</span></div>
-                <div className="yl-batch-acts">
-                  <button className="yl-batch-act" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><span className="yl-batch-act-emoji"><Icon name="alert" size={18}/></span>誤食・中毒</button>
-                  <button className="yl-batch-act" onClick={()=>setEmergencyOpen(true)}><span className="yl-batch-act-emoji"><Icon name="activity" size={18}/></span>夜間・救急</button>
-                  <button className="yl-batch-act" onClick={()=>setDisasterOpen(true)}><span className="yl-batch-act-emoji"><Icon name="home" size={18}/></span>防災・避難</button>
-                </div>
-              </section>
-            )}
-
             {/* 天気・お散歩カードは犬がいる時(hasWalker)だけ表示。犬なしユーザーの主役にしない */}
             {hasWalker&&(weatherLoc?(<>
               {/* 地点切り替え：現在地／登録した場所を横並びで。タップでその地点の天気に切り替える。 */}
@@ -3705,6 +3693,18 @@ function App(){
                 </section>
               );})()}
             </div>
+
+            {/* 安全・緊急：いざという時のショートカット。日常の主役ではないので下部に控えめに（メニュー・設定からも開ける） */}
+            {petMembers.length>0&&(
+              <section className="yl-safety">
+                <span className="yl-safety-label"><Icon name="shield" size={14}/> いざという時</span>
+                <div className="yl-safety-acts">
+                  <button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>
+                  <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> 夜間・救急</button>
+                  <button className="yl-safety-btn" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={15}/> 防災・避難</button>
+                </div>
+              </section>
+            )}
 
             {/* ━━ 第3層「記録」：低頻度。既定で畳んで安心の場を守る ━━ */}
             <div className="yl-layer">
