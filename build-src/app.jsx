@@ -283,6 +283,42 @@ function scheduleReminders(items, members) {
 // --- Image helpers ---
 function downscaleImage(file,maxDim=1100,quality=0.72){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let{width,height}=img;if(width>height&&width>maxDim){height=(height*maxDim)/width;width=maxDim;}else if(height>=width&&height>maxDim){width=(width*maxDim)/height;height=maxDim;}const c=document.createElement("canvas");c.width=Math.round(width);c.height=Math.round(height);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);try{resolve(c.toDataURL("image/jpeg",quality));}catch(e){reject(e);}};img.onerror=reject;img.src=url;});}
 
+// JPEG の EXIF から撮影日（DateTimeOriginal 0x9003、無ければ DateTime 0x0132）を読む。
+// キャンバス変換で EXIF は失われるため、元ファイルの先頭（〜256KB）だけを読んで解析する。
+// 返り値は "YYYY-MM-DD"（取れなければ null）。壊れた/非対応データでは常に null。
+function parseExifDate(buf){
+  try{
+    const dv=new DataView(buf);const len=dv.byteLength;
+    if(len<4||dv.getUint16(0)!==0xFFD8)return null; // JPEG(SOI) 以外は非対応
+    let off=2;
+    while(off+4<len){
+      if(dv.getUint8(off)!==0xFF)return null;
+      const marker=dv.getUint16(off);
+      if(marker===0xFFE1)break;                       // APP1(Exif)
+      if(marker===0xFFDA||marker===0xFFD9)return null; // 画像本体に到達＝EXIFなし
+      off+=2+dv.getUint16(off+2);                      // 次のマーカーへ
+    }
+    if(off+10>=len||dv.getUint16(off)!==0xFFE1)return null;
+    const app1=off+4;
+    if(dv.getUint32(app1)!==0x45786966)return null;    // "Exif"
+    const tiff=app1+6;
+    const little=dv.getUint16(tiff)===0x4949;          // "II"=リトル / "MM"=ビッグ
+    const g16=o=>dv.getUint16(o,little),g32=o=>dv.getUint32(o,little);
+    if(g16(tiff+2)!==0x002A)return null;
+    const ascii=(o,cnt)=>{let s="";for(let i=0;i<cnt&&o+i<len;i++){const c=dv.getUint8(o+i);if(c===0)break;s+=String.fromCharCode(c);}return s;};
+    const findTag=(base,tag)=>{const n=g16(base);for(let i=0;i<n;i++){const e=base+2+i*12;if(e+12>len)break;if(g16(e)===tag)return e;}return -1;};
+    const ifd0=tiff+g32(tiff+4);
+    if(ifd0+2>len)return null;
+    let s=null;
+    const exifE=findTag(ifd0,0x8769);                  // Exif サブIFDへのポインタ
+    if(exifE>=0){const sub=tiff+g32(exifE+8);if(sub+2<len){const dtoE=findTag(sub,0x9003);if(dtoE>=0){const cnt=g32(dtoE+4);const vo=cnt<=4?dtoE+8:tiff+g32(dtoE+8);s=ascii(vo,cnt);}}}
+    if(!s){const dtE=findTag(ifd0,0x0132);if(dtE>=0){const cnt=g32(dtE+4);const vo=cnt<=4?dtE+8:tiff+g32(dtE+8);s=ascii(vo,cnt);}}
+    if(s&&/^\d{4}:\d\d:\d\d/.test(s))return s.slice(0,10).replace(/:/g,"-");
+    return null;
+  }catch(e){return null;}
+}
+function readExifDate(file){return new Promise(res=>{try{const r=new FileReader();r.onload=()=>res(parseExifDate(r.result));r.onerror=()=>res(null);r.readAsArrayBuffer(file.slice(0,256*1024));}catch(e){res(null);}});}
+
 // 高齢者向けのケア・予定の種別（通院・介護サポート）。
 const SENIOR_KINDS=[{key:"hospital",label:"通院",emoji:"🏥"},{key:"med",label:"服薬",emoji:"💊"},{key:"pickup",label:"薬の受け取り",emoji:"💊"},{key:"care",label:"介護サービス",emoji:"🧑"},{key:"daycare",label:"デイサービス",emoji:"🏫"},{key:"rehab",label:"リハビリ",emoji:"🩹"},{key:"nurse",label:"訪問看護",emoji:"🩺"},{key:"checkup",label:"健診",emoji:"🩺"},{key:"vaccine",label:"予防接種",emoji:"💉"},{key:"other",label:"その他",emoji:"✨"}];
 // 赤ちゃん（乳児）向けの予定・ケアの種別（乳児健診・予防接種・通院など）。日々のミルク/おむつ等は「お世話ログ」で扱う。
@@ -2219,6 +2255,38 @@ function App(){
     }
   };
   const removeLifePhoto=(pid)=>setLifeDraft(p=>p?{...p,photos:p.photos.filter(x=>x.id!==pid)}:p);
+  // 写真をまとめて取り込み、撮影日（EXIF）ごとに思い出へ自動振り分け。
+  // 撮影日が取れない写真はファイル更新日→今日の順でフォールバック。現在表示中の子に追加。
+  const[bulkBusy,setBulkBusy]=useState(false);
+  const bulkAddPhotos=async(e)=>{
+    const files=Array.from(e.target.files||[]).filter(f=>f.type&&f.type.startsWith("image/"));e.target.value="";
+    if(!files.length||bulkBusy)return;
+    const list=files.slice(0,60); // 一度の取り込み上限
+    setBulkBusy(true);showFlash(`写真を読み込み中…（${list.length}枚）`);
+    const space=tab;const newItems=[];const newPhotos={};const dateSet=new Set();let full=false;
+    for(const file of list){
+      if(file.size>20*1024*1024)continue;
+      let date=await readExifDate(file);
+      if(!date&&file.lastModified){const d=new Date(file.lastModified);if(!isNaN(d))date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+      if(!date)date=todayIso;
+      let dataUrl;try{dataUrl=await downscaleImage(file);}catch(er){continue;}
+      const pid="p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+      const ok=await photoStorage.set(`photo:${pid}`,dataUrl);
+      if(!ok){full=true;break;}
+      newPhotos[pid]=dataUrl;
+      newItems.push({id:"mem"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),space,type:"memory",date,title:"思い出",emoji:"📸",photo:true,photos:[pid],createdAt:Date.now()});
+      dateSet.add(date);
+    }
+    if(newItems.length){
+      setPhotos(p=>({...p,...newPhotos}));
+      const next=[...items,...newItems];persist(members,next);
+      newItems.forEach(it=>saveItemToFs(it).catch(()=>{}));
+    }
+    setBulkBusy(false);
+    if(full)showFlash(newItems.length?`ストレージ不足のため${newItems.length}枚まで追加しました`:"ストレージ容量が不足しています");
+    else if(newItems.length)showFlash(`${newItems.length}枚を撮影日ごとに追加しました（${dateSet.size}日分）📅`);
+    else showFlash("追加できる写真がありませんでした");
+  };
   const toggleLifeReminder=(mins)=>setLifeDraft(p=>p?{...p,reminders:p.reminders.includes(mins)?p.reminders.filter(m=>m!==mins):[...p.reminders,mins].sort((a,b)=>a-b)}:p);
   const saveLife=async()=>{
     if(!lifeDraft)return;
@@ -4435,6 +4503,12 @@ function App(){
                       {!albumSel&&<button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>}
                     </div>
                   </div>
+                  {!albumSel&&(
+                    <label className={"yl-album-bulk"+(bulkBusy?" busy":"")}>
+                      <Icon name="calendar" size={15}/> {bulkBusy?"読み込み中…":"写真をまとめて追加（撮影日で自動振り分け）"}
+                      <input type="file" accept="image/*" multiple style={{display:"none"}} disabled={bulkBusy} onChange={bulkAddPhotos}/>
+                    </label>
+                  )}
                   {albumSel&&<p className="yl-album-selhint">写真をタップして選択（最大{ALBUM_SEL_MAX}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。</p>}
                   {memories.length===0?(
                     <p className="yl-routine-empty">写真とひとことで残せます</p>
@@ -4795,24 +4869,18 @@ function App(){
                   ["🌙","ダークモード","端末に合わせる／ライト／ダークを設定から選べます"],
                   ["🐶","たくさんの家族・うちのこを登録OK","登録数の制限なし。識別カラーを拡充し、大家族・多頭飼いでも見分けやすく"],
                   ["🖼","思い出をまとめて別の子へ移動","「思い出」で写真を最大30枚選んで、他の家族・うちのこへ一括で移せます"],
+                  ["🗓","写真カレンダー（撮影日で自動振り分け）","「思い出」で写真をまとめて追加すると、撮影日ごとにカレンダーへ自動で並びます"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span><span className="yl-whatsnew-desc">{r[2]}</span></span></li>
                 ))}
               </ul>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> 近日対応予定</span></div>
-              <ul className="yl-whatsnew-list">
-                {[
-                  ["🗓","写真カレンダー（撮影日で自動振り分け）"],
-                ].map((r,i)=>(
-                  <li key={i} className="yl-whatsnew-item soon"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span></span></li>
-                ))}
-              </ul>
-              <p className="yl-set-desc" style={{marginTop:6,fontSize:12}}>※ 予定は変更になる場合があります。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> これから</span></div>
+              <p className="yl-set-desc" style={{marginTop:2}}>予定していた機能はひととおり公開できました 🎉 「こんな機能がほしい」というご要望があれば、ぜひお聞かせください。順次かたちにしていきます。</p>
             </div>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>{setWhatsNewOpen(false);setHelpOpen(true);}}><Icon name="note" size={15}/> 使い方・機能紹介を見る</button>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"#F3EFE8",color:"#6E6862"}} onClick={()=>setWhatsNewOpen(false)}>とじる</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"var(--line3)",color:"var(--ink2)"}} onClick={()=>setWhatsNewOpen(false)}>とじる</button>
           </div>
         </div>
       )}
