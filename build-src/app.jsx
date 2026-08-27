@@ -132,6 +132,9 @@ const DISASTER_TIPS=[
 // 文字列から電話番号らしき部分を抽出（tel: リンク用）。無ければ null。
 const extractTel=(str)=>{const m=(str||"").match(/0\d{1,4}[-(]?\d{1,4}[-)]?\d{3,4}/);return m?m[0].replace(/[()]/g,"-").replace(/--/g,"-"):null;};
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
+// 「実施日から次回まで」で期限が決まる更新型ケア（狂犬病・ワクチン等）。実施日＋周期＝有効期限。
+const RENEW_KINDS=new Set(["vaccine","rabies","filaria","checkup","dental","trim","groom"]);
+const isRenewCare=(x)=>!!(x&&x.type==="care"&&x.careKind&&RENEW_KINDS.has(x.careKind));
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -208,9 +211,11 @@ function buildDigest(items){
     if(x.dueDate){
       const d=daysUntil(x.dueDate);
       const isHigh=x.careKind&&HIGH_KINDS.has(x.careKind);
-      // 期限切れは「周期あり」のみ通知。直近(0〜3日)はそのまま
-      if(isHigh&&d!==null&&d<=CARE_NOTIFY_DAYS&&(d>=0||isCyclic(x)))
-        urgent.push({emoji:x.emoji||"⚠️",text:`${x.title}：${d<0?"期限切れ":d===0?"今日":"あと"+d+"日"}`,sort:d});
+      // 年1回の更新（狂犬病・ワクチン等）は期限の約1か月前から、それ以外は直近3日から。期限切れは周期ありのみ。
+      const win=isHigh&&effRepeat(x)==="yearly"?30:CARE_NOTIFY_DAYS;
+      const renew=x.careKind&&RENEW_KINDS.has(x.careKind);
+      if(isHigh&&d!==null&&d<=win&&(d>=0||isCyclic(x)))
+        urgent.push({emoji:x.emoji||"⚠️",text:`${x.title}：${d<0?"期限切れ":d===0?(renew?"今日で期限":"今日"):renew?`あと${d}日で期限`:"あと"+d+"日"}`,sort:d});
     }
   });
   return urgent.sort((a,b)=>a.sort-b.sort);
@@ -847,9 +852,27 @@ function dueStatus(item){if(!item.dueDate)return null;if(item.done)return{label:
 // ケアの3状態：未対応(赤)／予定済み(黄)／完了(緑)。打ち消し線＋期限切れの読めない状態を1目で。
 function careState(item){
   if(item.done)return{label:"✅ 完了",tone:"done"};
-  if(isOverdue(item)){const d=-daysUntil(item.dueDate);return{label:`🔴 未対応・${d}日超過`,tone:"todo"};}
-  if(item.dueDate){const d=daysUntil(item.dueDate);if(d<0)return{label:`予定日 ${fmtDate(item.dueDate)}`,tone:"planned"};return{label:d===0?"🟡 今日やる":`🟡 予定・あと${d}日`,tone:"planned"};}
+  const renew=isRenewCare(item);
+  if(isOverdue(item)){const d=-daysUntil(item.dueDate);return{label:renew?`🔴 期限切れ・${d}日超過`:`🔴 未対応・${d}日超過`,tone:"todo"};}
+  if(item.dueDate){const d=daysUntil(item.dueDate);
+    if(d<0)return{label:`予定日 ${fmtDate(item.dueDate)}`,tone:"planned"};
+    if(renew){
+      if(d===0)return{label:"🟡 今日で期限",tone:"planned"};
+      if(d<=30)return{label:`🟡 あと${d}日で期限`,tone:"planned"};
+      return{label:`🟢 有効・あと${d}日`,tone:"doneChip"};
+    }
+    return{label:d===0?"🟡 今日やる":`🟡 予定・あと${d}日`,tone:"planned"};
+  }
   return{label:"🟡 予定済み",tone:"planned"};
+}
+// 更新型ケア（狂犬病・ワクチン等）の有効期限までの残り。証明書セルなどの小さな表示用。
+function renewLeft(item){
+  if(!isRenewCare(item)||!item.dueDate)return null;
+  const d=daysUntil(item.dueDate);if(d==null)return null;
+  if(d<0)return{txt:`期限切れ ${-d}日`,tone:"over"};
+  if(d===0)return{txt:"今日で期限",tone:"soon"};
+  if(d<=30)return{txt:`あと${d}日`,tone:"soon"};
+  return{txt:`あと${d}日`,tone:"ok"};
 }
 
 function daysUntilBirthday(birthday) {
@@ -2338,7 +2361,10 @@ function App(){
     if(asCare){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=(careMeta||{}).label||"";}
     if(!title)return;
     let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined};
-    if(asCare){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,(careMeta||{}).emoji||"📄")};}
+    if(asCare){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,(careMeta||{}).emoji||"📄")};
+      // 狂犬病・ワクチン等の更新型：入力日は「実施日」。実施日＋周期を有効期限(dueDate)に、実施日をlastDoneに。
+      if(draftDate&&RENEW_KINDS.has(draftKind)){const cyc=(draftRepeat&&draftRepeat!=="none")?draftRepeat:(CARE_CYCLE[draftKind]||"yearly");base.lastDone=draftDate;base.dueDate=addInterval(draftDate,cyc);base.repeat=draftRepeat&&draftRepeat!=="none"?draftRepeat:cyc;}
+    }
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
     // ケア追加フォームで先に写真（証明書）を選んでいた場合、既存の photoStorage / photos をそのまま利用して保存前に添付（onFilePicked と同じ保存先）。
     if(asCare&&draftPhoto){try{const ok=await photoStorage.set(`photo:${base.id}`,draftPhoto);if(ok){setPhotos(p=>({...p,[base.id]:draftPhoto}));base.photo=true;base.photos=[base.id];}}catch(e){}}
@@ -2969,6 +2995,7 @@ function App(){
           <div className="yl-meta">
             {cst?<span className={"yl-cstate "+cst.tone}>{cst.label}</span>:ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
             {it.time&&<span className="yl-time"><Icon name="clock" size={12}/> {it.time}</span>}
+            {isCare&&isRenewCare(it)&&it.lastDone&&<span className="yl-repeat"><Icon name="syringe" size={12}/> 実施 {fmtDate(it.lastDone)}</span>}
             {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat"><Icon name="repeat" size={12}/> {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge"><Icon name="bell" size={12}/> {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
             {actionable&&<button className="yl-resolve" onClick={e=>{e.stopPropagation();toggle(it.id);}} title="記録すると次回予定へ自動で進みます">✓ 完了にして次回へ</button>}
@@ -3146,7 +3173,7 @@ function App(){
     todos.sort((a,b)=>a.pri-b.pri||((a.time||"99")<(b.time||"99")?-1:1));
     // 直近の予定（明日〜7日・爆弾/ルーティン除く）は別枠で薄く表示。今日リストには混ぜない。
     const upcoming=[];
-    live.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id)||x.type==="routine")return;const d=daysUntil(x.dueDate);if(d>=1&&d<=7)upcoming.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,d,tag:d===1?"明日":`あと${d}日`});});
+    live.forEach(x=>{if(x.done||!x.dueDate||bombSet.has(x.id)||x.type==="routine")return;const d=daysUntil(x.dueDate);const annual=x.careKind&&RENEW_KINDS.has(x.careKind)&&effRepeat(x)==="yearly";const win=annual?30:7;if(d>=1&&d<=win)upcoming.push({key:x.id,emoji:x.emoji||"•",title:x.title,space:x.space,d,tag:d===1?"明日":`あと${d}日${annual?"で期限":""}`});});
     upcoming.sort((a,b)=>a.d-b.d);
     return{bombs,todos,upcoming};
   },[items,todayIso,memorialIds]);
@@ -4226,6 +4253,7 @@ function App(){
                                 <button key={c.id} className="yl-cert-cell" onClick={()=>viewPhoto(firstPhotoId(c))}>
                                   {firstPhotoId(c)&&photos[firstPhotoId(c)]?<img className="yl-cert-img" src={photos[firstPhotoId(c)]} alt=""/>:<span className="yl-cert-ph"><Icon name="filetext" size={20}/></span>}
                                   <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
+                                  {(()=>{const rl=renewLeft(c);return rl?<span className={"yl-cert-exp "+rl.tone}>{rl.txt}</span>:null;})()}
                                 </button>
                               );
                             })}
@@ -4243,6 +4271,7 @@ function App(){
                               <label key={c.id} className="yl-cert-cell" style={{cursor:"pointer"}} title="タップで証明書の写真を追加" onClick={e=>e.stopPropagation()}>
                                 <span className="yl-cert-ph"><Icon name="camera" size={20}/></span>
                                 <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
+                                {(()=>{const rl=renewLeft(c);return rl?<span className={"yl-cert-exp "+rl.tone}>{rl.txt}</span>:null;})()}
                                 <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,c.id)}/>
                               </label>
                             );
