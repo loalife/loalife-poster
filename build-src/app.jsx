@@ -3375,7 +3375,7 @@ function App(){
   };
 
   return(
-    <div className="yl-root">
+    <div className={"yl-root"+(!onboarding&&(tab==="cal"||isPersonMode)?"":" no-membar")}>
       {/* 初回ツアー(A)：主要操作を順番に案内。スキップで一括終了。 */}
       {!onboarding&&tourStep!==null&&TOUR_STEPS[tourStep]&&(
         <CoachMark key={"tour"+tourStep} sel={TOUR_STEPS[tourStep].sel} title={TOUR_STEPS[tourStep].title} body={TOUR_STEPS[tourStep].body}
