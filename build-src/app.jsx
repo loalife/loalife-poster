@@ -2989,6 +2989,14 @@ function App(){
   },[homeData.todos,members,spaces]);
   // 完了：タスク種別に応じて既存ハンドラへ振り分け（ルーティン=doneDate／お世話=履歴／ケア・予定=記録・完了）。
   const completeHomeTask=(id)=>{const it=items.find(x=>x.id===id);if(!it)return;if(it.type==="routine")toggleRoutine(id);else if(it.type==="chore")logChore(id);else toggle(id);};
+  // 「1年前の今日」：過去の同じ月日の思い出を、そっと振り返る（全メンバー横断・年数が近い順）。
+  const onThisDay=useMemo(()=>{
+    const curY=new Date().getFullYear();const md=mmdd(todayIso);
+    const list=[];
+    items.forEach(x=>{if(x.type!=="memory"||!x.date||x.date.length<10||mmdd(x.date)!==md)return;const yy=parseInt(x.date.slice(0,4),10);if(!yy||yy>=curY)return;list.push({item:x,yearsAgo:curY-yy});});
+    list.sort((a,b)=>a.yearsAgo-b.yearsAgo||(b.item.createdAt||0)-(a.item.createdAt||0));
+    return list;
+  },[items,todayIso]);
 
   // AIサマリー：今日の要点を1〜3行で。あいさつ＋やること件数＋お散歩おすすめ＋直近の締切。
   const aiSummary=useMemo(()=>{
@@ -3367,6 +3375,23 @@ function App(){
                   ))}
                 </section>
               )}
+              {/* 1年前の今日：過去の同じ日の思い出をそっと振り返る */}
+              {onThisDay.length>0&&(()=>{const years=[...new Set(onThisDay.map(o=>o.yearsAgo))];const otdTitle=years.length===1?`${years[0]}年前の今日`:"この日の思い出";return(
+                <section className="yl-otd">
+                  <p className="yl-otd-title"><Icon name="camera" size={14}/> {otdTitle}</p>
+                  <div className="yl-otd-list">
+                    {onThisDay.slice(0,3).map(({item,yearsAgo})=>{const pid=firstPhotoId(item);const src=pid&&photos[pid];return(
+                      <button key={item.id} className="yl-otd-item" onClick={()=>src?viewMemory(pid):openLifeEdit(item)}>
+                        {src?<img className="yl-otd-thumb" src={src} alt=""/>:<span className="yl-otd-thumb noimg"><Icon name="note" size={18}/></span>}
+                        <span className="yl-otd-body">
+                          <span className="yl-otd-when">{yearsAgo}年前 ・ {nameOf(item.space)||"わたし"}</span>
+                          {(item.note||(item.title&&item.title!=="思い出"))&&<span className="yl-otd-note">{item.note||item.title}</span>}
+                        </span>
+                      </button>
+                    );})}
+                  </div>
+                </section>
+              );})()}
               {/* 今日やること（毎日使う）を先に。見逃せないことはその下に。 */}
               {todayClear?(
                 <section className="yl-hero calm">
