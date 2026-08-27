@@ -432,7 +432,7 @@ const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 // メンバーバー等はすべて colorOf() 経由でこの配列を参照する。登録順で自動割り当て、
 // 設定でユーザーが個別に選ぶことも可能。
 // 前半＝従来のやさしいアース系、後半＝追加したパステル・明るめカラー（既存の色は不変）。
-const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178","#EBA0B7","#C7A8E9","#8FC1EA","#7FCFC4","#A9D48C","#F2C86E","#F0A882","#E29CC6","#9AA8E0","#6FB6A6"];
+const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178","#EBA0B7","#C7A8E9","#8FC1EA","#7FCFC4","#A9D48C","#F2C86E","#F0A882","#E29CC6","#9AA8E0","#6FB6A6","#D46A6A","#6A9FB5","#A67C52","#9E8ABF","#5FA871","#C98BB0","#7EA05A","#6C8CD5","#CE7BA0","#4FA88F"];
 // 今日のようす（日記）の選択肢。元気は5段階（推移グラフ用に score を持つ。旧3段階キーも内包）
 const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
 const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
@@ -4759,6 +4759,8 @@ function App(){
                   ["🌈","虹の橋（お別れの記録）","そっと思い出を振り返るモードに切り替え"],
                   ["📸","「1年前の今日」の思い出","過去の同じ日の写真・記録をホームで振り返り"],
                   ["🌦","お散歩判定に気象庁の警報を反映","警報発表中は「お散歩は控えて」を表示"],
+                  ["🌙","ダークモード","端末に合わせる／ライト／ダークを設定から選べます"],
+                  ["🐶","たくさんの家族・うちのこを登録OK","登録数の制限なし。識別カラーを拡充し、大家族・多頭飼いでも見分けやすく"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span><span className="yl-whatsnew-desc">{r[2]}</span></span></li>
                 ))}
@@ -4768,10 +4770,8 @@ function App(){
               <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> 近日対応予定</span></div>
               <ul className="yl-whatsnew-list">
                 {[
-                  ["🌙","ダークモード"],
                   ["🗓","写真カレンダー（撮影日で自動振り分け）"],
                   ["🖼","写真を最大30枚まとめて選択・別のこへ移動"],
-                  ["🐶","登録できる子の上限を拡大"],
                 ].map((r,i)=>(
                   <li key={i} className="yl-whatsnew-item soon"><span className="yl-whatsnew-emoji">{r[0]}</span><span className="yl-whatsnew-body"><span className="yl-whatsnew-title">{r[1]}</span></span></li>
                 ))}
