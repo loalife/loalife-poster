@@ -358,6 +358,35 @@ function computeMealKcal(def,amount){
   if(def.unit==="g"||def.unit==="ml")return Math.round(k*amt/100);
   return null;
 }
+// 1日のフード量計算（犬・猫）。RER=70×理想体重^0.75、DER=RER×活動係数、フード量=DER÷ME×100。※参考値。
+const LIFESTAGE={
+  dog:[{k:"puppy_s",l:"子犬（〜4ヶ月）",f:3.0},{k:"puppy_l",l:"子犬（4ヶ月〜1歳）",f:2.0},{k:"adult_n",l:"成犬（避妊・去勢済み）",f:1.6},{k:"adult",l:"成犬（未避妊・未去勢）",f:1.8},{k:"senior",l:"高齢犬",f:1.4},{k:"diet",l:"減量が必要",f:1.0}],
+  cat:[{k:"kitten",l:"子猫（成長期）",f:2.5},{k:"adult_n",l:"成猫（避妊・去勢済み）",f:1.2},{k:"adult",l:"成猫（未避妊・未去勢）",f:1.4},{k:"senior",l:"高齢猫",f:1.1},{k:"diet",l:"減量が必要",f:0.8}],
+};
+const bcsAdjust=(bcs)=>1+0.1*(bcs-5); // 補正値（BCS5=適正=1.0、1段階=約10%）
+// BCS（ボディ・コンディション・スコア）9段階。適正はBCS4〜5。
+const BCS_GUIDE=[
+  [1,"削痩","肋骨・腰椎・骨盤が浮き出て、体脂肪がほとんどない。"],
+  [2,"低体重","肋骨が容易に触れ、脂肪はごくわずか。腰のくびれが顕著。"],
+  [3,"やや低体重","肋骨が触れ、上から見て腰のくびれが明瞭。"],
+  [4,"理想の手前","肋骨が触れ、上から見て腰にくびれ、横から腹部の吊り上がりあり。"],
+  [5,"理想","肋骨が過剰な脂肪なく触れる。腰のくびれ・腹部の吊り上がりが自然。"],
+  [6,"やや過体重","肋骨がやや触れにくい。くびれが不明瞭になりはじめる。"],
+  [7,"過体重","肋骨が触れにくく脂肪の沈着。くびれがほぼ無い。"],
+  [8,"肥満","肋骨が触れず、腰・腹部・尾の付け根に脂肪。腹部が張る。"],
+  [9,"重度肥満","厚い脂肪で肋骨が触れない。腹部が大きく膨らむ。"],
+];
+function calcFoodAmount(species,bw,stageKey,bcs,me){
+  const w=Number(bw),m=Number(me),bc=Number(bcs);
+  if(!(w>0)||!(bc>=1&&bc<=9))return null;
+  const ideal=w/bcsAdjust(bc);
+  const stage=(LIFESTAGE[species]||LIFESTAGE.dog).find(s=>s.k===stageKey);
+  const f=stage?stage.f:(species==="cat"?1.2:1.6);
+  const der=70*Math.pow(ideal,0.75)*f;
+  const res={ideal:Math.round(ideal*100)/100,der:Math.round(der),factor:f};
+  if(m>0){const g=der/m*100;res.grams=Math.round(g);res.per2=Math.round(g/2);res.per3=Math.round(g/3);res.per4=Math.round(g/4);}
+  return res;
+}
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
 const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
@@ -1248,6 +1277,8 @@ function App(){
   const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
   const[foodForm,setFoodForm]=useState(null); // フード詳細の登録フォーム null|{id?,name,brand,foodType,amount,unit,times,feedTime,kcal,kcalBasis}
   const[mealForm,setMealForm]=useState(null); // 今日の食事の記録フォーム null|{foodId,slot,amount}
+  const[foodCalc,setFoodCalc]=useState(null); // 1日のフード量計算 null|{species,bw,stage,bcs,me}
+  const[foodCalcGuide,setFoodCalcGuide]=useState(false); // BCSの見かたガイド開閉
   // 授乳タイマー（赤ちゃん）：稼働中タイマーは localStorage に持たせてアプリを閉じても続く。
   const[nursing,setNursing]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-nursing")||"null");}catch(e){return null;}}); // {space,side,start}
   // 散歩記録：稼働中の散歩（GPSルート・距離）。アプリを閉じても復帰できるよう localStorage に保持。
@@ -2422,6 +2453,15 @@ function App(){
   const foodDefs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="fooddef").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const foodDefText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);if(d.kcal!==""&&d.kcal!=null)parts.push(d.kcalBasis==="perUnit"?`${d.kcal}kcal/${foodUnitLabel(d.unit)}`:`${d.kcal}kcal/100${d.unit==="ml"?"ml":"g"}`);return parts.join(" ・ ");};
   const openFoodNew=()=>setFoodForm({name:"",brand:"",foodType:"dry",amount:"",unit:"g",times:"",feedTime:"",kcal:"",kcalBasis:"per100"});
+  // 1日のフード量計算：体重は最新の体重記録、MEは登録フード（/100g）から初期値を補完。
+  const openFoodCalc=()=>{
+    const sp=(activeMember&&activeMember.species==="cat")?"cat":"dog";
+    const ws=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0));
+    const bw=ws[0]&&ws[0].weight!=null?String(ws[0].weight):"";
+    const food=foodDefs.find(f=>f.kcalBasis==="per100"&&f.kcal!==""&&f.kcal!=null);
+    setFoodCalc({species:sp,bw,stage:"",bcs:5,me:food?String(food.kcal):""});
+    setFoodCalcGuide(false);
+  };
   const openFoodEdit=(d)=>setFoodForm({id:d.id,name:d.name||"",brand:d.brand||"",foodType:d.foodType||"dry",amount:d.amount??"",unit:d.unit||"g",times:d.timesPerDay??"",feedTime:d.feedTime||"",kcal:d.kcal??"",kcalBasis:d.kcalBasis||"per100"});
   const saveFoodDef=()=>{const f=foodForm;if(!f)return;const name=(f.name||"").trim();if(!name){showFlash("フード・食事名を入力してください");return;}
     const numOrBlank=(v)=>{if(v===""||v==null)return"";const n=Number(v);return isNaN(n)?"":n;};
@@ -4387,6 +4427,7 @@ function App(){
                     </li>
                   ))}</ul>}
                   <button className="yl-addbtn sm" style={{marginTop:foodDefs.length?4:8}} onClick={openFoodNew}><Icon name="plus" size={14}/> フード・食事を登録</button>
+                  {(activeMember.species==="dog"||activeMember.species==="cat")&&<button className="yl-addbtn sm" style={{marginTop:8}} onClick={openFoodCalc}><Icon name="scale" size={14}/> 1日のフード量を計算</button>}
                 </section>
               )});
               defs.push({key:"cards",el:(
@@ -5045,6 +5086,34 @@ function App(){
           </div>
         </div>
       )}
+      {foodCalc&&(()=>{const stages=LIFESTAGE[foodCalc.species]||LIFESTAGE.dog;const res=calcFoodAmount(foodCalc.species,foodCalc.bw,foodCalc.stage,foodCalc.bcs,foodCalc.me);return(
+        <div className="yl-help-ov" onClick={()=>setFoodCalc(null)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="scale" size={18}/> 1日のフード量 計算</h2><button className="yl-help-close" onClick={()=>setFoodCalc(null)} aria-label="閉じる">×</button></div>
+            <p className="yl-set-desc" style={{background:"#FBEEE2",color:"#8A5A3A",borderRadius:10,padding:"8px 10px"}}>⚠ こちらは<strong>参考値</strong>です。結果や給餌量について責任は負えません。急な食事量の変更は健康に影響します。必ずかかりつけの先生にご相談のうえご利用ください。</p>
+            <div className="yl-opt" style={{marginTop:12,width:"100%"}}>動物種<span className="yl-seg-mini">{[{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodCalc.species===o.k?" on":"")} onClick={()=>setFoodCalc(f=>({...f,species:o.k,stage:""}))}>{o.l}</button>)}</span></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>現在の体重（BW）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.bw} onChange={e=>setFoodCalc(f=>({...f,bw:e.target.value}))} placeholder="体重"/><span className="yl-food-unit">kg</span></div></div>
+            <label className="yl-opt" style={{marginTop:10,width:"100%"}}>ライフステージ・活動量<select className="yl-input sm" style={{marginTop:4}} value={foodCalc.stage} onChange={e=>setFoodCalc(f=>({...f,stage:e.target.value}))}><option value="">選択してください</option>{stages.map(s=><option key={s.k} value={s.k}>{s.l}（係数{s.f}）</option>)}</select></label>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"#8A8178",fontSize:12}}>適正は4〜5</span>
+              <span className="yl-bcs-row">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className={"yl-bcs-btn"+(foodCalc.bcs===n?" on":"")+((n===4||n===5)?" ideal":"")} onClick={()=>setFoodCalc(f=>({...f,bcs:n}))}>{n}</button>)}</span>
+              <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?"BCSの見かたを閉じる":"BCSの見かたを見る"}</button>
+              {foodCalcGuide&&<ul className="yl-bcs-guide">{BCS_GUIDE.map(g=><li key={g[0]} className={(g[0]===4||g[0]===5)?"ideal":""}><b>{g[0]}：{g[1]}</b>{g[2]}</li>)}</ul>}
+            </div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>フードの代謝エネルギー（ME）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.me} onChange={e=>setFoodCalc(f=>({...f,me:e.target.value}))} placeholder="kcal"/><span className="yl-food-unit">kcal / 100g</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4,fontSize:12}}>今あげているフードの100gあたりのカロリー（パッケージ記載）。未入力でも理想体重・必要カロリーは計算します。</span></div>
+            <div className="yl-foodcalc-res">
+              {res?(<>
+                <div className="yl-fcr-row"><span className="yl-fcr-l">理想的な体重</span><span className="yl-fcr-v">{res.ideal} kg</span></div>
+                <div className="yl-fcr-row"><span className="yl-fcr-l">1日に必要なカロリー（DER）</span><span className="yl-fcr-v">{res.der} kcal</span></div>
+                {res.grams!=null?(<>
+                  <div className="yl-fcr-row big"><span className="yl-fcr-l">1日のフード量</span><span className="yl-fcr-v">{res.grams} g</span></div>
+                  <div className="yl-fcr-splits"><span>2回：{res.per2}g</span><span>3回：{res.per3}g</span><span>4回：{res.per4}g</span></div>
+                </>):(<p className="yl-set-desc" style={{marginTop:6}}>フードのME（100gあたりkcal）を入れると、1日のフード量（g）も計算します。</p>)}
+              </>):(<p className="yl-set-desc">体重と BCS を入れると計算します。</p>)}
+            </div>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:12,background:"#F3EFE8",color:"#6E6862"}} onClick={()=>setFoodCalc(null)}>とじる</button>
+          </div>
+        </div>
+      );})()}
       {foodForm&&(
         <div className="yl-overlay" onClick={()=>setFoodForm(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
