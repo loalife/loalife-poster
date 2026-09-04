@@ -135,6 +135,8 @@ const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 // 「実施日から次回まで」で期限が決まる更新型ケア（狂犬病・ワクチン等）。実施日＋周期＝有効期限。
 const RENEW_KINDS=new Set(["vaccine","rabies","filaria","checkup","dental","trim","groom"]);
 const isRenewCare=(x)=>!!(x&&x.type==="care"&&x.careKind&&RENEW_KINDS.has(x.careKind));
+// 「今日のLOALIFE」通知カテゴリ（優先順位＝この順）。todo=予定, insight=気づき, tip=提案, memory=思い出。
+const NOTICE_META={todo:{emoji:"🔴",label:"やること",order:0},insight:{emoji:"🟡",label:"気づき",order:1},tip:{emoji:"🟢",label:"提案",order:2},memory:{emoji:"💕",label:"思い出",order:3}};
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -3196,6 +3198,71 @@ function App(){
     return list;
   },[items,todayIso]);
 
+  // ── 「今日のLOALIFE」：蓄積データから“気づき”を生成。日付ベースのリマインドは通常ロジック、
+  //    意味を抽出する部分（気づき・提案）は生成関数を分離し、将来AIに差し替えやすくしている。
+  const notices=useMemo(()=>{
+    const out=[];
+    const petsLive=members.filter(m=>m.kind==="pet"&&!m.memorial);
+    const dogs=petsLive.filter(m=>m.species==="dog");
+    const nm=(sp)=>nameOf(sp)||"わたし";
+    // 🔴 予定・リマインド：期限が近い/今日/超過（homeData 由来。重複はIDで排除）
+    homeData.bombs.forEach(({item,d})=>{
+      out.push({id:`todo:${item.id}:${item.dueDate}`,cat:"todo",title:d<0?`「${item.title}」の期限が過ぎています`:d===0?`今日は「${item.title}」の日です`:`もうすぐ「${item.title}」（あと${d}日）`,body:nm(item.space),actionLabel:"記録する",go:()=>{setTab(item.space);setPersonSeg("record");}});
+    });
+    homeData.upcoming.forEach(u=>{ if(u.d>7) out.push({id:`todo:${u.key}:up`,cat:"todo",title:`${u.title}（${u.tag}）`,body:nm(u.space),actionLabel:"確認する",go:()=>{setTab(u.space);setPersonSeg("record");}}); });
+    // 🟡 気づき：お散歩時間が短くなった（犬・十分な履歴がある時だけ、そっと。断定はしない）
+    dogs.forEach(dog=>{
+      const walks=items.filter(x=>x.type==="walk"&&x.space===dog.id&&x.durationSec>0).sort((a,b)=>(b.start||0)-(a.start||0));
+      if(walks.length>=6){
+        const avg=a=>a.reduce((s,w)=>s+w.durationSec,0)/a.length;
+        const r=avg(walks.slice(0,3)),p=avg(walks.slice(3,6));
+        if(p>0&&r<p*0.72) out.push({id:`insight:walk:${dog.id}:${todayIso.slice(0,7)}`,cat:"insight",title:"最近、お散歩の時間が少し短めです",body:`${dog.name}の直近のお散歩が、以前より短くなっているみたい`,actionLabel:"散歩記録を見る",go:()=>{setTab(dog.id);setPersonSeg("record");}});
+      }
+    });
+    // 🟡 気づき：しばらく記録がない（履歴のある子だけ・7〜30日）
+    petsLive.forEach(m=>{
+      const recs=items.filter(x=>x.space===m.id&&(x.type==="health"||x.type==="diary"||x.type==="walk"||x.type==="chore"||x.type==="feed"||x.type==="toilet"));
+      if(recs.length>=3){
+        let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});
+        if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日ぶり`,body:"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+      }
+    });
+    // 🟢 今日の提案：天気・気温・季節（犬がいる時だけ・1件）
+    if(dogs.length>0){
+      let tip=null;
+      if(hasWalker&&weather&&!weather.error){
+        const rain=(weather.precip>0)||(weather.pop!=null&&weather.pop>=60)||(weather.code!=null&&weather.code>=51);
+        if(rain)tip={id:`tip:rain:${todayIso}`,title:"今日は雨模様",body:"おうちで、においあて・かくれんぼなどの知育あそびはいかが？"};
+        else if(weather.temp!=null&&weather.temp>=30)tip={id:`tip:heat:${todayIso}`,title:"日中は暑くなりそう",body:"お散歩は朝夕の涼しい時間に。肉球のやけど・熱中症に気をつけて"};
+        else if(weather.temp!=null&&weather.temp<=3)tip={id:`tip:cold:${todayIso}`,title:"冷え込む一日",body:"シニアの子は特にあたたかく。短めのお散歩でも大丈夫"};
+      }
+      if(!tip){const mo=new Date().getMonth()+1;const s=mo<=2||mo===12?"winter":mo<=5?"spring":mo<=8?"summer":"autumn";
+        const st={spring:["春はノミ・ダニに注意","暖かくなると活発に。予防のタイミングを確認しておきましょう"],summer:["夏は熱中症に注意","日中の散歩や車内でのお留守番は控えめに。水分もこまめに"],autumn:["秋は換毛の季節","ブラッシングを少し増やすと、抜け毛ケアが楽になります"],winter:["冬は乾燥と冷えに注意","肉球の乾燥ケアや、あたたかい寝床を用意してあげましょう"]}[s];
+        tip={id:`tip:season:${s}:${todayIso.slice(0,7)}`,title:st[0],body:st[1]};
+      }
+      if(tip)out.push({cat:"tip",...tip});
+    }
+    // 💕 思い出：去年の今日（最大2件）
+    onThisDay.slice(0,2).forEach(({item,yearsAgo})=>{
+      out.push({id:`memory:${item.id}:${todayIso}`,cat:"memory",title:`${yearsAgo}年前の今日`,body:item.note||(item.title&&item.title!=="思い出"?item.title:"思い出の1枚")+(item.space?`（${nm(item.space)}）`:""),actionLabel:"思い出を見る",go:()=>{const pid=firstPhotoId(item);if(pid&&photos[pid])viewPhoto(pid);else{setTab(item.space);setPersonSeg("record");}}});
+    });
+    // 優先順位で並べ、重複IDを除き、最大8件（出しすぎない）
+    const ids=new Set(),uniq=[];
+    out.sort((a,b)=>NOTICE_META[a.cat].order-NOTICE_META[b.cat].order);
+    for(const n of out){if(ids.has(n.id))continue;ids.add(n.id);uniq.push(n);}
+    return uniq.slice(0,8);
+  },[items,members,homeData,onThisDay,weather,hasWalker,todayIso]);
+  const[noticesRead,setNoticesRead]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("loalife-notices-read")||"[]"));}catch(e){return new Set();}});
+  const[noticesOpen,setNoticesOpen]=useState(false);
+  const unreadNoticeCount=useMemo(()=>notices.filter(n=>!noticesRead.has(n.id)).length,[notices,noticesRead]);
+  const openNotices=()=>{
+    track("notices_open",{unread:unreadNoticeCount,total:notices.length});
+    setNoticesOpen(true);
+    const next=new Set(noticesRead);notices.forEach(n=>next.add(n.id));
+    setNoticesRead(next);
+    try{localStorage.setItem("loalife-notices-read",JSON.stringify([...next].slice(-300)));}catch(e){}
+  };
+
   // AIサマリー：今日の要点を1〜3行で。あいさつ＋やること件数＋お散歩おすすめ＋直近の締切。
   const aiSummary=useMemo(()=>{
     const hr=new Date().getHours();
@@ -3407,6 +3474,7 @@ function App(){
                 {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
               </button>
             )}
+            <button className="yl-menu-btn yl-bell" onClick={openNotices} aria-label="今日のLOALIFE" title="今日のLOALIFE"><Icon name="bell" size={20}/>{unreadNoticeCount>0&&<span className="yl-bell-badge">{unreadNoticeCount>9?"9+":unreadNoticeCount}</span>}</button>
             <button className="yl-menu-btn" onClick={()=>setHelpOpen(true)} aria-label="使い方・機能紹介" title="使い方・機能紹介"><Icon name="note" size={20}/></button>
             <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー"><Icon name="menu" size={22}/></button>
           </div>
@@ -4869,6 +4937,28 @@ function App(){
             {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=>{const sub=[...placeParts(r),r.country&&r.country!=="日本"?r.country:""].filter(Boolean).join(" ");return(<li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={14}/><span className="yl-wxrow-body"><span className="yl-wxrow-name">{r.name}</span>{sub&&<span className="yl-wxrow-sub">{sub}</span>}</span>{r.population?<span className="yl-wxrow-pop">人口{r.population>=10000?`${Math.round(r.population/10000)}万`:r.population.toLocaleString()}</span>:null}</button></li>);})}</ul>)}
             <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。</p>
             <button className="yl-addbtn" style={{width:"100%",marginTop:10}} onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>とじる</button>
+          </div>
+        </div>
+      )}
+      {noticesOpen&&(
+        <div className="yl-help-ov" onClick={()=>setNoticesOpen(false)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> 今日のLOALIFE</h2><button className="yl-help-close" onClick={()=>setNoticesOpen(false)} aria-label="閉じる">×</button></div>
+            {notices.length===0?(
+              <p className="yl-notice-empty">今日はお知らせはありません。<br/>のんびり過ごせそうです 🐾</p>
+            ):(
+              <ul className="yl-notice-list">
+                {notices.map(n=>{const m=NOTICE_META[n.cat];return(
+                  <li key={n.id} className={"yl-notice "+n.cat}>
+                    <span className="yl-notice-cat">{m.emoji} {m.label}</span>
+                    <span className="yl-notice-title">{n.title}</span>
+                    {n.body&&<span className="yl-notice-body">{n.body}</span>}
+                    {n.go&&<button className="yl-notice-act" onClick={()=>{setNoticesOpen(false);n.go();}}>{n.actionLabel} →</button>}
+                  </li>
+                );})}
+              </ul>
+            )}
+            <p className="yl-notice-foot">大切な家族の毎日を見て、気づいたことをそっとお届けします。</p>
           </div>
         </div>
       )}
