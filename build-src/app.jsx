@@ -136,7 +136,7 @@ const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
 const RENEW_KINDS=new Set(["vaccine","rabies","filaria","checkup","dental","trim","groom"]);
 const isRenewCare=(x)=>!!(x&&x.type==="care"&&x.careKind&&RENEW_KINDS.has(x.careKind));
 // 「今日のLOALIFE」通知カテゴリ（優先順位＝この順）。todo=予定, insight=気づき, tip=提案, memory=思い出。
-const NOTICE_META={todo:{emoji:"🔴",label:"やること",order:0},insight:{emoji:"🟡",label:"気づき",order:1},tip:{emoji:"🟢",label:"提案",order:2},memory:{emoji:"💕",label:"思い出",order:3}};
+const NOTICE_META={todo:{icon:"clock",label:"やること",order:0},insight:{icon:"activity",label:"気づき",order:1},tip:{icon:"sparkles",label:"提案",order:2},memory:{icon:"heart",label:"思い出",order:3}};
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -4945,12 +4945,12 @@ function App(){
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> 今日のLOALIFE</h2><button className="yl-help-close" onClick={()=>setNoticesOpen(false)} aria-label="閉じる">×</button></div>
             {notices.length===0?(
-              <p className="yl-notice-empty">今日はお知らせはありません。<br/>のんびり過ごせそうです 🐾</p>
+              <p className="yl-notice-empty">今日はお知らせはありません。<br/>のんびり過ごせそうです。</p>
             ):(
               <ul className="yl-notice-list">
                 {notices.map(n=>{const m=NOTICE_META[n.cat];return(
                   <li key={n.id} className={"yl-notice "+n.cat}>
-                    <span className="yl-notice-cat">{m.emoji} {m.label}</span>
+                    <span className="yl-notice-cat"><Icon name={m.icon} size={13}/> {m.label}</span>
                     <span className="yl-notice-title">{n.title}</span>
                     {n.body&&<span className="yl-notice-body">{n.body}</span>}
                     {n.go&&<button className="yl-notice-act" onClick={()=>{setNoticesOpen(false);n.go();}}>{n.actionLabel} →</button>}
