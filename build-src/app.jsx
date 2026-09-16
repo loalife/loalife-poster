@@ -2233,6 +2233,19 @@ function App(){
 
   const viewPhoto=async(id)=>{if(photos[id]){setViewer({id,src:photos[id]});return;}setViewer({id,loading:true});try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src});}catch(e){setViewer({id,src:null});}};
   const removePhoto=(id)=>{try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});persist(members,items.map(x=>x.id===id?{...x,photo:false}:x));setViewer(null);showFlash("証明書を削除しました");};
+  // 迷子ポスター／緊急カード用の追加写真（member.posterPhotos = [photoId...]・最大4枚）。IDBに保存。
+  const addPosterPhoto=async(mid,e)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}
+    const m=members.find(x=>x.id===mid);if(!m)return;
+    if((m.posterPhotos||[]).length>=4){showFlash("写真は4枚までです");return;}
+    try{const dataUrl=await downscaleImage(file,760,0.78);const pid="pp"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,dataUrl);if(!ok){showFlash("ストレージ容量が不足しています");return;}
+      setPhotos(p=>({...p,[pid]:dataUrl}));
+      persist(members.map(x=>x.id===mid?{...x,posterPhotos:[...(x.posterPhotos||[]),pid]}:x),items);
+      showFlash("写真を追加しました 📷");
+    }catch(er){showFlash("画像を読み込めませんでした");}
+  };
+  const removePosterPhoto=(mid,pid)=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[pid];return n;});persist(members.map(x=>x.id===mid?{...x,posterPhotos:(x.posterPhotos||[]).filter(q=>q!==pid)}:x),items);};
 
   // --- 思い出（記録を思い出に変える）---
   // 既存アクション（散歩などのルーティン）から写真1枚で思い出を残す。入力は写真選択だけ。
@@ -5480,6 +5493,8 @@ function App(){
             <div className="yl-lost">
               <p className="yl-lost-head">緊急カード</p>
               <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{M.emoji||"👤"}</span>}</div>
+              {activeMember&&(()=>{const pp=(activeMember.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(activeMember.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
+              {activeMember&&<label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(activeMember.id,e)}/></label>}
               <p className="yl-lost-name">{M.name}{M.nickname?`（${M.nickname}）`:""}</p>
               {bd&&<p className="yl-lost-feats">{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</p>}
               <div className="yl-lost-info">
@@ -5491,6 +5506,7 @@ function App(){
                 <p className="yl-lost-clabel">緊急連絡先・かかりつけ</p>
                 {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に連絡先を登録すると、ここに表示されます</p>}
               </div>
+              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const t=activeMember?activeMember.id:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");}}><Icon name="plus" size={13}/> 連絡先を増やす・SNS・情報を追加（情報カード）</button>
               <p className="yl-lost-note">※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
@@ -5511,6 +5527,8 @@ function App(){
             <div className="yl-lost">
               <p className="yl-lost-head">さがしています</p>
               <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"🐶"}</span>}</div>
+              {(()=>{const pp=(activeMember.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(activeMember.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
+              <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(activeMember.id,e)}/></label>
               <p className="yl-lost-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</p>
               {feats.length>0&&<p className="yl-lost-feats">{feats.join("・")}</p>}
               <div className="yl-lost-info">
@@ -5521,6 +5539,7 @@ function App(){
                 <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
                 {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に緊急連絡先を登録すると、ここに表示されます</p>}
               </div>
+              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setLostOpen(false);setTab(activeMember.id);setMemberSel(activeMember.id);setPersonSeg("manage");}}><Icon name="plus" size={13}/> 連絡先を増やす・SNS・特徴を追加（情報カードの「緊急連絡先／その他」）</button>
               <p className="yl-lost-note">※印刷して掲示したり、画面を見せてご協力をお願いできます。電波がなくても表示できます。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
