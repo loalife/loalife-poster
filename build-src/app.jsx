@@ -3260,6 +3260,21 @@ function App(){
         if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日ぶり`,body:"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}
       }
     });
+    // 🟡 気づき：子ども・自分（今回の記録データを活用。断定・診断はしない）
+    const avgN=a=>a.reduce((s,n)=>s+n,0)/a.length;
+    const persons=[...members.filter(m=>m.kind==="person"),{id:"me",name:meName||"わたし",kind:"me"}];
+    persons.forEach(m=>{
+      const drecs=items.filter(x=>x.space===m.id&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+      // 睡眠が以前より短め（十分な記録があるときだけ・そっと）
+      const sl=drecs.filter(r=>r.sleep!=null&&r.sleep!=="").map(r=>Number(r.sleep)).filter(n=>!isNaN(n));
+      if(sl.length>=6){const r=avgN(sl.slice(0,3)),p=avgN(sl.slice(3,6));if(p>0&&r<p*0.85&&(p-r)>=0.5) out.push({id:`insight:sleep:${m.id}:${todayIso.slice(0,7)}`,cat:"insight",title:"最近、寝る時間の記録が短めです",body:`${m.name}の直近の睡眠が、以前より短くなっているみたい`,actionLabel:"記録を見る",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+      // しばらく記録がない（履歴のある対象だけ・7〜30日）
+      const recs=items.filter(x=>x.space===m.id&&(x.type==="diary"||x.type==="chore"||x.type==="health"||x.type==="milestone"||x.type==="walk"));
+      if(recs.length>=3){let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日ぶり`,body:"最近どうかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}}
+      // 未完了のやることがたまっている（3件以上）
+      const open=items.filter(x=>x.space===m.id&&(x.type==="care"||x.type==="event")&&x.dueDate&&!x.done).length;
+      if(open>=3) out.push({id:`insight:tasks:${m.id}:${todayIso}`,cat:"insight",title:`未完了のやることが${open}件`,body:`${m.name}の予定・提出物がたまっています`,actionLabel:"確認する",go:()=>{setTab(m.id);setPersonSeg("record");}});
+    });
     // 🟢 今日の提案：天気・気温・季節（犬がいる時だけ・1件）
     if(dogs.length>0){
       let tip=null;
@@ -3306,7 +3321,7 @@ function App(){
     out.sort((a,b)=>NOTICE_META[a.cat].order-NOTICE_META[b.cat].order);
     for(const n of out){if(ids.has(n.id))continue;ids.add(n.id);uniq.push(n);}
     return uniq.slice(0,8);
-  },[items,members,homeData,onThisDay,weather,hasWalker,todayIso]);
+  },[items,members,homeData,onThisDay,weather,hasWalker,todayIso,meName]);
   const[noticesRead,setNoticesRead]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("loalife-notices-read")||"[]"));}catch(e){return new Set();}});
   const[noticesOpen,setNoticesOpen]=useState(false);
   const unreadNoticeCount=useMemo(()=>notices.filter(n=>!noticesRead.has(n.id)).length,[notices,noticesRead]);
@@ -3818,12 +3833,13 @@ function App(){
             </div>
 
             {/* 安全・緊急：いざという時のショートカット。日常の主役ではないので下部に控えめに（メニュー・設定からも開ける） */}
-            {petMembers.length>0&&(
+            {spaces.length>0&&(
               <section className="yl-safety">
                 <span className="yl-safety-label"><Icon name="shield" size={14}/> いざという時</span>
                 <div className="yl-safety-acts">
-                  <button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>
+                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>}
                   <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> 夜間・救急</button>
+                  {(members.some(m=>m.kind==="person")||meBirthday||items.some(x=>x.space==="me"&&x.type==="card"))&&<button className="yl-safety-btn" onClick={()=>{const sel=members.find(m=>m.id===memberSel&&m.kind==="person");const t=sel?sel.id:(members.find(m=>m.kind==="person")?.id||"me");setTab(t);setMemberSel(t);setPersonSeg("record");setEmergencyCardOpen(true);}}><Icon name="filetext" size={15}/> 緊急カード</button>}
                   <button className="yl-safety-btn" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={15}/> 防災・避難</button>
                 </div>
               </section>
@@ -4094,7 +4110,7 @@ function App(){
                         {editMemorial?<span className="yl-memorial-set"><span className="yl-memorial-date"><BdayInput value={editMemorial} onChange={setEditMemorial}/></span><button className="yl-linkbtn" onClick={()=>setEditMemorial("")}>解除</button></span>:<button className="yl-memorial-btn" onClick={()=>setEditMemorial(todayIso)}>お別れを記録して追悼モードにする</button>}
                         <span className="yl-set-desc" style={{marginTop:4}}>お知らせを止め、そっと思い出を振り返る表示に。</span>
                       </div>}
-                      {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/></div>}
+                      {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/><span className="yl-set-desc" style={{marginTop:4,display:"block"}}>{editVisibility==="household"?"この子の記録を、招待した家族と共有します。":"この端末だけに保存し、家族には共有しません。"}アレルギー・生理・医療メモなど見せたくない情報は「自分のみ」に。</span></div>}
                       <button className="yl-member-save" onClick={()=>saveRename(activeMember.id)}><Icon name="check" size={16}/> 保存する</button>
                       <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>このメンバーを削除</button>
                     </div>
@@ -5439,9 +5455,10 @@ function App(){
           </div>
         </div>
       );})()}
-      {emergencyCardOpen&&activeMember&&(()=>{
-        const av=activeMember.avatar&&photos[activeMember.avatar];
-        const bd=activeMember.birthday;
+      {emergencyCardOpen&&(activeMember||tab==="me")&&(()=>{
+        const M=activeMember||{name:meName||"わたし",nickname:"",birthday:meBirthday,avatar:meAvatar,emoji:meEmoji||"🙂"};
+        const av=M.avatar&&photos[M.avatar];
+        const bd=M.birthday;
         const allergy=cards.filter(c=>c.kind==="allergy");
         const notes=cards.filter(c=>c.kind==="other");
         const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
@@ -5454,8 +5471,8 @@ function App(){
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
             <div className="yl-lost">
               <p className="yl-lost-head">緊急カード</p>
-              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"👤"}</span>}</div>
-              <p className="yl-lost-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</p>
+              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{M.emoji||"👤"}</span>}</div>
+              <p className="yl-lost-name">{M.name}{M.nickname?`（${M.nickname}）`:""}</p>
               {bd&&<p className="yl-lost-feats">{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</p>}
               <div className="yl-lost-info">
                 {allergy.length>0&&<p><b>アレルギー・禁忌</b> {allergy.map(c=>c.title+(c.body?`（${c.body}）`:"")).join("、")}</p>}
