@@ -687,7 +687,7 @@ const noteKindMeta=(k)=>NOTE_KINDS.find(o=>o.k===k)||NOTE_KINDS[0];
 const MILESTONE_PRESETS={
   first:["初めて笑った","初めて寝返りした","初めてハイハイした","初めて立った","初めて歩いた","初めての言葉"],
   word:["ママと言えた","パパと言えた","二語文が出た","自分の名前が言えた"],
-  body:["歯が生えた","トイレでできた","ひとりで着替えできた","くつが履けた"],
+  body:["歯が生えた","トイレでできた","ひとりで着替えできた","くつが履けた","靴のサイズが変わった","服のサイズが変わった"],
   can:["スプーンで食べられた","自転車に乗れた","泳げた","ボタンがとめられた"],
   learn:["ひらがなが読めた","数を数えられた","自分の名前が書けた","時計が読めた"],
 };
@@ -1311,6 +1311,7 @@ function App(){
   const[newVisibility,setNewVisibility]=useState("household");
   const[editingId,setEditingId]=useState(null);
   const[editName,setEditName]=useState("");
+  const[editNickname,setEditNickname]=useState(""); // ニックネーム（子ども・自分。任意）
   const[editBirthday,setEditBirthday]=useState("");
   const[editGotcha,setEditGotcha]=useState(""); // うちの子記念日（ペットのみ）
   const[editGroup,setEditGroup]=useState(""); // フォルダ（多頭飼い向けの分類）
@@ -2400,7 +2401,7 @@ function App(){
   // ケア・予定フォーム内の写真選択（保存前）。既存の downscaleImage をそのまま利用。
   const pickDraftPhoto=async(e)=>{const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}try{const dataUrl=await downscaleImage(file);setDraftPhoto(dataUrl);}catch(er){showFlash("画像を読み込めませんでした");}};
   // 指定メンバーのプロフィール編集を開く（追加直後の案内から利用）。編集state群を対象メンバーで初期化。
-  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(m.visibility||"household");setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setProfileOpen(true);setEditingId(m.id);};
+  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditNickname(m.nickname||"");setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(m.visibility||"household");setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setProfileOpen(true);setEditingId(m.id);};
   useEffect(()=>{if(inputSheet!=="schedule"){setDraftPhoto(null);setSelfCare(false);}},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真・自分ケアフラグをクリア
 
   const removeMember=(id)=>{
@@ -2413,7 +2414,7 @@ function App(){
 
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
-    const next=members.map(m=>m.id===id?{...m,name,birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType,gender:editGender||"",blood:editBlood||""}:{})}:m);
+    const next=members.map(m=>m.id===id?{...m,name,nickname:editNickname.trim()||"",birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType,gender:editGender||"",blood:editBlood||""}:{})}:m);
     persist(next,items);
     const updated=next.find(m=>m.id===id);
     if(updated)saveMemberToFs(updated).catch(()=>{});
@@ -2688,6 +2689,25 @@ function App(){
   const removeDiaryDay=(date)=>{const del=diaryRecords.filter(r=>r.date===date);del.forEach(r=>{photoIdsOf(r).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(r).catch(()=>{});});persist(members,items.filter(r=>!(r.type==="diary"&&r.space===tab&&r.date===date)));};
   // 元気の推移グラフ（5段階を score 化。古い順）
   const energyPts=useMemo(()=>[...diaryRecords].reverse().filter(r=>r.energy&&diaryMeta(DIARY_ENERGY,r.energy)).map(r=>({date:r.date,value:diaryMeta(DIARY_ENERGY,r.energy).score})),[diaryRecords]);
+  // 睡眠時間・食欲の推移（今日のようすの記録から。子ども/自分の傾向グラフに再利用）
+  const sleepPts=useMemo(()=>[...diaryRecords].reverse().filter(r=>r.sleep!=null&&r.sleep!=="").map(r=>({date:r.date,value:Number(r.sleep)})).filter(p=>!isNaN(p.value)),[diaryRecords]);
+  const appetitePts=useMemo(()=>[...diaryRecords].reverse().filter(r=>r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)).map(r=>({date:r.date,value:diaryMeta(DIARY_APPETITE,r.appetite).score})),[diaryRecords]);
+  // 「最近どう？」ふりかえり（子ども・自分）：今月と先月を事実ベースで並べる。評価・診断はしない。
+  const selfReview=useMemo(()=>{
+    if(curKind==="pet")return null;
+    const thisMo=todayIso.slice(0,7);
+    const d=new Date();const lastMo=`${new Date(d.getFullYear(),d.getMonth()-1,1).getFullYear()}-${String(new Date(d.getFullYear(),d.getMonth()-1,1).getMonth()+1).padStart(2,"0")}`;
+    const inMo=(dt,mo)=>(dt||"").slice(0,7)===mo;
+    const dDays=(mo)=>new Set(diaryRecords.filter(r=>inMo(r.date,mo)).map(r=>r.date)).size;
+    const sleepAvg=(mo)=>{const v=diaryRecords.filter(r=>inMo(r.date,mo)&&r.sleep!=null&&r.sleep!=="").map(r=>Number(r.sleep)).filter(n=>!isNaN(n));return v.length?v.reduce((s,n)=>s+n,0)/v.length:null;};
+    const logCount=(mo)=>{let n=0;items.filter(x=>x.space===tab&&x.type==="chore").forEach(c=>{(c.history||[]).forEach(dt=>{if(inMo(dt,mo))n++;});});items.filter(x=>x.space===tab&&x.type==="routine").forEach(r=>{if(r.doneDate&&inMo(r.doneDate,mo))n++;});return n;};
+    const moveCount=(mo)=>walkRecords.filter(w=>inMo(w.date,mo)).length;
+    const openTasks=items.filter(x=>x.space===tab&&(x.type==="care"||x.type==="event")&&x.dueDate&&!x.done).length;
+    const cur={days:dDays(thisMo),sleep:sleepAvg(thisMo),logs:logCount(thisMo),moves:moveCount(thisMo)};
+    const prev={days:dDays(lastMo),sleep:sleepAvg(lastMo),logs:logCount(lastMo),moves:moveCount(lastMo)};
+    const any=cur.days||cur.logs||cur.moves||cur.sleep!=null||prev.days||prev.logs;
+    return any?{cur,prev,openTasks}:null;
+  },[curKind,diaryRecords,items,tab,walkRecords,todayIso]);
   const setDiary=(patch)=>setDiaryDraft(d=>({...d,...patch}));
   const toggleSymptom=(k)=>setDiaryDraft(d=>({...d,symptoms:(d.symptoms||[]).includes(k)?d.symptoms.filter(s=>s!==k):[...(d.symptoms||[]),k]}));
   const pickDiaryPhoto=async(e)=>{
@@ -4026,14 +4046,14 @@ function App(){
               const sub=isPet
                 ?([activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?"ねこ":activeMember.species==="dog"?"いぬ":"ペット"))
                 :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||ptLabel);
-              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setProfileOpen(true);};
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
                   <button className="yl-hero-photo" onClick={openEdit} aria-label="写真・プロフィールを編集">
                     {photo?<img src={photo} alt=""/>:<span className="yl-hero-ph"><Icon name="camera" size={26}/><span>写真を追加</span></span>}
                   </button>
                   <div className="yl-hero-body">
-                    <h2 className="yl-hero-name">{activeMember.name}</h2>
+                    <h2 className="yl-hero-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</h2>
                     <p className="yl-hero-sub">{sub}</p>
                     {memo?<span className="yl-hero-memorial"><Icon name="sparkles" size={13}/> 虹の橋へ {fmtBirthday(activeMember.memorial)}{together?`・${together}日間ありがとう`:""}</span>:<span className={"yl-hero-status lv-"+lv}><span className="yl-hero-dot"/>{statusText}</span>}
                   </div>
@@ -4058,6 +4078,7 @@ function App(){
                         {editAvatar&&<button className="yl-editavatar-clear" onClick={()=>setEditAvatar("")}>絵文字に戻す</button>}
                       </div>
                       <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder="名前" autoFocus/>
+                      {activeMember.kind==="person"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> ニックネーム（任意）<input className="yl-input sm" style={{marginTop:4}} value={editNickname} onChange={e=>setEditNickname(e.target.value)} placeholder="例：ゆいちゃん / ゆいたん"/></label>}
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="folder" size={14}/> フォルダ（分類・任意）<input className="yl-input sm" style={{marginTop:4}} value={editGroup} onChange={e=>setEditGroup(e.target.value)} placeholder={activeMember.kind==="person"?"例：ご家族 / 2階の親 / 実家":"例：犬たち / ハムスター / 2階の子"}/></label>
                       <div className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="palette" size={14}/> カレンダーの色<span className="yl-colorrow">{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf(activeMember.id)===col?" on":"")} style={{background:col}} onClick={()=>setMemberColor(col)} aria-label="色を選ぶ"/>)}</span><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>カレンダーで見分けやすく。</span></div>
                       <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> 誕生日（年は任意）<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
@@ -4080,7 +4101,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {activeMember.name} の{KIND_STYLE[activeMember.kind].word}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");}}><Icon name="pencil" size={15}/></button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
@@ -4570,6 +4591,8 @@ function App(){
                     <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}><Icon name="note" size={18}/> 体調を記録</button>
                   )}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
+                  {curKind!=="pet"&&sleepPts.length>1&&<MiniChart points={sleepPts} unit="h" color="#6F7BB3" label="睡眠時間の推移"/>}
+                  {curKind!=="pet"&&appetitePts.length>1&&<MiniChart points={appetitePts} unit="" color="#C77A2E" label="食欲の推移（3段階）"/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">「体調を記録」から残せます</p>}
                   {diaryByDate.length>0&&(
                     <ul className="yl-daycards">
@@ -4639,6 +4662,19 @@ function App(){
                   )}
                 </section>
               )});
+              if(selfReview)defs.push({key:"review",el:(()=>{const{cur,prev,openTasks}=selfReview;const dDays=cur.days-prev.days;const dLogs=cur.logs-prev.logs;const dSleep=(cur.sleep!=null&&prev.sleep!=null)?cur.sleep-prev.sleep:null;const parts=[];if(dDays!==0)parts.push(`記録 ${dDays>0?"+":""}${dDays}日`);if(dSleep!=null&&Math.abs(dSleep)>=0.1)parts.push(`睡眠 ${dSleep>0?"+":""}${dSleep.toFixed(1)}h`);if(dLogs!==0)parts.push(`やること ${dLogs>0?"+":""}${dLogs}回`);return(
+                <section className="yl-vetcard">
+                  <div className="yl-walkrev-head" style={{marginBottom:10}}><span className="yl-walkrev-title"><Icon name="activity" size={14}/> 今月のふりかえり</span></div>
+                  <div className="yl-summary-row">
+                    <div className="yl-stat"><span className="yl-stat-n">{cur.days}</span><span className="yl-stat-l">体調の記録（日）</span></div>
+                    <div className="yl-stat"><span className="yl-stat-n">{cur.sleep!=null?cur.sleep.toFixed(1):"—"}</span><span className="yl-stat-l">平均睡眠(h)</span></div>
+                    <div className="yl-stat"><span className="yl-stat-n">{curKind==="me"?cur.moves:cur.logs}</span><span className="yl-stat-l">{curKind==="me"?"運動の記録":"やること記録"}</span></div>
+                  </div>
+                  {parts.length>0&&<p className="yl-set-desc" style={{marginTop:10}}>先月とくらべて：{parts.join("・")}</p>}
+                  {openTasks>0&&<p className="yl-set-desc" style={{marginTop:6}}>未完了のやること：{openTasks}件</p>}
+                  <p className="yl-vetsum-note" style={{borderTop:"none",marginTop:8,paddingTop:0}}>※記録した事実をならべたものです。良し悪しの判定はしません。</p>
+                </section>
+              );})()});
               defs.push({key:"album",el:(
                 <section className="yl-album">
                   <div className="yl-routine-head">
@@ -5380,7 +5416,7 @@ function App(){
                 <div className="yl-vetsum-sec"><h3>{isPet?"この子について":"プロフィール"}</h3><ul>
                   {isPet
                     ?<li>名前：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
-                    :<li>名前：{activeMember.name}{activeMember.gender?`（${activeMember.gender}）`:""}</li>}
+                    :<li>名前：{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}{activeMember.gender?`・${activeMember.gender}`:""}</li>}
                   {bd&&<li>誕生日：{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</li>}
                   {wl&&<li>体重：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
                   {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
@@ -5419,7 +5455,7 @@ function App(){
             <div className="yl-lost">
               <p className="yl-lost-head">緊急カード</p>
               <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"👤"}</span>}</div>
-              <p className="yl-lost-name">{activeMember.name}</p>
+              <p className="yl-lost-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</p>
               {bd&&<p className="yl-lost-feats">{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</p>}
               <div className="yl-lost-info">
                 {allergy.length>0&&<p><b>アレルギー・禁忌</b> {allergy.map(c=>c.title+(c.body?`（${c.body}）`:"")).join("、")}</p>}
@@ -5450,7 +5486,7 @@ function App(){
             <div className="yl-lost">
               <p className="yl-lost-head">さがしています</p>
               <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"🐶"}</span>}</div>
-              <p className="yl-lost-name">{activeMember.name}</p>
+              <p className="yl-lost-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</p>
               {feats.length>0&&<p className="yl-lost-feats">{feats.join("・")}</p>}
               <div className="yl-lost-info">
                 {activeMember.microchip&&<p><b>マイクロチップ</b> {activeMember.microchip}</p>}
