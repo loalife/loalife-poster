@@ -1346,6 +1346,7 @@ function App(){
   const[colorDays,setColorDays]=useState(()=>{try{const s=JSON.parse(localStorage.getItem("loalife-colordays"));if(s&&s.warn>0&&s.alert>0)return s;}catch(e){}return{warn:7,alert:14};}); // お世話ログの色が変わる目安（黄/赤の日数）
   const persistColorDays=(next)=>{setColorDays(next);try{localStorage.setItem("loalife-colordays",JSON.stringify(next));}catch(e){}};
   const[vetOpen,setVetOpen]=useState(false); // 獣医さん用サマリー表示
+  const[handoverOpen,setHandoverOpen]=useState(false); // 預け先・ホテル用の引き継ぎシート
   const[vetDays,setVetDays]=useState(30); // サマリーの対象期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
@@ -4401,9 +4402,10 @@ function App(){
               )});
               if(curKind==="pet")defs.push({key:"vet",el:(
                 <section className="yl-vetcard">
-                  <h2 className="yl-routine-title" style={{marginBottom:8}}>獣医さん用サマリー</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>通院前に、記録を1枚にまとめて。</p>
-                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> サマリーを作成</button>
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>まとめて1枚に</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>通院・お預けのときに、記録を1枚で。</p>
+                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> 獣医さん用サマリー</button>
+                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> 預け先・お世話シート</button>
                 </section>
               )});
               if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
@@ -5319,6 +5321,44 @@ function App(){
           </div>
         </div>
       )}
+      {handoverOpen&&activeMember&&(()=>{
+        const foods=foodDefs;
+        const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
+        const allergy=cards.filter(c=>c.kind==="allergy");
+        const contacts=cards.filter(c=>c.kind==="hospital"||c.kind==="emergency"||c.kind==="insurance");
+        const notesCards=cards.filter(c=>c.kind==="other");
+        const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
+        const bd=activeMember.birthday;
+        return(
+        <div className="yl-overlay" onClick={()=>setHandoverOpen(false)}>
+          <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
+            <div className="yl-vetsum">
+              <div className="yl-vetsum-head">
+                <h2 className="yl-vetsum-title"><Icon name="note" size={18}/> {activeMember.name} のお世話シート</h2>
+                <p className="yl-vetsum-period">お預け・お留守番の引き継ぎ用／作成日 {fmtDate(todayIso)}</p>
+              </div>
+              <div className="yl-vetsum-grid">
+                <div className="yl-vetsum-sec"><h3>この子について</h3><ul>
+                  <li>名前：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
+                  {bd&&<li>誕生日：{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</li>}
+                  {wl&&<li>体重：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
+                  {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
+                </ul></div>
+                <div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>{d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>
+                <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>{m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>気をつけること（アレルギー・注意）</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">特になし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>連絡先（かかりつけ・緊急）</h3>{contacts.length?<ul>{contacts.map(c=><li key={c.id}>{cardMeta(c.kind).emoji} {c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報カード」に登録できます）</p>}</div>
+                {notesCards.length>0&&<div className="yl-vetsum-sec"><h3>その他メモ</h3><ul>{notesCards.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul></div>}
+              </div>
+              <p className="yl-vetsum-note">※飼い主の記録に基づく引き継ぎメモです。詳しいことは飼い主にご確認ください。</p>
+            </div>
+            <div className="yl-modal-btns yl-noprint">
+              <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>とじる</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+            </div>
+          </div>
+        </div>
+      );})()}
       {inputSheet==="feed"&&(()=>{
         const baseNow=feedServing.trim()!==""&&Number(feedServing)>0?Number(feedServing):servingG;
         const previewG=feedUnit==="serving"&&baseNow?Math.round(feedMult*baseNow):null;
