@@ -3242,6 +3242,28 @@ function App(){
       }
       if(tip)out.push({cat:"tip",...tip});
     }
+    // 🟡 気づき：体重の変化 → フード量の見直し（3週間以上の間隔で5%以上・断定はしない）
+    petsLive.forEach(m=>{
+      const ws=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null&&x.date).sort((a,b)=>a.date.localeCompare(b.date));
+      if(ws.length>=2){
+        const latest=ws[ws.length-1];let base=null;
+        for(let i=ws.length-2;i>=0;i--){if((new Date(latest.date)-new Date(ws[i].date))/86400000>=21){base=ws[i];break;}}
+        if(base&&base.weight>0){const diff=(latest.weight-base.weight)/base.weight;if(Math.abs(diff)>=0.05)
+          out.push({id:`insight:weight:${m.id}:${latest.date}`,cat:"insight",title:`${m.name}の体重が${diff>0?"増えて":"減って"}います`,body:`${base.weight}kg → ${latest.weight}kg。フード量を見直すタイミングかも`,actionLabel:"体重・フードを見る",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+      }
+    });
+    // 🟡 気づき：やわらかめのうんちが続く（直近5日で3回以上・受診の目安として。診断はしない）
+    petsLive.forEach(m=>{
+      const recent=items.filter(x=>x.space===m.id&&x.type==="toilet"&&x.tkind==="poop"&&x.bristol!=null&&x.date&&(-daysUntil(x.date))<=5);
+      if(recent.length>=3&&recent.filter(x=>x.bristol>=6).length>=3)
+        out.push({id:`insight:poop:${m.id}:${todayIso}`,cat:"insight",title:`${m.name}のうんちがやわらかめの日が続いています`,body:"数日続くようなら受診の目安に。フードや水分もふり返ってみて",actionLabel:"トイレ記録を見る",go:()=>{setTab(m.id);setPersonSeg("record");}});
+    });
+    // 🟢 提案：シニア期の子へ（年齢ベース・月1回・やさしい助言）
+    petsLive.forEach(m=>{
+      if(!m.birthday)return;const mo=monthsOld(m.birthday);if(mo==null)return;
+      if(mo>=(m.species==="cat"?132:84))
+        out.push({id:`tip:senior:${m.id}:${todayIso.slice(0,7)}`,cat:"tip",title:`${m.name}はシニア期`,body:"健診の回数を少し増やしたり、関節・歯・体重を気にかけてあげると安心です"});
+    });
     // 💕 思い出：去年の今日（最大2件）
     onThisDay.slice(0,2).forEach(({item,yearsAgo})=>{
       out.push({id:`memory:${item.id}:${todayIso}`,cat:"memory",title:`${yearsAgo}年前の今日`,body:item.note||(item.title&&item.title!=="思い出"?item.title:"思い出の1枚")+(item.space?`（${nm(item.space)}）`:""),actionLabel:"思い出を見る",go:()=>{const pid=firstPhotoId(item);if(pid&&photos[pid])viewPhoto(pid);else{setTab(item.space);setPersonSeg("record");}}});
