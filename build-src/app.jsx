@@ -1347,6 +1347,7 @@ function App(){
   const persistColorDays=(next)=>{setColorDays(next);try{localStorage.setItem("loalife-colordays",JSON.stringify(next));}catch(e){}};
   const[vetOpen,setVetOpen]=useState(false); // 獣医さん用サマリー表示
   const[handoverOpen,setHandoverOpen]=useState(false); // 預け先・ホテル用の引き継ぎシート
+  const[lostOpen,setLostOpen]=useState(false); // 迷子ポスター（オフライン表示・印刷）
   const[vetDays,setVetDays]=useState(30); // サマリーの対象期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
@@ -4416,6 +4417,7 @@ function App(){
                   <p className="yl-set-desc" style={{marginBottom:10}}>通院・お預けのときに、記録を1枚で。</p>
                   <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> 獣医さん用サマリー</button>
                   <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> 預け先・お世話シート</button>
+                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setLostOpen(true)}><Icon name="alert" size={18}/> 迷子ポスター</button>
                 </section>
               )});
               if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
@@ -5376,6 +5378,36 @@ function App(){
             </div>
             <div className="yl-modal-btns yl-noprint">
               <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>とじる</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+            </div>
+          </div>
+        </div>
+      );})()}
+      {lostOpen&&activeMember&&(()=>{
+        const av=activeMember.avatar&&photos[activeMember.avatar];
+        const feats=[activeMember.species==="cat"?"猫":activeMember.species==="other"?"":"犬",activeMember.breed,activeMember.coat&&`毛色：${activeMember.coat}`,activeMember.gender,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean);
+        const contacts=cards.filter(c=>c.kind==="emergency"||c.kind==="hospital");
+        const notes=cards.filter(c=>c.kind==="other");
+        return(
+        <div className="yl-overlay" onClick={()=>setLostOpen(false)}>
+          <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
+            <div className="yl-lost">
+              <p className="yl-lost-head">さがしています</p>
+              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"🐶"}</span>}</div>
+              <p className="yl-lost-name">{activeMember.name}</p>
+              {feats.length>0&&<p className="yl-lost-feats">{feats.join("・")}</p>}
+              <div className="yl-lost-info">
+                {activeMember.microchip&&<p><b>マイクロチップ</b> {activeMember.microchip}</p>}
+                {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
+              </div>
+              <div className="yl-lost-contact">
+                <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
+                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に緊急連絡先を登録すると、ここに表示されます</p>}
+              </div>
+              <p className="yl-lost-note">※印刷して掲示したり、画面を見せてご協力をお願いできます。電波がなくても表示できます。</p>
+            </div>
+            <div className="yl-modal-btns yl-noprint">
+              <button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button>
               <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
             </div>
           </div>
