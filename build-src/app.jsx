@@ -2659,6 +2659,12 @@ function App(){
   // --- 散歩記録（開始・終了／時間・距離・GPSルート）---
   const walkRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="walk").sort((a,b)=>(b.start||0)-(a.start||0)),[items,tab]);
   const walkMonthStats=useMemo(()=>{const mo=todayIso.slice(0,7);const list=walkRecords.filter(w=>(w.date||"").slice(0,7)===mo);return{count:list.length,km:list.reduce((s,w)=>s+(w.distanceM||0),0)/1000};},[walkRecords,todayIso]);
+  // おさんぽの振り返り：直近6か月の距離・回数・時間（ごほうび的なふりかえり用）
+  const walkMonthly=useMemo(()=>{
+    const map={};walkRecords.forEach(w=>{const mo=(w.date||"").slice(0,7);if(!mo)return;if(!map[mo])map[mo]={km:0,count:0,sec:0};map[mo].km+=(w.distanceM||0)/1000;map[mo].count++;map[mo].sec+=(w.durationSec||0);});
+    const d=new Date();const arr=[];for(let i=5;i>=0;i--){const dt=new Date(d.getFullYear(),d.getMonth()-i,1);const key=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;const m=map[key]||{km:0,count:0,sec:0};arr.push({key,label:(dt.getMonth()+1)+"月",km:m.km,count:m.count,sec:m.sec});}
+    return arr;
+  },[walkRecords]);
   const walkPersist=(w)=>{try{w?localStorage.setItem("loalife-walk",JSON.stringify(w)):localStorage.removeItem("loalife-walk");}catch(e){}};
   const onWalkPos=(pos)=>{const p={lat:pos.coords.latitude,lng:pos.coords.longitude,t:Date.now()};setWalk(prev=>{if(!prev)return prev;const route=prev.route||[];const last=route[route.length-1];let add=0;if(last){const d=haversineM(last,p);if(d<3)return prev;add=d;} // 3m未満のブレは無視
     const next={...prev,route:[...route,p],distanceM:(prev.distanceM||0)+add};walkPersist(next);return next;});};
@@ -4448,6 +4454,18 @@ function App(){
                       <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">距離</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:kmPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.km.toFixed(1)}<span className="yl-walkgoal-goal"> / {g.monthlyKm}km</span></span></div>
                       <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">回数</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:cntPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.count}<span className="yl-walkgoal-goal"> / {g.monthlyWalks}回</span></span></div>
                       <p className="yl-walkgoal-note">犬種{g.knownBreed?"":"（未設定→中型で計算）"}と年齢{g.knownAge?"":"（未設定→成犬で計算）"}からの<b>一般的な目安（参考値）</b>です。健康状態や個体差で必要な運動量は変わります。体調やかかりつけ獣医さんの助言に合わせて調整してください。</p>
+                    </div>
+                  );})()}
+                  {walkRecords.length>0&&(()=>{const maxKm=Math.max(0.1,...walkMonthly.map(m=>m.km));const cur=walkMonthly[walkMonthly.length-1],prev=walkMonthly[walkMonthly.length-2]||{km:0,count:0};const dkm=cur.km-prev.km;const totalKm=walkMonthly.reduce((s,m)=>s+m.km,0);return(
+                    <div className="yl-walkrev">
+                      <div className="yl-walkrev-head"><span className="yl-walkrev-title"><Icon name="activity" size={14}/> おさんぽの振り返り</span>{prev.km>0&&<span className={"yl-walkrev-delta"+(dkm>=0?" up":" down")}>先月比 {dkm>=0?"+":""}{dkm.toFixed(1)}km</span>}</div>
+                      <div className="yl-walkrev-bars">{walkMonthly.map((m,i)=>(
+                        <div key={m.key} className={"yl-walkrev-col"+(i===walkMonthly.length-1?" on":"")}>
+                          <span className="yl-walkrev-bar"><span className="yl-walkrev-fill" style={{height:Math.round(m.km/maxKm*100)+"%"}}/></span>
+                          <span className="yl-walkrev-mlabel">{m.label}</span>
+                        </div>
+                      ))}</div>
+                      <p className="yl-walkrev-sum">今月 <b>{cur.km.toFixed(1)}km</b>・<b>{cur.count}回</b>{cur.sec>0?`・${Math.round(cur.sec/60)}分`:""}　／　6か月合計 {totalKm.toFixed(1)}km</p>
                     </div>
                   );})()}
                   {walk&&walk.space===tab?(
