@@ -3421,7 +3421,7 @@ function App(){
               <p className="yl-share-desc">家族共有を使うには、Firebaseの設定が必要です。</p>
               <p className="yl-share-desc" style={{marginTop:8}}>build-src/firebase.js にFirebaseプロジェクトの設定を入力してください。</p>
             </div>
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button></div>
           </div>
         </div>
       );
@@ -3450,7 +3450,7 @@ function App(){
                 <button className="yl-linkbtn" style={{marginTop:8,alignSelf:"center"}} onClick={()=>{setAuthIsSignup(v=>!v);setShareError("");}}>{authIsSignup?"すでにアカウントがある方はこちら":"はじめての方（メールで新規登録）"}</button>
               </div>
             )}
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button></div>
           </div>
         </div>
       );
@@ -3495,7 +3495,7 @@ function App(){
               </>
             )}
             <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
               <button className="yl-modal-cancel" style={{color:"#B23A48"}} onClick={signOutUser}>サインアウト</button>
             </div>
           </div>
@@ -3518,7 +3518,7 @@ function App(){
           </div>
           <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p>
           <div className="yl-modal-btns">
-            <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>閉じる</button>
+            <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
             <button className="yl-modal-cancel" style={{color:"#B23A48"}} onClick={signOutUser}>サインアウト</button>
           </div>
         </div>
@@ -3999,7 +3999,7 @@ function App(){
               {weatherLocs.length>0&&<ul className="yl-wxmanage">{weatherLocs.map((l,i)=>(
                 <li key={l.id} className="yl-wxmrow">
                   {wxRename&&wxRename.id===l.id?(
-                    <span className="yl-wxm-edit"><input className="yl-input sm" value={wxRename.val} onChange={e=>setWxRename({id:l.id,val:e.target.value})} onKeyDown={e=>e.key==="Enter"&&(()=>{renamePlace(l.id,wxRename.val);setWxRename(null);})()} placeholder="地点名（例：自宅・実家・軽井沢）" autoFocus/><button className="yl-addbtn sm" onClick={()=>{renamePlace(l.id,wxRename.val);setWxRename(null);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setWxRename(null)}>取消</button></span>
+                    <span className="yl-wxm-edit"><input className="yl-input sm" value={wxRename.val} onChange={e=>setWxRename({id:l.id,val:e.target.value})} onKeyDown={e=>e.key==="Enter"&&(()=>{renamePlace(l.id,wxRename.val);setWxRename(null);})()} placeholder="地点名（例：自宅・実家・軽井沢）" autoFocus/><button className="yl-addbtn sm" onClick={()=>{renamePlace(l.id,wxRename.val);setWxRename(null);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setWxRename(null)}>キャンセル</button></span>
                   ):(<>
                     <span className="yl-wxm-name"><Icon name="pin" size={13}/> <span className="yl-wxm-nametext">{l.name}</span>{i===0&&<span className="yl-wxm-badge">先頭</span>}</span>
                     <span className="yl-wxm-acts">
@@ -5179,8 +5179,8 @@ function App(){
           </div>
         </div>
       )}
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> 場所</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder="例：〇〇病院 3F・△△公園"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder="予約ページ等のリンク"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> メモ</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder="持ち物・注意点など自由に" rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> 在庫（回分・任意）</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder="例：3（フィラリア等の買い足しめやすに）"/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> チェックリスト（持ち物など）</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label="チェック"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label="削除">×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder="項目を追加（例：保険証）"/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>閉じる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
-      {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?"思い出":"証明書"}</h3>{viewer.loading?<p className="yl-loading">読み込み中…</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?"思い出":"証明書"}/>:<p className="yl-empty">画像が見つかりませんでした</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>この写真を削除しますか？元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>やめる</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>削除する</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>削除</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>閉じる</button></div>}</div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">編集</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder="タイトル"/><div className="yl-optrow"><label className="yl-opt">期限<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">時間<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">繰り返し<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{o.label}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> 場所</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder="例：〇〇病院 3F・△△公園"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder="予約ページ等のリンク"/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> メモ</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder="持ち物・注意点など自由に" rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> 在庫（回分・任意）</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder="例：3（フィラリア等の買い足しめやすに）"/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> チェックリスト（持ち物など）</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label="チェック"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label="削除">×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder="項目を追加（例：保険証）"/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>とじる</button><button className="yl-addbtn modal" onClick={saveEdit}>保存</button></div></div></div>}
+      {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?"思い出":"証明書"}</h3>{viewer.loading?<p className="yl-loading">読み込み中…</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?"思い出":"証明書"}/>:<p className="yl-empty">画像が見つかりませんでした</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>この写真を削除しますか？元に戻せません。</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>やめる</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>削除する</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>削除</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>とじる</button></div>}</div></div>}
       {albumMoveOpen&&(()=>{const targets=spaces.filter(s=>s.id!==tab);return(
         <div className="yl-overlay" onClick={()=>setAlbumMoveOpen(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <h3 className="yl-modal-title">どの子へ移動しますか？</h3>
@@ -5199,7 +5199,7 @@ function App(){
           <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setAlbumMoveOpen(false)}>やめる</button></div>
         </div></div>
       );})()}
-      {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>閉じる</button></div></div></div>}
+      {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>とじる</button></div></div></div>}
       {mePicker&&<div className="yl-overlay" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたのアイコン・名前</h3>
         <div className="yl-editavatar">
           {meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{meEmoji}</span>}
@@ -5250,7 +5250,7 @@ function App(){
             {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>}
             <div className="yl-modal-btns">
               {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>とじる</button>
               <button className="yl-addbtn modal" onClick={saveLife}>保存</button>
             </div>
           </div>
@@ -5268,7 +5268,7 @@ function App(){
             </div>
             <div className="yl-modal-btns">
               {cardEdit.id&&<button className="yl-modal-cancel" onClick={()=>askDelete(cardEdit.title,()=>removeCard(cardEdit.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setCardEdit(null)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setCardEdit(null)}>とじる</button>
               <button className="yl-addbtn modal" onClick={saveCard}>保存</button>
             </div>
           </div>
@@ -5283,7 +5283,7 @@ function App(){
             <label className="yl-opt" style={{marginTop:10}}>日付（レシート遅れ・代理入力などの修正用）<input type="date" className="yl-date" value={expEdit.date} onChange={e=>setExpEdit(x=>({...x,date:e.target.value}))}/></label>
             <div className="yl-modal-btns">
               <button className="yl-modal-cancel" onClick={()=>askDelete(`${fmtDate(expEdit.date)}の支出`,()=>{removeExpense(expEdit.id);setExpEdit(null);})}>削除</button>
-              <button className="yl-modal-cancel" onClick={()=>setExpEdit(null)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setExpEdit(null)}>とじる</button>
               <button className="yl-addbtn modal" onClick={saveExpEdit}>保存</button>
             </div>
           </div>
@@ -5754,7 +5754,7 @@ function App(){
                 💡 iPhoneでAppleカレンダーに追加するには：<br/>
                 <strong>SafariブラウザでこのサイトをURL直接開く</strong> → 📅タップ → .icsをダウンロード → カレンダーで開く
               </p>
-              <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCalPicker(null)}>閉じる</button></div>
+              <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCalPicker(null)}>とじる</button></div>
             </div>
           </div>
         );
@@ -5790,7 +5790,7 @@ function App(){
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> リマインド{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div>{routineEdit.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
             <div className="yl-modal-btns">
               {routineEdit.id&&<button className="yl-modal-cancel" onClick={()=>askDelete(routineEdit.title,()=>removeRoutine(routineEdit.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>とじる</button>
               <button className="yl-addbtn modal" onClick={saveRoutine}>保存</button>
             </div>
           </div>
@@ -5809,7 +5809,7 @@ function App(){
             {supplyEdit.lastBought&&<p className="yl-supply-preview">{supplyLine({lastBought:supplyEdit.lastBought,cycleDays:Number(supplyEdit.cycleDays)})}</p>}
             <div className="yl-modal-btns">
               {supplyEdit.id&&<button className="yl-modal-cancel" onClick={()=>askDelete(supplyEdit.title,()=>removeSupply(supplyEdit.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>閉じる</button>
+              <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>とじる</button>
               <button className="yl-addbtn modal" onClick={saveSupply}>保存</button>
             </div>
           </div>
