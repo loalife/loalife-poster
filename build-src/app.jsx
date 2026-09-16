@@ -3889,7 +3889,7 @@ function App(){
                     </section>
                   )}
                   <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
-                  {homeExpense.total===0&&lowSupplies.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>まだありません</p>}
+                  {homeExpense.total===0&&lowSupplies.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>記録はまだありません</p>}
                 </div>
               )}
             </div>
@@ -4183,7 +4183,7 @@ function App(){
               )});
               defs.push({key:"chore",el:(
                 <section className="yl-chore">
-                  <h2 className="yl-routine-title" style={{marginBottom:4}}>{curKind==="pet"?"毎日のお世話":"やることログ"}</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:4}}>{curKind==="pet"?"毎日のお世話":curKind==="me"?"セルフケアの記録":"お世話ログ"}</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>{curKind==="pet"?"「やった」で記録。前回からの経過が色でわかります。":"「やった」で記録。前回からの経過がひと目で。"}</p>
                   {chores.length>0&&(
                     <ul className="yl-chore-list">
@@ -4263,7 +4263,7 @@ function App(){
               defs.push({key:"supply",el:(
                 <section className="yl-supply">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">ストック</h2>
+                    <h2 className="yl-routine-title">消耗品の在庫</h2>
                   </div>
                   {supplies.length===0?(
                     <p className="yl-routine-empty">{tab==="me"?"サプリや日用品、切らさないように。":"フードなどを登録すると、残りを自動でお知らせ"}</p>
@@ -4366,7 +4366,7 @@ function App(){
               if(isMemberTab||curKind==="me")defs.push({key:"certs",el:(
                 <section className="yl-certs">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">健康・ケアの記録</h2>
+                    <h2 className="yl-routine-title">通院・証明書</h2>
                     {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>＋ 追加</button>}
                   </div>
                   {(certs.length>0||careNoPhoto.length>0)&&(()=>{
@@ -5682,7 +5682,7 @@ function App(){
           {key:"health",icon:"scale",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
           {key:"expense",icon:"wallet",label:"支出",freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
           {key:"memory",icon:"camera",label:"思い出",freq:2,used:has("memory"),act:()=>openLifeNew(todayIso,tab)},
-          {key:"supply",icon:"package",label:"ストック",freq:3,used:has("supply"),act:openSupplyCustom},
+          {key:"supply",icon:"package",label:"消耗品の在庫",freq:3,used:has("supply"),act:openSupplyCustom},
           {key:"card",icon:"pin",label:"大切な情報",freq:3,used:has("card"),act:()=>openCardNew("other")},
           ...(curKind==="person"?[{key:"belong",icon:"bag",label:"持ち物（曜日）",freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
           ...(!isMemberTab?[{key:"bday",icon:"gift",label:"誕生日・記念日",freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
