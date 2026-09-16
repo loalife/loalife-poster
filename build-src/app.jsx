@@ -1178,8 +1178,8 @@ function BdayInput({value,onChange}){
 const TOUR_STEPS=[
   {sel:'[data-tour="fab"]',title:"まずはここから記録",body:"右下の＋から、予定・ケア・ごはん・体重を記録。"},
   {sel:'[data-tour="nav-cal"]',title:"カレンダー",body:"家族の予定が一覧に。日付タップでふりかえり。"},
-  {sel:'[data-tour="nav-manage"]',title:"家族",body:"ペットや家族ごとに、ケア・お世話・支出をまとめて。"},
-  {sel:'[data-tour="membar"]',title:"プロフィールの切り替え",body:"名前をタップで「誰の」画面かを切り替え。"},
+  {sel:'[data-tour="nav-home"]',title:"家族ごとの記録",body:"ホームで家族をタップすると、その子の「毎日／管理」が開きます。"},
+  {sel:'[data-tour="membar"]',title:"だれの画面かを切り替え",body:"下の名前をタップで、見ている家族を切り替えられます。"},
 ];
 // 画面ごとの初回1ポイント案内（B）。キー＝画面、value＝{sel,title,body}
 const COACH_HINTS={
@@ -3560,7 +3560,12 @@ function App(){
 
       <div className="yl-wrap">
         <header className="yl-head">
-          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"毎日"}</h1>
+          {isPersonMode
+            ?<div className="yl-headseg" data-tour="headseg" role="tablist">
+              <button role="tab" aria-selected={personSeg==="record"} className={"yl-headseg-btn"+(personSeg==="record"?" on":"")} onClick={()=>setPersonSeg("record")}><Icon name="record" size={15}/> 毎日</button>
+              <button role="tab" aria-selected={personSeg==="manage"} className={"yl-headseg-btn"+(personSeg==="manage"?" on":"")} onClick={()=>setPersonSeg("manage")}><Icon name="users" size={15}/> 管理</button>
+            </div>
+            :<h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":"毎日"}</h1>}
           <div className="yl-head-actions">
             {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
             {FB_READY&&(
@@ -3834,13 +3839,14 @@ function App(){
                   const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
                   const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
                   return(
-                    <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>setTab(s.id)}>
+                    <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>{setTab(s.id);setMemberSel(s.id);setPersonSeg("record");}}>
                       <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
                       <span className="yl-status-body">
                         <span className="yl-status-name">{s.name}</span>
                         <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
                       </span>
                       <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
+                      <span className="yl-status-go" aria-hidden="true">›</span>
                     </button>
                   );
                 })}</div>
@@ -4884,13 +4890,9 @@ function App(){
 
       {/* 下部タブナビゲーション（常時表示・行動で分類） */}
       {!onboarding&&(()=>{
-        const personTarget=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";
-        const goSeg=(seg)=>{setTab(personTarget);setPersonSeg(seg);};
         const items=[
-          {key:"home",icon:"home",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
+          {key:"home",icon:"home",label:"ホーム",on:tab==="home"||isPersonMode,act:()=>setTab("home")},
           {key:"cal",icon:"calendar",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
-          {key:"record",icon:"record",label:"毎日",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
-          {key:"manage",icon:"users",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
           {key:"settings",icon:"settings",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
         ];
         return(
