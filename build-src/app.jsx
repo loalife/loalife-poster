@@ -2959,6 +2959,14 @@ function App(){
   };
   // 全メンバーの「そろそろ/切れた」ストック（ホーム表示用）
   const lowSupplies=useMemo(()=>items.filter(x=>x.type==="supply").map(x=>({item:x,st:supplyStatus(x)})).filter(o=>o.st&&o.st.tone!=="ok"),[items]);
+  // 「買い足すもの」を一元化：②消耗品(日数サイクル)＋①予防薬などの在庫(care.stock・回数)をまとめて urgency 順に。
+  // ③お薬コース(medcourse)は"服薬"なので含めない（毎日タブで管理）。データ構造は変えず表示だけ集約。
+  const restockList=useMemo(()=>{
+    const out=[];
+    lowSupplies.forEach(({item,st})=>out.push({id:item.id,item,kind:"supply",tone:st.tone,left:st.left,line:supplyLine(item)}));
+    items.filter(x=>x.type==="care"&&typeof x.stock==="number"&&x.stock<=1&&!x.done).forEach(x=>out.push({id:x.id,item:x,kind:"care",tone:x.stock<=0?"out":"low",left:x.stock,line:x.stock<=0?"在庫なし・買い足しを":`のこり${x.stock}回・そろそろ買い足し`}));
+    return out.sort((a,b)=>{const ta=a.tone==="out"?0:1,tb=b.tone==="out"?0:1;return ta-tb||((a.left??999)-(b.left??999));});
+  },[lowSupplies,items]);
   // ホームの支出サマリー（安心の場：総額＋メンバー別簡易比較＋急増のみ。詳細一覧は出さない）
   const homeExpense=useMemo(()=>{
     const ym=todayIso.slice(0,7);const pm=new Date(Number(ym.slice(0,4)),Number(ym.slice(5))-2,1);const prevYm=`${pm.getFullYear()}-${String(pm.getMonth()+1).padStart(2,"0")}`;
@@ -3856,7 +3864,7 @@ function App(){
             <div className="yl-layer">
               <button className="yl-layer-toggle" onClick={()=>setRecOpen(o=>!o)}>
                 <span className="yl-layer-label rec">記録</span>
-                {lowSupplies.length>0&&<span className="yl-layer-badge">買い足し {lowSupplies.length}</span>}
+                {restockList.length>0&&<span className="yl-layer-badge">買い足し {restockList.length}</span>}
                 <span className="yl-layer-arrow">{recOpen?"▲":"▼"}</span>
               </button>
               {recOpen&&(
@@ -3876,27 +3884,27 @@ function App(){
                       )}
                     </section>
                   )}
-                  {lowSupplies.length>0&&(
+                  {restockList.length>0&&(
                     <section className="yl-supply">
                       <h2 className="yl-sec-title">そろそろ買い足し</h2>
                       <ul className="yl-supply-list">
-                        {[...lowSupplies].sort((a,b)=>a.st.left-b.st.left).map(({item,st})=>(
-                          <li key={item.id} className={"yl-supply-item "+st.tone}>
-                            <button className="yl-supply-main" onClick={()=>setTab(item.space)}>
-                              <span className="yl-supply-emoji"><Icon name={guessIcon(item.title,"package")} size={18}/></span>
+                        {restockList.map(r=>(
+                          <li key={r.kind+":"+r.id} className={"yl-supply-item "+r.tone}>
+                            <button className="yl-supply-main" onClick={()=>{setTab(r.item.space);if(r.kind==="care")setPersonSeg("manage");}}>
+                              <span className="yl-supply-emoji"><Icon name={r.kind==="care"?"pill":guessIcon(r.item.title,"package")} size={18}/></span>
                               <span className="yl-supply-info">
-                                <span className="yl-supply-name">{item.title}<span className="yl-supply-who"> ・{nameOf(item.space)}</span></span>
-                                <span className={"yl-supply-line "+st.tone}>{supplyLine(item)}</span>
+                                <span className="yl-supply-name">{r.item.title}<span className="yl-supply-who"> ・{nameOf(r.item.space)}</span></span>
+                                <span className={"yl-supply-line "+r.tone}>{r.line}</span>
                               </span>
                             </button>
-                            <button className="yl-supply-bought" onClick={()=>markBought(item.id)}>買った</button>
+                            {r.kind==="supply"?<button className="yl-supply-bought" onClick={()=>markBought(r.item.id)}>買った</button>:<button className="yl-supply-bought" onClick={()=>{setTab(r.item.space);setPersonSeg("manage");}}>確認</button>}
                           </li>
                         ))}
                       </ul>
                     </section>
                   )}
                   <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
-                  {homeExpense.total===0&&lowSupplies.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>記録はまだありません</p>}
+                  {homeExpense.total===0&&restockList.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>記録はまだありません</p>}
                 </div>
               )}
             </div>
