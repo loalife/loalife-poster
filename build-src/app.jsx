@@ -1348,6 +1348,7 @@ function App(){
   const[vetOpen,setVetOpen]=useState(false); // 獣医さん用サマリー表示
   const[handoverOpen,setHandoverOpen]=useState(false); // 預け先・ホテル用の引き継ぎシート
   const[lostOpen,setLostOpen]=useState(false); // 迷子ポスター（オフライン表示・印刷）
+  const[emergencyCardOpen,setEmergencyCardOpen]=useState(false); // 緊急カード（子ども・自分／オフライン表示・印刷）
   const[vetDays,setVetDays]=useState(30); // サマリーの対象期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
   const[confirmAct,setConfirmAct]=useState(null); // 汎用「本当に削除しますか？」 {label,fn}
@@ -4420,6 +4421,14 @@ function App(){
                   <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setLostOpen(true)}><Icon name="alert" size={18}/> 迷子ポスター</button>
                 </section>
               )});
+              if(curKind==="person"||curKind==="me")defs.push({key:"sheet1",el:(
+                <section className="yl-vetcard">
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>まとめて1枚に</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>お預け・もしもの時に、1枚で。</p>
+                  {curKind==="person"&&<button className="yl-quick-big" onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> 今日の引き継ぎシート</button>}
+                  <button className="yl-quick-big" style={curKind==="person"?{marginTop:8}:undefined} onClick={()=>setEmergencyCardOpen(true)}><Icon name="alert" size={18}/> 緊急カード</button>
+                </section>
+              )});
               if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
                 <section className="yl-nursing">
                   <div className="yl-routine-head"><h2 className="yl-routine-title">授乳・ミルク</h2>{lastNursingTs&&!nursing&&<span className="yl-nursing-since">前回から {sinceLabel(lastNursingTs)}</span>}</div>
@@ -5346,6 +5355,7 @@ function App(){
         </div>
       )}
       {handoverOpen&&activeMember&&(()=>{
+        const isPet=curKind==="pet";
         const foods=foodDefs;
         const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
         const allergy=cards.filter(c=>c.kind==="allergy");
@@ -5353,28 +5363,38 @@ function App(){
         const notesCards=cards.filter(c=>c.kind==="other");
         const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
         const bd=activeMember.birthday;
+        // 子ども向け：今日のお世話ログ・今日のようす・家族への伝達を1枚に
+        const todayChores=chores.filter(c=>c.lastDone===todayIso);
+        const todayDiary=diaryRecords.filter(r=>r.date===todayIso);
+        const diarySum=(r)=>[r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&diaryMeta(DIARY_ENERGY,r.energy).label,r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&`食欲：${diaryMeta(DIARY_APPETITE,r.appetite).label}`,r.poop&&diaryMeta(DIARY_POOP,r.poop)&&`排便：${diaryMeta(DIARY_POOP,r.poop).label}`,r.sleep&&`睡眠${r.sleep}h`,(r.symptoms||[]).map(sk=>symptomMeta(sk)&&symptomMeta(sk).label).filter(Boolean).join("・"),r.note].filter(Boolean).join(" / ");
+        const notes=familyNotes.slice(0,5);
         return(
         <div className="yl-overlay" onClick={()=>setHandoverOpen(false)}>
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
             <div className="yl-vetsum">
               <div className="yl-vetsum-head">
-                <h2 className="yl-vetsum-title"><Icon name="note" size={18}/> {activeMember.name} のお世話シート</h2>
-                <p className="yl-vetsum-period">お預け・お留守番の引き継ぎ用／作成日 {fmtDate(todayIso)}</p>
+                <h2 className="yl-vetsum-title"><Icon name="note" size={18}/> {activeMember.name} の{isPet?"お世話シート":"引き継ぎシート"}</h2>
+                <p className="yl-vetsum-period">{isPet?"お預け・お留守番の引き継ぎ用":"お預け・共有用（今日のようす）"}／作成日 {fmtDate(todayIso)}</p>
               </div>
               <div className="yl-vetsum-grid">
-                <div className="yl-vetsum-sec"><h3>この子について</h3><ul>
-                  <li>名前：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
+                <div className="yl-vetsum-sec"><h3>{isPet?"この子について":"プロフィール"}</h3><ul>
+                  {isPet
+                    ?<li>名前：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
+                    :<li>名前：{activeMember.name}{activeMember.gender?`（${activeMember.gender}）`:""}</li>}
                   {bd&&<li>誕生日：{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</li>}
                   {wl&&<li>体重：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
                   {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
                 </ul></div>
-                <div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>{d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>
+                {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>{d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>}
+                {!isPet&&<div className="yl-vetsum-sec"><h3>今日のお世話</h3>{todayChores.length?<ul>{todayChores.map(c=><li key={c.id}>{c.emoji||"✓"} {c.title}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
+                {!isPet&&<div className="yl-vetsum-sec"><h3>今日のようす（体調）</h3>{todayDiary.length?<ul>{todayDiary.map(r=><li key={r.id}>{diarySum(r)||"記録あり"}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
                 <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>{m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
                 <div className="yl-vetsum-sec"><h3>気をつけること（アレルギー・注意）</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">特になし</p>}</div>
                 <div className="yl-vetsum-sec"><h3>連絡先（かかりつけ・緊急）</h3>{contacts.length?<ul>{contacts.map(c=><li key={c.id}>{cardMeta(c.kind).emoji} {c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報カード」に登録できます）</p>}</div>
+                {!isPet&&notes.length>0&&<div className="yl-vetsum-sec"><h3>家族からの伝達</h3><ul>{notes.map(n=><li key={n.id}>{n.text}{n.author?`（${n.author}）`:""}</li>)}</ul></div>}
                 {notesCards.length>0&&<div className="yl-vetsum-sec"><h3>その他メモ</h3><ul>{notesCards.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul></div>}
               </div>
-              <p className="yl-vetsum-note">※飼い主の記録に基づく引き継ぎメモです。詳しいことは飼い主にご確認ください。</p>
+              <p className="yl-vetsum-note">※{isPet?"飼い主":"ご家族"}の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
               <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>とじる</button>
@@ -5383,6 +5403,42 @@ function App(){
           </div>
         </div>
       );})()}
+      {emergencyCardOpen&&activeMember&&(()=>{
+        const av=activeMember.avatar&&photos[activeMember.avatar];
+        const bd=activeMember.birthday;
+        const allergy=cards.filter(c=>c.kind==="allergy");
+        const notes=cards.filter(c=>c.kind==="other");
+        const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
+        const emerg=cards.filter(c=>c.kind==="emergency");
+        const hosp=cards.filter(c=>c.kind==="hospital");
+        const insur=cards.filter(c=>c.kind==="insurance");
+        const contacts=[...emerg,...hosp,...insur];
+        return(
+        <div className="yl-overlay" onClick={()=>setEmergencyCardOpen(false)}>
+          <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
+            <div className="yl-lost">
+              <p className="yl-lost-head">緊急カード</p>
+              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"👤"}</span>}</div>
+              <p className="yl-lost-name">{activeMember.name}</p>
+              {bd&&<p className="yl-lost-feats">{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</p>}
+              <div className="yl-lost-info">
+                {allergy.length>0&&<p><b>アレルギー・禁忌</b> {allergy.map(c=>c.title+(c.body?`（${c.body}）`:"")).join("、")}</p>}
+                {meds.length>0&&<p><b>服薬中</b> {meds.map(m=>m.name).join("、")}</p>}
+                {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
+              </div>
+              <div className="yl-lost-contact">
+                <p className="yl-lost-clabel">緊急連絡先・かかりつけ</p>
+                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に連絡先を登録すると、ここに表示されます</p>}
+              </div>
+              <p className="yl-lost-note">※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。</p>
+            </div>
+            <div className="yl-modal-btns yl-noprint">
+              <button className="yl-modal-cancel" onClick={()=>setEmergencyCardOpen(false)}>とじる</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+            </div>
+          </div>
+        </div>
+        );})()}
       {lostOpen&&activeMember&&(()=>{
         const av=activeMember.avatar&&photos[activeMember.avatar];
         const feats=[activeMember.species==="cat"?"猫":activeMember.species==="other"?"":"犬",activeMember.breed,activeMember.coat&&`毛色：${activeMember.coat}`,activeMember.gender,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean);
