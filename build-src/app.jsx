@@ -3855,6 +3855,7 @@ function App(){
                   {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>}
                   <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> 夜間・救急</button>
                   {(members.some(m=>m.kind==="person")||meBirthday||items.some(x=>x.space==="me"&&x.type==="card"))&&<button className="yl-safety-btn" onClick={()=>{const sel=members.find(m=>m.id===memberSel&&m.kind==="person");const t=sel?sel.id:(members.find(m=>m.kind==="person")?.id||"me");setTab(t);setMemberSel(t);setPersonSeg("record");setEmergencyCardOpen(true);}}><Icon name="filetext" size={15}/> 緊急カード</button>}
+                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{const sel=petMembers.find(m=>m.id===memberSel);const t=sel?sel.id:petMembers[0].id;setTab(t);setMemberSel(t);setPersonSeg("manage");setLostOpen(true);}}><Icon name="paw" size={15}/> 迷子ポスター</button>}
                   <button className="yl-safety-btn" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={15}/> 防災・避難</button>
                 </div>
               </section>
