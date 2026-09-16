@@ -137,6 +137,13 @@ const RENEW_KINDS=new Set(["vaccine","rabies","filaria","checkup","dental","trim
 const isRenewCare=(x)=>!!(x&&x.type==="care"&&x.careKind&&RENEW_KINDS.has(x.careKind));
 // 「今日のLOALIFE」通知カテゴリ（優先順位＝この順）。todo=予定, insight=気づき, tip=提案, memory=思い出。
 const NOTICE_META={todo:{icon:"clock",label:"やること",order:0},insight:{icon:"activity",label:"気づき",order:1},tip:{icon:"sparkles",label:"提案",order:2},memory:{icon:"heart",label:"思い出",order:3}};
+// 記録タブの情報設計：セクションを「毎日つけるもの(record)」と「ときどき・もしも(manage)」に頻度で振り分ける。
+// この順序＝各タブでの既定の並び。SECSEG は key→どちらのタブに出すか。
+const SEC_DEF={
+  record:["diary","routine","chore","walk","toilet","nursing","feed","meds","help","prep"],
+  manage:["list","certs","health","growth","review","supply","expense","belong","allowance","foodreg","album","vet","sheet1","cards"],
+};
+const SECSEG=Object.fromEntries(Object.entries(SEC_DEF).flatMap(([seg,keys])=>keys.map(k=>[k,seg])));
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -1452,7 +1459,7 @@ function App(){
   // 人/ペット/わたし画面の表示セグメント（見せ方だけ：today/record/info。データは共通）
   const[personSeg,setPersonSeg]=useState(()=>{try{return localStorage.getItem("loalife-personseg")||"record";}catch(e){return"record";}});
   // 大項目（セクション）の並び順（タブごと）。UI設定なので別キーに保存し本体データから分離。
-  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:["walk","nursing","certs","toilet","health","meds","diary","vet","album"],manage:["routine","chore","list","prep","supply","expense","belong","cards"]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
+  const[secOrder,setSecOrder]=useState(()=>{const DEF={record:[...SEC_DEF.record],manage:[...SEC_DEF.manage]};try{const s=JSON.parse(localStorage.getItem("loalife-secorder-v2"));if(s&&typeof s==="object"){const merged={...DEF,...s};for(const seg of Object.keys(DEF)){const cur=Array.isArray(merged[seg])?[...merged[seg]]:[];DEF[seg].forEach(k=>{if(!cur.includes(k))cur.push(k);});merged[seg]=cur;}return merged;}}catch(e){}return DEF;});
   // 天気（登録地点の気温・湿度／熱中症注意）。位置は端末ローカルに保存。データ元＝Open-Meteo（APIキー不要）。
   // 複数地点対応：weatherLocs＝保存した地点リスト、weatherLocId＝選択中。weatherLoc は選択中の地点（既存ロジックはこれを参照）。
   const LOC_MAX=5;
@@ -2992,7 +2999,7 @@ function App(){
     arr.forEach(id=>{const u=next.find(y=>y.id===id);if(u)saveItemToFs(u).catch(()=>{});});
   };
   // 大項目セクションの並び替え（タブ単位）。順序は localStorage に保存。
-  const reorderSec=(seg,e)=>{const{active,over}=e;if(!over||active.id===over.id)return;setSecOrder(prev=>{const cur=prev[seg]||[];const oi=cur.indexOf(active.id),ni=cur.indexOf(over.id);if(oi<0||ni<0)return prev;const next={...prev,[seg]:arrayMove(cur,oi,ni)};try{localStorage.setItem("loalife-secorder",JSON.stringify(next));}catch(_){}return next;});};
+  const reorderSec=(seg,e)=>{const{active,over}=e;if(!over||active.id===over.id)return;setSecOrder(prev=>{const cur=prev[seg]||[];const oi=cur.indexOf(active.id),ni=cur.indexOf(over.id);if(oi<0||ni<0)return prev;const next={...prev,[seg]:arrayMove(cur,oi,ni)};try{localStorage.setItem("loalife-secorder-v2",JSON.stringify(next));}catch(_){}return next;});};
   const renderSecs=(seg,defs)=>{
     const order=secOrder[seg]||[];
     const od=[...defs].sort((a,b)=>{const ia=order.indexOf(a.key),ib=order.indexOf(b.key);return(ia<0?99:ia)-(ib<0?99:ib);});
@@ -3532,7 +3539,7 @@ function App(){
 
       <div className="yl-wrap">
         <header className="yl-head">
-          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"記録"}</h1>
+          <h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":personSeg==="manage"?"管理":"毎日"}</h1>
           <div className="yl-head-actions">
             {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
             {FB_READY&&(
@@ -4149,7 +4156,7 @@ function App(){
             {personSeg==="manage"&&(
               <div style={{marginBottom:12}}><button className="yl-chore-add" onClick={()=>setAdding(true)}><Icon name="plus" size={13}/> 家族・ペットを追加</button></div>
             )}
-            {personSeg==="manage"&&(()=>{const defs=[];
+            {isPersonMode&&(()=>{const defs=[];
               defs.push({key:"routine",el:(
                 <section className="yl-routine">
                   <div className="yl-routine-head">
@@ -4359,10 +4366,6 @@ function App(){
                   )}
                 </section>
               )});
-              return renderSecs("manage",defs);
-            })()}
-
-            {personSeg==="record"&&(()=>{const defs=[];
               if(isMemberTab||curKind==="me")defs.push({key:"certs",el:(
                 <section className="yl-certs">
                   <div className="yl-routine-head">
@@ -4732,10 +4735,6 @@ function App(){
                   )}
                 </section>
               )});
-              return renderSecs("record",defs);
-            })()}
-
-            {personSeg==="manage"&&(()=>{const defs=[];
               if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"help",el:(
                 <section className="yl-help-sec">
                   <div className="yl-routine-head"><h2 className="yl-routine-title">お手伝いポイント</h2><span className="yl-point-total"><Icon name="sparkles" size={14}/> 合計 {pointStats.total}pt<span className="yl-point-week">（今週 {pointStats.week}）</span></span></div>
@@ -4779,7 +4778,7 @@ function App(){
               )});
               if(curKind==="pet")defs.push({key:"foodreg",el:(
                 <section className="yl-foodreg">
-                  <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>フード・食事</h2></div>
+                  <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>フードの登録</h2></div>
                   <p className="yl-set-desc">よく使うフードを登録しておく。</p>
                   {foodDefs.length>0&&<ul className="yl-foodlist">{foodDefs.map(d=>(
                     <li key={d.id} className="yl-fooditem">
@@ -4814,7 +4813,7 @@ function App(){
                   )}
                 </section>
               )});
-              return renderSecs("manage",defs);
+              return renderSecs(personSeg,defs.filter(d=>(SECSEG[d.key]||"manage")===personSeg));
             })()}
           </>
         )}
@@ -4868,7 +4867,7 @@ function App(){
         const items=[
           {key:"home",icon:"home",label:"ホーム",on:tab==="home",act:()=>setTab("home")},
           {key:"cal",icon:"calendar",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
-          {key:"record",icon:"record",label:"記録",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
+          {key:"record",icon:"record",label:"毎日",on:isPersonMode&&personSeg==="record",act:()=>goSeg("record")},
           {key:"manage",icon:"users",label:"管理",on:isPersonMode&&personSeg==="manage",act:()=>goSeg("manage")},
           {key:"settings",icon:"settings",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
         ];
