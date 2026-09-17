@@ -5192,7 +5192,7 @@ function App(){
               {emoji:"💰",title:"支出",desc:"病院代も餌代も、何にいくらか見える。"},
               {emoji:"🛍",title:"ストック管理",desc:"フードやサプリ、切らす前にお知らせ。"},
               {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"明日の持ち物を、前の日にチェック。"},
-              {emoji:"📌",title:"大切な情報カード",desc:"いざという時の連絡先を、手元に。"},
+              {emoji:"📌",title:"大切な情報",desc:"いざという時の連絡先を、手元に。"},
               {emoji:"🔔",title:"通知・リマインド",desc:"大事な予定は、通知でそっとお知らせ。"},
               {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"長押しでドラッグ。好きな順番に。"},
             ].map((f,i)=>(
@@ -5477,7 +5477,7 @@ function App(){
                 {!isPet&&<div className="yl-vetsum-sec"><h3>今日のようす（体調）</h3>{todayDiary.length?<ul>{todayDiary.map(r=><li key={r.id}>{diarySum(r)||"記録あり"}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
                 <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>{m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
                 <div className="yl-vetsum-sec"><h3>気をつけること（アレルギー・注意）</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">特になし</p>}</div>
-                <div className="yl-vetsum-sec"><h3>連絡先（かかりつけ・緊急）</h3>{contacts.length?<ul>{contacts.map(c=><li key={c.id}>{cardMeta(c.kind).emoji} {c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報カード」に登録できます）</p>}</div>
+                <div className="yl-vetsum-sec"><h3>連絡先（かかりつけ・緊急）</h3>{contacts.length?<ul>{contacts.map(c=><li key={c.id}>{cardMeta(c.kind).emoji} {c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報」に登録できます）</p>}</div>
                 {!isPet&&notes.length>0&&<div className="yl-vetsum-sec"><h3>家族からの伝達</h3><ul>{notes.map(n=><li key={n.id}>{n.text}{n.author?`（${n.author}）`:""}</li>)}</ul></div>}
                 {notesCards.length>0&&<div className="yl-vetsum-sec"><h3>その他メモ</h3><ul>{notesCards.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul></div>}
               </div>
@@ -5518,9 +5518,9 @@ function App(){
               </div>
               <div className="yl-lost-contact">
                 <p className="yl-lost-clabel">緊急連絡先・かかりつけ</p>
-                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に連絡先を登録すると、ここに表示されます</p>}
+                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に連絡先を登録すると、ここに表示されます</p>}
               </div>
-              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const t=activeMember?activeMember.id:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");}}><Icon name="plus" size={13}/> 連絡先を増やす・SNS・情報を追加（情報カード）</button>
+              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const t=activeMember?activeMember.id:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先・情報を追加</button>
               <p className="yl-lost-note">※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
@@ -5551,9 +5551,9 @@ function App(){
               </div>
               <div className="yl-lost-contact">
                 <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
-                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報カード」に緊急連絡先を登録すると、ここに表示されます</p>}
+                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
               </div>
-              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setLostOpen(false);setTab(activeMember.id);setMemberSel(activeMember.id);setPersonSeg("manage");}}><Icon name="plus" size={13}/> 連絡先を増やす・SNS・特徴を追加（情報カードの「緊急連絡先／その他」）</button>
+              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setLostOpen(false);setTab(activeMember.id);setMemberSel(activeMember.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先・SNS・特徴を追加</button>
               <p className="yl-lost-note">※印刷して掲示したり、画面を見せてご協力をお願いできます。電波がなくても表示できます。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
