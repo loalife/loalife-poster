@@ -1190,7 +1190,8 @@ function BdayInput({value,onChange}){
 // 対象要素の実測位置(getBoundingClientRect)にスポットライトと吹き出しを重ねる。
 // 座標はベタ書きせず、要素をセレクタで探して毎フレーム追従（リサイズ・スクロールにも対応）。
 const TOUR_STEPS=[
-  {sel:'[data-tour="fab"]',title:"まずはここから記録",body:"右下の＋から、予定・ケア・ごはん・体重を記録。"},
+  {sel:'[data-tour="headseg"]',title:"「毎日」と「管理」で切り替え",body:"上のこのタブで切り替えます。毎日＝その日の記録、管理＝ケア予定・お世話・大切な情報など。"},
+  {sel:'[data-tour="fab"]',title:"記録はここから",body:"右下の＋から、予定・ケア・ごはん・体重などを記録できます。"},
   {sel:'[data-tour="nav-cal"]',title:"カレンダー",body:"家族の予定が一覧に。日付タップでふりかえり。"},
   {sel:'[data-tour="nav-home"]',title:"家族ごとに",body:"ホームで家族をタップするとその子のページへ。開いたら上の一覧でいつでも切り替えられます。"},
 ];
