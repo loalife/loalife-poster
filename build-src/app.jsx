@@ -3153,6 +3153,10 @@ function App(){
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?PERSON_EMOJIS:petEmojisFor(newSpecies);
   const spaces=useMemo(()=>[{id:"me",name:meName||"わたし",emoji:meEmoji,avatar:meAvatar||"",kind:"me"},...members],[members,meEmoji,meName,meAvatar]);
+  // 「わたし（自分）」を実際に使っているか。ペットだけ登録した人には空の自分を出さない（家族のようす等）。
+  const meUsed=useMemo(()=>!!(meBirthday||meAvatar||(meName&&meName.trim())||items.some(x=>x.space==="me")),[meBirthday,meAvatar,meName,items]);
+  // ホームの「家族のようす」「今日の調子」用：自分が未使用なら除外
+  const homeSpaces=useMemo(()=>meUsed?spaces:spaces.filter(s=>s.id!=="me"),[spaces,meUsed]);
   // フォルダ分け（多頭飼い）：未分類を先頭、その後グループ順
   const groupedMembers=useMemo(()=>{const order=[];const map={};members.forEach(m=>{const g=m.group||"";if(!(g in map)){map[g]=[];order.push(g);}map[g].push(m);});order.sort((a,b)=>a===""?-1:b===""?1:0);return order.map(g=>({group:g,members:map[g]}));},[members]);
   // スペース（自分/メンバー）の色（カレンダーの色別管理。自分で選べる）
@@ -3676,9 +3680,9 @@ function App(){
             );return null;})()}
 
             {/* 家族一覧：ホームの主役。タップでその子のページへ（メンバー中心ナビの入口） */}
-            <section className="yl-fammain">
+            {homeSpaces.length>0&&<section className="yl-fammain">
               <h2 className="yl-sec-title">家族のようす</h2>
-              <div className="yl-statusgrid">{spaces.map(s=>{
+              <div className="yl-statusgrid">{homeSpaces.map(s=>{
                 const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
                 const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
                 return(
@@ -3693,7 +3697,7 @@ function App(){
                   </button>
                 );
               })}</div>
-            </section>
+            </section>}
 
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
@@ -3801,7 +3805,7 @@ function App(){
                 </section>
               )}
               {/* ワンタップ記録：今日まだ体調記録が無いメンバーを、押すだけで完了できる導線 */}
-              {(()=>{const need=spaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
+              {(()=>{const need=homeSpaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
                 <section className="yl-quickcond">
                   <p className="yl-quickcond-label">今日のみんなの調子は？</p>
                   <ul className="yl-quickcond-list">
