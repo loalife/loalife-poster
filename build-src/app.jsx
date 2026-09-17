@@ -3637,6 +3637,26 @@ function App(){
               </section>
             )}
 
+            {/* 家族一覧：ホームの主役。タップでその子のページへ（メンバー中心ナビの入口） */}
+            <section className="yl-fammain">
+              <h2 className="yl-sec-title">みんなの様子</h2>
+              <div className="yl-statusgrid">{spaces.map(s=>{
+                const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
+                const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
+                return(
+                  <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>{setTab(s.id);setMemberSel(s.id);setPersonSeg("record");}}>
+                    <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
+                    <span className="yl-status-body">
+                      <span className="yl-status-name">{s.name}</span>
+                      <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
+                    </span>
+                    <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
+                    <span className="yl-status-go" aria-hidden="true">›</span>
+                  </button>
+                );
+              })}</div>
+            </section>
+
             {/* 天気・お散歩カードは犬がいる時(hasWalker)だけ表示。犬なしユーザーの主役にしない */}
             {hasWalker&&(weatherLoc?(<>
               {/* 地点切り替え：現在地／登録した場所を横並びで。タップでその地点の天気に切り替える。 */}
@@ -3841,26 +3861,8 @@ function App(){
             </div>
             );})()}
 
-            {/* ━━ 第2層「コンディション」：みんなの様子と習慣の軽チェック ━━ */}
+            {/* ━━ 第2層「コンディション」：習慣と思い出の軽チェック ━━ */}
             <div className="yl-layer">
-              <section>
-                <h2 className="yl-sec-title">みんなの様子</h2>
-                <div className="yl-statusgrid">{spaces.map(s=>{
-                  const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
-                  const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
-                  return(
-                    <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>{setTab(s.id);setMemberSel(s.id);setPersonSeg("record");}}>
-                      <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
-                      <span className="yl-status-body">
-                        <span className="yl-status-name">{s.name}</span>
-                        <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
-                      </span>
-                      <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
-                      <span className="yl-status-go" aria-hidden="true">›</span>
-                    </button>
-                  );
-                })}</div>
-              </section>
               {allRoutines.length>0&&(
                 <section className="yl-habit">
                   <span className="yl-habit-label">今日の習慣</span>
