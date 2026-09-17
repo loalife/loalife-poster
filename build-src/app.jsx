@@ -2986,11 +2986,16 @@ function App(){
     const brAvg=br.length?Math.round(br.reduce((a,b)=>a+b,0)/br.length*10)/10:null;
     const healths=items.filter(x=>x.space===sp&&x.type==="health"&&x.weight!=null&&inRange(x.date)).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
     const wLatest=healths.length?healths[healths.length-1]:null;const wFirst=healths.length?healths[0]:null;
+    const wSeries=healths.map(h=>({value:h.weight,date:h.date}));
+    const wUnit=wLatest?(wLatest.wunit||"kg"):"kg";
     const syms={};items.filter(x=>x.space===sp&&x.type==="diary"&&inRange(x.date)).forEach(r=>(r.symptoms||[]).forEach(s=>{syms[s]=(syms[s]||0)+1;}));
     const symList=Object.keys(syms).map(k=>({k,label:(symptomMeta(k)||{}).label||k,n:syms[k]})).sort((a,b)=>b.n-a.n);
+    // 元気（5段階）の平均：日々の記録と連動した体調の傾向
+    const ens=items.filter(x=>x.space===sp&&x.type==="diary"&&inRange(x.date)&&x.energy).map(r=>{const em=DIARY_ENERGY.find(e=>e.key===r.energy);return em?em.score:null;}).filter(v=>v!=null);
+    const energyAvg=ens.length?Math.round(ens.reduce((a,b)=>a+b,0)/ens.length*10)/10:null;
     const careNext=items.filter(x=>x.space===sp&&x.type==="care"&&x.dueDate&&!x.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,8).map(x=>({title:x.title,date:x.dueDate,emoji:x.emoji||"💉"}));
     const chores=items.filter(x=>x.space===sp&&x.type==="chore"&&x.lastDone).sort((a,b)=>(b.lastDone||"").localeCompare(a.lastDone||"")).slice(0,8).map(x=>({title:x.title,date:x.lastDone,emoji:x.emoji||"🧹"}));
-    return{from,to:todayIso,pee:trate("pee"),poop:trate("poop"),brAvg,brCount:br.length,wLatest,wFirst,symList,careNext,chores};
+    return{from,to:todayIso,pee:trate("pee"),poop:trate("poop"),brAvg,brCount:br.length,wLatest,wFirst,wSeries,wUnit,symList,energyAvg,energyN:ens.length,careNext,chores};
   },[items,activeMember,vetDays,todayIso]);
   // お世話ログの実施日（前回やった日）を後から修正。履歴の最新分を置き換え、最新日をlastDoneに。
   const saveChoreDate=(id,newDate)=>{
@@ -5434,7 +5439,11 @@ function App(){
           </div>
         </div>
       )}
-      {vetOpen&&activeMember&&vetSummary&&(
+      {vetOpen&&activeMember&&vetSummary&&(()=>{
+        const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
+        const foods=foodDefs;
+        const wChange=vetSummary.wLatest&&vetSummary.wFirst&&vetSummary.wFirst!==vetSummary.wLatest?Math.round((vetSummary.wLatest.weight-vetSummary.wFirst.weight)*10)/10:null;
+        return(
         <div className="yl-overlay" onClick={()=>setVetOpen(false)}>
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
             <div className="yl-noprint yl-vet-toolbar"><span className="yl-vet-range">{[7,30,90].map(d=><button key={d} className={"yl-toilet-range"+(vetDays===d?" on":"")} onClick={()=>setVetDays(d)}>{d}日</button>)}</span></div>
@@ -5445,22 +5454,30 @@ function App(){
               </div>
               <div className="yl-vetsum-grid">
                 <div className="yl-vetsum-sec"><h3>基本情報</h3><ul>
-                  <li>種別：{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}</li>
-                  {activeMember.birthday&&<li>誕生日：{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</li>}
-                  {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
+                  <li><b>種別</b>：{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}</li>
+                  {activeMember.birthday&&<li><b>誕生日</b>：{fmtBirthday(activeMember.birthday)}{ageLabel(activeMember.birthday)?`（${ageLabel(activeMember.birthday)}）`:""}</li>}
+                  {activeMember.microchip&&<li><b>マイクロチップ</b>：{activeMember.microchip}</li>}
                 </ul></div>
-                <div className="yl-vetsum-sec"><h3>体重</h3>{vetSummary.wLatest?<ul>
-                  <li>最新：{vetSummary.wLatest.weight}{vetSummary.wLatest.wunit||"kg"}（{fmtDate(vetSummary.wLatest.date)}）</li>
-                  {vetSummary.wFirst&&vetSummary.wFirst!==vetSummary.wLatest&&<li>期間の変化：{(vetSummary.wLatest.weight-vetSummary.wFirst.weight>=0?"+":"")}{Math.round((vetSummary.wLatest.weight-vetSummary.wFirst.weight)*10)/10}{vetSummary.wLatest.wunit||"kg"}（{fmtDate(vetSummary.wFirst.date)}比）</li>}
-                </ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+                <div className="yl-vetsum-sec wide"><h3>体重</h3>
+                  {vetSummary.wSeries.length>=2&&<div className="yl-vetsum-chart"><MiniChart points={vetSummary.wSeries} unit={vetSummary.wUnit} color="#E39A5C" label="体重の推移"/></div>}
+                  {vetSummary.wLatest?<ul>
+                    <li><b>直近</b>：{vetSummary.wLatest.weight}{vetSummary.wUnit}（{fmtDate(vetSummary.wLatest.date)}）</li>
+                    {wChange!=null&&<li><b>期間の増減</b>：{(wChange>=0?"+":"")}{wChange}{vetSummary.wUnit}（{fmtDate(vetSummary.wFirst.date)}比）</li>}
+                  </ul>:<p className="yl-vetsum-none">記録なし（毎日の記録に体重を入れると推移が出ます）</p>}
+                </div>
                 <div className="yl-vetsum-sec"><h3>トイレ</h3><ul>
                   <li>おしっこ成功率：{vetSummary.pee.total?`${vetSummary.pee.rate}%（${vetSummary.pee.total}回）`:"記録なし"}</li>
                   <li>うんち成功率：{vetSummary.poop.total?`${vetSummary.poop.rate}%（${vetSummary.poop.total}回）`:"記録なし"}</li>
                   {vetSummary.brAvg!=null&&<li>うんちの硬さ平均：{vetSummary.brAvg}／7{bristolMeta(Math.round(vetSummary.brAvg))?`（${bristolMeta(Math.round(vetSummary.brAvg)).label}）`:""}</li>}
                 </ul></div>
-                <div className="yl-vetsum-sec"><h3>症状</h3>{vetSummary.symList.length?<ul>{vetSummary.symList.map(s=><li key={s.k}>{s.label} × {s.n}回</li>)}</ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
-                <div className="yl-vetsum-sec"><h3>予防・ワクチン等の次回予定</h3>{vetSummary.careNext.length?<ul>{vetSummary.careNext.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">予定なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>症状・体調</h3>{(vetSummary.energyAvg!=null||vetSummary.symList.length)?<ul>
+                  {vetSummary.energyAvg!=null&&<li>元気の平均：{vetSummary.energyAvg}／5（{vetSummary.energyN}回）</li>}
+                  {vetSummary.symList.map(s=><li key={s.k}>{s.label} × {s.n}回</li>)}
+                </ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+                <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
+                <div className={"yl-vetsum-sec"+(vetSummary.careNext.length?" highlight":"")}><h3><Icon name="syringe" size={13}/> 予防・ワクチン等の次回予定</h3>{vetSummary.careNext.length?<ul>{vetSummary.careNext.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">予定なし</p>}</div>
                 <div className="yl-vetsum-sec"><h3>最近のお世話</h3>{vetSummary.chores.length?<ul>{vetSummary.chores.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
+                {foods.length>0&&<div className="yl-vetsum-sec"><h3>フード・食事</h3><ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}</li>)}</ul></div>}
               </div>
               <p className="yl-vetsum-note">※本サマリーは飼い主の記録に基づくもので、診断ではありません。</p>
             </div>
@@ -5470,13 +5487,15 @@ function App(){
             </div>
           </div>
         </div>
-      )}
+        );})()}
       {handoverOpen&&activeMember&&(()=>{
         const isPet=curKind==="pet";
         const foods=foodDefs;
         const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
         const allergy=cards.filter(c=>c.kind==="allergy");
-        const contacts=cards.filter(c=>c.kind==="hospital"||c.kind==="emergency"||c.kind==="insurance");
+        const hospitals=cards.filter(c=>c.kind==="hospital");
+        const otherContacts=cards.filter(c=>c.kind==="emergency"||c.kind==="insurance");
+        const contactLi=(c)=>{const ph=isPhoneLike(c.body);return(<li key={c.id} className={ph?"yl-vetsum-contactline":undefined}>{cardMeta(c.kind).emoji} <b>{c.title}</b>{ph?<a className="yl-vetsum-tel" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>📞 {fmtJPPhone(c.body)}</a>:(c.body?`：${c.body}`:"")}</li>);};
         const notesCards=cards.filter(c=>c.kind==="other");
         const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
         const bd=activeMember.birthday;
@@ -5496,20 +5515,21 @@ function App(){
               <div className="yl-vetsum-grid">
                 <div className="yl-vetsum-sec"><h3>{isPet?"この子について":"プロフィール"}</h3><ul>
                   {isPet
-                    ?<li>名前：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
-                    :<li>名前：{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}{activeMember.gender?`・${activeMember.gender}`:""}</li>}
-                  {bd&&<li>誕生日：{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</li>}
-                  {wl&&<li>体重：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
-                  {activeMember.microchip&&<li>マイクロチップ：{activeMember.microchip}</li>}
+                    ?<li><b>名前</b>：{activeMember.name}（{activeMember.species==="cat"?"猫":activeMember.species==="other"?"その他":"犬"}{activeMember.breed?`・${activeMember.breed}`:""}）</li>
+                    :<li><b>名前</b>：{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}{activeMember.gender?`・${activeMember.gender}`:""}</li>}
+                  {bd&&<li><b>誕生日</b>：{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</li>}
+                  {wl&&<li><b>体重</b>：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
+                  {activeMember.microchip&&<li><b>マイクロチップ</b>：{activeMember.microchip}</li>}
                 </ul></div>
-                {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>{d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>}
+                {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>今日のお世話</h3>{todayChores.length?<ul>{todayChores.map(c=><li key={c.id}>{c.emoji||"✓"} {c.title}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>今日のようす（体調）</h3>{todayDiary.length?<ul>{todayDiary.map(r=><li key={r.id}>{diarySum(r)||"記録あり"}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
-                <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>{m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
-                <div className="yl-vetsum-sec"><h3>気をつけること（アレルギー・注意）</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">特になし</p>}</div>
-                <div className="yl-vetsum-sec"><h3>連絡先（かかりつけ・緊急）</h3>{contacts.length?<ul>{contacts.map(c=><li key={c.id}>{cardMeta(c.kind).emoji} {c.title}{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報」に登録できます）</p>}</div>
+                <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
+                <div className={"yl-vetsum-sec"+(allergy.length?" warn":"")}><h3>気をつけること（アレルギー・注意）</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}><b>{c.title}</b>{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">特になし</p>}</div>
+                <div className="yl-vetsum-sec wide contact"><h3><Icon name="stethoscope" size={13}/> {isPet?"かかりつけ動物病院":"かかりつけ病院"}</h3>{hospitals.length?<ul>{hospitals.map(contactLi)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報」に病院名・電話・住所を登録できます）</p>}</div>
+                <div className="yl-vetsum-sec wide contact"><h3><Icon name="phone" size={13}/> 緊急連絡先</h3>{otherContacts.length?<ul>{otherContacts.map(contactLi)}</ul>:<p className="yl-vetsum-none">未登録（「大切な情報」に登録できます）</p>}</div>
                 {!isPet&&notes.length>0&&<div className="yl-vetsum-sec"><h3>家族からの伝達</h3><ul>{notes.map(n=><li key={n.id}>{n.text}{n.author?`（${n.author}）`:""}</li>)}</ul></div>}
-                {notesCards.length>0&&<div className="yl-vetsum-sec"><h3>その他メモ</h3><ul>{notesCards.map(c=><li key={c.id}>{c.title}{c.body?`：${c.body}`:""}</li>)}</ul></div>}
+                {notesCards.length>0&&<div className="yl-vetsum-sec wide memo"><h3>その他メモ</h3><ul>{notesCards.map(c=><li key={c.id}><b>{c.title}</b>{c.body?`：${c.body}`:""}</li>)}</ul></div>}
               </div>
               <p className="yl-vetsum-note">※{isPet?"飼い主":"ご家族"}の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。</p>
             </div>
