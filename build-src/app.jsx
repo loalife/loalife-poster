@@ -2908,7 +2908,7 @@ function App(){
   useEffect(()=>{
     const missing=[];const seen={};
     items.forEach(x=>photoIdsOf(x).forEach(pid=>{if(!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}}));
-    members.forEach(m=>{if(m.avatar&&!photos[m.avatar]&&!seen[m.avatar]){seen[m.avatar]=1;missing.push(m.avatar);}});
+    members.forEach(m=>{if(m.avatar&&!photos[m.avatar]&&!seen[m.avatar]){seen[m.avatar]=1;missing.push(m.avatar);}(m.posterPhotos||[]).forEach(pid=>{if(pid&&!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}});});
     if(meAvatar&&!photos[meAvatar]&&!seen[meAvatar]){seen[meAvatar]=1;missing.push(meAvatar);}
     if(missing.length===0)return;
     let cancelled=false;
