@@ -3621,7 +3621,7 @@ function App(){
             )}
             <button className="yl-menu-btn yl-bell" onClick={openNotices} aria-label="今日のLOALIFE" title="今日のLOALIFE"><Icon name="bell" size={20}/>{unreadNoticeCount>0&&<span className="yl-bell-badge">{unreadNoticeCount>9?"9+":unreadNoticeCount}</span>}</button>
             <button className="yl-menu-btn" onClick={()=>setHelpOpen(true)} aria-label="使い方・機能紹介" title="使い方・機能紹介"><Icon name="note" size={20}/></button>
-            <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー"><Icon name="menu" size={22}/></button>
+            <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー" title="メニュー"><Icon name="menu" size={22}/></button>
           </div>
         </header>
 
@@ -3924,6 +3924,7 @@ function App(){
             {spaces.length>0&&(
               <section className="yl-safety">
                 <span className="yl-safety-label"><Icon name="shield" size={14}/> いざという時</span>
+                <p className="yl-safety-note">登録済みの情報から、迷子ポスターや緊急カードをすぐ作れます。</p>
                 <div className="yl-safety-acts">
                   {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>}
                   <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> 夜間・救急</button>
