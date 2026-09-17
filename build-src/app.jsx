@@ -1370,6 +1370,7 @@ function App(){
   const[vetOpen,setVetOpen]=useState(false); // 獣医さん用サマリー表示
   const[handoverOpen,setHandoverOpen]=useState(false); // 預け先・ホテル用の引き継ぎシート
   const[lostOpen,setLostOpen]=useState(false); // 迷子ポスター（オフライン表示・印刷）
+  const[lostStep,setLostStep]=useState(0); // 迷子モードの一本道ステップ（0:場所日時 → 1:ペット情報 → 2:ポスター）
   const[emergencyCardOpen,setEmergencyCardOpen]=useState(false); // 緊急カード（子ども・自分／オフライン表示・印刷）
   const[vetDays,setVetDays]=useState(30); // サマリーの対象期間（日）
   const[a2hsHint,setA2hsHint]=useState(false); // 「ホーム画面に追加」データ保護の案内（1回だけ）
@@ -2183,6 +2184,8 @@ function App(){
     if(key&&COACH_HINTS[key]&&!coachIsSeen(key))setCoachKey(key);
   },[tab,personSeg,isPersonMode,tourStep,coachKey,onboarding,loaded]);
   const dismissCoach=useCallback(()=>{setCoachKey(k=>{if(k)markCoachSeen(k);return null;});},[]);
+  // 迷子モードを開くたびに最初のステップ（場所・日時）から。パニック時でも一本道で進める。
+  useEffect(()=>{if(lostOpen)setLostStep(0);},[lostOpen]);
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
@@ -5604,7 +5607,33 @@ function App(){
         const posterHost=(()=>{try{return location.host||"";}catch(e){return"";}})();
         return(
         <div className="yl-overlay" onClick={()=>setLostOpen(false)}>
-          <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
+          <div className="yl-modal vetmodal yl-lostflow" onClick={e=>e.stopPropagation()}>
+            <div className="yl-lostflow-steps yl-noprint">
+              {["場所・日時","ペット情報","ポスター"].map((lab,i)=><span key={i} className={"yl-lostflow-step"+(lostStep===i?" on":"")+(lostStep>i?" done":"")}>{i+1}. {lab}</span>)}
+            </div>
+            {lostStep===0&&<div className="yl-lostflow-body yl-noprint">
+              <p className="yl-lostflow-lead"><b>まず、落ち着いて。</b>最後に見かけた場所と時間を入れましょう。あとから直せます。</p>
+              <label className="yl-opt">最後に見かけた場所<span className="yl-opt-hint">迷子になった可能性がある場所を入れてください</span><input className="yl-input sm" autoFocus value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：〇〇公園の入口付近 ／ 〇〇駅前"/></label>
+              <label className="yl-opt">場所の補足（任意）<input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder="例：コンビニの向かい ／ 東口"/></label>
+              <label className="yl-opt">見かけた日時<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9月18日 18時ごろ"/></label>
+            </div>}
+            {lostStep===1&&<div className="yl-lostflow-body yl-noprint">
+              <p className="yl-lostflow-lead">この内容でポスターを作ります。写真と特徴を確認してください。</p>
+              <div className="yl-lostflow-idcard">
+                {gallery.length>0
+                  ? <div className={"yl-lost-gallery n"+Math.min(gallery.length,4)}>{gallery.map(g=><span key={g.pid} className="yl-lost-gphoto"><img src={g.src} alt=""/>{g.poster&&<button className="yl-lost-photodel" onClick={()=>removePosterPhoto(m.id,g.pid)} aria-label="削除">×</button>}</span>)}</div>
+                  : <div className="yl-lost-photo"><span className="yl-lost-emoji">{m.emoji||"🐶"}</span></div>}
+                <label className="yl-lost-addphoto"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
+                <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
+                {featRows.length>0&&<ul className="yl-lost-featlist">{featRows.map((f,i)=><li key={i} className="yl-lost-featitem"><span className="yl-lost-featic"><Icon name={f.ic} size={16}/></span><span className="yl-lost-featlabel">{f.label}</span><span className="yl-lost-featval">{f.value}</span></li>)}</ul>}
+              </div>
+              <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
+              <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
+              <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
+              <label className="yl-opt">その他 伝えたいこと（任意）<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder="例：SNSでも拡散のご協力をお願いします"/></label>
+              {contacts.length===0&&<button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先を登録（見つけた人からの連絡に必要）</button>}
+            </div>}
+            {lostStep===2&&<>
             <div className={"yl-lost yl-lost-poster"+(found?" found":"")}>
               {found&&<p className="yl-lost-found"><Icon name="check" size={16}/> 発見済み</p>}
               <p className="yl-lost-head">{isDog?"迷子犬を探しています":"さがしています"}</p>
@@ -5641,24 +5670,16 @@ function App(){
               </div>
               <p className="yl-lost-foot"><span className="yl-lost-foot-note">追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。</span>{(posterHost||stamp)&&<span className="yl-lost-foot-meta">{posterHost}{posterHost&&" ・ "}{stamp}</span>}</p>
             </div>
-            <div className="yl-lost-form yl-noprint">
-              <p className="yl-lost-form-title"><Icon name="filetext" size={14}/> 迷子情報（ポスターに載せる内容）</p>
-              <label className="yl-opt">最後に目撃された場所<span className="yl-opt-hint">どこで最後に見かけましたか？（場所名・住所など）</span><input className="yl-input sm" value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：神楽坂周辺 ／ 〇〇区〇〇町"/></label>
-              <label className="yl-opt">場所の補足（任意）<span className="yl-opt-hint">目印になる場所があれば</span><input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder="例：〇〇公園入口 ／ 〇〇駅東口"/></label>
-              <label className="yl-opt">目撃日時<span className="yl-opt-hint">いつ見かけましたか？</span><input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9月18日 18時ごろ"/></label>
-              <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
-              <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
-              <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
-              <label className="yl-opt">見かけた場合のお願い<select className="yl-select" value={pleaKeyFor(m)} onChange={e=>setLostField(m.id,{pleaKey:e.target.value})}>{PLEA_PRESETS.map(pp=><option key={pp.key} value={pp.key}>{pp.label}</option>)}</select></label>
-              <label className="yl-opt">その他 伝えたいこと（任意）<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder="例：SNSでも拡散のご協力をお願いします"/></label>
-              <button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先を追加・編集（大切な情報）</button>
-              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> 発見できた（ポスターに「発見済み」を表示）</label>
-              <p className="yl-lost-privacy"><Icon name="shield" size={12}/> 住所やマイクロチップ番号は載せません。連絡先は「大切な情報」に登録したものだけ表示されます。</p>
+            <div className="yl-lostflow-after yl-noprint">
+              <p className="yl-lostflow-afterttl">できました。次に、みんなに知らせましょう。</p>
+              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> 見つかった（ポスターに「発見済み」を表示）</label>
+              <p className="yl-lost-privacy"><Icon name="shield" size={12}/> 住所やマイクロチップ番号は載せません。連絡先は登録済みのものだけ表示されます。</p>
             </div>
+            </>}
             <div className="yl-modal-btns yl-noprint">
-              <button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>shareLost(m)}><Icon name="phone" size={16}/> 共有</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷・保存</button>
+              {lostStep===0&&<><button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(1)}>次へ：ペット情報</button></>}
+              {lostStep===1&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(0)}>もどる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(2)}>ポスターを作成</button></>}
+              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有（SNS・LINE）</button><button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷・保存</button></>}
             </div>
           </div>
         </div>
