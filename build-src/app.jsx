@@ -5218,30 +5218,39 @@ function App(){
               <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label="閉じる">×</button>
             </div>
-            <p className="yl-help-lead">自分も家族もうちのこも。毎日をここでまとめて。</p>
+            <p className="yl-help-lead">毎日のペット管理と、もしもの備えを、ひとつに。</p>
             {[
-              {emoji:"🏠",title:"ホーム",desc:"今日やること、うっかり忘れ。ぜんぶここに。"},
-              {emoji:"👨‍👩‍👧",title:"メンバー",desc:"自分も家族もうちのこも。絵文字や写真でにぎやかに。"},
-              {emoji:"📅",title:"カレンダー",desc:"みんなの予定が、色分けで見わたせる。"},
-              {emoji:"📝",title:"今日のようす（お薬手帳にも）",desc:"元気・食欲・うんち・写真…今日のことをそのまま。"},
-              {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチンも通院もお薬も、忘れずに。"},
-              {emoji:"🧹",title:"毎日のお世話",desc:"「やった」をタップ。前回からの日数が色でわかる。"},
-              {emoji:"📈",title:"からだの記録・ダイエット手帳",desc:"体重の変化をグラフで見守る。目標との差も。"},
-              {emoji:"📸",title:"思い出",desc:"とっておきの一枚を、そっと残しておく。"},
-              {emoji:"🏷",title:"思い出のタグ・はじめて",desc:"「はじめて」やタグで、成長をたどる。"},
-              {emoji:"💰",title:"支出",desc:"病院代も餌代も、何にいくらか見える。"},
-              {emoji:"🛍",title:"ストック管理",desc:"フードやサプリ、切らす前にお知らせ。"},
-              {emoji:"🎒",title:"持ち物（曜日ごと）",desc:"明日の持ち物を、前の日にチェック。"},
-              {emoji:"📌",title:"大切な情報",desc:"いざという時の連絡先を、手元に。"},
-              {emoji:"🔔",title:"通知・リマインド",desc:"大事な予定は、通知でそっとお知らせ。"},
-              {emoji:"↕️",title:"並び替え（長押し/ドラッグ）",desc:"長押しでドラッグ。好きな順番に。"},
-            ].map((f,i)=>(
-              <div key={i} className="yl-help-item">
-                <span className="yl-help-emoji">{f.emoji}</span>
-                <div className="yl-help-body"><span className="yl-help-itemtitle">{f.title}</span><span className="yl-help-desc">{f.desc}</span></div>
+              {group:"毎日のこと",items:[
+                {emoji:"🏠",title:"ホーム",desc:"今日やること・うっかり忘れをまとめて。"},
+                {emoji:"👨‍👩‍👧",title:"メンバー",desc:"うちの子も家族も自分も。写真や絵文字で。"},
+                {emoji:"📅",title:"カレンダー",desc:"みんなの予定を色分けで見わたす。"},
+                {emoji:"📝",title:"今日のようす",desc:"元気・食欲・うんち・写真をそのまま記録。"},
+                {emoji:"📸",title:"思い出・はじめて",desc:"とっておきの一枚とタグで成長をたどる。"},
+              ]},
+              {group:"健康・予定の管理",items:[
+                {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・通院・お薬を忘れずに。"},
+                {emoji:"🧹",title:"毎日のお世話",desc:"「やった」をタップ。前回からの日数が色で。"},
+                {emoji:"📈",title:"からだの記録",desc:"体重の変化をグラフで見守る。"},
+                {emoji:"💰",title:"支出",desc:"病院代もフード代も、何にいくらか。"},
+                {emoji:"🛍",title:"ストック・持ち物",desc:"切らす前にお知らせ。曜日の持ち物も。"},
+              ]},
+              {group:"もしもの備え",items:[
+                {emoji:"📌",title:"大切な情報",desc:"かかりつけ・緊急連絡先を手元に。"},
+                {emoji:"🆘",title:"迷子ポスター・緊急カード",desc:"いざという時、登録情報からすぐ作れる。"},
+                {emoji:"🔔",title:"通知・リマインド",desc:"大事な予定を、そっとお知らせ。"},
+              ]},
+            ].map((g,gi)=>(
+              <div key={gi} className="yl-help-group">
+                <h3 className="yl-help-grouptitle">{g.group}</h3>
+                {g.items.map((f,i)=>(
+                  <div key={i} className="yl-help-item">
+                    <span className="yl-help-emoji">{f.emoji}</span>
+                    <div className="yl-help-body"><span className="yl-help-itemtitle">{f.title}</span><span className="yl-help-desc">{f.desc}</span></div>
+                  </div>
+                ))}
               </div>
             ))}
-            <p className="yl-help-note">データはこの端末に保存されます。ホーム画面に追加すると、より安心して使えます。</p>
+            <p className="yl-help-note">長押しで並び替えできます。データはこの端末に保存され、ホーム画面に追加するとより安心です。</p>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setHelpOpen(false)}>とじる</button>
           </div>
         </div>
