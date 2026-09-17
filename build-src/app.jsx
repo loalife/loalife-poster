@@ -5586,7 +5586,7 @@ function App(){
                 {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
                 {li.note&&<p>{li.note}</p>}
               </div>}
-              <div className="yl-lost-plea"><Icon name="alert" size={15}/> {pleaTextOf(m)}</div>
+              <div className="yl-lost-plea"><Icon name="alert" size={15}/><span className="yl-lost-plea-txt">{pleaTextOf(m)}</span></div>
               <div className="yl-lost-contact">
                 <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
                 {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
