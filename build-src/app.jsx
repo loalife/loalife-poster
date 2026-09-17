@@ -154,6 +154,10 @@ const PLEA_PRESETS=[
 const pleaKeyFor=(m)=>{const li=m&&m.lostInfo||{};if(li.pleaKey)return li.pleaKey;const t=li.temper||"";if(t==="timid")return"timid";if(t==="friendly")return"friendly";return"normal";};
 const pleaTextOf=(m)=>{const k=pleaKeyFor(m);return(PLEA_PRESETS.find(p=>p.key===k)||PLEA_PRESETS[0]).text;};
 const TEMPER_OPTS=[{k:"",l:"未設定"},{k:"friendly",l:"人なつっこい"},{k:"normal",l:"ふつう"},{k:"timid",l:"怖がり"}];
+// 連絡先が電話番号っぽいか（国内・数字10〜11桁、先頭0）。ポスターで大きな発信ボタンにするか判定。
+const isPhoneLike=(s)=>{const d=(s||"").replace(/[^0-9]/g,"");return d.length>=10&&d.length<=11&&d[0]==="0";};
+// 電話番号にハイフンを入れ直す（携帯 3-4-4／東京・大阪 2-4-4／その他固定 3-3-4）。判定できなければ原文のまま。
+function fmtJPPhone(raw){const d=(raw||"").replace(/[^0-9]/g,"");if(d.length===11)return`${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;if(d.length===10){if(/^0[36]/.test(d))return`${d.slice(0,2)}-${d.slice(2,6)}-${d.slice(6)}`;return`${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;}return raw||"";}
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -5561,37 +5565,57 @@ function App(){
         const av=m.avatar&&photos[m.avatar];
         const isDog=m.species==="dog";
         const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
-        const feats=[isDog?"犬":m.species==="cat"?"猫":"",m.breed,m.coat&&`毛色：${m.coat}`,m.gender,m.birthday&&ageLabel(m.birthday),wl&&`${wl.weight}${wl.wunit||"kg"}`,li.collar&&`首輪：${li.collar}`].filter(Boolean);
+        // 特徴を「アイコン＋見出し＋内容」の縦リストに整理（値のあるものだけ）
+        const featRows=[
+          {ic:"paw",label:"種類",value:[isDog?"犬":m.species==="cat"?"猫":"",m.breed].filter(Boolean).join("・")},
+          {ic:"palette",label:"毛色",value:m.coat},
+          {ic:"heart",label:"性別",value:m.gender},
+          {ic:"cake",label:"年齢",value:m.birthday&&ageLabel(m.birthday)},
+          {ic:"scale",label:"体重",value:wl&&`${wl.weight}${wl.wunit||"kg"}`},
+          {ic:"tag",label:"首輪・ハーネス",value:li.collar},
+        ].filter(r=>r.value);
+        // メイン写真＋追加写真をまとめて横並びギャラリーに（実写を大きく見せる）
+        const gallery=[];if(av)gallery.push({pid:m.avatar,src:av,poster:false});(m.posterPhotos||[]).forEach(pid=>{if(photos[pid])gallery.push({pid,src:photos[pid],poster:true});});
         const contacts=cards.filter(c=>c.kind==="emergency"||c.kind==="hospital");
         const notes=cards.filter(c=>c.kind==="other");
         const found=!!li.found;
+        const stamp=(()=>{const n=new Date();return`${n.getFullYear()}/${n.getMonth()+1}/${n.getDate()} ${n.getHours()}:${String(n.getMinutes()).padStart(2,"0")}`;})();
+        const posterHost=(()=>{try{return location.host||"";}catch(e){return"";}})();
         return(
         <div className="yl-overlay" onClick={()=>setLostOpen(false)}>
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
-            <div className={"yl-lost"+(found?" found":"")}>
+            <div className={"yl-lost yl-lost-poster"+(found?" found":"")}>
               {found&&<p className="yl-lost-found"><Icon name="check" size={16}/> 発見済み</p>}
               <p className="yl-lost-head">{isDog?"迷子犬を探しています":"さがしています"}</p>
-              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{m.emoji||"🐶"}</span>}</div>
-              {(()=>{const pp=(m.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(m.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
+              {gallery.length>0
+                ? <div className={"yl-lost-gallery n"+Math.min(gallery.length,4)}>{gallery.map(g=><span key={g.pid} className="yl-lost-gphoto"><img src={g.src} alt=""/>{g.poster&&<button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(m.id,g.pid)} aria-label="削除">×</button>}</span>)}</div>
+                : <div className="yl-lost-photo"><span className="yl-lost-emoji">{m.emoji||"🐶"}</span></div>}
               <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
               <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
-              {(li.place||li.when)&&<div className="yl-lost-place">
-                <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に確認された場所</span>
-                {li.place&&<span className="yl-lost-place-main">{li.place}</span>}
-                {li.when&&<span className="yl-lost-place-when">{li.when}</span>}
+              {featRows.length>0&&<ul className="yl-lost-featlist">{featRows.map((f,i)=><li key={i} className="yl-lost-featitem"><span className="yl-lost-featic"><Icon name={f.ic} size={16}/></span><span className="yl-lost-featlabel">{f.label}</span><span className="yl-lost-featval">{f.value}</span></li>)}</ul>}
+              {(li.place||li.when)&&<div className="yl-lost-sighting">
+                <p className="yl-lost-secttl">▼ 目撃情報</p>
+                <div className="yl-lost-place">
+                  <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に確認された場所</span>
+                  {li.place&&<span className="yl-lost-place-main">{li.place}</span>}
+                  {li.when&&<span className="yl-lost-place-when">{li.when}</span>}
+                </div>
               </div>}
-              {feats.length>0&&<p className="yl-lost-feats">{feats.join("・")}</p>}
               {(li.situation||notes.length>0||li.note)&&<div className="yl-lost-info">
                 {li.situation&&<p><b>逃げたときの様子</b> {li.situation}</p>}
                 {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
                 {li.note&&<p>{li.note}</p>}
               </div>}
-              <div className="yl-lost-plea"><Icon name="alert" size={15}/><span className="yl-lost-plea-txt">{pleaTextOf(m)}</span></div>
+              <div className="yl-lost-plea"><span className="yl-lost-plea-mark" aria-hidden="true">⚠️</span><span className="yl-lost-plea-txt">{pleaTextOf(m)}</span></div>
               <div className="yl-lost-contact">
                 <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
-                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
+                {contacts.length?contacts.map(c=>isPhoneLike(c.body)
+                  ? <a key={c.id} className="yl-lost-telbtn" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>{c.title&&<span className="yl-lost-tellabel">{c.title}</span>}<span className="yl-lost-telrow"><span className="yl-lost-telic" aria-hidden="true">📞</span><span className="yl-lost-telnum">{fmtJPPhone(c.body)}</span></span></a>
+                  : <p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>
+                ):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
+                {contacts.some(c=>isPhoneLike(c.body))&&<p className="yl-lost-action">【重要】もし見かけたら、この番号にすぐお電話ください。追いかけないでください。</p>}
               </div>
-              <p className="yl-lost-note">※追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。</p>
+              <p className="yl-lost-foot"><span className="yl-lost-foot-note">追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。</span>{(posterHost||stamp)&&<span className="yl-lost-foot-meta">{posterHost}{posterHost&&" ・ "}{stamp}</span>}</p>
             </div>
             <div className="yl-lost-form yl-noprint">
               <p className="yl-lost-form-title"><Icon name="filetext" size={14}/> 迷子情報（ポスターに載せる内容）</p>
