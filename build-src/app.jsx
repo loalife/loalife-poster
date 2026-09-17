@@ -1178,8 +1178,7 @@ function BdayInput({value,onChange}){
 const TOUR_STEPS=[
   {sel:'[data-tour="fab"]',title:"まずはここから記録",body:"右下の＋から、予定・ケア・ごはん・体重を記録。"},
   {sel:'[data-tour="nav-cal"]',title:"カレンダー",body:"家族の予定が一覧に。日付タップでふりかえり。"},
-  {sel:'[data-tour="nav-home"]',title:"家族ごとの記録",body:"ホームで家族をタップすると、その子の「毎日／管理」が開きます。"},
-  {sel:'[data-tour="membar"]',title:"だれの画面かを切り替え",body:"下の名前をタップで、見ている家族を切り替えられます。"},
+  {sel:'[data-tour="nav-home"]',title:"家族ごとに",body:"ホームで家族をタップするとその子のページへ。開いたら上の一覧でいつでも切り替えられます。"},
 ];
 // 画面ごとの初回1ポイント案内（B）。キー＝画面、value＝{sel,title,body}
 const COACH_HINTS={
@@ -3540,7 +3539,7 @@ function App(){
   };
 
   return(
-    <div className={"yl-root"+(!onboarding&&(tab==="cal"||isPersonMode)?"":" no-membar")}>
+    <div className={"yl-root"+(!onboarding&&tab==="cal"?"":" no-membar")}>
       {/* 初回ツアー(A)：主要操作を順番に案内。スキップで一括終了。 */}
       {!onboarding&&tourStep!==null&&TOUR_STEPS[tourStep]&&(
         <CoachMark key={"tour"+tourStep} sel={TOUR_STEPS[tourStep].sel} title={TOUR_STEPS[tourStep].title} body={TOUR_STEPS[tourStep].body}
@@ -3582,6 +3581,17 @@ function App(){
             <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー"><Icon name="menu" size={22}/></button>
           </div>
         </header>
+
+        {!onboarding&&isPersonMode&&(
+          <div className="yl-famstrip" role="tablist" aria-label="家族を切り替え">
+            {spaces.map(s=>(
+              <button key={s.id} role="tab" aria-selected={tab===s.id} className={"yl-famchip"+(tab===s.id?" on":"")} onClick={()=>{setTab(s.id);setMemberSel(s.id);}}>
+                <span className="yl-famchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"sm")}<span className="yl-famchip-name">{s.name}</span>
+              </button>
+            ))}
+            <button className="yl-famchip add" onClick={()=>setAdding(true)} aria-label="家族・ペットを追加"><Icon name="plus" size={17}/></button>
+          </div>
+        )}
 
         {a2hsHint&&(
           <div className="yl-notif-banner">
@@ -4855,7 +4865,7 @@ function App(){
       {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
       <div className="yl-btmstack">
       {/* 共通メンバー切り替え：ドロップアップ（通常は選択中1件、タップで上方向に一覧を展開）。すべてはカレンダーのみ。 */}
-      {!onboarding&&(tab==="cal"||isPersonMode)&&(()=>{
+      {!onboarding&&tab==="cal"&&(()=>{
         const curId=tab==="cal"?calFilter:tab;
         const cur=curId==="all"?null:(spaces.find(s=>s.id===curId)||spaces[0]);
         const select=(id)=>{setAdding(false);if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
