@@ -153,7 +153,7 @@ const PLEA_PRESETS=[
 // 性格が登録されていれば、それに合う定型文を初期選択にする（ユーザーは変更可）。
 const pleaKeyFor=(m)=>{const li=m&&m.lostInfo||{};if(li.pleaKey)return li.pleaKey;const t=li.temper||"";if(t==="timid")return"timid";if(t==="friendly")return"friendly";return"normal";};
 const pleaTextOf=(m)=>{const k=pleaKeyFor(m);return(PLEA_PRESETS.find(p=>p.key===k)||PLEA_PRESETS[0]).text;};
-const TEMPER_OPTS=[{k:"",l:"未設定"},{k:"friendly",l:"人なつっこい"},{k:"normal",l:"ふつう"},{k:"timid",l:"怖がり・警戒心が強い"}];
+const TEMPER_OPTS=[{k:"",l:"未設定"},{k:"friendly",l:"人なつっこい"},{k:"normal",l:"ふつう"},{k:"timid",l:"怖がり"}];
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -5600,7 +5600,7 @@ function App(){
               <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
               <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
               <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
-              <label className="yl-opt">見かけた場合のお願い<select className="yl-select" value={pleaKeyFor(m)} onChange={e=>setLostField(m.id,{pleaKey:e.target.value})}>{PLEA_PRESETS.map(pp=><option key={pp.key} value={pp.key}>{pp.text}</option>)}</select></label>
+              <label className="yl-opt">見かけた場合のお願い<select className="yl-select" value={pleaKeyFor(m)} onChange={e=>setLostField(m.id,{pleaKey:e.target.value})}>{PLEA_PRESETS.map(pp=><option key={pp.key} value={pp.key}>{pp.label}</option>)}</select><span className="yl-set-desc" style={{marginTop:4}}>{pleaTextOf(m)}</span></label>
               <label className="yl-opt">その他 伝えたいこと（任意）<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder="例：SNSでも拡散のご協力をお願いします"/></label>
               <button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先を追加・編集（大切な情報）</button>
               <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> 発見できた（ポスターに「発見済み」を表示）</label>
