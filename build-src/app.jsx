@@ -3655,11 +3655,11 @@ function App(){
           <div className="yl-home">
             {/* 初見（メンバー未登録）だけに出す追加導線。登録済みユーザーには表示しない */}
             {members.length===0&&(
-              <section style={{background:"#fff",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
-                <div style={{fontSize:34,lineHeight:1.1,marginBottom:8}}>👨‍👩‍👧🐶🐱</div>
-                <p style={{margin:"0 0 4px",fontSize:17,fontWeight:800,color:"#3A342E"}}>まずは家族やペットを登録しましょう</p>
-                <p style={{margin:"0 0 14px",fontSize:13,fontWeight:700,lineHeight:1.6,color:"#8A8178"}}>自分・家族・ペットの予定や記録を、まとめて。</p>
-                <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> 家族・ペットを追加</button>
+              <section style={{background:"#fff",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
+                <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>🐶🐱</div>
+                <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"#3A342E"}}>ようこそ</p>
+                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"#8A8178"}}>毎日のペット管理と、もしもの備えを、ひとつに。<br/>まずは、うちの子を登録しましょう。</p>
+                <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> うちの子・家族を登録</button>
               </section>
             )}
             {showNotifBanner&&(hasReminders||members.some(m=>m.birthday))&&(
@@ -3695,87 +3695,6 @@ function App(){
                 );
               })}</div>
             </section>
-
-            {/* 天気・お散歩カードは犬がいる時(hasWalker)だけ表示。犬なしユーザーの主役にしない */}
-            {hasWalker&&(weatherLoc?(<>
-              {/* 地点切り替え：現在地／登録した場所を横並びで。タップでその地点の天気に切り替える。 */}
-              <div className="yl-wxchips">
-                {weatherLocs.map(l=>(
-                  <button key={l.id} className={"yl-wxchip"+(l.id===weatherLoc.id?" on":"")} onClick={()=>selectPlace(l.id)}><Icon name="pin" size={11}/><span className="yl-wxchip-name">{l.name}</span></button>
-                ))}
-                {weatherLocs.length<LOC_MAX&&<button className="yl-wxchip add" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={12}/> 地点を追加</button>}
-              </div>
-              {(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const jmaHi=(jmaWarn&&jmaWarn.warnings.length)?jmaWarn.warnings[0].level:0;const cardLv=jmaHi>=2?"danger":(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
-              <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
-                {weather&&weather.error?(<>
-                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
-                  <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
-                </>):weather?(()=>{const advShort=(jmaHi>=2)?`${jmaWarn.warnings[0].name}発表中。お散歩は控えて`:wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
-                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新" disabled={weatherLoading}>↻</button></div>
-                  {jmaWarn&&jmaWarn.warnings.length>0&&(
-                    <div className="yl-jma">
-                      <span className="yl-jma-head"><Icon name="alert" size={12}/> 気象庁・{jmaWarn.area}</span>
-                      <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{w.name}</span>)}</span>
-                    </div>
-                  )}
-                  <div className="yl-wx-hero">
-                    <span className="yl-wx-temp">{Math.round(weather.temp)}°</span>
-                    <div className="yl-wx-heroright">
-                      {wc&&<span className="yl-wx-cond">{wc.label}</span>}
-                      {wi&&<span className={"yl-wx-index lv-"+wi.level}><Icon name="paw" size={13}/> 散歩指数 {wi.score}</span>}
-                    </div>
-                  </div>
-                  <p className="yl-wx-advice">{advShort||`体感 ${weather.apparent!=null?Math.round(weather.apparent):Math.round(weather.temp)}℃ ・ 湿度 ${Math.round(weather.humidity)}%`}</p>
-                  <button className="yl-wx-more" onClick={()=>setWxDetail(o=>!o)}>{wxDetail?"閉じる":"詳細を見る"} <Icon name="chevron" size={13} className={wxDetail?"yl-rot90":""}/></button>
-                  {wxDetail&&(<div className="yl-wx-detail">
-                    <div className="yl-weather-vals">
-                      {weather.apparent!=null&&<span className="yl-weather-feels">体感 {Math.round(weather.apparent)}℃</span>}
-                      {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
-                      <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
-                      {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
-                      {weather.uv!=null&&<span className="yl-weather-uv"><Icon name="sun" size={13}/> UV {Math.round(weather.uv)}</span>}
-                      {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
-                    </div>
-                    {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
-                    {wi&&(<div className="yl-walk">
-                      <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span></span>
-                      {wa&&wa.level==="danger"&&<span className="yl-walk-danger"><Icon name="alert" size={13}/> {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
-                      {wi.factors.length>0&&(
-                        <div className="yl-walk-bd">
-                          <span className="yl-walk-bd-label">スコアの内訳（減点）</span>
-                          <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
-                        </div>
-                      )}
-                      {(wt||wtT)&&(<div className="yl-walktime">
-                        <div className="yl-walktime-head">
-                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
-                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>今日</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>明日</button></span>}
-                        </div>
-                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">明日の予報はまだ取得できません</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
-                          {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
-                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {active.best.from===active.best.to?`${active.best.from}時ごろ`:`${active.best.from}〜${active.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">{isT?"明日はおうちでのんびり":"今日はおうちでのんびり"}</span>}
-                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                          <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
-                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
-                        </>);})()}
-                      </div>)}
-                    </div>)}
-                  </div>)}
-                </>);})():(<><div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span></div><span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span></>)}
-              </div>
-            );})()}</>):(
-              <button className="yl-weather-setup" onClick={()=>setWxAddOpen(true)}><Icon name="thermometer" size={16}/> 地点を追加して天気・お散歩判定を表示</button>
-            ))}
-
-            {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
-            {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
-              <section className="yl-batch">
-                <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
-                <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
-                  <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
-                </div>
-                <div className="yl-batch-acts">{BATCH_ACTIONS.filter(a=>a.title!=="散歩"||hasWalker).map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
-              </section>);})()}
 
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
@@ -3899,6 +3818,87 @@ function App(){
               );})()}
             </div>
             );})()}
+
+            {/* 天気・お散歩カードは犬がいる時(hasWalker)だけ表示。犬なしユーザーの主役にしない */}
+            {hasWalker&&(weatherLoc?(<>
+              {/* 地点切り替え：現在地／登録した場所を横並びで。タップでその地点の天気に切り替える。 */}
+              <div className="yl-wxchips">
+                {weatherLocs.map(l=>(
+                  <button key={l.id} className={"yl-wxchip"+(l.id===weatherLoc.id?" on":"")} onClick={()=>selectPlace(l.id)}><Icon name="pin" size={11}/><span className="yl-wxchip-name">{l.name}</span></button>
+                ))}
+                {weatherLocs.length<LOC_MAX&&<button className="yl-wxchip add" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={12}/> 地点を追加</button>}
+              </div>
+              {(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const jmaHi=(jmaWarn&&jmaWarn.warnings.length)?jmaWarn.warnings[0].level:0;const cardLv=jmaHi>=2?"danger":(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
+              <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
+                {weather&&weather.error?(<>
+                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
+                  <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
+                </>):weather?(()=>{const advShort=(jmaHi>=2)?`${jmaWarn.warnings[0].name}発表中。お散歩は控えて`:wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
+                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新" disabled={weatherLoading}>↻</button></div>
+                  {jmaWarn&&jmaWarn.warnings.length>0&&(
+                    <div className="yl-jma">
+                      <span className="yl-jma-head"><Icon name="alert" size={12}/> 気象庁・{jmaWarn.area}</span>
+                      <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{w.name}</span>)}</span>
+                    </div>
+                  )}
+                  <div className="yl-wx-hero">
+                    <span className="yl-wx-temp">{Math.round(weather.temp)}°</span>
+                    <div className="yl-wx-heroright">
+                      {wc&&<span className="yl-wx-cond">{wc.label}</span>}
+                      {wi&&<span className={"yl-wx-index lv-"+wi.level}><Icon name="paw" size={13}/> 散歩指数 {wi.score}</span>}
+                    </div>
+                  </div>
+                  <p className="yl-wx-advice">{advShort||`体感 ${weather.apparent!=null?Math.round(weather.apparent):Math.round(weather.temp)}℃ ・ 湿度 ${Math.round(weather.humidity)}%`}</p>
+                  <button className="yl-wx-more" onClick={()=>setWxDetail(o=>!o)}>{wxDetail?"閉じる":"詳細を見る"} <Icon name="chevron" size={13} className={wxDetail?"yl-rot90":""}/></button>
+                  {wxDetail&&(<div className="yl-wx-detail">
+                    <div className="yl-weather-vals">
+                      {weather.apparent!=null&&<span className="yl-weather-feels">体感 {Math.round(weather.apparent)}℃</span>}
+                      {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
+                      <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
+                      {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
+                      {weather.uv!=null&&<span className="yl-weather-uv"><Icon name="sun" size={13}/> UV {Math.round(weather.uv)}</span>}
+                      {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
+                    </div>
+                    {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
+                    {wi&&(<div className="yl-walk">
+                      <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span></span>
+                      {wa&&wa.level==="danger"&&<span className="yl-walk-danger"><Icon name="alert" size={13}/> {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
+                      {wi.factors.length>0&&(
+                        <div className="yl-walk-bd">
+                          <span className="yl-walk-bd-label">スコアの内訳（減点）</span>
+                          <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
+                        </div>
+                      )}
+                      {(wt||wtT)&&(<div className="yl-walktime">
+                        <div className="yl-walktime-head">
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
+                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>今日</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>明日</button></span>}
+                        </div>
+                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">明日の予報はまだ取得できません</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
+                          {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
+                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {active.best.from===active.best.to?`${active.best.from}時ごろ`:`${active.best.from}〜${active.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">{isT?"明日はおうちでのんびり":"今日はおうちでのんびり"}</span>}
+                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                          <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
+                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                        </>);})()}
+                      </div>)}
+                    </div>)}
+                  </div>)}
+                </>);})():(<><div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span></div><span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span></>)}
+              </div>
+            );})()}</>):(
+              <button className="yl-weather-setup" onClick={()=>setWxAddOpen(true)}><Icon name="thermometer" size={16}/> 地点を追加して天気・お散歩判定を表示</button>
+            ))}
+
+            {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
+            {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
+              <section className="yl-batch">
+                <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
+                <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
+                  <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
+                </div>
+                <div className="yl-batch-acts">{BATCH_ACTIONS.filter(a=>a.title!=="散歩"||hasWalker).map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
+              </section>);})()}
 
             {/* ━━ 第2層「コンディション」：習慣と思い出の軽チェック ━━ */}
             <div className="yl-layer">
