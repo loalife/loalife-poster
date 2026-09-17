@@ -3632,13 +3632,6 @@ function App(){
           </div>
         )}
 
-        {a2hsHint&&(
-          <div className="yl-notif-banner">
-            <span>ホーム画面に追加すると、データが消えにくく安心です</span>
-            <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>あとで</button>
-          </div>
-        )}
-
         {adding&&(
           <div className="yl-petform">
             <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);setNewAvatar("");}}>🐾 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
@@ -3662,19 +3655,25 @@ function App(){
                 <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> うちの子・家族を登録</button>
               </section>
             )}
-            {showNotifBanner&&(hasReminders||members.some(m=>m.birthday))&&(
-              <div className="yl-notif-banner">
-                <span>通知を許可すると、リマインダーや誕生日をお知らせします</span>
-                <button className="yl-notif-allow" onClick={handleNotifRequest}>許可する</button>
-              </div>
-            )}
-
             {members.length>0&&(
               <section className="yl-ai">
                 <p className="yl-ai-greet"><Icon name={new Date().getHours()<11?"sun":new Date().getHours()<18?"sun":"moon"} size={18}/> {aiSummary.greet}{aiSummary.name?`、${aiSummary.name}`:""}</p>
                 {aiSummary.lines.map((l,i)=><p key={i} className="yl-ai-line">{l}</p>)}
               </section>
             )}
+
+            {/* お願い系バナーは挨拶の下に、同時に1枚だけ（通知を優先） */}
+            {members.length>0&&(()=>{const showNotif=showNotifBanner&&(hasReminders||members.some(m=>m.birthday));if(showNotif)return(
+              <div className="yl-notif-banner">
+                <span>通知を許可すると、リマインダーや誕生日をお知らせします</span>
+                <button className="yl-notif-allow" onClick={handleNotifRequest}>許可する</button>
+              </div>
+            );if(a2hsHint)return(
+              <div className="yl-notif-banner">
+                <span>ホーム画面に追加すると、データが消えにくく安心です</span>
+                <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>あとで</button>
+              </div>
+            );return null;})()}
 
             {/* 家族一覧：ホームの主役。タップでその子のページへ（メンバー中心ナビの入口） */}
             <section className="yl-fammain">
