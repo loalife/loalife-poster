@@ -144,6 +144,16 @@ const SEC_DEF={
   manage:["list","certs","health","growth","review","supply","expense","belong","allowance","foodreg","album","vet","sheet1","cards"],
 };
 const SECSEG=Object.fromEntries(Object.entries(SEC_DEF).flatMap(([seg,keys])=>keys.map(k=>[k,seg])));
+// 迷子ポスターの「見かけた場合のお願い」定型文。性格(temper)に応じて自動で切り替える。
+const PLEA_PRESETS=[
+  {key:"normal",label:"ふつう",text:"見かけた方は追いかけず、見かけた場所・時間をご連絡ください。"},
+  {key:"timid",label:"怖がり・警戒心が強い",text:"怖がって逃げる可能性があります。追いかけず、距離を保ったままご連絡ください。"},
+  {key:"friendly",label:"人なつっこい",text:"人なつっこい子です。可能なら やさしく声をかけて保護し、ご連絡ください。"},
+];
+// 性格が登録されていれば、それに合う定型文を初期選択にする（ユーザーは変更可）。
+const pleaKeyFor=(m)=>{const li=m&&m.lostInfo||{};if(li.pleaKey)return li.pleaKey;const t=li.temper||"";if(t==="timid")return"timid";if(t==="friendly")return"friendly";return"normal";};
+const pleaTextOf=(m)=>{const k=pleaKeyFor(m);return(PLEA_PRESETS.find(p=>p.key===k)||PLEA_PRESETS[0]).text;};
+const TEMPER_OPTS=[{k:"",l:"未設定"},{k:"friendly",l:"人なつっこい"},{k:"normal",l:"ふつう"},{k:"timid",l:"怖がり・警戒心が強い"}];
 // ケア種別ごとの「周期」。記録すると次回がこの間隔で自動セットされる。
 // none＝単発（保育園・通院など）。単発は「期限切れ」にしない。
 const CARE_CYCLE={vaccine:"yearly",rabies:"yearly",filaria:"monthly",trim:"monthly",groom:"monthly",checkup:"yearly",dental:"yearly",lesson:"weekly",med:"daily",hospital:"none",daycare:"none",event:"none",school:"none",other:"none"};
@@ -2245,6 +2255,22 @@ function App(){
     }catch(er){showFlash("画像を読み込めませんでした");}
   };
   const removePosterPhoto=(mid,pid)=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[pid];return n;});persist(members.map(x=>x.id===mid?{...x,posterPhotos:(x.posterPhotos||[]).filter(q=>q!==pid)}:x),items);};
+  // 迷子ポスターの迷子情報（member.lostInfo）を更新
+  const setLostField=(mid,patch)=>{persist(members.map(x=>x.id===mid?{...x,lostInfo:{...(x.lostInfo||{}),...patch}}:x),items);};
+  // 迷子ポスターの共有（Web Share・テキスト）。画像は印刷/スクショで保存する案内。
+  const shareLost=async(m)=>{
+    const li=m.lostInfo||{};
+    const lines=[`迷子犬を探しています：${m.name}`];
+    if(li.place)lines.push(`最後に確認された場所：${li.place}`);
+    if(li.when)lines.push(`日時：${li.when}`);
+    lines.push(pleaTextOf(m));
+    const text=lines.join("\n");
+    try{
+      if(navigator.share){await navigator.share({title:`迷子犬を探しています：${m.name}`,text});}
+      else if(navigator.clipboard){await navigator.clipboard.writeText(text);showFlash("内容をコピーしました。SNS等に貼り付けできます 📋");}
+      else{showFlash("この端末では共有できません。印刷・スクショをご利用ください");}
+    }catch(e){}
+  };
 
   // --- 思い出（記録を思い出に変える）---
   // 既存アクション（散歩などのルーティン）から写真1枚で思い出を残す。入力は写真選択だけ。
@@ -5531,34 +5557,59 @@ function App(){
         </div>
         );})()}
       {lostOpen&&activeMember&&(()=>{
-        const av=activeMember.avatar&&photos[activeMember.avatar];
-        const feats=[activeMember.species==="cat"?"猫":activeMember.species==="other"?"":"犬",activeMember.breed,activeMember.coat&&`毛色：${activeMember.coat}`,activeMember.gender,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean);
+        const m=activeMember;const li=m.lostInfo||{};
+        const av=m.avatar&&photos[m.avatar];
+        const isDog=m.species==="dog";
+        const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
+        const feats=[isDog?"犬":m.species==="cat"?"猫":"",m.breed,m.coat&&`毛色：${m.coat}`,m.gender,m.birthday&&ageLabel(m.birthday),wl&&`${wl.weight}${wl.wunit||"kg"}`,li.collar&&`首輪：${li.collar}`].filter(Boolean);
         const contacts=cards.filter(c=>c.kind==="emergency"||c.kind==="hospital");
         const notes=cards.filter(c=>c.kind==="other");
+        const found=!!li.found;
         return(
         <div className="yl-overlay" onClick={()=>setLostOpen(false)}>
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
-            <div className="yl-lost">
-              <p className="yl-lost-head">さがしています</p>
-              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{activeMember.emoji||"🐶"}</span>}</div>
-              {(()=>{const pp=(activeMember.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(activeMember.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
-              <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(activeMember.id,e)}/></label>
-              <p className="yl-lost-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</p>
+            <div className={"yl-lost"+(found?" found":"")}>
+              {found&&<p className="yl-lost-found"><Icon name="check" size={16}/> 発見済み</p>}
+              <p className="yl-lost-head">{isDog?"迷子犬を探しています":"さがしています"}</p>
+              <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{m.emoji||"🐶"}</span>}</div>
+              {(()=>{const pp=(m.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(m.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
+              <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
+              <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
+              {(li.place||li.when)&&<div className="yl-lost-place">
+                <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に確認された場所</span>
+                {li.place&&<span className="yl-lost-place-main">{li.place}</span>}
+                {li.when&&<span className="yl-lost-place-when">{li.when}</span>}
+              </div>}
               {feats.length>0&&<p className="yl-lost-feats">{feats.join("・")}</p>}
-              <div className="yl-lost-info">
-                {activeMember.microchip&&<p><b>マイクロチップ</b> {activeMember.microchip}</p>}
+              {(li.situation||notes.length>0||li.note)&&<div className="yl-lost-info">
+                {li.situation&&<p><b>逃げたときの様子</b> {li.situation}</p>}
                 {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
-              </div>
+                {li.note&&<p>{li.note}</p>}
+              </div>}
+              <div className="yl-lost-plea"><Icon name="alert" size={15}/> {pleaTextOf(m)}</div>
               <div className="yl-lost-contact">
                 <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
                 {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
               </div>
-              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setLostOpen(false);setTab(activeMember.id);setMemberSel(activeMember.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先・SNS・特徴を追加</button>
-              <p className="yl-lost-note">※印刷して掲示したり、画面を見せてご協力をお願いできます。電波がなくても表示できます。</p>
+              <p className="yl-lost-note">※追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。</p>
+            </div>
+            <div className="yl-lost-form yl-noprint">
+              <p className="yl-lost-form-title"><Icon name="filetext" size={14}/> 迷子情報（ポスターに載せる内容）</p>
+              <label className="yl-opt">最後に確認された場所<input className="yl-input sm" value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：〇〇公園 東口付近"/></label>
+              <label className="yl-opt">確認された日時<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9/17 18時ごろ"/></label>
+              <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
+              <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
+              <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
+              <label className="yl-opt">見かけた場合のお願い<select className="yl-select" value={pleaKeyFor(m)} onChange={e=>setLostField(m.id,{pleaKey:e.target.value})}>{PLEA_PRESETS.map(pp=><option key={pp.key} value={pp.key}>{pp.text}</option>)}</select></label>
+              <label className="yl-opt">その他 伝えたいこと（任意）<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder="例：SNSでも拡散のご協力をお願いします"/></label>
+              <button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先を追加・編集（大切な情報）</button>
+              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> 発見できた（ポスターに「発見済み」を表示）</label>
+              <p className="yl-lost-privacy"><Icon name="shield" size={12}/> 住所やマイクロチップ番号は載せません。連絡先は「大切な情報」に登録したものだけ表示されます。</p>
             </div>
             <div className="yl-modal-btns yl-noprint">
               <button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+              <button className="yl-addbtn modal" onClick={()=>shareLost(m)}><Icon name="phone" size={16}/> 共有</button>
+              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷・保存</button>
             </div>
           </div>
         </div>
