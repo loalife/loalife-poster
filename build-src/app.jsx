@@ -2265,8 +2265,8 @@ function App(){
   const shareLost=async(m)=>{
     const li=m.lostInfo||{};
     const lines=[`迷子犬を探しています：${m.name}`];
-    if(li.place)lines.push(`最後に確認された場所：${li.place}`);
-    if(li.when)lines.push(`日時：${li.when}`);
+    if(li.place)lines.push(`最後に目撃された場所：${li.place}${li.placeNote?`（${li.placeNote}）`:""}`);
+    if(li.when)lines.push(`目撃日時：${li.when}`);
     lines.push(pleaTextOf(m));
     const text=lines.join("\n");
     try{
@@ -5614,12 +5614,15 @@ function App(){
               <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
               {featRows.length>0&&<ul className="yl-lost-featlist">{featRows.map((f,i)=><li key={i} className="yl-lost-featitem"><span className="yl-lost-featic"><Icon name={f.ic} size={16}/></span><span className="yl-lost-featlabel">{f.label}</span><span className="yl-lost-featval">{f.value}</span></li>)}</ul>}
               {(li.place||li.when)&&<div className="yl-lost-sighting">
-                <p className="yl-lost-secttl">▼ 目撃情報</p>
-                <div className="yl-lost-place">
-                  <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に確認された場所</span>
-                  {li.place&&<span className="yl-lost-place-main">{li.place}</span>}
-                  {li.when&&<span className="yl-lost-place-when">{li.when}</span>}
-                </div>
+                {li.place&&<div className="yl-lost-place">
+                  <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に目撃された場所</span>
+                  <span className="yl-lost-place-main">{li.place}</span>
+                  {li.placeNote&&<span className="yl-lost-place-note">{li.placeNote}</span>}
+                </div>}
+                {li.when&&<div className="yl-lost-place yl-lost-when">
+                  <span className="yl-lost-place-label"><Icon name="clock" size={14}/> 目撃日時</span>
+                  <span className="yl-lost-place-main">{li.when}</span>
+                </div>}
               </div>}
               {(li.situation||notes.length>0||li.note)&&<div className="yl-lost-info">
                 {li.situation&&<p><b>逃げたときの様子</b> {li.situation}</p>}
@@ -5639,8 +5642,9 @@ function App(){
             </div>
             <div className="yl-lost-form yl-noprint">
               <p className="yl-lost-form-title"><Icon name="filetext" size={14}/> 迷子情報（ポスターに載せる内容）</p>
-              <label className="yl-opt">最後に確認された場所<input className="yl-input sm" value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：〇〇公園 東口付近"/></label>
-              <label className="yl-opt">確認された日時<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9/17 18時ごろ"/></label>
+              <label className="yl-opt">最後に目撃された場所<span className="yl-opt-hint">どこで最後に見かけましたか？（場所名・住所など）</span><input className="yl-input sm" value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：神楽坂周辺 ／ 〇〇区〇〇町"/></label>
+              <label className="yl-opt">場所の補足（任意）<span className="yl-opt-hint">目印になる場所があれば</span><input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder="例：〇〇公園入口 ／ 〇〇駅東口"/></label>
+              <label className="yl-opt">目撃日時<span className="yl-opt-hint">いつ見かけましたか？</span><input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9月18日 18時ごろ"/></label>
               <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
               <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
               <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
