@@ -3591,8 +3591,8 @@ function App(){
       )}
       {onboarding&&(
         <div className="yl-ob">
-          {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🐾</div><h1 className="yl-ob-title">うちの子との毎日を、ひとつに。</h1><p className="yl-ob-sub">健康・予定の記録から、もしもの迷子対応まで。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
-          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">まずは、うちの子を登録しましょう</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐶 うちの子（犬・猫など）</button><button className="yl-ob-choice" onClick={()=>{setObKind("me");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👤 自分（自分のケアも）</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👨‍👩‍👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="pet"?petEmojisFor(obSpecies):PERSON_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="pet"?"名前（例：ぽち）":obKind==="me"?"あなたの名前（例：かおり）":"名前（例：ゆうと）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
+          {obStep===0&&<div className="yl-ob-inner"><div className="yl-ob-emoji">🏠</div><h1 className="yl-ob-title">大切な家族の毎日を、ひとつに。</h1><p className="yl-ob-sub">ペットも子どもも。記録から、もしもの備えまで。</p><button className="yl-ob-btn" onClick={()=>setObStep(1)}>はじめる</button><button className="yl-ob-link" onClick={loadSample}>サンプルで試してみる</button></div>}
+          {obStep===1&&<div className="yl-ob-inner"><h2 className="yl-ob-h2">まず、ひとり登録しましょう</h2>{!obKind?<div className="yl-ob-choices"><button className="yl-ob-choice" onClick={()=>{setObKind("pet");setObEmoji(PET_EMOJIS[0]);setObAvatar("");}}>🐶 うちの子（犬・猫など）</button><button className="yl-ob-choice" onClick={()=>{setObKind("me");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👤 自分（自分のケアも）</button><button className="yl-ob-choice" onClick={()=>{setObKind("person");setObEmoji(PERSON_EMOJIS[0]);setObAvatar("");}}>👨‍👩‍👧 家族（人）</button><button className="yl-ob-link" onClick={finishOnboarding}>今は追加しない</button></div>:<div className="yl-ob-form">{obKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(obSpecies===s.key?" on":"")} onClick={()=>{setObSpecies(s.key);setObEmoji(petEmojisFor(s.key)[0]);}}>{s.emoji} {s.label}</button>)}</div>}{obKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm"+(obPersonType===pt.k?" on":"")} onClick={()=>{setObPersonType(pt.k);setObAvatar("");setObEmoji(pt.emoji);}}>{pt.emoji} {pt.l}</button>)}</div>}<div className="yl-emoji-row">{(obKind==="pet"?petEmojisFor(obSpecies):PERSON_EMOJIS).map(e=><button key={e} className={"yl-emoji"+(!obAvatar&&obEmoji===e?" on":"")} onClick={()=>{setObAvatar("");setObEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(obAvatar?" on":"")} title="写真をアイコンにする">{obAvatar&&photos[obAvatar]?<img className="yl-emoji-photoimg" src={photos[obAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickObAvatar}/></label></div><p className="yl-ob-iconhint">絵文字を選ぶか、右端の <Icon name="camera" size={12}/> から写真も使えます</p><IMEInput className="yl-input" value={obName} onChange={setObName} onKeyDown={e=>e.key==="Enter"&&finishOnboarding()} placeholder={obKind==="pet"?"名前（例：ぽち）":obKind==="me"?"あなたの名前（例：かおり）":"名前（例：ゆうと）"} autoFocus/><label className="yl-opt" style={{width:"100%",marginTop:8}}>誕生日（年は任意）<BdayInput value={obBirthday} onChange={setObBirthday}/></label><button className="yl-ob-btn" onClick={finishOnboarding}>はじめる</button><button className="yl-ob-link" onClick={()=>setObKind(null)}>戻る</button></div>}</div>}
         </div>
       )}
 
@@ -3658,7 +3658,7 @@ function App(){
               <section style={{background:"#fff",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
                 <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>🐶🐱</div>
                 <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"#3A342E"}}>ようこそ</p>
-                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"#8A8178"}}>毎日のペット管理と、もしもの備えを、ひとつに。<br/>まずは、うちの子を登録しましょう。</p>
+                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"#8A8178"}}>大切な家族の毎日と、もしもの備えを、ひとつに。<br/>ペットも子どもも、まずはひとり登録しましょう。</p>
                 <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> うちの子・家族を登録</button>
               </section>
             )}
@@ -3678,7 +3678,7 @@ function App(){
 
             {/* 家族一覧：ホームの主役。タップでその子のページへ（メンバー中心ナビの入口） */}
             <section className="yl-fammain">
-              <h2 className="yl-sec-title">みんなの様子</h2>
+              <h2 className="yl-sec-title">家族のようす</h2>
               <div className="yl-statusgrid">{spaces.map(s=>{
                 const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
                 const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
@@ -5218,7 +5218,7 @@ function App(){
               <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label="閉じる">×</button>
             </div>
-            <p className="yl-help-lead">毎日のペット管理と、もしもの備えを、ひとつに。</p>
+            <p className="yl-help-lead">大切な家族の毎日と、もしもの備えを、ひとつに。</p>
             {[
               {group:"毎日のこと",items:[
                 {emoji:"🏠",title:"ホーム",desc:"今日やること・うっかり忘れをまとめて。"},
