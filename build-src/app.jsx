@@ -76,24 +76,45 @@ const breedOptionsFor=(species)=>species==="cat"?CAT_BREEDS:species==="dog"?DOG_
 const coatOptionsFor=(species)=>species==="cat"?CAT_COAT:species==="dog"?DOG_COAT:OTHER_COAT;
 
 // 誤食・中毒の危険物リスト（犬・猫向けの一般的な注意。獣医の診断に代わるものではない）。
-// sp: 対象種（"dog"/"cat"/"both"）, lv: "danger"(絶対NG)/"caution"(要注意)
+// 危険度4段階 / カテゴリ / エイリアス / 症状・発症目安・受診の目安・やってはいけないこと・病院に伝える情報・出典。
+// 具体的な毒性量(mg/kg)や致死量、安全量は載せない（断定を避ける）。判断は量・体重・部位・経過・個体差で変わる。
+const TOX_RISK={
+  emergency:{label:"緊急",emoji:"🚨",desc:"少量でも重大な中毒の恐れ。すぐ動物病院・夜間救急へ相談"},
+  high:{label:"高リスク",emoji:"⚠️",desc:"症状が出る可能性。量・体重で対応が変わる"},
+  caution:{label:"注意",emoji:"⚠️",desc:"大量摂取など一定の条件で危険"},
+  avoid:{label:"基本NG",emoji:"ℹ️",desc:"犬に与えるべきではない"},
+};
+const TOX_CATS=[{k:"all",l:"すべて"},{k:"food",l:"食品"},{k:"medicine",l:"薬"},{k:"plant",l:"植物"},{k:"household",l:"家庭用品"}];
+const TOX_RANK={emergency:0,high:1,caution:2,avoid:3};
+// 共通の「やってはいけないこと」「病院に伝える情報」「出典」。各項目の追記と合わせて表示。
+const TOX_DONT_CORE=["自己判断で吐かせない（無理な催吐は誤嚥や悪化の恐れ）","牛乳・塩水・下剤などを自己判断で与えない","症状がなくても「元気だから様子見」で放置しない"];
+const TOX_VET_CORE=["何を・いつ・どのくらい食べたか","犬の体重・年齢・持病・飲んでいる薬","現物やパッケージ（成分表示）を持参する"];
+const TOX_SOURCE="参照：ASPCA中毒管理センター／Pet Poison Helpline／Merck獣医マニュアル等の一般情報";
+const TOX_REVIEWED="2026-09-18";
 const TOXIC_ITEMS=[
-  {name:"チョコレート・ココア",sp:"both",lv:"danger",sym:"嘔吐・下痢・興奮・けいれん・不整脈",note:"カカオのテオブロミンが中毒源。ビター/製菓用ほど危険。"},
-  {name:"ねぎ類（玉ねぎ・長ねぎ・にら・にんにく）",sp:"both",lv:"danger",sym:"貧血・血尿・元気消失・食欲不振",note:"加熱・スープでも危険。猫は特に感受性が高い。"},
-  {name:"ぶどう・レーズン",sp:"both",lv:"danger",sym:"嘔吐・下痢・急性腎不全",note:"少量でも腎障害の報告あり。皮・ジュースも避ける。"},
-  {name:"キシリトール（ガム・お菓子）",sp:"dog",lv:"danger",sym:"低血糖・ふらつき・けいれん・肝障害",note:"犬でごく少量でも急激な低血糖。無糖商品に注意。"},
-  {name:"アルコール",sp:"both",lv:"danger",sym:"ふらつき・嘔吐・呼吸抑制・昏睡",note:"飲み物だけでなく、パン生地・消毒液にも。"},
-  {name:"カフェイン（コーヒー・お茶・エナジー飲料）",sp:"both",lv:"danger",sym:"興奮・頻脈・けいれん",note:"茶葉やコーヒーかすの誤食にも注意。"},
-  {name:"ユリ科の植物（花・葉・花粉・生けた水）",sp:"cat",lv:"danger",sym:"急性腎不全・嘔吐・無尿",note:"猫はごく微量で致死的。切り花にも要注意。"},
-  {name:"マカダミアナッツ",sp:"dog",lv:"danger",sym:"後ろ足の脱力・発熱・震え・嘔吐",note:"少量でも神経症状が出ることがある。"},
-  {name:"生のパン生地",sp:"both",lv:"danger",sym:"胃の膨張・アルコール中毒",note:"胃内で発酵・膨張して危険。"},
-  {name:"アボカド",sp:"both",lv:"caution",sym:"嘔吐・下痢",note:"ペルシンを含む。種による誤飲・閉塞にも注意。"},
-  {name:"鶏・魚の加熱した骨",sp:"both",lv:"caution",sym:"口・のど・消化管の裂傷や閉塞",note:"加熱骨は鋭く割れやすい。"},
-  {name:"牛乳・乳製品",sp:"both",lv:"caution",sym:"下痢・お腹のゆるみ",note:"乳糖不耐の子が多い。少量でも合わないことがある。"},
-  {name:"生卵の白身・生肉",sp:"both",lv:"caution",sym:"食中毒・皮膚や被毛の不調",note:"サルモネラ等のリスク。加熱が無難。"},
-  {name:"塩分・味付けの濃い人の食べ物",sp:"both",lv:"caution",sym:"嘔吐・多飲多尿・ふらつき",note:"ハム・スナック・出汁の効いた料理など。"},
-  {name:"果物の種・芯（りんご・さくらんぼ等）",sp:"both",lv:"caution",sym:"閉塞・微量の有害成分",note:"果肉は少量可でも種・芯は避ける。"},
-  {name:"観葉植物（ポトス・アイビー・サゴヤシ等）",sp:"both",lv:"caution",sym:"口内の痛み・よだれ・嘔吐",note:"かじれる場所に置かない。サゴヤシは特に危険。"},
+  {id:"choco",name:"チョコレート・ココア",aliases:["チョコ","ちょこ","ココア","カカオ","チョコレート"],category:"food",species:"both",risk:"high",toxic:"カカオのテオブロミン（ビター・製菓用ほど濃い）",symptoms:["嘔吐","下痢","落ち着かない","心拍が速い","ふるえ","重症でけいれん・不整脈"],onset:"6〜12時間以内に出ることが多い",urgency:"量が多い／ビター・製菓用／小型犬／症状があるときは早めに",variesBy:["量","体重","製品の濃さ"]},
+  {id:"grape",name:"ぶどう・レーズン",aliases:["ぶどう","ブドウ","レーズン","干しぶどう","グレープ"],category:"food",species:"both",risk:"emergency",toxic:"原因物質は特定されていないが、少量でも急性腎障害の報告",symptoms:["嘔吐","下痢","元気消失","食欲不振","尿量の変化"],onset:"数時間〜24〜72時間で腎症状が出ることも（遅れて出る）",urgency:"量に関わらず早めに（少量でも報告あり）",variesBy:["個体差"]},
+  {id:"allium",name:"ねぎ類（玉ねぎ・長ねぎ・にら・にんにく）",aliases:["玉ねぎ","たまねぎ","ねぎ","長ねぎ","にら","ニラ","にんにく","ニンニク"],category:"food",species:"both",risk:"high",toxic:"有機硫黄化合物が赤血球を壊す（加熱・スープでも）",symptoms:["元気消失","食欲不振","貧血","赤〜茶色の尿"],onset:"数時間〜数日後に貧血が出ることも（遅発に注意）",urgency:"量が多い／元気消失や尿の色の変化があるとき",variesBy:["量","体重"]},
+  {id:"xylitol",name:"キシリトール（無糖ガム・お菓子）",aliases:["キシリトール","xylitol","無糖ガム","シュガーレス","ガム"],category:"food",species:"dog",risk:"emergency",toxic:"犬でごく少量でも急激な低血糖・肝障害の恐れ",symptoms:["ふらつき","ぐったり","けいれん","嘔吐"],onset:"30〜60分で低血糖のことも／肝障害は1〜2日後のことも",urgency:"少量でも早めに",variesBy:["量","体重"]},
+  {id:"alcohol",name:"アルコール",aliases:["アルコール","お酒","酒","ビール","エタノール"],category:"food",species:"both",risk:"high",toxic:"飲料のほか、パン生地・消毒液・発酵物にも含まれる",symptoms:["ふらつき","嘔吐","呼吸が浅い","低体温","重症で昏睡"],onset:"30分〜数時間",urgency:"ぐったり／呼吸の変化があるとき",variesBy:["量","体重"]},
+  {id:"caffeine",name:"カフェイン（コーヒー・お茶・エナジー飲料）",aliases:["カフェイン","コーヒー","珈琲","お茶","紅茶","エナジードリンク","茶葉"],category:"food",species:"both",risk:"high",toxic:"コーヒー・茶葉・エナジー飲料・コーヒーかす",symptoms:["落ち着かない","心拍が速い","ふるえ","重症でけいれん"],onset:"1〜2時間",urgency:"量が多い／落ち着かない・心拍が速いとき",variesBy:["量","体重"]},
+  {id:"macadamia",name:"マカダミアナッツ",aliases:["マカダミア","ナッツ"],category:"food",species:"dog",risk:"high",toxic:"少量でも一過性の神経症状が出ることがある",symptoms:["後ろ足の脱力","ふるえ","発熱","元気消失","嘔吐"],onset:"12時間以内が多い",urgency:"歩きにくそう／ふるえがあるとき",variesBy:["量","体重"]},
+  {id:"dough",name:"生のパン生地",aliases:["パン生地","生地","発酵"],category:"food",species:"both",risk:"high",toxic:"胃内で発酵・膨張し、アルコールも発生する",symptoms:["お腹の張り","吐こうとして出ない","ふらつき"],onset:"食後まもなく〜数時間",urgency:"お腹が張る／苦しそうなときはすぐ",variesBy:["量"]},
+  {id:"avocado",name:"アボカド",aliases:["アボカド"],category:"food",species:"both",risk:"caution",toxic:"ペルシンを含む。種は誤飲・閉塞の恐れ",symptoms:["嘔吐","下痢"],onset:"数時間",urgency:"種を丸呑み／繰り返す嘔吐",variesBy:["量","部位"]},
+  {id:"bone",name:"加熱した骨（鶏・魚など）",aliases:["骨","鶏の骨","魚の骨"],category:"food",species:"both",risk:"caution",toxic:"加熱骨は鋭く割れ、口〜消化管を傷つける・詰まる",symptoms:["よだれ","口を気にする","嘔吐","血便","食欲不振"],onset:"直後〜数日",urgency:"のどに詰まる／血が出る／繰り返す嘔吐",variesBy:["部位","大きさ"]},
+  {id:"salt",name:"塩分の多い人の食べ物",aliases:["塩","塩分","ハム","スナック","出汁"],category:"food",species:"both",risk:"caution",toxic:"過剰な塩分で体調を崩すことがある",symptoms:["嘔吐","多飲多尿","ふらつき"],onset:"数時間",urgency:"大量／ふらつきがあるとき",variesBy:["量","体重"]},
+  {id:"dairy",name:"牛乳・乳製品",aliases:["牛乳","乳製品","チーズ","ヨーグルト"],category:"food",species:"both",risk:"avoid",toxic:"乳糖が合わない子が多い",symptoms:["お腹のゆるみ","下痢"],onset:"数時間",urgency:"下痢が続くとき",variesBy:["個体差"]},
+  {id:"nsaid",name:"人用の鎮痛薬（イブプロフェン・アセトアミノフェン等）",aliases:["痛み止め","鎮痛薬","イブプロフェン","ロキソニン","ロキソプロフェン","バファリン","アセトアミノフェン","カロナール","NSAIDs"],category:"medicine",species:"both",risk:"emergency",toxic:"人用鎮痛薬は犬に少量でも中毒（消化管・腎・肝）",symptoms:["嘔吐","黒い便","元気消失","ふらつき"],onset:"数時間〜1日",urgency:"1錠でも相談（自己判断で犬に与えない）",variesBy:["量","体重"]},
+  {id:"cold",name:"風邪薬・鼻炎薬（人用）",aliases:["風邪薬","感冒薬","鼻炎薬","咳止め","プソイドエフェドリン"],category:"medicine",species:"both",risk:"emergency",toxic:"人用の風邪薬・鼻炎薬の成分が中毒を起こすことがある",symptoms:["落ち着かない","心拍が速い","ふるえ","けいれん"],onset:"数時間",urgency:"誤飲したら早めに（成分がわかるものを持参）",variesBy:["成分","量","体重"]},
+  {id:"psych",name:"睡眠薬・向精神薬など（人の処方薬）",aliases:["睡眠薬","抗うつ薬","精神安定剤","処方薬","安定剤"],category:"medicine",species:"both",risk:"high",toxic:"人の処方薬は犬に影響が出ることがある",symptoms:["強い眠気または逆に興奮","ふらつき","ふるえ"],onset:"数時間",urgency:"種類・量が不明でも相談",variesBy:["成分","量","体重"]},
+  {id:"supp",name:"人用サプリ（鉄・ビタミンD等）",aliases:["サプリ","サプリメント","鉄剤","ビタミンD"],category:"medicine",species:"both",risk:"high",toxic:"鉄・ビタミンD等は過剰摂取で中毒のことがある",symptoms:["嘔吐","下痢","元気消失"],onset:"数時間〜1日",urgency:"量が多い／成分が不明なとき",variesBy:["成分","量","体重"]},
+  {id:"lily",name:"ユリ科の植物（花・葉・花粉・生けた水）",aliases:["ユリ","ゆり","百合"],category:"plant",species:"cat",risk:"emergency",toxic:"猫はごく微量で急性腎障害（切り花・花粉・花瓶の水にも）",symptoms:["嘔吐","元気消失","尿が出ない"],onset:"数時間〜1〜2日で腎症状",urgency:"猫は少量でもすぐ相談",variesBy:["個体差"]},
+  {id:"houseplant",name:"観葉植物（ポトス・アイビー・サゴヤシ等）",aliases:["ポトス","アイビー","サゴヤシ","観葉植物"],category:"plant",species:"both",risk:"caution",toxic:"口内を刺激する種類が多い。サゴヤシは特に危険",symptoms:["よだれ","口を気にする","嘔吐"],onset:"直後〜数時間",urgency:"サゴヤシ／大量／ぐったり",variesBy:["種類","量"]},
+  {id:"bulb",name:"球根植物（チューリップ・スイセン等）",aliases:["チューリップ","スイセン","水仙","球根"],category:"plant",species:"both",risk:"caution",toxic:"球根に刺激・有害成分（特に球根部分）",symptoms:["よだれ","嘔吐","下痢"],onset:"直後〜数時間",urgency:"球根を食べた／繰り返す嘔吐",variesBy:["部位","量"]},
+  {id:"antifreeze",name:"不凍液（エチレングリコール）",aliases:["不凍液","クーラント","エチレングリコール"],category:"household",species:"both",risk:"emergency",toxic:"甘く犬が舐めやすい。少量でも腎障害・致死の恐れ",symptoms:["酔ったようなふらつき","多飲多尿","その後ぐったり"],onset:"30分〜数時間で神経症状、その後に腎障害",urgency:"疑ったら一刻も早く（時間が勝負）",variesBy:["量","体重"]},
+  {id:"pesticide",name:"殺鼠剤・殺虫剤・農薬",aliases:["殺鼠剤","ネズミ","殺虫剤","農薬","駆除剤"],category:"household",species:"both",risk:"emergency",toxic:"種類により出血・けいれん等。製品で作用が違う",symptoms:["出血が止まりにくい","ふるえ","けいれん","元気消失"],onset:"種類による（数時間〜数日）",urgency:"製品（パッケージ）を持ってすぐ相談",variesBy:["製品","量","体重"]},
+  {id:"detergent",name:"洗剤・漂白剤",aliases:["洗剤","漂白剤","ハイター","カビ取り","トイレ洗剤"],category:"household",species:"both",risk:"high",toxic:"口・食道・胃の粘膜を傷めることがある",symptoms:["よだれ","口を気にする","嘔吐","元気消失"],onset:"直後〜数時間",urgency:"強い製品／口を痛がる／飲んだ量が多い",dont:["吐かせない（逆流で食道をさらに傷める恐れ）"],variesBy:["製品","量"]},
+  {id:"nicotine",name:"たばこ・ニコチン",aliases:["たばこ","タバコ","ニコチン","加熱式","吸い殻","電子タバコ","リキッド"],category:"household",species:"both",risk:"high",toxic:"ニコチンで中毒。吸い殻・リキッドも",symptoms:["よだれ","嘔吐","落ち着かない","ふるえ","心拍が速い"],onset:"15分〜1時間",urgency:"量が多い／けいれん・ふるえ",variesBy:["量","体重"]},
 ];
 // 夜間・救急で電話するときに伝えたいこと（安全な備えガイド。病院データは各自で登録）。
 const EMERGENCY_TIPS=[
@@ -1500,6 +1521,9 @@ function App(){
   const[toxicOpen,setToxicOpen]=useState(false); // 誤食・中毒の危険物リスト
   const[toxicSp,setToxicSp]=useState("all"); // dog/cat/all
   const[toxicQ,setToxicQ]=useState("");
+  const[toxicCat,setToxicCat]=useState("all"); // 食品/薬/植物/家庭用品
+  const[toxicExpanded,setToxicExpanded]=useState(null); // 展開中の項目id
+  const[toxicEmgOpen,setToxicEmgOpen]=useState(false); // 「今、食べたかも？」チェック
   const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
   const[disasterOpen,setDisasterOpen]=useState(false); // 防災・避難の備え
   const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
@@ -2186,6 +2210,8 @@ function App(){
   const dismissCoach=useCallback(()=>{setCoachKey(k=>{if(k)markCoachSeen(k);return null;});},[]);
   // 迷子モードを開くたびに最初のステップ（場所・日時）から。パニック時でも一本道で進める。
   useEffect(()=>{if(lostOpen)setLostStep(0);},[lostOpen]);
+  // 誤食・中毒を開くたびに展開・チェックをリセット
+  useEffect(()=>{if(toxicOpen){setToxicExpanded(null);setToxicEmgOpen(false);}},[toxicOpen]);
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
@@ -5055,30 +5081,76 @@ function App(){
           </div>
         </div>
       );})()}
-      {toxicOpen&&(
+      {toxicOpen&&(()=>{
+        const q=toxicQ.trim().toLowerCase();
+        const list=TOXIC_ITEMS
+          .filter(t=>toxicSp==="all"||t.species==="both"||t.species===toxicSp)
+          .filter(t=>toxicCat==="all"||t.category===toxicCat)
+          .filter(t=>{if(!q)return true;const hay=[t.name,...(t.aliases||[]),t.toxic,(t.symptoms||[]).join("")].join("").toLowerCase();return hay.includes(q);})
+          .sort((a,b)=>TOX_RANK[a.risk]-TOX_RANK[b.risk]);
+        const petW=(()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];if(!m)return null;const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();return wl?`${wl.weight}${wl.wunit||"kg"}`:null;})();
+        return(
         <div className="yl-help-ov" onClick={()=>setToxicOpen(false)}>
-          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+          <div className="yl-help-page yl-tox" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="alert" size={18}/> 誤食・中毒の危険物</h2>
+              <h2 className="yl-help-title"><Icon name="alert" size={18}/> 誤食・中毒</h2>
               <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
             </div>
-            <div className="yl-toxic-controls">
-              <div className="yl-toxic-tabs">{[{k:"all",l:"すべて"},{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-toxic-tab"+(toxicSp===o.k?" on":"")} onClick={()=>setToxicSp(o.k)}>{o.l}</button>)}</div>
-              <input className="yl-input sm" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="名前・症状で検索"/>
+            <button className="yl-tox-emg" onClick={()=>setToxicEmgOpen(true)}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても、後から出ることがあります。家庭で吐かせないでください。</p>
+            <div className="yl-tox-controls">
+              <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="例：チョコ ／ 玉ねぎ ／ ぶどう ／ キシリトール"/>
+              <div className="yl-tox-cats">{TOX_CATS.map(c=><button key={c.k} className={"yl-tox-cat"+(toxicCat===c.k?" on":"")} onClick={()=>setToxicCat(c.k)}>{c.l}</button>)}</div>
+              <div className="yl-tox-tabs">{[{k:"all",l:"犬・猫"},{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-tox-tab"+(toxicSp===o.k?" on":"")} onClick={()=>setToxicSp(o.k)}>{o.l}</button>)}</div>
             </div>
-            <ul className="yl-toxic-list">
-              {TOXIC_ITEMS.filter(t=>(toxicSp==="all"||t.sp==="both"||t.sp===toxicSp)).filter(t=>{const q=toxicQ.trim();return !q||t.name.includes(q)||t.sym.includes(q)||(t.note||"").includes(q);}).map((t,i)=>(
-                <li key={i} className={"yl-toxic-item lv-"+t.lv}>
-                  <div className="yl-toxic-top"><span className={"yl-toxic-badge lv-"+t.lv}><Icon name={t.lv==="danger"?"ban":"alert"} size={12}/> {t.lv==="danger"?"絶対NG":"要注意"}</span><span className="yl-toxic-name">{t.name}</span>{t.sp!=="both"&&<span className="yl-toxic-sp">{t.sp==="dog"?"犬":"猫"}</span>}</div>
-                  <p className="yl-toxic-sym">症状：{t.sym}</p>
-                  {t.note&&<p className="yl-toxic-note">{t.note}</p>}
+            <ul className="yl-tox-list">
+              {list.map(t=>{const R=TOX_RISK[t.risk];const open=toxicExpanded===t.id;const donts=[...(t.dont||[]),...TOX_DONT_CORE];const vets=[...(t.vet||[]),...TOX_VET_CORE];return(
+                <li key={t.id} className={"yl-tox-item r-"+t.risk}>
+                  <button className="yl-tox-row" onClick={()=>setToxicExpanded(open?null:t.id)} aria-expanded={open}>
+                    <span className={"yl-tox-badge r-"+t.risk}>{R.emoji} {R.label}</span>
+                    <span className="yl-tox-name">{t.name}{t.species!=="both"&&<span className="yl-tox-sp">{t.species==="dog"?"犬":"猫"}</span>}</span>
+                    <Icon name="chevron" size={16} className={open?"yl-rot90":""}/>
+                  </button>
+                  <p className="yl-tox-lead">{t.toxic}</p>
+                  {open&&<div className="yl-tox-detail">
+                    <div className="yl-tox-d"><h4>症状</h4><p>{t.symptoms.join("・")}</p></div>
+                    <div className="yl-tox-d"><h4>発症の目安</h4><p>{t.onset}</p></div>
+                    <div className="yl-tox-d urg"><h4><Icon name="activity" size={12}/> すぐ受診したいケース</h4><p>{t.urgency}</p></div>
+                    <div className="yl-tox-d dont"><h4><Icon name="ban" size={12}/> やってはいけないこと</h4><ul>{donts.map((d,i)=><li key={i}>{d}</li>)}</ul></div>
+                    <div className="yl-tox-d"><h4><Icon name="phone" size={12}/> 病院に伝える情報</h4><ul>{vets.map((v,i)=><li key={i}>{v}</li>)}</ul></div>
+                    {t.variesBy&&<p className="yl-tox-varies">危険度は {t.variesBy.join("・")} で変わります。{petW?`（${(activeMember&&activeMember.kind==="pet")?activeMember.name:"登録"}の体重：${petW}）`:""}</p>}
+                    <p className="yl-tox-src">{TOX_SOURCE}／最終確認 {TOX_REVIEWED}</p>
+                  </div>}
                 </li>
-              ))}
+              );})}
+              {list.length===0&&<li className="yl-tox-empty">該当が見つかりませんでした。心当たりが無くても、食べた可能性があれば動物病院にご相談ください。</li>}
             </ul>
-            <p className="yl-toxic-foot">※ 一般的な注意です。食べてしまった時は量にかかわらず、早めにかかりつけ・救急にご相談ください。</p>
+            <p className="yl-toxic-foot">※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急へ。</p>
           </div>
         </div>
-      )}
+        );})()}
+      {toxicEmgOpen&&(()=>{
+        const petW=(()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];if(!m)return null;const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();return wl?`${m.name}：${wl.weight}${wl.wunit||"kg"}`:m.name;})();
+        return(
+        <div className="yl-help-ov" onClick={()=>setToxicEmgOpen(false)}>
+          <div className="yl-modal vetmodal yl-tox-emgmodal" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title" style={{textAlign:"left"}}>🚑 落ち着いて、この5つを確認</h3>
+            <p className="yl-tox-emg-sub">これは診断ではありません。この内容を持って、動物病院・夜間救急にご相談ください。</p>
+            <ol className="yl-tox-emg-list">
+              <li><span className="yl-tox-emg-q">何を食べた？</span><input className="yl-input sm" placeholder="例：チョコ、玉ねぎ、薬 など"/></li>
+              <li><span className="yl-tox-emg-q">どのくらい？</span><input className="yl-input sm" placeholder="例：ひとかけ／1錠／量は不明"/></li>
+              <li><span className="yl-tox-emg-q">いつ？</span><input className="yl-input sm" placeholder="例：10分前／さっき／不明"/></li>
+              <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" placeholder="例：8kg"/></li>
+              <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
+            </ol>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても受診が必要なことがあります。「様子見」で放置しないでください。自己判断で吐かせないでください。</p>
+            <div className="yl-modal-btns">
+              <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>とじる</button>
+              <button className="yl-addbtn modal" onClick={()=>{setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
+            </div>
+          </div>
+        </div>
+        );})()}
       {wxAddOpen&&(
         <div className="yl-help-ov" onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
