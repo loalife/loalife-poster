@@ -4910,39 +4910,6 @@ function App(){
 
       {/* 下部固定スタック：メンバーバー（上）＋タブナビ（下） */}
       <div className="yl-btmstack">
-      {/* 共通メンバー切り替え：ドロップアップ（通常は選択中1件、タップで上方向に一覧を展開）。すべてはカレンダーのみ。 */}
-      {!onboarding&&tab==="cal"&&(()=>{
-        const curId=tab==="cal"?calFilter:tab;
-        const cur=curId==="all"?null:(spaces.find(s=>s.id===curId)||spaces[0]);
-        const select=(id)=>{setAdding(false);if(tab==="cal"){setCalFilter(id);if(id!=="all")setMemberSel(id);}else{setTab(id);setMemberSel(id);}setMemListOpen(false);};
-        const meSpace=spaces[0];
-        const memRow=(s)=>{const sel=curId===s.id;return(
-          <button key={s.id} className={"yl-mrow"+(sel?" on":"")} onClick={()=>select(s.id)}>
-            <span className="yl-mchip-dot" style={{background:colorOf(s.id)}}/>{avatarNode(s,"xs")}<span className="yl-mrow-name">{s.name}</span>{sel&&<span className="yl-mrow-check">✓</span>}
-          </button>);};
-        return(<>
-          {memListOpen&&<div className="yl-mscrim" onClick={()=>setMemListOpen(false)}/>}
-          {memListOpen&&(
-            <div className="yl-mdropup" role="listbox">
-              {tab==="cal"&&<button className={"yl-mrow"+(calFilter==="all"?" on":"")} onClick={()=>select("all")}><span className="yl-mrow-ico"><Icon name="users" size={16}/></span><span className="yl-mrow-name">すべて（全員の予定を重ねる）</span>{calFilter==="all"&&<span className="yl-mrow-check">✓</span>}</button>}
-              {memRow(meSpace)}
-              {groupedMembers.map(g=>(
-                <Fragment key={g.group||"__ungrouped"}>
-                  {g.group&&<div className="yl-mgroup-h"><Icon name="folder" size={13}/> {g.group}</div>}
-                  {g.members.map(m=>memRow(m))}
-                </Fragment>
-              ))}
-              <button className="yl-mrow add" onClick={()=>{setAdding(true);setMemListOpen(false);}}>＋ 家族・ペットを追加</button>
-            </div>
-          )}
-          <button className="yl-membar" data-tour="membar" onClick={()=>setMemListOpen(o=>!o)} aria-expanded={memListOpen} aria-label="メンバーを切り替え">
-            {curId==="all"
-              ?<><span className="yl-mrow-ico"><Icon name="users" size={16}/></span><span className="yl-mbar-name">すべて</span></>
-              :<><span className="yl-mchip-dot" style={{background:colorOf(cur.id)}}/>{avatarNode(cur,"xs")}<span className="yl-mbar-name">{cur.name}</span></>}
-            <span className="yl-mbar-caret">{memListOpen?"▼":"▲"}</span>
-          </button>
-        </>);
-      })()}
 
       {/* 下部タブナビゲーション（常時表示・行動で分類） */}
       {!onboarding&&(()=>{
