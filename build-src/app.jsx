@@ -115,6 +115,10 @@ const TOXIC_ITEMS=[
   {id:"pesticide",name:"殺鼠剤・殺虫剤・農薬",aliases:["殺鼠剤","ネズミ","殺虫剤","農薬","駆除剤"],category:"household",species:"both",risk:"emergency",toxic:"種類により出血・けいれん等。製品で作用が違う",symptoms:["出血が止まりにくい","ふるえ","けいれん","元気消失"],onset:"種類による（数時間〜数日）",urgency:"製品（パッケージ）を持ってすぐ相談",variesBy:["製品","量","体重"]},
   {id:"detergent",name:"洗剤・漂白剤",aliases:["洗剤","漂白剤","ハイター","カビ取り","トイレ洗剤"],category:"household",species:"both",risk:"high",toxic:"口・食道・胃の粘膜を傷めることがある",symptoms:["よだれ","口を気にする","嘔吐","元気消失"],onset:"直後〜数時間",urgency:"強い製品／口を痛がる／飲んだ量が多い",dont:["吐かせない（逆流で食道をさらに傷める恐れ）"],variesBy:["製品","量"]},
   {id:"nicotine",name:"たばこ・ニコチン",aliases:["たばこ","タバコ","ニコチン","加熱式","吸い殻","電子タバコ","リキッド"],category:"household",species:"both",risk:"high",toxic:"ニコチンで中毒。吸い殻・リキッドも",symptoms:["よだれ","嘔吐","落ち着かない","ふるえ","心拍が速い"],onset:"15分〜1時間",urgency:"量が多い／けいれん・ふるえ",variesBy:["量","体重"]},
+  {id:"battery",name:"電池・ボタン電池",aliases:["電池","ボタン電池","バッテリー","コイン電池"],category:"household",species:"both",risk:"emergency",toxic:"飲み込むと化学やけど・穴があくことも（特にボタン電池）",symptoms:["よだれ","口を痛がる","嘔吐","元気消失"],onset:"数時間以内に損傷が進むことも",urgency:"飲み込んだ疑いだけでもすぐ（時間が勝負）",dont:["吐かせない（逆流でさらに傷める恐れ）"],variesBy:["種類","大きさ","経過時間"]},
+  {id:"mold",name:"カビの生えた食品・生ゴミ",aliases:["カビ","かび","カビた","生ゴミ","腐った"],category:"food",species:"both",risk:"high",toxic:"カビ毒（マイコトキシン）でふるえ・けいれんを起こすことがある",symptoms:["ふるえ","落ち着かない","嘔吐","重症でけいれん"],onset:"数分〜数時間",urgency:"ふるえ・けいれんがあればすぐ",variesBy:["量","体重"]},
+  {id:"essentialoil",name:"アロマ・精油（ティーツリー等）",aliases:["アロマ","精油","エッセンシャルオイル","ティーツリー","ディフューザー"],category:"household",species:"both",risk:"high",toxic:"精油は皮膚や経口で中毒を起こすことがある（原液は特に）",symptoms:["よだれ","ふらつき","ふるえ","元気消失"],onset:"数時間",urgency:"原液をなめた／皮膚に大量／ふらつきがあるとき",variesBy:["種類","量","体重"]},
+  {id:"wildmushroom",name:"野生のキノコ",aliases:["キノコ","きのこ","茸","野生のキノコ"],category:"plant",species:"both",risk:"high",toxic:"種類の判別が難しく、有毒種は重篤な中毒（肝・神経）の恐れ",symptoms:["嘔吐","下痢","よだれ","ふらつき","重症で肝障害"],onset:"種類による（数十分〜数日）",urgency:"食べた可能性があれば早めに（できれば現物を保存）",variesBy:["種類","量"]},
 ];
 // 夜間・救急で電話するときに伝えたいこと（安全な備えガイド。病院データは各自で登録）。
 const EMERGENCY_TIPS=[
