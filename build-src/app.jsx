@@ -5632,7 +5632,7 @@ function App(){
         const allergy=cards.filter(c=>c.kind==="allergy");
         const hospitals=cards.filter(c=>c.kind==="hospital");
         const otherContacts=cards.filter(c=>c.kind==="emergency"||c.kind==="insurance");
-        const contactLi=(c)=>{const ph=isPhoneLike(c.body);return(<li key={c.id} className={ph?"yl-vetsum-contactline":undefined}>{cardMeta(c.kind).emoji} <b>{c.title}</b>{ph?<a className="yl-vetsum-tel" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>📞 {fmtJPPhone(c.body)}</a>:(c.body?`：${c.body}`:"")}</li>);};
+        const contactLi=(c)=>{const ph=isPhoneLike(c.body);const hmeta=c.kind==="hospital"&&[c.hours&&`🕐 ${c.hours}`,c.addr&&`📍 ${c.addr}`].filter(Boolean).join("　");return(<li key={c.id} className={ph?"yl-vetsum-contactline":undefined}>{cardMeta(c.kind).emoji} <b>{c.title}</b>{c.night?<span className="yl-emg-tag" style={{marginLeft:6}}>夜間</span>:null}{ph?<a className="yl-vetsum-tel" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>📞 {fmtJPPhone(c.body)}</a>:(c.body?`：${c.body}`:"")}{hmeta&&<span className="yl-vetsum-cmeta">{hmeta}</span>}</li>);};
         const notesCards=cards.filter(c=>c.kind==="other");
         const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
         const bd=activeMember.birthday;
