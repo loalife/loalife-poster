@@ -5102,7 +5102,7 @@ function App(){
               <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
             </div>
             <button className="yl-tox-emg" onClick={()=>setToxicEmgOpen(true)}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても、後から出ることがあります。家庭で吐かせないでください。</p>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても後から出ることが。家庭で吐かせないで。</p>
             <div className="yl-tox-controls">
               <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="例：チョコ ／ 玉ねぎ ／ ぶどう ／ キシリトール"/>
               <div className="yl-tox-cats">{TOX_CATS.map(c=><button key={c.k} className={"yl-tox-cat"+(toxicCat===c.k?" on":"")} onClick={()=>setToxicCat(c.k)}>{c.l}</button>)}</div>
@@ -5157,7 +5157,7 @@ function App(){
               <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" placeholder="例：8kg"/></li>
               <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
             </ol>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても受診が必要なことがあります。「様子見」で放置しないでください。自己判断で吐かせないでください。</p>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても受診が必要なことが。様子見せず、吐かせないで。</p>
             <div className="yl-modal-btns">
               <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>とじる</button>
               <button className="yl-addbtn modal" onClick={()=>{setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
