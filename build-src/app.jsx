@@ -3652,10 +3652,10 @@ function App(){
           <div className="yl-home">
             {/* 初見（メンバー未登録）だけに出す追加導線。登録済みユーザーには表示しない */}
             {members.length===0&&(
-              <section style={{background:"#fff",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
+              <section style={{background:"var(--card)",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
                 <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>🐶🐱</div>
-                <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"#3A342E"}}>ようこそ</p>
-                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"#8A8178"}}>大切な家族の毎日と、もしもの備えを、ひとつに。<br/>ペットも子どもも、まずはひとり登録しましょう。</p>
+                <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"var(--text)"}}>ようこそ</p>
+                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"var(--text-sub)"}}>大切な家族の毎日と、もしもの備えを、ひとつに。<br/>ペットも子どもも、まずはひとり登録しましょう。</p>
                 <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> うちの子・家族を登録</button>
               </section>
             )}
@@ -5746,7 +5746,7 @@ function App(){
             <div className="yl-opt" style={{marginTop:12,width:"100%"}}>動物種<span className="yl-seg-mini">{[{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodCalc.species===o.k?" on":"")} onClick={()=>setFoodCalc(f=>({...f,species:o.k,stage:""}))}>{o.l}</button>)}</span></div>
             <div className="yl-opt" style={{marginTop:10,width:"100%"}}>現在の体重（BW）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.bw} onChange={e=>setFoodCalc(f=>({...f,bw:e.target.value}))} placeholder="体重"/><span className="yl-food-unit">kg</span></div></div>
             <label className="yl-opt" style={{marginTop:10,width:"100%"}}>ライフステージ・活動量<select className="yl-input sm" style={{marginTop:4}} value={foodCalc.stage} onChange={e=>setFoodCalc(f=>({...f,stage:e.target.value}))}><option value="">選択してください</option>{stages.map(s=><option key={s.k} value={s.k}>{s.l}（係数{s.f}）</option>)}</select></label>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"#8A8178",fontSize:12}}>適正は{foodCalc.species==="cat"?"5":"4〜5"}</span>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"var(--text-sub)",fontSize:12}}>適正は{foodCalc.species==="cat"?"5":"4〜5"}</span>
               <span className="yl-bcs-row">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className={"yl-bcs-btn"+(foodCalc.bcs===n?" on":"")+(bcsIdeal(foodCalc.species,n)?" ideal":"")} onClick={()=>setFoodCalc(f=>({...f,bcs:n}))}>{n}</button>)}</span>
               <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?"BCSの見かたを閉じる":`${foodCalc.species==="cat"?"猫":"犬"}のBCSの見かたを見る`}</button>
               {foodCalcGuide&&<ul className="yl-bcs-guide">{(BCS_GUIDE[foodCalc.species]||BCS_GUIDE.dog).map(g=><li key={g[0]} className={bcsIdeal(foodCalc.species,g[0])?"ideal":""}><b>{g[0]}：{g[1]}</b>{g[2]}</li>)}</ul>}
