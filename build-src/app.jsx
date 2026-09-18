@@ -1524,6 +1524,7 @@ function App(){
   const[toxicCat,setToxicCat]=useState("all"); // 食品/薬/植物/家庭用品
   const[toxicExpanded,setToxicExpanded]=useState(null); // 展開中の項目id
   const[toxicEmgOpen,setToxicEmgOpen]=useState(false); // 「今、食べたかも？」チェック
+  const[toxicSrcOpen,setToxicSrcOpen]=useState(false); // 「情報源について」の開閉
   const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
   const[disasterOpen,setDisasterOpen]=useState(false); // 防災・避難の備え
   const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
@@ -2211,7 +2212,7 @@ function App(){
   // 迷子モードを開くたびに最初のステップ（場所・日時）から。パニック時でも一本道で進める。
   useEffect(()=>{if(lostOpen)setLostStep(0);},[lostOpen]);
   // 誤食・中毒を開くたびに展開・チェックをリセット
-  useEffect(()=>{if(toxicOpen){setToxicExpanded(null);setToxicEmgOpen(false);}},[toxicOpen]);
+  useEffect(()=>{if(toxicOpen){setToxicExpanded(null);setToxicEmgOpen(false);setToxicSrcOpen(false);}},[toxicOpen]);
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
   const isPersonalTab=tab!=="home";          // わたし＋各メンバー（ホーム以外）
   const curKind=activeMember?activeMember.kind:"me";
@@ -5119,13 +5120,22 @@ function App(){
                     <div className="yl-tox-d dont"><h4><Icon name="ban" size={12}/> やってはいけないこと</h4><ul>{donts.map((d,i)=><li key={i}>{d}</li>)}</ul></div>
                     <div className="yl-tox-d"><h4><Icon name="phone" size={12}/> 病院に伝える情報</h4><ul>{vets.map((v,i)=><li key={i}>{v}</li>)}</ul></div>
                     {t.variesBy&&<p className="yl-tox-varies">危険度は {t.variesBy.join("・")} で変わります。{petW?`（${(activeMember&&activeMember.kind==="pet")?activeMember.name:"登録"}の体重：${petW}）`:""}</p>}
-                    <p className="yl-tox-src">{TOX_SOURCE}／最終確認 {TOX_REVIEWED}</p>
+                    <p className="yl-tox-src">{t.source||TOX_SOURCE}／最終確認 {t.lastReviewedAt||TOX_REVIEWED}</p>
                   </div>}
                 </li>
               );})}
               {list.length===0&&<li className="yl-tox-empty">該当が見つかりませんでした。心当たりが無くても、食べた可能性があれば動物病院にご相談ください。</li>}
             </ul>
             <p className="yl-toxic-foot">※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急へ。</p>
+            <div className="yl-tox-srcbox">
+              <button className="yl-tox-srchead" onClick={()=>setToxicSrcOpen(o=>!o)} aria-expanded={toxicSrcOpen}><Icon name="shield" size={13}/> 情報源について<Icon name="chevron" size={15} className={toxicSrcOpen?"yl-rot90":""}/></button>
+              {toxicSrcOpen&&<div className="yl-tox-srcbody">
+                <p>このリストは、ASPCA中毒管理センター・Pet Poison Helpline・Merck獣医マニュアル 等、一般に公開された獣医毒性の情報を参照して整理しています。</p>
+                <p>具体的な毒性量・致死量・安全量は、量・体重・個体差で大きく変わり誤用の危険があるため、<b>意図的に掲載していません</b>。</p>
+                <p>掲載は一般的な注意であり、<b>診断ではありません</b>。実際の判断は必ず動物病院・中毒専門の窓口にご確認ください。情報源が確認できない内容は断定的に載せていません。</p>
+                <p className="yl-tox-src">最終確認：{TOX_REVIEWED}</p>
+              </div>}
+            </div>
           </div>
         </div>
         );})()}
