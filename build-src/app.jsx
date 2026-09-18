@@ -5192,7 +5192,7 @@ function App(){
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> このアプリについて</h2><button className="yl-help-close" onClick={()=>setAboutOpen(false)} aria-label="閉じる">×</button></div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="paw" size={15}/> LOALIFE</span></div>
-              <p className="yl-set-desc">自分・家族・ペットの予定や記録を、ひとつの場所でまとめて。<br/>家族の暮らしをまるごと見守るアプリです。</p>
+              <p className="yl-set-desc">大切な家族（ペットも子どもも）の毎日の記録・予定・健康を、ひとつの場所に。<br/>もしものときの備え（迷子ポスター・緊急カード）まで、まるごと見守るアプリです。</p>
               <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版</strong></p>
             </div>
             <div className="yl-emg-sec">
