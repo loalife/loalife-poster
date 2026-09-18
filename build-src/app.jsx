@@ -2859,16 +2859,18 @@ function App(){
   };
   // --- 大切な情報カード（緊急連絡先・アレルギー/禁忌・病院メモ）。写真も保存可 ---
   const cards=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="card").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
-  const openCardNew=(kind)=>{const m=cardMeta(kind);setCardEdit({space:tab,kind,title:m.label,body:"",photo:null,photoId:null});};
-  const openCardEdit=async(c)=>{let photo=null;const pid=firstPhotoId(c);if(pid){photo=photos[pid]||null;if(!photo){try{photo=await photoStorage.get(`photo:${pid}`);}catch(e){}}}setCardEdit({id:c.id,space:c.space,kind:c.kind||"other",title:c.title||"",body:c.body||"",photo,photoId:pid||null});};
+  const openCardNew=(kind)=>{const m=cardMeta(kind);setCardEdit({space:tab,kind,title:m.label,body:"",photo:null,photoId:null,hours:"",addr:"",night:false});};
+  const openCardEdit=async(c)=>{let photo=null;const pid=firstPhotoId(c);if(pid){photo=photos[pid]||null;if(!photo){try{photo=await photoStorage.get(`photo:${pid}`);}catch(e){}}}setCardEdit({id:c.id,space:c.space,kind:c.kind||"other",title:c.title||"",body:c.body||"",photo,photoId:pid||null,hours:c.hours||"",addr:c.addr||"",night:!!c.night});};
   const pickCardPhoto=async(e)=>{const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;if(file.size>20*1024*1024){showFlash("ファイルが大きすぎます（20MB以下）");return;}try{const dataUrl=await downscaleImage(file);setCardEdit(c=>c?{...c,photo:dataUrl,photoNew:true}:c);}catch(er){showFlash("画像を読み込めませんでした");}};
   const saveCard=async()=>{
     if(!cardEdit)return;const c=cardEdit;const title=(c.title||"").trim()||cardMeta(c.kind).label;const body=(c.body||"").trim();
-    if(!body&&!c.photo){showFlash("内容か写真を入れてください");return;}
+    const hasHosp=c.kind==="hospital"&&((c.hours||"").trim()||(c.addr||"").trim());
+    if(!body&&!c.photo&&!hasHosp){showFlash("内容か写真を入れてください");return;}
     const id=c.id||("cd"+Date.now());let photoId=c.photoId||null;
     if(c.photoNew&&c.photo){const pid="cdp"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,c.photo);if(ok){setPhotos(p=>({...p,[pid]:c.photo}));photoId=pid;}}
     else if(!c.photo&&c.photoId){try{photoStorage.delete(`photo:${c.photoId}`);}catch(e){}photoId=null;}
-    const rec={id,space:c.space,type:"card",kind:c.kind,title,body:body||undefined,photo:photoId?true:undefined,photos:photoId?[photoId]:undefined,createdAt:c.id?(items.find(x=>x.id===c.id)||{}).createdAt||Date.now():Date.now()};
+    const isHosp=c.kind==="hospital";const hours=isHosp?(c.hours||"").trim():"";const addr=isHosp?(c.addr||"").trim():"";const night=isHosp?!!c.night:false;
+    const rec={id,space:c.space,type:"card",kind:c.kind,title,body:body||undefined,photo:photoId?true:undefined,photos:photoId?[photoId]:undefined,hours:hours||undefined,addr:addr||undefined,night:night||undefined,createdAt:c.id?(items.find(x=>x.id===c.id)||{}).createdAt||Date.now():Date.now()};
     const next=c.id?items.map(x=>x.id===c.id?{...x,...rec}:x):[...items,rec];
     persist(members,next);saveItemToFs(rec).catch(()=>{});setCardEdit(null);showFlash("カードを保存しました 📌");
   };
@@ -4939,7 +4941,7 @@ function App(){
                       {cards.map(c=>(
                         <button key={c.id} className="yl-infocard" onClick={()=>openCardEdit(c)}>
                           <span className="yl-infocard-emoji"><Icon name={cardIcon(c.kind)} size={20}/></span>
-                          <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}</span>
+                          <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}{c.night?<span className="yl-emg-tag">夜間</span>:null}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}{(c.hours||c.addr)&&<span className="yl-infocard-meta">{[c.hours&&`🕐 ${c.hours}`,c.addr&&`📍 ${c.addr}`].filter(Boolean).join("　")}</span>}</span>
                           {firstPhotoId(c)&&photos[firstPhotoId(c)]&&<img className="yl-infocard-thumb" src={photos[firstPhotoId(c)]} alt=""/>}
                         </button>
                       ))}
@@ -5031,7 +5033,8 @@ function App(){
       {emergencyOpen&&(()=>{
         const hospitals=items.filter(x=>x.type==="card"&&x.kind==="hospital");
         const persons=items.filter(x=>x.type==="card"&&x.kind==="emergency");
-        const primary=hospitals.find(h=>extractTel(h.body))||hospitals[0]||null;
+        const sortedH=[...hospitals].sort((a,b)=>(b.night?1:0)-(a.night?1:0));
+        const primary=sortedH.find(h=>h.night&&extractTel(h.body))||sortedH.find(h=>extractTel(h.body))||sortedH[0]||null;
         const primaryTel=primary?extractTel(primary.body):null;
         const dog=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];
         const dogW=dog?(()=>{const wl=items.filter(x=>x.space===dog.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();return wl?`${wl.weight}${wl.wunit||"kg"}`:null;})():null;
@@ -5039,7 +5042,7 @@ function App(){
         const ti=toxicEmgInfo;
         const renderContact=(c)=>{const tel=extractTel(c.body);return(
           <li key={c.id} className="yl-emg-contact">
-            <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||(c.kind==="hospital"?"病院":"連絡先")}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+            <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||(c.kind==="hospital"?"病院":"連絡先")}{c.night?<span className="yl-emg-tag">夜間</span>:null}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}{c.hours&&<span className="yl-emg-cmeta"><Icon name="bell" size={11}/> {c.hours}</span>}{c.addr&&<span className="yl-emg-cmeta"><Icon name="pin" size={11}/> {c.addr}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
             {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>番号を追加</button>}
           </li>
         );};
@@ -5059,6 +5062,7 @@ function App(){
               ):(
                 <button className="yl-emg-callbig ghost" onClick={()=>{setEmergencyOpen(false);setTab(dog?dog.id:(activeMember?activeMember.id:"me"));setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}><Icon name="plus" size={22}/><span className="yl-emg-callbig-t"><b>病院の連絡先を登録</b><span>夜間救急・かかりつけの番号を手元に</span></span></button>
               )}
+              {primaryTel&&(primary.hours||primary.addr)&&<div className="yl-emg-callmeta">{primary.hours&&<span><Icon name="bell" size={12}/> {primary.hours}</span>}{primary.addr&&<span><Icon name="pin" size={12}/> {primary.addr}</span>}</div>}
               <p className="yl-emg-note">受け入れ可否や診療方法は病院により異なり、事前連絡が必要なことも。診療時間・連絡先は最新を病院にご確認を。</p>
             </div>
 
@@ -5090,7 +5094,7 @@ function App(){
               {(hospitals.length===0&&persons.length===0)?(
                 <p className="yl-set-desc">動物病院と、家族・預け先の番号を登録しておくと安心です。ここから発信でき、カードにも残ります。</p>
               ):(<>
-                {hospitals.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">🏥 動物病院</div><ul className="yl-emg-contacts">{hospitals.map(renderContact)}</ul></div>}
+                {hospitals.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">🏥 動物病院</div><ul className="yl-emg-contacts">{sortedH.map(renderContact)}</ul></div>}
                 {persons.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">👤 家族・預け先</div><ul className="yl-emg-contacts">{persons.map(renderContact)}</ul></div>}
               </>)}
             </div>
@@ -5453,6 +5457,11 @@ function App(){
             <div className="yl-typerow" style={{marginBottom:10}}>{CARD_PRESETS.map(p=><button key={p.key} className={"yl-chip"+(cardEdit.kind===p.key?" on":"")} style={cardEdit.kind===p.key?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setCardEdit(c=>({...c,kind:p.key,title:c.title||cardMeta(p.key).label}))}><Icon name={cardIcon(p.key)} size={14}/> {p.label}</button>)}</div>
             <input className="yl-input" value={cardEdit.title} onChange={e=>setCardEdit(c=>({...c,title:e.target.value}))} placeholder="タイトル（例：かかりつけ病院）"/>
             <textarea className="yl-life-note" value={cardEdit.body} onChange={e=>setCardEdit(c=>({...c,body:e.target.value}))} placeholder="連絡先・アレルギー・注意点・お薬の残り期間など" rows={4}/>
+            {cardEdit.kind==="hospital"&&(<>
+              <input className="yl-input" value={cardEdit.hours||""} onChange={e=>setCardEdit(c=>({...c,hours:e.target.value}))} placeholder="受付・診療時間（任意 例：24時間／夜間 20:00〜翌8:00）"/>
+              <input className="yl-input" value={cardEdit.addr||""} onChange={e=>setCardEdit(c=>({...c,addr:e.target.value}))} placeholder="住所（任意）"/>
+              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={!!cardEdit.night} onChange={e=>setCardEdit(c=>({...c,night:e.target.checked}))}/> 夜間・救急でまず電話する病院にする</label>
+            </>)}
             <div className="yl-life-photos">
               {cardEdit.photo?<div className="yl-life-thumb"><img src={cardEdit.photo} alt=""/><button className="yl-life-thumb-del" onClick={()=>setCardEdit(c=>({...c,photo:null,photoNew:true}))} aria-label="削除">×</button></div>:<label className="yl-life-addphoto">＋<span>写真</span><input type="file" accept="image/*" style={{display:"none"}} onChange={pickCardPhoto}/></label>}
             </div>
