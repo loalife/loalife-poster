@@ -135,6 +135,22 @@ const EMERGENCY_PREP=[
   "お薬手帳・ワクチン接種証明（アプリの記録も確認可）",
   "支払い手段（対応している支払い方法を事前に確認）",
 ];
+// 受診時の持ち物（優先順位つき。準備より受診を優先）。
+const EMERGENCY_PREP_TIERS=[
+  {label:"まず持つ",items:["犬本体","リード／ハーネス","キャリーなど安全に運べるもの"]},
+  {label:"可能なら",items:["誤食した現物・パッケージ","薬のパッケージ・服薬情報","ワクチン・診療の記録（アプリの記録も）"]},
+  {label:"事前に確認",items:["支払い方法","駐車場・夜間入口"]},
+];
+// 明らかな緊急サイン（診断ではなく“迷ったら連絡”の安全側案内）。
+const EMERGENCY_REDFLAGS=["意識がおかしい","呼吸がおかしい","けいれん","大量の出血","急な悪化"];
+// 平時のチェックリスト（優先度の高いものに絞る）。
+const EMERGENCY_CHECKLIST=[
+  "夜間救急の病院を登録した",
+  "電話番号・受付時間を確認した",
+  "犬の体重を最新にした",
+  "服薬情報を更新した",
+  "キャリー等をすぐ持ち出せる場所に置いた",
+];
 // 防災・避難の備え（同行避難が基本。一般的な備えガイド。避難先は各自で自治体確認）。
 const DISASTER_PREP=[
   "フード・水（できれば5〜7日分）と食器",
@@ -1531,7 +1547,11 @@ function App(){
   const[toxicSrcOpen,setToxicSrcOpen]=useState(false); // 「情報源について」の開閉
   const[emergencyOpen,setEmergencyOpen]=useState(false); // 夜間・救急の備え
   const[disasterOpen,setDisasterOpen]=useState(false); // 防災・避難の備え
-  const[tipsOpen,setTipsOpen]=useState(false); // 電話でうまく伝えるコツの開閉
+  const[tipsOpen,setTipsOpen]=useState(false); // 「もっと詳しく伝える」の開閉
+  const[toxicEmgForm,setToxicEmgForm]=useState({what:"",amount:"",when:"",weight:"",symptom:""}); // 誤食チェックの入力
+  const[toxicEmgInfo,setToxicEmgInfo]=useState(null); // 誤食チェックの内容（救急画面へ連携。セッション中のみ保持）
+  const[emgPrepOpen,setEmgPrepOpen]=useState(false); // 平時のチェックリストの開閉
+  const[emgDontOpen,setEmgDontOpen]=useState(false); // 「してはいけないこと」の開閉
   const[disasterTipsOpen,setDisasterTipsOpen]=useState(false); // 防災「いざという時のポイント」の開閉
   const[menuOpen,setMenuOpen]=useState(false); // まとめメニュー（右からのドロワー）
   const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
@@ -5009,41 +5029,78 @@ function App(){
         </div>
       )}
       {emergencyOpen&&(()=>{
-        const contacts=items.filter(x=>x.type==="card"&&(x.kind==="hospital"||x.kind==="emergency")).sort((a,b)=>(a.kind==="emergency"?-1:0)-(b.kind==="emergency"?-1:0));
+        const hospitals=items.filter(x=>x.type==="card"&&x.kind==="hospital");
+        const persons=items.filter(x=>x.type==="card"&&x.kind==="emergency");
+        const primary=hospitals.find(h=>extractTel(h.body))||hospitals[0]||null;
+        const primaryTel=primary?extractTel(primary.body):null;
+        const dog=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];
+        const dogW=dog?(()=>{const wl=items.filter(x=>x.space===dog.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();return wl?`${wl.weight}${wl.wunit||"kg"}`:null;})():null;
+        const dogMeta=dog?[dog.breed||"",ageLabel(dog.birthday),dogW].filter(Boolean).join("・"):"";
+        const ti=toxicEmgInfo;
+        const renderContact=(c)=>{const tel=extractTel(c.body);return(
+          <li key={c.id} className="yl-emg-contact">
+            <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||(c.kind==="hospital"?"病院":"連絡先")}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+            {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>番号を追加</button>}
+          </li>
+        );};
         return(
         <div className="yl-help-ov" onClick={()=>setEmergencyOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="activity" size={18}/> 夜間・救急の備え</h2>
+              <h2 className="yl-help-title"><Icon name="activity" size={18}/> 夜間・救急</h2>
               <button className="yl-help-close" onClick={()=>setEmergencyOpen(false)}>×</button>
             </div>
-            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>受診前に、まずお電話で受け入れ可否や診療方法をご確認ください。夜間・救急は事前連絡が必要な場合があります。診療時間・連絡先は変わることがあります。</span></div>
+            <p className="yl-emg-lead">異変が起きたら、まず病院に電話。自己判断で処置せず、指示に従ってください。</p>
 
-            <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> あなたの緊急連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 連絡先を登録</button></div>
-              {contacts.length===0?(
-                <p className="yl-set-desc">いざという時の番号を、すぐ手元に。ここから発信でき、カードにも残ります。</p>
+            <div className="yl-emg-step">
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">1</span>電話する</div>
+              {primaryTel?(
+                <a className="yl-emg-callbig" href={`tel:${primaryTel.replace(/-/g,"")}`}><Icon name="phone" size={22}/><span className="yl-emg-callbig-t"><b>{primary.title||"かかりつけ／夜間救急"}</b><span>{primaryTel}</span></span></a>
               ):(
-                <ul className="yl-emg-contacts">{contacts.map(c=>{const tel=extractTel(c.body);return(
-                  <li key={c.id} className="yl-emg-contact">
-                    <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||"病院"}{c.kind==="emergency"?<span className="yl-emg-tag">緊急</span>:null}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
-                    {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>番号を追加</button>}
-                  </li>
-                );})}</ul>
+                <button className="yl-emg-callbig ghost" onClick={()=>{setEmergencyOpen(false);setTab(dog?dog.id:(activeMember?activeMember.id:"me"));setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}><Icon name="plus" size={22}/><span className="yl-emg-callbig-t"><b>病院の連絡先を登録</b><span>夜間救急・かかりつけの番号を手元に</span></span></button>
               )}
+              <p className="yl-emg-note">受け入れ可否や診療方法は病院により異なり、事前連絡が必要なことも。診療時間・連絡先は最新を病院にご確認を。</p>
             </div>
 
-            <div className="yl-emg-sec">
-              <button className="yl-emg-tipshead" onClick={()=>setTipsOpen(o=>!o)}><span><Icon name="bell" size={15}/> 電話でうまく伝えるコツ</span><Icon name={tipsOpen?"chevron":"chevron"} size={16} className={tipsOpen?"yl-rot90":"yl-rot0"}/></button>
+            <div className="yl-emg-red">
+              <div className="yl-emg-redhd"><Icon name="alert" size={15}/> このサインは、迷わず今すぐ連絡</div>
+              <div className="yl-emg-redtags">{EMERGENCY_REDFLAGS.map((t,i)=><span key={i} className="yl-emg-redtag">{t}</span>)}</div>
+            </div>
+
+            <button className="yl-emg-dont" onClick={()=>setEmgDontOpen(o=>!o)}><span>⚠️ してはいけないこと</span><Icon name="chevron" size={16} className={emgDontOpen?"yl-rot90":"yl-rot0"}/></button>
+            {emgDontOpen&&<ul className="yl-emg-dontlist"><li>自己判断で吐かせる・薬や水を飲ませる</li><li>ネットの情報だけで「様子見」と決める</li><li>まず病院に連絡し、指示に従う</li></ul>}
+
+            <div className="yl-emg-step">
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">2</span>電話で伝える</div>
+              {dog&&<div className="yl-emg-dogcard"><span className="yl-emg-dogname">{dog.emoji||"🐕"} {dog.name}</span><span className="yl-emg-dogmeta">{dogMeta||"プロフィール未登録"}</span></div>}
+              {ti&&<div className="yl-emg-tox"><div className="yl-emg-toxhd"><Icon name="alert" size={13}/> 誤食チェックの内容</div><ul className="yl-emg-toxlist">{ti.what&&<li><span>何を</span>{ti.what}</li>}{ti.amount&&<li><span>量</span>{ti.amount}</li>}{ti.when&&<li><span>いつ</span>{ti.when}</li>}{ti.weight&&<li><span>体重</span>{ti.weight}</li>}{ti.symptom&&<li><span>症状</span>{ti.symptom}</li>}</ul></div>}
+              <ul className="yl-emg-say"><li>今の様子（意識・呼吸・けいれん・出血・嘔吐や下痢の有無）</li><li>いつ・何が起きたか（誤食なら食べたもの・量・時間）</li><li>持病・飲んでいる薬・かかりつけの有無</li></ul>
+              <button className="yl-emg-tipshead" onClick={()=>setTipsOpen(o=>!o)}><span>もっと詳しく伝えるなら</span><Icon name="chevron" size={16} className={tipsOpen?"yl-rot90":"yl-rot0"}/></button>
               {tipsOpen&&<ul className="yl-emg-list">{EMERGENCY_TIPS.map((t,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{t}</li>)}</ul>}
             </div>
 
-            <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="bag" size={15}/> 持っていくと安心</span></div>
-              <ul className="yl-emg-prep">{EMERGENCY_PREP.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>
+            <div className="yl-emg-step">
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">3</span>持っていく</div>
+              <div className="yl-emg-tiers">{EMERGENCY_PREP_TIERS.map((g,i)=>(<div key={i} className="yl-emg-tier"><span className="yl-emg-tierlbl">{g.label}</span><ul>{g.items.map((it,j)=><li key={j}>{it}</li>)}</ul></div>))}</div>
+              <p className="yl-emg-note">準備より受診を優先。手元にあるものだけで、すぐ向かって大丈夫です。</p>
             </div>
 
-            <p className="yl-toxic-foot">※ 具体的な病院・電話番号はご自身で登録・ご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急にご連絡を。</p>
+            <div className="yl-emg-sec">
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> 登録済みの連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 登録</button></div>
+              {(hospitals.length===0&&persons.length===0)?(
+                <p className="yl-set-desc">動物病院と、家族・預け先の番号を登録しておくと安心です。ここから発信でき、カードにも残ります。</p>
+              ):(<>
+                {hospitals.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">🏥 動物病院</div><ul className="yl-emg-contacts">{hospitals.map(renderContact)}</ul></div>}
+                {persons.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">👤 家族・預け先</div><ul className="yl-emg-contacts">{persons.map(renderContact)}</ul></div>}
+              </>)}
+            </div>
+
+            <div className="yl-emg-sec">
+              <button className="yl-emg-tipshead" onClick={()=>setEmgPrepOpen(o=>!o)}><span><Icon name="check" size={15}/> 平時の備え（落ち着いたときに）</span><Icon name="chevron" size={16} className={emgPrepOpen?"yl-rot90":"yl-rot0"}/></button>
+              {emgPrepOpen&&<ul className="yl-emg-checklist">{EMERGENCY_CHECKLIST.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>}
+            </div>
+
+            <p className="yl-toxic-foot">※ 病院情報は変わることがあります。最新は必ず各病院にご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急へご連絡を。</p>
           </div>
         </div>
       );})()}
@@ -5101,7 +5158,7 @@ function App(){
               <h2 className="yl-help-title"><Icon name="alert" size={18}/> 誤食・中毒</h2>
               <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
             </div>
-            <button className="yl-tox-emg" onClick={()=>setToxicEmgOpen(true)}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
+            <button className="yl-tox-emg" onClick={()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];let w="";if(m){const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();if(wl)w=`${wl.weight}${wl.wunit||"kg"}`;}setToxicEmgForm({what:"",amount:"",when:"",weight:w,symptom:""});setToxicEmgOpen(true);}}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
             <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても後から出ることが。家庭で吐かせないで。</p>
             <div className="yl-tox-controls">
               <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="例：チョコ ／ 玉ねぎ ／ ぶどう ／ キシリトール"/>
@@ -5151,16 +5208,16 @@ function App(){
             <h3 className="yl-modal-title" style={{textAlign:"left"}}>🚑 落ち着いて、この5つを確認</h3>
             <p className="yl-tox-emg-sub">これは診断ではありません。この内容を持って、動物病院・夜間救急にご相談ください。</p>
             <ol className="yl-tox-emg-list">
-              <li><span className="yl-tox-emg-q">何を食べた？</span><input className="yl-input sm" placeholder="例：チョコ、玉ねぎ、薬 など"/></li>
-              <li><span className="yl-tox-emg-q">どのくらい？</span><input className="yl-input sm" placeholder="例：ひとかけ／1錠／量は不明"/></li>
-              <li><span className="yl-tox-emg-q">いつ？</span><input className="yl-input sm" placeholder="例：10分前／さっき／不明"/></li>
-              <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" placeholder="例：8kg"/></li>
-              <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
+              <li><span className="yl-tox-emg-q">何を食べた？</span><input className="yl-input sm" value={toxicEmgForm.what} onChange={e=>setToxicEmgForm(f=>({...f,what:e.target.value}))} placeholder="例：チョコ、玉ねぎ、薬 など"/></li>
+              <li><span className="yl-tox-emg-q">どのくらい？</span><input className="yl-input sm" value={toxicEmgForm.amount} onChange={e=>setToxicEmgForm(f=>({...f,amount:e.target.value}))} placeholder="例：ひとかけ／1錠／量は不明"/></li>
+              <li><span className="yl-tox-emg-q">いつ？</span><input className="yl-input sm" value={toxicEmgForm.when} onChange={e=>setToxicEmgForm(f=>({...f,when:e.target.value}))} placeholder="例：10分前／さっき／不明"/></li>
+              <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" value={toxicEmgForm.weight} onChange={e=>setToxicEmgForm(f=>({...f,weight:e.target.value}))} placeholder="例：8kg"/></li>
+              <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" value={toxicEmgForm.symptom} onChange={e=>setToxicEmgForm(f=>({...f,symptom:e.target.value}))} placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
             </ol>
             <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても受診が必要なことが。様子見せず、吐かせないで。</p>
             <div className="yl-modal-btns">
               <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>{setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
+              <button className="yl-addbtn modal" onClick={()=>{const f=toxicEmgForm;const has=f.what||f.amount||f.when||f.symptom;setToxicEmgInfo(has?{...f}:null);setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
             </div>
           </div>
         </div>
