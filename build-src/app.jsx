@@ -2705,6 +2705,8 @@ function App(){
   // --- フード・食事：フード登録（fooddef）＋ 今日の食事記録（feed に食事情報を付与） ---
   const foodDefs=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="fooddef").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)),[items,tab]);
   const foodDefText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);if(d.kcal!==""&&d.kcal!=null)parts.push(d.kcalBasis==="perUnit"?`${d.kcal}kcal/${foodUnitLabel(d.unit)}`:`${d.kcal}kcal/100${d.unit==="ml"?"ml":"g"}`);return parts.join(" ・ ");};
+  // 共有・引き継ぎ用の表示：カロリー密度（kcal/100g）ではなく「1回◯・1日◯回（＝1日の目安kcal）」で、そのまま行動できる形に。
+  const foodDefShareText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`1回 ${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);let s=parts.join(" ・ ");const per=computeMealKcal(d,d.amount);const t=Number(d.timesPerDay);if(per!=null&&t>0)s+=`${s?"（":""}約${Math.round(per*t)}kcal/日${s?"）":""}`;return s;};
   const openFoodNew=()=>setFoodForm({name:"",brand:"",foodType:"dry",amount:"",unit:"g",times:"",feedTime:"",kcal:"",kcalBasis:"per100"});
   // 1日のフード量計算：体重は最新の体重記録、MEは登録フード（/100g）から初期値を補完。
   const openFoodCalc=()=>{
@@ -5614,7 +5616,7 @@ function App(){
                 <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
                 <div className={"yl-vetsum-sec"+(vetSummary.careNext.length?" highlight":"")}><h3><Icon name="syringe" size={13}/> 予防・ワクチン等の次回予定</h3>{vetSummary.careNext.length?<ul>{vetSummary.careNext.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">予定なし</p>}</div>
                 <div className="yl-vetsum-sec"><h3>最近のお世話</h3>{vetSummary.chores.length?<ul>{vetSummary.chores.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">記録なし</p>}</div>
-                {foods.length>0&&<div className="yl-vetsum-sec"><h3>フード・食事</h3><ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}</li>)}</ul></div>}
+                {foods.length>0&&<div className="yl-vetsum-sec"><h3>フード・食事</h3><ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefShareText(d)?`：${foodDefShareText(d)}`:""}</li>)}</ul></div>}
               </div>
               <p className="yl-vetsum-note">※本サマリーは飼い主の記録に基づくもので、診断ではありません。</p>
             </div>
@@ -5658,7 +5660,7 @@ function App(){
                   {wl&&<li><b>体重</b>：{wl.weight}{wl.wunit||"kg"}（{fmtDate(wl.date)}）</li>}
                   {activeMember.microchip&&<li><b>マイクロチップ</b>：{activeMember.microchip}</li>}
                 </ul></div>
-                {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefText(d)?`：${foodDefText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>}
+                {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>ごはん</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefShareText(d)?`：${foodDefShareText(d)}`:""}{d.feedTime?`（${d.feedTime}）`:""}</li>)}</ul>:<p className="yl-vetsum-none">登録なし（口頭で共有してください）</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>今日のお世話</h3>{todayChores.length?<ul>{todayChores.map(c=><li key={c.id}>{c.emoji||"✓"} {c.title}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>今日のようす（体調）</h3>{todayDiary.length?<ul>{todayDiary.map(r=><li key={r.id}>{diarySum(r)||"記録あり"}</li>)}</ul>:<p className="yl-vetsum-none">まだ記録がありません</p>}</div>}
                 <div className="yl-vetsum-sec"><h3>お薬・サプリ</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：のこり{Math.max(0,m.days-(m.taken||[]).length)}日分</li>)}</ul>:<p className="yl-vetsum-none">なし</p>}</div>
