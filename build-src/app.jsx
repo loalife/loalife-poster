@@ -438,6 +438,8 @@ const SELF_KINDS=[{key:"checkup",label:"健康診断",labelEn:"Check-up",emoji:"
 const careKindsFor=(m)=>{if(!m)return SELF_KINDS;if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
 // ケア種別の表示ラベル（ロケール対応。日本語は非破壊で label をそのまま返す）。
 const careLabel=(k)=>k?(APP_LANG==="ja"?k.label:(k.labelEn||k.label)):"";
+// 汎用の {label,labelEn} ロケール対応ラベル（症状・今日のようす・体調などのデータ辞書用）。
+const lblOf=(o)=>o?(APP_LANG==="ja"?o.label:(o.labelEn||o.label)):"";
 // ケア種別 → ラインアイコン名（SF Symbols相当）
 const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"filetext",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
@@ -576,7 +578,7 @@ function elapsedLabel(dateStr,warn=7,alert=14){
   return{txt,tone,kind,n};
 }
 // からだの記録（体重・身長・体調）
-const HEALTH_CONDS=[{key:"good",label:"元気",emoji:"😊"},{key:"ok",label:"ふつう",emoji:"😐"},{key:"bad",label:"元気ない",emoji:"😟"}];
+const HEALTH_CONDS=[{key:"good",label:"元気",labelEn:"Good",emoji:"😊"},{key:"ok",label:"ふつう",labelEn:"OK",emoji:"😐"},{key:"bad",label:"元気ない",labelEn:"Unwell",emoji:"😟"}];
 const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 // 登録ユーザーごとの色（色定義はここ1箇所）。フィルターチップ・カレンダーのドット・
 // メンバーバー等はすべて colorOf() 経由でこの配列を参照する。登録順で自動割り当て、
@@ -584,9 +586,9 @@ const condMeta=(k)=>HEALTH_CONDS.find(c=>c.key===k)||null;
 // 前半＝従来のやさしいアース系、後半＝追加したパステル・明るめカラー（既存の色は不変）。
 const MEMBER_COLORS=["#E39A5C","#B23A48","#557E63","#D9A441","#5B7A9E","#C77A2E","#8A6D9E","#3E8E8E","#7A8B4F","#8A8178","#EBA0B7","#C7A8E9","#8FC1EA","#7FCFC4","#A9D48C","#F2C86E","#F0A882","#E29CC6","#9AA8E0","#6FB6A6","#D46A6A","#6A9FB5","#A67C52","#9E8ABF","#5FA871","#C98BB0","#7EA05A","#6C8CD5","#CE7BA0","#4FA88F"];
 // 今日のようす（日記）の選択肢。元気は5段階（推移グラフ用に score を持つ。旧3段階キーも内包）
-const DIARY_ENERGY=[{key:"great",label:"とても元気",emoji:"😄",score:5},{key:"genki",label:"元気",emoji:"😊",score:4},{key:"normal",label:"ふつう",emoji:"🙂",score:3},{key:"low",label:"低め",emoji:"😕",score:2},{key:"bad",label:"ぐったり",emoji:"😣",score:1}];
-const DIARY_APPETITE=[{key:"lots",label:"もりもり",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",emoji:"🍚",score:2},{key:"little",label:"すくなめ",emoji:"🥄",score:1}];
-const DIARY_POOP=[{key:"good",label:"good",emoji:"💩"},{key:"loose",label:"ゆるい",emoji:"💧"},{key:"none",label:"なし",emoji:"🚫"}];
+const DIARY_ENERGY=[{key:"great",label:"とても元気",labelEn:"Great",emoji:"😄",score:5},{key:"genki",label:"元気",labelEn:"Good",emoji:"😊",score:4},{key:"normal",label:"ふつう",labelEn:"Normal",emoji:"🙂",score:3},{key:"low",label:"低め",labelEn:"Low",emoji:"😕",score:2},{key:"bad",label:"ぐったり",labelEn:"Exhausted",emoji:"😣",score:1}];
+const DIARY_APPETITE=[{key:"lots",label:"もりもり",labelEn:"Hearty",emoji:"🍽️",score:3},{key:"normal",label:"ふつう",labelEn:"Normal",emoji:"🍚",score:2},{key:"little",label:"すくなめ",labelEn:"Little",emoji:"🥄",score:1}];
+const DIARY_POOP=[{key:"good",label:"good",labelEn:"Good",emoji:"💩"},{key:"loose",label:"ゆるい",labelEn:"Loose",emoji:"💧"},{key:"none",label:"なし",labelEn:"None",emoji:"🚫"}];
 // トイレ記録（成功/失敗）。うんちは状態も残せる。
 const POOP_COND=[{key:"normal",label:"普通",emoji:"💩"},{key:"soft",label:"軟便",emoji:"💧"},{key:"loose",label:"下痢",emoji:"🚨"}];
 // うんちの硬さ：ブリストル便性状スケール（1=硬い〜7=水様、4が理想）。tone は色分け用。
@@ -748,7 +750,7 @@ const diaryMeta=(group,k)=>group.find(c=>c.key===k)||null;
 // 症状（お薬手帳・体調メモ用。複数選択可）
 // 症状マスタ（キー→表示）。種別ごとの出し分けは DIARY_CONFIG で参照。sensitive はセンシティブ項目。
 const SYMPTOMS={
-  fever:{label:"熱",emoji:"🌡️"},cough:{label:"咳",emoji:"😮‍💨"},sneeze:{label:"くしゃみ",emoji:"🤧"},nose:{label:"鼻水",emoji:"💧"},throat:{label:"喉の痛み",emoji:"😷"},headache:{label:"頭痛",emoji:"🤕"},fatigue:{label:"だるさ",emoji:"🥱"},diarrhea:{label:"下痢",emoji:"🚽"},vomit:{label:"嘔吐",emoji:"🤮"},noappetite:{label:"食欲不振",emoji:"🥄"},itch:{label:"かゆがる",emoji:"🐾"},rash:{label:"発疹",emoji:"🔴"},mood:{label:"機嫌がわるい",emoji:"😤"},period:{label:"生理",emoji:"🩸",sensitive:true},limp:{label:"元気がない",emoji:"😣"}
+  fever:{label:"熱",labelEn:"Fever",emoji:"🌡️"},cough:{label:"咳",labelEn:"Cough",emoji:"😮‍💨"},sneeze:{label:"くしゃみ",labelEn:"Sneeze",emoji:"🤧"},nose:{label:"鼻水",labelEn:"Runny nose",emoji:"💧"},throat:{label:"喉の痛み",labelEn:"Sore throat",emoji:"😷"},headache:{label:"頭痛",labelEn:"Headache",emoji:"🤕"},fatigue:{label:"だるさ",labelEn:"Fatigue",emoji:"🥱"},diarrhea:{label:"下痢",labelEn:"Diarrhea",emoji:"🚽"},vomit:{label:"嘔吐",labelEn:"Vomiting",emoji:"🤮"},noappetite:{label:"食欲不振",labelEn:"No appetite",emoji:"🥄"},itch:{label:"かゆがる",labelEn:"Itching",emoji:"🐾"},rash:{label:"発疹",labelEn:"Rash",emoji:"🔴"},mood:{label:"機嫌がわるい",labelEn:"Irritable",emoji:"😤"},period:{label:"生理",labelEn:"Period",emoji:"🩸",sensitive:true},limp:{label:"元気がない",labelEn:"Low energy",emoji:"😣"}
 };
 const symptomMeta=(k)=>SYMPTOMS[k]||null;
 // 症状キー → ラインアイコン名。データ(SYMPTOMS.emoji)は温存し、表示だけアイコン化する。
@@ -3398,7 +3400,7 @@ function App(){
     const wSeries=healths.map(h=>({value:h.weight,date:h.date}));
     const wUnit=wLatest?(wLatest.wunit||"kg"):"kg";
     const syms={};items.filter(x=>x.space===sp&&x.type==="diary"&&inRange(x.date)).forEach(r=>(r.symptoms||[]).forEach(s=>{syms[s]=(syms[s]||0)+1;}));
-    const symList=Object.keys(syms).map(k=>({k,label:(symptomMeta(k)||{}).label||k,n:syms[k]})).sort((a,b)=>b.n-a.n);
+    const symList=Object.keys(syms).map(k=>({k,label:lblOf(symptomMeta(k))||k,n:syms[k]})).sort((a,b)=>b.n-a.n);
     // 元気（5段階）の平均：日々の記録と連動した体調の傾向
     const ens=items.filter(x=>x.space===sp&&x.type==="diary"&&inRange(x.date)&&x.energy).map(r=>{const em=DIARY_ENERGY.find(e=>e.key===r.energy);return em?em.score:null;}).filter(v=>v!=null);
     const energyAvg=ens.length?Math.round(ens.reduce((a,b)=>a+b,0)/ens.length*10)/10:null;
@@ -5160,9 +5162,9 @@ function App(){
                                   <li key={r.id} className="yl-dayrec">
                                     <span className="yl-dayrec-vals">
                                       {tod&&<span className="yl-dayrec-tod">{tod}</span>}
-                                      {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span className="yl-dayrec-chip"><Icon name={ENERGY_ICON[r.energy]} size={13}/> {diaryMeta(DIARY_ENERGY,r.energy).label}</span>}
-                                      {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span className="yl-dayrec-chip"><Icon name={appetiteIcon(r.appetite)} size={13}/> {diaryMeta(DIARY_APPETITE,r.appetite).label}</span>}
-                                      {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip"><Icon name={POOP_DIARY_ICON[r.poop]||"droplet"} size={13}/> {diaryMeta(DIARY_POOP,r.poop).label}</span>}
+                                      {r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&<span className="yl-dayrec-chip"><Icon name={ENERGY_ICON[r.energy]} size={13}/> {lblOf(diaryMeta(DIARY_ENERGY,r.energy))}</span>}
+                                      {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span className="yl-dayrec-chip"><Icon name={appetiteIcon(r.appetite)} size={13}/> {lblOf(diaryMeta(DIARY_APPETITE,r.appetite))}</span>}
+                                      {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip"><Icon name={POOP_DIARY_ICON[r.poop]||"droplet"} size={13}/> {lblOf(diaryMeta(DIARY_POOP,r.poop))}</span>}
                                       {r.sleep&&<span className="yl-dayrec-chip"><Icon name="moon" size={13}/> 睡眠{r.sleep}h</span>}
                                       {r.walk&&<span className="yl-dayrec-chip"><Icon name="paw" size={13}/> さんぽ</span>}
                                       {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> 病院</span>}
@@ -5916,7 +5918,7 @@ function App(){
               </div>
             )}
             {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">{t("health.smallAnimalHint")}</p>}
-            {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">{t("health.condLabel")}</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
+            {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">{t("health.condLabel")}</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {lblOf(c)}</button>)}</div>)}
             <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}><Icon name="scale" size={16}/> {t("health.saveBtn")}</button>
             {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}><Icon name="target" size={14}/> {t("health.targetWeight")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
             {isMemberTab&&<p className="yl-health-hint" style={{marginTop:4}}>{t("health.targetHint")}</p>}
@@ -6025,7 +6027,7 @@ function App(){
         // 子ども向け：今日のお世話ログ・今日のようす・家族への伝達を1枚に
         const todayChores=chores.filter(c=>c.lastDone===todayIso);
         const todayDiary=diaryRecords.filter(r=>r.date===todayIso);
-        const diarySum=(r)=>[r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&diaryMeta(DIARY_ENERGY,r.energy).label,r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&`食欲：${diaryMeta(DIARY_APPETITE,r.appetite).label}`,r.poop&&diaryMeta(DIARY_POOP,r.poop)&&`排便：${diaryMeta(DIARY_POOP,r.poop).label}`,r.sleep&&`睡眠${r.sleep}h`,(r.symptoms||[]).map(sk=>symptomMeta(sk)&&symptomMeta(sk).label).filter(Boolean).join("・"),r.note].filter(Boolean).join(" / ");
+        const diarySum=(r)=>[r.energy&&diaryMeta(DIARY_ENERGY,r.energy)&&diaryMeta(DIARY_ENERGY,r.energy).label,r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&`食欲：${lblOf(diaryMeta(DIARY_APPETITE,r.appetite))}`,r.poop&&diaryMeta(DIARY_POOP,r.poop)&&`排便：${lblOf(diaryMeta(DIARY_POOP,r.poop))}`,r.sleep&&`睡眠${r.sleep}h`,(r.symptoms||[]).map(sk=>symptomMeta(sk)&&symptomMeta(sk).label).filter(Boolean).join("・"),r.note].filter(Boolean).join(" / ");
         const notes=familyNotes.slice(0,5);
         return(
         <div className="yl-overlay" onClick={()=>setHandoverOpen(false)}>
@@ -6235,12 +6237,12 @@ function App(){
             {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}><Icon name="check" size={18}/> {t("diary.quickHealthy")}</button>}
             <p className="yl-diary-hint">{t("diary.hint")}</p>
             {(()=>{const dcfg=diaryConfigFor(diaryTypeOf(tab));const has=k=>dcfg.rows.includes(k);return(<>
-            {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.energy")}</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {c.label}</button>)}</span></div>}
-            {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.appetite")}</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}><Icon name="utensils" size={15}/> {c.label}</button>)}</span></div>}
-            {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.poop")}</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}><Icon name={POOP_DIARY_ICON[c.key]} size={15}/> {c.label}</button>)}</span></div>}
+            {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.energy")}</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
+            {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.appetite")}</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}><Icon name="utensils" size={15}/> {lblOf(c)}</button>)}</span></div>}
+            {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.poop")}</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}><Icon name={POOP_DIARY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
             {has("sleep")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.sleep")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="adult"?["6","7","8"]:["9","10","11","12"]).map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {t("diary.hours",{h})}</button>)}<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder={t("diary.hoursPh")}/>{t("diary.hoursSuffix")}</span></span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.other")}</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}><Icon name="paw" size={15}/> {t("diary.walk")}</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}><Icon name="activity" size={15}/> {t("diary.hospital")}</button>}</span></div>}
-            {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.symptoms")}</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}><Icon name={symIcon(sk)} size={15}/> {s.label}</button>;})}</span></div>}
+            {dcfg.symptoms.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.symptoms")}</span><span className="yl-diary-chips">{dcfg.symptoms.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}><Icon name={symIcon(sk)} size={15}/> {lblOf(s)}</button>;})}</span></div>}
             {dcfg.symptoms.includes("period")&&(()=>{const periodSel=(diaryDraft.symptoms||[]).includes("period");const fc=periodForecast(tab);const showFc=fc&&fc.next;if(!periodSel&&!showFc)return null;return(<div className="yl-period-inline">
               {periodSel&&<p className="yl-period-priv"><Icon name="shield" size={13}/> {t("diary.periodPriv")}</p>}
               {showFc&&<p className="yl-period-note"><Icon name="heart" size={13}/> {t("diary.periodNote",{last:fmtDate(fc.last),next:fmtDate(fc.next),avg:fc.avg})}</p>}
