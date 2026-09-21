@@ -1253,6 +1253,7 @@ const MESSAGES={
     "common.memoOpt":"メモ（任意）","exp.addTitle":"支出を記録","exp.addHint":"今日の日付で記録。修正は明細をタップ。","exp.notePh":"メモ（任意）","belong.addTitle":"持ち物を追加","belong.addPh":"例：体操服 / 図書の本 / 習字道具","belong.dowSuffix":"曜",
     "hub.title":"何を記録しますか？","hub.addable":"追加できる機能","hub.schedulePet":"ケア・予定","hub.scheduleMe":"予定・ToDo","hub.toilet":"トイレ記録","hub.routine":"ルーティン（習慣）","hub.health":"体重・からだ","hub.belong":"持ち物（曜日）","hub.bday":"誕生日・記念日",
     "del.confirmTitle":"本当に削除しますか？","del.confirmBody":"「{label}」を削除します。この操作は元に戻せません。","del.confirmBodyPlain":"この操作は元に戻せません。","del.confirmBtn":"削除する",
+    "health.addTitle":"からだの記録","health.bp":"血圧","health.temp":"体温","health.glucose":"血糖値","health.bpHigh":"上","health.bpLow":"下","health.optionalPh":"任意","health.smallAnimalHint":"小動物は0.1g単位","health.condLabel":"体調","health.saveBtn":"からだを記録","health.targetWeight":"目標体重","health.targetHint":"目標との差を表示。",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1330,6 +1331,7 @@ const MESSAGES={
     "common.memoOpt":"Memo (optional)","exp.addTitle":"Record expense","exp.addHint":"Saved with today's date. Tap an item to edit.","exp.notePh":"Memo (optional)","belong.addTitle":"Add belongings","belong.addPh":"e.g. gym clothes / library book / calligraphy set","belong.dowSuffix":"",
     "hub.title":"What would you like to record?","hub.addable":"Add a feature","hub.schedulePet":"Care & plans","hub.scheduleMe":"Plans & to-dos","hub.toilet":"Toilet log","hub.routine":"Routines (habits)","hub.health":"Weight & body","hub.belong":"Belongings (by day)","hub.bday":"Birthdays & anniversaries",
     "del.confirmTitle":"Delete this?","del.confirmBody":"Delete “{label}”. This can’t be undone.","del.confirmBodyPlain":"This can’t be undone.","del.confirmBtn":"Delete",
+    "health.addTitle":"Body record","health.bp":"Blood pressure","health.temp":"Temperature","health.glucose":"Blood glucose","health.bpHigh":"Sys","health.bpLow":"Dia","health.optionalPh":"optional","health.smallAnimalHint":"Small animals: 0.1 g steps","health.condLabel":"Condition","health.saveBtn":"Log body","health.targetWeight":"Target weight","health.targetHint":"Shows the gap to your target.",
   },
 };
 function tr(lang,key,vars){
@@ -5839,24 +5841,24 @@ function App(){
       {inputSheet==="health"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">からだの記録</h3>
+            <h3 className="yl-modal-title">{t("health.addTitle")}</h3>
             <div className="yl-health-input">
-              <label className="yl-opt">体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/>{isMemberTab?<span className="yl-health-uswitch"><button className={"yl-health-ubtn"+(weightUnit==="kg"?" on":"")} onClick={()=>setMemberWeightUnit("kg")}>kg</button><button className={"yl-health-ubtn"+(weightUnit==="g"?" on":"")} onClick={()=>setMemberWeightUnit("g")}>g</button></span>:<span className="yl-health-unit">kg</span>}</span></label>
-              {isMemberTab&&<label className="yl-opt">身長<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
+              <label className="yl-opt">{t("chart.weight")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthW} onChange={e=>setHealthW(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/>{isMemberTab?<span className="yl-health-uswitch"><button className={"yl-health-ubtn"+(weightUnit==="kg"?" on":"")} onClick={()=>setMemberWeightUnit("kg")}>kg</button><button className={"yl-health-ubtn"+(weightUnit==="g"?" on":"")} onClick={()=>setMemberWeightUnit("g")}>g</button></span>:<span className="yl-health-unit">kg</span>}</span></label>
+              {isMemberTab&&<label className="yl-opt">{t("chart.height")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthH} onChange={e=>setHealthH(e.target.value)} placeholder="0.0"/><span className="yl-health-unit">cm</span></span></label>}
             </div>
             {isMemberTab&&activeMember&&activeMember.personType==="senior"&&(
               <div className="yl-vital-input">
-                <label className="yl-opt">血圧<span className="yl-health-field yl-bp-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpS} onChange={e=>setHealthBpS(e.target.value)} placeholder="上"/><span className="yl-bp-sep">/</span><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpD} onChange={e=>setHealthBpD(e.target.value)} placeholder="下"/><span className="yl-health-unit">mmHg</span></span></label>
-                <label className="yl-opt">体温<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthTemp} onChange={e=>setHealthTemp(e.target.value)} placeholder="36.5"/><span className="yl-health-unit">℃</span></span></label>
-                <label className="yl-opt">血糖値<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthGlucose} onChange={e=>setHealthGlucose(e.target.value)} placeholder="任意"/><span className="yl-health-unit">mg/dL</span></span></label>
+                <label className="yl-opt">{t("health.bp")}<span className="yl-health-field yl-bp-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpS} onChange={e=>setHealthBpS(e.target.value)} placeholder={t("health.bpHigh")}/><span className="yl-bp-sep">/</span><input type="number" inputMode="numeric" className="yl-health-num" value={healthBpD} onChange={e=>setHealthBpD(e.target.value)} placeholder={t("health.bpLow")}/><span className="yl-health-unit">mmHg</span></span></label>
+                <label className="yl-opt">{t("health.temp")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthTemp} onChange={e=>setHealthTemp(e.target.value)} placeholder="36.5"/><span className="yl-health-unit">℃</span></span></label>
+                <label className="yl-opt">{t("health.glucose")}<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={healthGlucose} onChange={e=>setHealthGlucose(e.target.value)} placeholder={t("health.optionalPh")}/><span className="yl-health-unit">mg/dL</span></span></label>
               </div>
             )}
-            {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">小動物は0.1g単位</p>}
-            {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">体調</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}><Icon name="scale" size={16}/> からだを記録</button>
-            {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}><Icon name="target" size={14}/> 目標体重<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
-            {isMemberTab&&<p className="yl-health-hint" style={{marginTop:4}}>目標との差を表示。</p>}
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">{t("health.smallAnimalHint")}</p>}
+            {isMemberTab&&(<div className="yl-health-conds"><span className="yl-health-clabel">{t("health.condLabel")}</span>{HEALTH_CONDS.map(c=><button key={c.key} className={"yl-health-cond"+(healthCond===c.key?" on":"")} onClick={()=>setHealthCond(healthCond===c.key?"":c.key)}>{c.emoji} {c.label}</button>)}</div>)}
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}><Icon name="scale" size={16}/> {t("health.saveBtn")}</button>
+            {isMemberTab&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}><Icon name="target" size={14}/> {t("health.targetWeight")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
+            {isMemberTab&&<p className="yl-health-hint" style={{marginTop:4}}>{t("health.targetHint")}</p>}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
       )}
