@@ -171,6 +171,46 @@ const DISASTER_TIPS=[
   "無駄吠え・トイレなどの基本のしつけは、避難所での共同生活を助けます。",
   "親戚・知人・ペットホテルなど、預け先の候補も複数考えておくと安心。",
 ];
+// 上記セーフティ配列の英語版（日本語は非破壊で保持）。表示時に APP_LANG で選択。
+const EMERGENCY_TIPS_EN=[
+  "Pet's type, age, weight (e.g. Shiba, 5 yrs, 8kg)",
+  "What happened (when, what, how much)",
+  "Current state (consciousness, breathing, vomiting/diarrhea, bleeding, seizures)",
+  "If ingested: what, how much, when (keep the item or package if you can)",
+  "Chronic conditions, current meds, whether you have a regular vet",
+  "Rough time until you arrive",
+];
+const EMERGENCY_PREP_TIERS_EN=[
+  {label:"Grab first",items:["The dog","Leash / harness","A carrier or safe way to carry them"]},
+  {label:"If you can",items:["The ingested item / package","Medication package & dosing info","Vaccine & visit records (in-app too)"]},
+  {label:"Check ahead",items:["Payment method","Parking / night entrance"]},
+];
+const EMERGENCY_REDFLAGS_EN=["Altered consciousness","Trouble breathing","Seizures","Heavy bleeding","Sudden worsening"];
+const EMERGENCY_CHECKLIST_EN=[
+  "Registered a night-emergency clinic",
+  "Confirmed the phone number and hours",
+  "Updated the dog's weight",
+  "Updated medication info",
+  "Put the carrier somewhere you can grab it fast",
+];
+const DISASTER_PREP_EN=[
+  "Food & water (ideally 5–7 days) and bowls",
+  "Regular meds / therapeutic food / med record & vaccine certificate",
+  "Carrier / crate, leash, harness (a spare to prevent escape)",
+  "Toilet supplies (pee pads, poop bags, cat litter)",
+  "ID tag, license, a note of the microchip number",
+  "A photo for if you get separated (one with the owner in it)",
+  "Towels & blankets (warmth, cover, noise)",
+  "Duct tape & marker (cage repair, writing info)",
+];
+const DISASTER_TIPS_EN=[
+  "In a disaster, evacuating together is the norm. Secure your own and your family's safety first, then calmly evacuate with your pet.",
+  "Whether shelters accept pets and where they're kept varies by facility. Check your designated shelter and its pet policy with your local government in advance.",
+  "Getting them used to a carrier / crate day to day means less stress and more safety when it counts.",
+  "To prepare for getting separated, keep the ID tag and microchip registration up to date. Review contacts regularly too.",
+  "Basic training like not barking and toilet habits helps with shared shelter life.",
+  "It's reassuring to have several backup options — relatives, friends, a pet hotel.",
+];
 // 文字列から電話番号らしき部分を抽出（tel: リンク用）。無ければ null。
 const extractTel=(str)=>{const m=(str||"").match(/0\d{1,4}[-(]?\d{1,4}[-)]?\d{3,4}/);return m?m[0].replace(/[()]/g,"-").replace(/--/g,"-"):null;};
 const HIGH_KINDS=new Set(["vaccine","filaria","rabies","hospital","checkup"]);
@@ -1258,6 +1298,9 @@ const MESSAGES={
     "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
     "sched.titlePet":"ケア・予定を追加","sched.titleSelf":"健康・ケアを追加","sched.titleMe":"予定・ToDoを追加","sched.frequent":"よく使う","sched.contentPh":"内容を入力…","sched.addLabelPh":"{label}を追加…","sched.content":"内容","sched.dateOptMe":"日付・期限（任意）","sched.time":"時間","sched.dateHint":"日付・期限を入れると、その日のカレンダーに表示されます。","sched.certPhoto":"証明書・写真（任意）","sched.changePhoto":"写真を変更","sched.attachPhoto":"＋ 写真を添付","sched.notify":"通知","sched.quickAdd":"1タップ追加（前回コピー）","sched.lastDate":"前回 {date}","sched.dateDone":"実施日","sched.dateDate":"日付","sched.dateVisit":"受診日","sched.dateDue":"期限",
     "toilet.hint":"タップで記録（今日・現在時刻）。","toilet.pee":"おしっこ","toilet.success":"✓ 成功","toilet.fail":"✕ 失敗","toilet.hardness":"うんちの硬さ（7段階）","toilet.bristolNote":"4が健康的。1や7が続くときは獣医さんに相談を。","toilet.alertBody":"気をつけたいこと：消化管異物・腸閉塞・中毒","toilet.alertLink":"危険物リストで詳しく","toilet.ideal":"（理想的）","toilet.disclaimer":"受診の目安です（診断ではありません）。","toilet.trendLoose":"ゆるいうんちが続いています。長引くようなら受診の目安です。","toilet.trendHard":"硬いうんちが続いています。水分や食事、気になるときは受診を。",
+    "emg.title":"夜間・救急","emg.lead":"異変が起きたら、まず病院に電話。自己判断で処置せず、指示に従ってください。","emg.step1":"電話する","emg.callDefault":"かかりつけ／夜間救急","emg.registerHosp":"病院の連絡先を登録","emg.registerHospSub":"夜間救急・かかりつけの番号を手元に","emg.note1":"受け入れ可否や診療方法は病院により異なり、事前連絡が必要なことも。診療時間・連絡先は最新を病院にご確認を。","emg.redHead":"このサインは、迷わず今すぐ連絡","emg.dontHead":"してはいけないこと","emg.dont1":"自己判断で吐かせる・薬や水を飲ませる","emg.dont2":"ネットの情報だけで「様子見」と決める","emg.dont3":"まず病院に連絡し、指示に従う","emg.step2":"電話で伝える","emg.profNone":"プロフィール未登録","emg.toxHead":"誤食チェックの内容","emg.toxWhat":"何を","emg.toxAmount":"量","emg.toxWhen":"いつ","emg.toxWeight":"体重","emg.toxSymptom":"症状","emg.say1":"今の様子（意識・呼吸・けいれん・出血・嘔吐や下痢の有無）","emg.say2":"いつ・何が起きたか（誤食なら食べたもの・量・時間）","emg.say3":"持病・飲んでいる薬・かかりつけの有無","emg.tipsHead":"もっと詳しく伝えるなら","emg.step3":"持っていく","emg.note2":"準備より受診を優先。手元にあるものだけで、すぐ向かって大丈夫です。","emg.contactsTitle":"登録済みの連絡先","emg.register":"＋ 登録","emg.contactsEmpty":"動物病院と、家族・預け先の番号を登録しておくと安心です。ここから発信でき、カードにも残ります。","emg.groupHosp":"🏥 動物病院","emg.groupPerson":"👤 家族・預け先","emg.addNumber":"番号を追加","emg.hospFallback":"病院","emg.contactFallback":"連絡先","emg.prepHead":"平時の備え（落ち着いたときに）","emg.foot":"※ 病院情報は変わることがあります。最新は必ず各病院にご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急へご連絡を。",
+    "disaster.title":"防災・避難の備え","disaster.alert":"災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。","disaster.shelterTitle":"わが家の避難先","disaster.registerShelter":"＋ 避難先を登録","disaster.shelterEmpty":"避難先や預け先を、家族で共有。カードにも残ります。","disaster.shelterFallback":"避難先","disaster.prepTitle":"持ち出し・備蓄（ペット用）","disaster.tipsHead":"いざという時のポイント","disaster.foot":"※ 指定避難所のペット受け入れ可否・場所は自治体ごとに異なります。お住まいの自治体・自主防災組織で必ず事前にご確認ください。",
+    "safety.sectionLabel":"いざという時","safety.sectionNote":"登録済みの情報から、迷子ポスターや緊急カードをすぐ作れます。","safety.toxicShort":"誤食・中毒","safety.emergencyShort":"夜間・救急","safety.emergencyCard":"緊急カード","safety.lostPoster":"迷子ポスター","safety.disasterShort":"防災・避難",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1340,6 +1383,9 @@ const MESSAGES={
     "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
     "sched.titlePet":"Add care or plan","sched.titleSelf":"Add health or care","sched.titleMe":"Add plan or to-do","sched.frequent":"Frequent","sched.contentPh":"Enter details…","sched.addLabelPh":"Add {label}…","sched.content":"item","sched.dateOptMe":"Date / deadline (optional)","sched.time":"Time","sched.dateHint":"Add a date or deadline and it appears on that day's calendar.","sched.certPhoto":"Certificate / photo (optional)","sched.changePhoto":"Change photo","sched.attachPhoto":"＋ Attach photo","sched.notify":"Notify","sched.quickAdd":"One-tap add (copy last)","sched.lastDate":"Last {date}","sched.dateDone":"Date done","sched.dateDate":"Date","sched.dateVisit":"Visit date","sched.dateDue":"Due",
     "toilet.hint":"Tap to log (today, current time).","toilet.pee":"Pee","toilet.success":"✓ Success","toilet.fail":"✕ Miss","toilet.hardness":"Stool firmness (7 levels)","toilet.bristolNote":"4 is healthy. If 1 or 7 keeps up, check with your vet.","toilet.alertBody":"Watch for: GI foreign objects, intestinal blockage, poisoning","toilet.alertLink":"See the hazards list","toilet.ideal":" (ideal)","toilet.disclaimer":"A guide for when to see a vet (not a diagnosis).","toilet.trendLoose":"Loose stools have continued. If it lasts, consider seeing a vet.","toilet.trendHard":"Hard stools have continued. Watch hydration and diet; see a vet if concerned.",
+    "emg.title":"Night & emergency","emg.lead":"If something's wrong, call the clinic first. Don't treat on your own — follow their guidance.","emg.step1":"Call","emg.callDefault":"Regular / night emergency","emg.registerHosp":"Register a clinic contact","emg.registerHospSub":"Keep night-emergency & regular vet numbers handy","emg.note1":"Whether they can see you and how varies by clinic, and some need a call ahead. Confirm hours and contact with the clinic.","emg.redHead":"These signs: call right now, don't hesitate","emg.dontHead":"What not to do","emg.dont1":"Making them vomit, or giving meds/water, on your own","emg.dont2":"Deciding to “wait and see” from web info alone","emg.dont3":"Call the clinic first and follow their guidance","emg.step2":"What to tell them","emg.profNone":"No profile yet","emg.toxHead":"Ingestion check details","emg.toxWhat":"What","emg.toxAmount":"Amount","emg.toxWhen":"When","emg.toxWeight":"Weight","emg.toxSymptom":"Symptom","emg.say1":"Current state (consciousness, breathing, seizures, bleeding, vomiting/diarrhea)","emg.say2":"When and what happened (if ingested: what, how much, time)","emg.say3":"Chronic conditions, current meds, whether you have a regular vet","emg.tipsHead":"To explain in more detail","emg.step3":"Bring","emg.note2":"Getting seen matters more than packing. It's fine to head out with just what's on hand.","emg.contactsTitle":"Saved contacts","emg.register":"＋ Register","emg.contactsEmpty":"It helps to save your vet clinic and family/sitter numbers. You can call from here, and they're kept on cards.","emg.groupHosp":"🏥 Vet clinic","emg.groupPerson":"👤 Family / sitter","emg.addNumber":"Add number","emg.hospFallback":"Clinic","emg.contactFallback":"Contact","emg.prepHead":"Everyday prep (when things are calm)","emg.foot":"※ Clinic info can change — always confirm with the clinic. In an emergency, don't hesitate to call your vet or a nearby night-emergency clinic.",
+    "disaster.title":"Disaster & evacuation prep","disaster.alert":"In a disaster, evacuating together with your pet is the norm. Prepare day to day and check your evacuation site in advance.","disaster.shelterTitle":"Our evacuation site","disaster.registerShelter":"＋ Register a site","disaster.shelterEmpty":"Share evacuation and sitter options with family. Kept on cards too.","disaster.shelterFallback":"Evacuation site","disaster.prepTitle":"Go-bag & stockpile (for pets)","disaster.tipsHead":"Key points when it counts","disaster.foot":"※ Whether designated shelters accept pets, and where, varies by municipality. Always confirm in advance with your local government or neighborhood disaster group.",
+    "safety.sectionLabel":"In an emergency","safety.sectionNote":"From your saved info, quickly make a lost-pet poster or emergency card.","safety.toxicShort":"Toxic & poisoning","safety.emergencyShort":"Night & emergency","safety.emergencyCard":"Emergency card","safety.lostPoster":"Lost-pet poster","safety.disasterShort":"Disaster & evacuation",
   },
 };
 function tr(lang,key,vars){
@@ -4297,14 +4343,14 @@ function App(){
             {/* 安全・緊急：いざという時のショートカット。日常の主役ではないので下部に控えめに（メニュー・設定からも開ける） */}
             {spaces.length>0&&(
               <section className="yl-safety">
-                <span className="yl-safety-label"><Icon name="shield" size={14}/> いざという時</span>
-                <p className="yl-safety-note">登録済みの情報から、迷子ポスターや緊急カードをすぐ作れます。</p>
+                <span className="yl-safety-label"><Icon name="shield" size={14}/> {t("safety.sectionLabel")}</span>
+                <p className="yl-safety-note">{t("safety.sectionNote")}</p>
                 <div className="yl-safety-acts">
-                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> 誤食・中毒</button>}
-                  <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> 夜間・救急</button>
-                  {(members.some(m=>m.kind==="person")||meBirthday||items.some(x=>x.space==="me"&&x.type==="card"))&&<button className="yl-safety-btn" onClick={()=>{const sel=members.find(m=>m.id===memberSel&&m.kind==="person");const t=sel?sel.id:(members.find(m=>m.kind==="person")?.id||"me");setTab(t);setMemberSel(t);setPersonSeg("record");setEmergencyCardOpen(true);}}><Icon name="filetext" size={15}/> 緊急カード</button>}
-                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{const sel=petMembers.find(m=>m.id===memberSel);const t=sel?sel.id:petMembers[0].id;setTab(t);setMemberSel(t);setPersonSeg("manage");setLostOpen(true);}}><Icon name="paw" size={15}/> 迷子ポスター</button>}
-                  <button className="yl-safety-btn" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={15}/> 防災・避難</button>
+                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={15}/> {t("safety.toxicShort")}</button>}
+                  <button className="yl-safety-btn" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={15}/> {t("safety.emergencyShort")}</button>
+                  {(members.some(m=>m.kind==="person")||meBirthday||items.some(x=>x.space==="me"&&x.type==="card"))&&<button className="yl-safety-btn" onClick={()=>{const sel=members.find(m=>m.id===memberSel&&m.kind==="person");const tg=sel?sel.id:(members.find(m=>m.kind==="person")?.id||"me");setTab(tg);setMemberSel(tg);setPersonSeg("record");setEmergencyCardOpen(true);}}><Icon name="filetext" size={15}/> {t("safety.emergencyCard")}</button>}
+                  {petMembers.length>0&&<button className="yl-safety-btn" onClick={()=>{const sel=petMembers.find(m=>m.id===memberSel);const tg=sel?sel.id:petMembers[0].id;setTab(tg);setMemberSel(tg);setPersonSeg("manage");setLostOpen(true);}}><Icon name="paw" size={15}/> {t("safety.lostPoster")}</button>}
+                  <button className="yl-safety-btn" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={15}/> {t("safety.disasterShort")}</button>
                 </div>
               </section>
             )}
@@ -5373,69 +5419,69 @@ function App(){
         const ti=toxicEmgInfo;
         const renderContact=(c)=>{const tel=extractTel(c.body);return(
           <li key={c.id} className="yl-emg-contact">
-            <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||(c.kind==="hospital"?"病院":"連絡先")}{c.night?<span className="yl-emg-tag">夜間</span>:null}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}{c.hours&&<span className="yl-emg-cmeta"><Icon name="bell" size={11}/> {c.hours}</span>}{c.addr&&<span className="yl-emg-cmeta"><Icon name="pin" size={11}/> {c.addr}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
-            {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>番号を追加</button>}
+            <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||(c.kind==="hospital"?t("emg.hospFallback"):t("emg.contactFallback"))}{c.night?<span className="yl-emg-tag">{t("card.nightTag")}</span>:null}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}{c.hours&&<span className="yl-emg-cmeta"><Icon name="bell" size={11}/> {c.hours}</span>}{c.addr&&<span className="yl-emg-cmeta"><Icon name="pin" size={11}/> {c.addr}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+            {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setEmergencyOpen(false);setTab(c.space);openCardEdit(c);}}>{t("emg.addNumber")}</button>}
           </li>
         );};
         return(
         <div className="yl-help-ov" onClick={()=>setEmergencyOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="activity" size={18}/> 夜間・救急</h2>
+              <h2 className="yl-help-title"><Icon name="activity" size={18}/> {t("emg.title")}</h2>
               <button className="yl-help-close" onClick={()=>setEmergencyOpen(false)}>×</button>
             </div>
-            <p className="yl-emg-lead">異変が起きたら、まず病院に電話。自己判断で処置せず、指示に従ってください。</p>
+            <p className="yl-emg-lead">{t("emg.lead")}</p>
 
             <div className="yl-emg-step">
-              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">1</span>電話する</div>
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">1</span>{t("emg.step1")}</div>
               {primaryTel?(
-                <a className="yl-emg-callbig" href={`tel:${primaryTel.replace(/-/g,"")}`}><Icon name="phone" size={22}/><span className="yl-emg-callbig-t"><b>{primary.title||"かかりつけ／夜間救急"}</b><span>{primaryTel}</span></span></a>
+                <a className="yl-emg-callbig" href={`tel:${primaryTel.replace(/-/g,"")}`}><Icon name="phone" size={22}/><span className="yl-emg-callbig-t"><b>{primary.title||t("emg.callDefault")}</b><span>{primaryTel}</span></span></a>
               ):(
-                <button className="yl-emg-callbig ghost" onClick={()=>{setEmergencyOpen(false);setTab(dog?dog.id:(activeMember?activeMember.id:"me"));setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}><Icon name="plus" size={22}/><span className="yl-emg-callbig-t"><b>病院の連絡先を登録</b><span>夜間救急・かかりつけの番号を手元に</span></span></button>
+                <button className="yl-emg-callbig ghost" onClick={()=>{setEmergencyOpen(false);setTab(dog?dog.id:(activeMember?activeMember.id:"me"));setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}><Icon name="plus" size={22}/><span className="yl-emg-callbig-t"><b>{t("emg.registerHosp")}</b><span>{t("emg.registerHospSub")}</span></span></button>
               )}
               {primaryTel&&(primary.hours||primary.addr)&&<div className="yl-emg-callmeta">{primary.hours&&<span><Icon name="bell" size={12}/> {primary.hours}</span>}{primary.addr&&<span><Icon name="pin" size={12}/> {primary.addr}</span>}</div>}
-              <p className="yl-emg-note">受け入れ可否や診療方法は病院により異なり、事前連絡が必要なことも。診療時間・連絡先は最新を病院にご確認を。</p>
+              <p className="yl-emg-note">{t("emg.note1")}</p>
             </div>
 
             <div className="yl-emg-red">
-              <div className="yl-emg-redhd"><Icon name="alert" size={15}/> このサインは、迷わず今すぐ連絡</div>
-              <div className="yl-emg-redtags">{EMERGENCY_REDFLAGS.map((t,i)=><span key={i} className="yl-emg-redtag">{t}</span>)}</div>
+              <div className="yl-emg-redhd"><Icon name="alert" size={15}/> {t("emg.redHead")}</div>
+              <div className="yl-emg-redtags">{(lang==="ja"?EMERGENCY_REDFLAGS:EMERGENCY_REDFLAGS_EN).map((tg,i)=><span key={i} className="yl-emg-redtag">{tg}</span>)}</div>
             </div>
 
-            <button className="yl-emg-dont" onClick={()=>setEmgDontOpen(o=>!o)}><span>⚠️ してはいけないこと</span><Icon name="chevron" size={16} className={emgDontOpen?"yl-rot90":"yl-rot0"}/></button>
-            {emgDontOpen&&<ul className="yl-emg-dontlist"><li>自己判断で吐かせる・薬や水を飲ませる</li><li>ネットの情報だけで「様子見」と決める</li><li>まず病院に連絡し、指示に従う</li></ul>}
+            <button className="yl-emg-dont" onClick={()=>setEmgDontOpen(o=>!o)}><span>⚠️ {t("emg.dontHead")}</span><Icon name="chevron" size={16} className={emgDontOpen?"yl-rot90":"yl-rot0"}/></button>
+            {emgDontOpen&&<ul className="yl-emg-dontlist"><li>{t("emg.dont1")}</li><li>{t("emg.dont2")}</li><li>{t("emg.dont3")}</li></ul>}
 
             <div className="yl-emg-step">
-              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">2</span>電話で伝える</div>
-              {dog&&<div className="yl-emg-dogcard"><span className="yl-emg-dogname">{dog.emoji||"🐕"} {dog.name}</span><span className="yl-emg-dogmeta">{dogMeta||"プロフィール未登録"}</span></div>}
-              {ti&&<div className="yl-emg-tox"><div className="yl-emg-toxhd"><Icon name="alert" size={13}/> 誤食チェックの内容</div><ul className="yl-emg-toxlist">{ti.what&&<li><span>何を</span>{ti.what}</li>}{ti.amount&&<li><span>量</span>{ti.amount}</li>}{ti.when&&<li><span>いつ</span>{ti.when}</li>}{ti.weight&&<li><span>体重</span>{ti.weight}</li>}{ti.symptom&&<li><span>症状</span>{ti.symptom}</li>}</ul></div>}
-              <ul className="yl-emg-say"><li>今の様子（意識・呼吸・けいれん・出血・嘔吐や下痢の有無）</li><li>いつ・何が起きたか（誤食なら食べたもの・量・時間）</li><li>持病・飲んでいる薬・かかりつけの有無</li></ul>
-              <button className="yl-emg-tipshead" onClick={()=>setTipsOpen(o=>!o)}><span>もっと詳しく伝えるなら</span><Icon name="chevron" size={16} className={tipsOpen?"yl-rot90":"yl-rot0"}/></button>
-              {tipsOpen&&<ul className="yl-emg-list">{EMERGENCY_TIPS.map((t,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{t}</li>)}</ul>}
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">2</span>{t("emg.step2")}</div>
+              {dog&&<div className="yl-emg-dogcard"><span className="yl-emg-dogname">{dog.emoji||"🐕"} {dog.name}</span><span className="yl-emg-dogmeta">{dogMeta||t("emg.profNone")}</span></div>}
+              {ti&&<div className="yl-emg-tox"><div className="yl-emg-toxhd"><Icon name="alert" size={13}/> {t("emg.toxHead")}</div><ul className="yl-emg-toxlist">{ti.what&&<li><span>{t("emg.toxWhat")}</span>{ti.what}</li>}{ti.amount&&<li><span>{t("emg.toxAmount")}</span>{ti.amount}</li>}{ti.when&&<li><span>{t("emg.toxWhen")}</span>{ti.when}</li>}{ti.weight&&<li><span>{t("emg.toxWeight")}</span>{ti.weight}</li>}{ti.symptom&&<li><span>{t("emg.toxSymptom")}</span>{ti.symptom}</li>}</ul></div>}
+              <ul className="yl-emg-say"><li>{t("emg.say1")}</li><li>{t("emg.say2")}</li><li>{t("emg.say3")}</li></ul>
+              <button className="yl-emg-tipshead" onClick={()=>setTipsOpen(o=>!o)}><span>{t("emg.tipsHead")}</span><Icon name="chevron" size={16} className={tipsOpen?"yl-rot90":"yl-rot0"}/></button>
+              {tipsOpen&&<ul className="yl-emg-list">{(lang==="ja"?EMERGENCY_TIPS:EMERGENCY_TIPS_EN).map((tg,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{tg}</li>)}</ul>}
             </div>
 
             <div className="yl-emg-step">
-              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">3</span>持っていく</div>
-              <div className="yl-emg-tiers">{EMERGENCY_PREP_TIERS.map((g,i)=>(<div key={i} className="yl-emg-tier"><span className="yl-emg-tierlbl">{g.label}</span><ul>{g.items.map((it,j)=><li key={j}>{it}</li>)}</ul></div>))}</div>
-              <p className="yl-emg-note">準備より受診を優先。手元にあるものだけで、すぐ向かって大丈夫です。</p>
+              <div className="yl-emg-stephd"><span className="yl-emg-stepnum">3</span>{t("emg.step3")}</div>
+              <div className="yl-emg-tiers">{(lang==="ja"?EMERGENCY_PREP_TIERS:EMERGENCY_PREP_TIERS_EN).map((g,i)=>(<div key={i} className="yl-emg-tier"><span className="yl-emg-tierlbl">{g.label}</span><ul>{g.items.map((it,j)=><li key={j}>{it}</li>)}</ul></div>))}</div>
+              <p className="yl-emg-note">{t("emg.note2")}</p>
             </div>
 
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> 登録済みの連絡先</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>＋ 登録</button></div>
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> {t("emg.contactsTitle")}</span><button className="yl-linkbtn" onClick={()=>{setEmergencyOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("hospital");}}>{t("emg.register")}</button></div>
               {(hospitals.length===0&&persons.length===0)?(
-                <p className="yl-set-desc">動物病院と、家族・預け先の番号を登録しておくと安心です。ここから発信でき、カードにも残ります。</p>
+                <p className="yl-set-desc">{t("emg.contactsEmpty")}</p>
               ):(<>
-                {hospitals.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">🏥 動物病院</div><ul className="yl-emg-contacts">{sortedH.map(renderContact)}</ul></div>}
-                {persons.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">👤 家族・預け先</div><ul className="yl-emg-contacts">{persons.map(renderContact)}</ul></div>}
+                {hospitals.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">{t("emg.groupHosp")}</div><ul className="yl-emg-contacts">{sortedH.map(renderContact)}</ul></div>}
+                {persons.length>0&&<div className="yl-emg-cgroup"><div className="yl-emg-cglabel">{t("emg.groupPerson")}</div><ul className="yl-emg-contacts">{persons.map(renderContact)}</ul></div>}
               </>)}
             </div>
 
             <div className="yl-emg-sec">
-              <button className="yl-emg-tipshead" onClick={()=>setEmgPrepOpen(o=>!o)}><span><Icon name="check" size={15}/> 平時の備え（落ち着いたときに）</span><Icon name="chevron" size={16} className={emgPrepOpen?"yl-rot90":"yl-rot0"}/></button>
-              {emgPrepOpen&&<ul className="yl-emg-checklist">{EMERGENCY_CHECKLIST.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>}
+              <button className="yl-emg-tipshead" onClick={()=>setEmgPrepOpen(o=>!o)}><span><Icon name="check" size={15}/> {t("emg.prepHead")}</span><Icon name="chevron" size={16} className={emgPrepOpen?"yl-rot90":"yl-rot0"}/></button>
+              {emgPrepOpen&&<ul className="yl-emg-checklist">{(lang==="ja"?EMERGENCY_CHECKLIST:EMERGENCY_CHECKLIST_EN).map((tg,i)=><li key={i}><Icon name="check" size={13}/> {tg}</li>)}</ul>}
             </div>
 
-            <p className="yl-toxic-foot">※ 病院情報は変わることがあります。最新は必ず各病院にご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急へご連絡を。</p>
+            <p className="yl-toxic-foot">{t("emg.foot")}</p>
           </div>
         </div>
       );})()}
@@ -5445,36 +5491,36 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setDisasterOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="home" size={18}/> 防災・避難の備え</h2>
+              <h2 className="yl-help-title"><Icon name="home" size={18}/> {t("disaster.title")}</h2>
               <button className="yl-help-close" onClick={()=>setDisasterOpen(false)}>×</button>
             </div>
-            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。</span></div>
+            <div className="yl-emg-alert"><Icon name="alert" size={16}/><span>{t("disaster.alert")}</span></div>
 
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> わが家の避難先</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>＋ 避難先を登録</button></div>
+              <div className="yl-emg-sectitle"><span><Icon name="pin" size={15}/> {t("disaster.shelterTitle")}</span><button className="yl-linkbtn" onClick={()=>{setDisasterOpen(false);setTab(activeMember?activeMember.id:"me");setPersonSeg&&setPersonSeg("manage");openCardNew("shelter");}}>{t("disaster.registerShelter")}</button></div>
               {shelters.length===0?(
-                <p className="yl-set-desc">避難先や預け先を、家族で共有。カードにも残ります。</p>
+                <p className="yl-set-desc">{t("disaster.shelterEmpty")}</p>
               ):(
                 <ul className="yl-emg-contacts">{shelters.map(c=>{const tel=extractTel(c.body);return(
                   <li key={c.id} className="yl-emg-contact">
-                    <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||"避難先"}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
-                    {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setDisasterOpen(false);setTab(c.space);openCardEdit(c);}}>編集</button>}
+                    <div className="yl-emg-cbody"><span className="yl-emg-cname">{c.title||t("disaster.shelterFallback")}</span>{c.body&&<span className="yl-emg-cnote">{c.body}</span>}<span className="yl-emg-cwho">{nameOf(c.space)}</span></div>
+                    {tel?<a className="yl-emg-call" href={`tel:${tel.replace(/-/g,"")}`}><Icon name="phone" size={14}/> {tel}</a>:<button className="yl-emg-call ghost" onClick={()=>{setDisasterOpen(false);setTab(c.space);openCardEdit(c);}}>{t("a11y.edit")}</button>}
                   </li>
                 );})}</ul>
               )}
             </div>
 
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="bag" size={15}/> 持ち出し・備蓄（ペット用）</span></div>
-              <ul className="yl-emg-prep">{DISASTER_PREP.map((t,i)=><li key={i}><Icon name="check" size={13}/> {t}</li>)}</ul>
+              <div className="yl-emg-sectitle"><span><Icon name="bag" size={15}/> {t("disaster.prepTitle")}</span></div>
+              <ul className="yl-emg-prep">{(lang==="ja"?DISASTER_PREP:DISASTER_PREP_EN).map((tg,i)=><li key={i}><Icon name="check" size={13}/> {tg}</li>)}</ul>
             </div>
 
             <div className="yl-emg-sec">
-              <button className="yl-emg-tipshead" onClick={()=>setDisasterTipsOpen(o=>!o)}><span><Icon name="bell" size={15}/> いざという時のポイント</span><Icon name="chevron" size={16} className={disasterTipsOpen?"yl-rot90":"yl-rot0"}/></button>
-              {disasterTipsOpen&&<ul className="yl-emg-list">{DISASTER_TIPS.map((t,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{t}</li>)}</ul>}
+              <button className="yl-emg-tipshead" onClick={()=>setDisasterTipsOpen(o=>!o)}><span><Icon name="bell" size={15}/> {t("disaster.tipsHead")}</span><Icon name="chevron" size={16} className={disasterTipsOpen?"yl-rot90":"yl-rot0"}/></button>
+              {disasterTipsOpen&&<ul className="yl-emg-list">{(lang==="ja"?DISASTER_TIPS:DISASTER_TIPS_EN).map((tg,i)=><li key={i}><span className="yl-emg-num">{i+1}</span>{tg}</li>)}</ul>}
             </div>
 
-            <p className="yl-toxic-foot">※ 指定避難所のペット受け入れ可否・場所は自治体ごとに異なります。お住まいの自治体・自主防災組織で必ず事前にご確認ください。</p>
+            <p className="yl-toxic-foot">{t("disaster.foot")}</p>
           </div>
         </div>
       );})()}
