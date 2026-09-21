@@ -1301,6 +1301,7 @@ const MESSAGES={
     "emg.title":"夜間・救急","emg.lead":"異変が起きたら、まず病院に電話。自己判断で処置せず、指示に従ってください。","emg.step1":"電話する","emg.callDefault":"かかりつけ／夜間救急","emg.registerHosp":"病院の連絡先を登録","emg.registerHospSub":"夜間救急・かかりつけの番号を手元に","emg.note1":"受け入れ可否や診療方法は病院により異なり、事前連絡が必要なことも。診療時間・連絡先は最新を病院にご確認を。","emg.redHead":"このサインは、迷わず今すぐ連絡","emg.dontHead":"してはいけないこと","emg.dont1":"自己判断で吐かせる・薬や水を飲ませる","emg.dont2":"ネットの情報だけで「様子見」と決める","emg.dont3":"まず病院に連絡し、指示に従う","emg.step2":"電話で伝える","emg.profNone":"プロフィール未登録","emg.toxHead":"誤食チェックの内容","emg.toxWhat":"何を","emg.toxAmount":"量","emg.toxWhen":"いつ","emg.toxWeight":"体重","emg.toxSymptom":"症状","emg.say1":"今の様子（意識・呼吸・けいれん・出血・嘔吐や下痢の有無）","emg.say2":"いつ・何が起きたか（誤食なら食べたもの・量・時間）","emg.say3":"持病・飲んでいる薬・かかりつけの有無","emg.tipsHead":"もっと詳しく伝えるなら","emg.step3":"持っていく","emg.note2":"準備より受診を優先。手元にあるものだけで、すぐ向かって大丈夫です。","emg.contactsTitle":"登録済みの連絡先","emg.register":"＋ 登録","emg.contactsEmpty":"動物病院と、家族・預け先の番号を登録しておくと安心です。ここから発信でき、カードにも残ります。","emg.groupHosp":"🏥 動物病院","emg.groupPerson":"👤 家族・預け先","emg.addNumber":"番号を追加","emg.hospFallback":"病院","emg.contactFallback":"連絡先","emg.prepHead":"平時の備え（落ち着いたときに）","emg.foot":"※ 病院情報は変わることがあります。最新は必ず各病院にご確認ください。緊急時はためらわず、かかりつけや近隣の夜間救急へご連絡を。",
     "disaster.title":"防災・避難の備え","disaster.alert":"災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。","disaster.shelterTitle":"わが家の避難先","disaster.registerShelter":"＋ 避難先を登録","disaster.shelterEmpty":"避難先や預け先を、家族で共有。カードにも残ります。","disaster.shelterFallback":"避難先","disaster.prepTitle":"持ち出し・備蓄（ペット用）","disaster.tipsHead":"いざという時のポイント","disaster.foot":"※ 指定避難所のペット受け入れ可否・場所は自治体ごとに異なります。お住まいの自治体・自主防災組織で必ず事前にご確認ください。",
     "safety.sectionLabel":"いざという時","safety.sectionNote":"登録済みの情報から、迷子ポスターや緊急カードをすぐ作れます。","safety.toxicShort":"誤食・中毒","safety.emergencyShort":"夜間・救急","safety.emergencyCard":"緊急カード","safety.lostPoster":"迷子ポスター","safety.disasterShort":"防災・避難",
+    "common.saveImage":"画像で保存","common.print":"印刷","common.addPhotoMax4":"写真を追加（最大4枚）","ecard.meFallback":"わたし","ecard.allergy":"アレルギー・禁忌","ecard.meds":"服薬中","ecard.contacts":"緊急連絡先・かかりつけ","ecard.contactsEmpty":"※「大切な情報」に連絡先を登録すると、ここに表示されます","ecard.addInfo":"連絡先・情報を追加","ecard.note":"※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。","ecard.fileSuffix":"緊急カード",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1386,6 +1387,7 @@ const MESSAGES={
     "emg.title":"Night & emergency","emg.lead":"If something's wrong, call the clinic first. Don't treat on your own — follow their guidance.","emg.step1":"Call","emg.callDefault":"Regular / night emergency","emg.registerHosp":"Register a clinic contact","emg.registerHospSub":"Keep night-emergency & regular vet numbers handy","emg.note1":"Whether they can see you and how varies by clinic, and some need a call ahead. Confirm hours and contact with the clinic.","emg.redHead":"These signs: call right now, don't hesitate","emg.dontHead":"What not to do","emg.dont1":"Making them vomit, or giving meds/water, on your own","emg.dont2":"Deciding to “wait and see” from web info alone","emg.dont3":"Call the clinic first and follow their guidance","emg.step2":"What to tell them","emg.profNone":"No profile yet","emg.toxHead":"Ingestion check details","emg.toxWhat":"What","emg.toxAmount":"Amount","emg.toxWhen":"When","emg.toxWeight":"Weight","emg.toxSymptom":"Symptom","emg.say1":"Current state (consciousness, breathing, seizures, bleeding, vomiting/diarrhea)","emg.say2":"When and what happened (if ingested: what, how much, time)","emg.say3":"Chronic conditions, current meds, whether you have a regular vet","emg.tipsHead":"To explain in more detail","emg.step3":"Bring","emg.note2":"Getting seen matters more than packing. It's fine to head out with just what's on hand.","emg.contactsTitle":"Saved contacts","emg.register":"＋ Register","emg.contactsEmpty":"It helps to save your vet clinic and family/sitter numbers. You can call from here, and they're kept on cards.","emg.groupHosp":"🏥 Vet clinic","emg.groupPerson":"👤 Family / sitter","emg.addNumber":"Add number","emg.hospFallback":"Clinic","emg.contactFallback":"Contact","emg.prepHead":"Everyday prep (when things are calm)","emg.foot":"※ Clinic info can change — always confirm with the clinic. In an emergency, don't hesitate to call your vet or a nearby night-emergency clinic.",
     "disaster.title":"Disaster & evacuation prep","disaster.alert":"In a disaster, evacuating together with your pet is the norm. Prepare day to day and check your evacuation site in advance.","disaster.shelterTitle":"Our evacuation site","disaster.registerShelter":"＋ Register a site","disaster.shelterEmpty":"Share evacuation and sitter options with family. Kept on cards too.","disaster.shelterFallback":"Evacuation site","disaster.prepTitle":"Go-bag & stockpile (for pets)","disaster.tipsHead":"Key points when it counts","disaster.foot":"※ Whether designated shelters accept pets, and where, varies by municipality. Always confirm in advance with your local government or neighborhood disaster group.",
     "safety.sectionLabel":"In an emergency","safety.sectionNote":"From your saved info, quickly make a lost-pet poster or emergency card.","safety.toxicShort":"Toxic & poisoning","safety.emergencyShort":"Night & emergency","safety.emergencyCard":"Emergency card","safety.lostPoster":"Lost-pet poster","safety.disasterShort":"Disaster & evacuation",
+    "common.saveImage":"Save as image","common.print":"Print","common.addPhotoMax4":"Add photos (up to 4)","ecard.meFallback":"Me","ecard.allergy":"Allergies / contraindications","ecard.meds":"On medication","ecard.contacts":"Emergency contacts / regular vet","ecard.contactsEmpty":"※ Register contacts in “Important info” and they'll show here","ecard.addInfo":"Add contacts / info","ecard.note":"※ To show or print and carry for emergencies. Data is stored on your device, so it shows even without signal.","ecard.fileSuffix":"emergency-card",
   },
 };
 function tr(lang,key,vars){
@@ -6057,7 +6059,7 @@ function App(){
         </div>
       );})()}
       {emergencyCardOpen&&(activeMember||tab==="me")&&(()=>{
-        const M=activeMember||{name:meName||"わたし",nickname:"",birthday:meBirthday,avatar:meAvatar,emoji:meEmoji||"🙂"};
+        const M=activeMember||{name:meName||t("ecard.meFallback"),nickname:"",birthday:meBirthday,avatar:meAvatar,emoji:meEmoji||"🙂"};
         const av=M.avatar&&photos[M.avatar];
         const bd=M.birthday;
         const allergy=cards.filter(c=>c.kind==="allergy");
@@ -6071,28 +6073,28 @@ function App(){
         <div className="yl-overlay" onClick={()=>setEmergencyCardOpen(false)}>
           <div className="yl-modal vetmodal" onClick={e=>e.stopPropagation()}>
             <div className="yl-lost">
-              <p className="yl-lost-head">緊急カード</p>
+              <p className="yl-lost-head">{t("safety.emergencyCard")}</p>
               <div className="yl-lost-photo">{av?<img src={av} alt=""/>:<span className="yl-lost-emoji">{M.emoji||"👤"}</span>}</div>
-              {activeMember&&(()=>{const pp=(activeMember.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(activeMember.id,pid)} aria-label="削除">×</button></span>)}</div>;})()}
-              {activeMember&&<label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(activeMember.id,e)}/></label>}
+              {activeMember&&(()=>{const pp=(activeMember.posterPhotos||[]).filter(pid=>photos[pid]);return pp.length>0&&<div className="yl-lost-photos">{pp.map(pid=><span key={pid} className="yl-lost-photo2"><img src={photos[pid]} alt=""/><button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(activeMember.id,pid)} aria-label={t("a11y.delete")}>×</button></span>)}</div>;})()}
+              {activeMember&&<label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> {t("common.addPhotoMax4")}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(activeMember.id,e)}/></label>}
               <p className="yl-lost-name">{M.name}{M.nickname?`（${M.nickname}）`:""}</p>
               {bd&&<p className="yl-lost-feats">{fmtBirthday(bd)}{ageLabel(bd)?`（${ageLabel(bd)}）`:""}</p>}
               <div className="yl-lost-info">
-                {allergy.length>0&&<p><b>アレルギー・禁忌</b> {allergy.map(c=>c.title+(c.body?`（${c.body}）`:"")).join("、")}</p>}
-                {meds.length>0&&<p><b>服薬中</b> {meds.map(m=>m.name).join("、")}</p>}
+                {allergy.length>0&&<p><b>{t("ecard.allergy")}</b> {allergy.map(c=>c.title+(c.body?`（${c.body}）`:"")).join("、")}</p>}
+                {meds.length>0&&<p><b>{t("ecard.meds")}</b> {meds.map(m=>m.name).join("、")}</p>}
                 {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
               </div>
               <div className="yl-lost-contact">
-                <p className="yl-lost-clabel">緊急連絡先・かかりつけ</p>
-                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に連絡先を登録すると、ここに表示されます</p>}
+                <p className="yl-lost-clabel">{t("ecard.contacts")}</p>
+                {contacts.length?contacts.map(c=><p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>{t("ecard.contactsEmpty")}</p>}
               </div>
-              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const t=activeMember?activeMember.id:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先・情報を追加</button>
-              <p className="yl-lost-note">※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。</p>
+              <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const tg=activeMember?activeMember.id:"me";setTab(tg);setMemberSel(tg);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> {t("ecard.addInfo")}</button>
+              <p className="yl-lost-note">{t("ecard.note")}</p>
             </div>
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
-              <button className="yl-modal-cancel" onClick={()=>setEmergencyCardOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost",`${safeName(M.name)}-緊急カード.png`)}><Icon name="download" size={16}/> 画像で保存</button>
-              <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
+              <button className="yl-modal-cancel" onClick={()=>setEmergencyCardOpen(false)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost",`${safeName(M.name)}-${t("ecard.fileSuffix")}.png`)}><Icon name="download" size={16}/> {t("common.saveImage")}</button>
+              <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> {t("common.print")}</button>
             </div>
           </div>
         </div>
