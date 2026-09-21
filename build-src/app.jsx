@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import html2canvas from "html2canvas";
 import { FB_READY, fbAuth, fbDb } from "./firebase";
 import {
   GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged,
@@ -1106,6 +1107,33 @@ function downloadTextFile(content, filename, mime="text/csv"){
     try{window.location.href="data:"+mime+";charset=utf-8,"+encodeURIComponent(content);}catch(_){}
   }
 }
+// DOMノードをPNG画像として保存（シート・カード・ポスターの「画像で保存」用）。
+// ・.yl-noprint（ボタン等）は写さない ・常にライト配色で書き出す（共有・印刷しやすいように）。
+async function saveNodeAsImage(node, filename){
+  const canvas=await html2canvas(node,{
+    backgroundColor:"#ffffff",
+    scale:Math.min(2,(window.devicePixelRatio||1)*1.5),
+    useCORS:true,
+    logging:false,
+    ignoreElements:(el)=>el.classList&&el.classList.contains("yl-noprint"),
+    onclone:(docu)=>{try{docu.documentElement.setAttribute("data-theme","light");}catch(e){}},
+  });
+  await new Promise((resolve,reject)=>{
+    const done=(blob)=>{
+      if(!blob){reject(new Error("no blob"));return;}
+      try{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download=filename;a.rel="noopener";
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url),3000);
+        resolve();
+      }catch(e){reject(e);}
+    };
+    if(canvas.toBlob)canvas.toBlob(done,"image/png");
+    else{try{const durl=canvas.toDataURL("image/png");const a=document.createElement("a");a.href=durl;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);resolve();}catch(e){reject(e);}}
+  });
+}
 // CSV 1セルのエスケープ（カンマ・改行・引用符を含む場合は "" で囲む）。
 const csvCell=(v)=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
 
@@ -1552,6 +1580,7 @@ function App(){
   const[toxicEmgInfo,setToxicEmgInfo]=useState(null); // 誤食チェックの内容（救急画面へ連携。セッション中のみ保持）
   const[emgPrepOpen,setEmgPrepOpen]=useState(false); // 平時のチェックリストの開閉
   const[emgDontOpen,setEmgDontOpen]=useState(false); // 「してはいけないこと」の開閉
+  const[imgSaving,setImgSaving]=useState(false); // シート・カードの画像保存中フラグ
   const[disasterTipsOpen,setDisasterTipsOpen]=useState(false); // 防災「いざという時のポイント」の開閉
   const[menuOpen,setMenuOpen]=useState(false); // まとめメニュー（右からのドロワー）
   const[authTab,setAuthTab]=useState("google"); // 家族共有のサインイン方式：google/email
@@ -2707,6 +2736,17 @@ function App(){
   const foodDefText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);if(d.kcal!==""&&d.kcal!=null)parts.push(d.kcalBasis==="perUnit"?`${d.kcal}kcal/${foodUnitLabel(d.unit)}`:`${d.kcal}kcal/100${d.unit==="ml"?"ml":"g"}`);return parts.join(" ・ ");};
   // 共有・引き継ぎ用の表示：カロリー密度（kcal/100g）ではなく「1回◯・1日◯回（＝1日の目安kcal）」で、そのまま行動できる形に。
   const foodDefShareText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`1回 ${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);let s=parts.join(" ・ ");const per=computeMealKcal(d,d.amount);const t=Number(d.timesPerDay);if(per!=null&&t>0)s+=`${s?"（":""}約${Math.round(per*t)}kcal/日${s?"）":""}`;return s;};
+  // 「画像で保存」：指定セレクタのシート・カードをPNGとして書き出す。
+  const saveSheetImage=async(selector,filename)=>{
+    if(imgSaving)return;
+    const node=document.querySelector(selector);
+    if(!node){showFlash("画像を作成できませんでした");return;}
+    setImgSaving(true);showFlash("画像を作成中…");
+    try{await saveNodeAsImage(node,filename);showFlash("画像を保存しました 🖼️");}
+    catch(e){showFlash("画像を保存できませんでした");}
+    finally{setImgSaving(false);}
+  };
+  const safeName=(s)=>String(s||"").replace(/[\\/:*?"<>|]/g,"").trim()||"loalife";
   const openFoodNew=()=>setFoodForm({name:"",brand:"",foodType:"dry",amount:"",unit:"g",times:"",feedTime:"",kcal:"",kcalBasis:"per100"});
   // 1日のフード量計算：体重は最新の体重記録、MEは登録フード（/100g）から初期値を補完。
   const openFoodCalc=()=>{
@@ -5620,9 +5660,10 @@ function App(){
               </div>
               <p className="yl-vetsum-note">※本サマリーは飼い主の記録に基づくもので、診断ではありません。</p>
             </div>
-            <div className="yl-modal-btns yl-noprint">
+            <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setVetOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-記録サマリー-${todayIso}.png`)}><Icon name="download" size={16}/> 画像で保存</button>
+              <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
             </div>
           </div>
         </div>
@@ -5672,9 +5713,10 @@ function App(){
               </div>
               <p className="yl-vetsum-note">※{isPet?"飼い主":"ご家族"}の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。</p>
             </div>
-            <div className="yl-modal-btns yl-noprint">
+            <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${isPet?"お世話シート":"引き継ぎシート"}-${todayIso}.png`)}><Icon name="download" size={16}/> 画像で保存</button>
+              <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
             </div>
           </div>
         </div>
@@ -5712,9 +5754,10 @@ function App(){
               <button className="yl-lost-editlink yl-noprint" onClick={()=>{setEmergencyCardOpen(false);const t=activeMember?activeMember.id:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先・情報を追加</button>
               <p className="yl-lost-note">※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。</p>
             </div>
-            <div className="yl-modal-btns yl-noprint">
+            <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setEmergencyCardOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={17}/> 印刷・PDF保存</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost",`${safeName(M.name)}-緊急カード.png`)}><Icon name="download" size={16}/> 画像で保存</button>
+              <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
             </div>
           </div>
         </div>
@@ -5811,10 +5854,10 @@ function App(){
               <p className="yl-lost-privacy"><Icon name="shield" size={12}/> 住所やマイクロチップ番号は載せません。連絡先は登録済みのものだけ表示されます。</p>
             </div>
             </>}
-            <div className="yl-modal-btns yl-noprint">
+            <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               {lostStep===0&&<><button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(1)}>次へ：ペット情報</button></>}
               {lostStep===1&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(0)}>もどる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(2)}>ポスターを作成</button></>}
-              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有（SNS・LINE）</button><button className="yl-addbtn modal" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷・保存</button></>}
+              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost",`迷子-${safeName(m.name)}.png`)}><Icon name="download" size={16}/> 画像で保存</button><button className="yl-addbtn modal ghost" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有</button><button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button></>}
             </div>
           </div>
         </div>
