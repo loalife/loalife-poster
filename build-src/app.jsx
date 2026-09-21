@@ -1237,6 +1237,7 @@ const MESSAGES={
     "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記（長文・任意）","life.tag":"タグ","life.firstTag":"はじめて","ph.tag":"例：発表会 / お弁当 / 自転車","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","life.notify":"通知（任意）","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
     "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間",
     "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など",
+    "rec.walkTitle":"おさんぽ記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。健康状態や個体差で必要な運動量は変わります。体調やかかりつけ獣医さんの助言に合わせて調整してください。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中（{n}点）","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"散歩スタート","walk.delLabel":"散歩の記録",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1299,6 +1300,7 @@ const MESSAGES={
     "life.editTitle":"Edit record","life.newTitle":"Log this day","cat.memory":"Memory / diary","cat.event":"Event","ph.eventTitle":"Event title (e.g. Vet)","ph.memoTitle":"A note (optional, e.g. First beach trip)","common.photo":"Photo","ph.diary":"Diary (optional)","life.tag":"Tag","life.firstTag":"First","ph.tag":"e.g. Recital / Bento / Bike","life.date":"Date","life.time":"Time","life.repeat":"Repeat","repeat.none":"None","repeat.daily":"Daily","repeat.weekly":"Weekly","repeat.monthly":"Monthly","repeat.yearly":"Yearly","life.notify":"Notifications (optional)","notif.allowShort":"Allow","remind.0":"At start","remind.5":"5 min before","remind.30":"30 min before","remind.60":"1 hr before","remind.1440":"Day before","life.notifyHint":"Too many 🔔 are easy to miss — keep just what you need.",
     "rec.trayTitle":"Important info","rec.trayCount":" ({n})","rec.trayHint":"Save contacts, allergies, and vet info as cards.","card.nightTag":"Night",
     "card.editTitle":"Edit card","card.newTitle":"Add card","cardkind.emergency":"Emergency contact","cardkind.allergy":"Allergies & no-gos","cardkind.hospital":"Vet & clinic notes","cardkind.shelter":"Shelter & disaster notes","cardkind.insurance":"Insurance info","cardkind.other":"Note","ph.cardTitle":"Title (e.g. Regular vet)","ph.cardBody":"Contacts, allergies, notes, meds remaining, etc.",
+    "rec.walkTitle":"Walk log","walk.goalTitle":"This month's guide (reference)","walk.distance":"Distance","walk.count":"Walks","walk.timesUnit":"","walk.dcPre":"Based on breed","walk.dcMid":" and age","walk.dcPost1":", a ","walk.dcBold":"general guideline (reference)","walk.dcPost2":". Actual needs vary with health and each dog — adjust to their condition and your vet's advice.","walk.dcBreedUnset":" (not set → medium)","walk.dcAgeUnset":" (not set → adult)","walk.reviewTitle":"Walk review","walk.vsLast":"vs last month ","walk.summaryThisMonth":"This month ","walk.walksUnit":" walks","walk.summaryMin":" · {m} min","walk.summarySep":" / 6-mo total ","walk.time":"Time","walk.gpsRecording":"Recording route by GPS ({n} pts)","walk.gpsStart":"Recording route by GPS… start walking and the distance grows","walk.stopSave":"Finish & save","walk.otherRunning":"A walk for another one is being tracked","walk.startBtn":"Start walk","walk.delLabel":"walk record",
   },
 };
 function tr(lang,key,vars){
@@ -4925,41 +4927,41 @@ function App(){
               )});
               if(curKind==="pet"&&(activeMember.species==="dog"||items.some(x=>x.space===tab&&x.type==="walk")))defs.push({key:"walk",el:(
                 <section className="yl-walkrec">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>おさんぽ記録</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.walkTitle")}</h2>
                   {(()=>{const g=walkGoalFor(activeMember);if(!g)return null;const kmPct=Math.min(100,Math.round(walkMonthStats.km/g.monthlyKm*100));const cntPct=Math.min(100,Math.round(walkMonthStats.count/g.monthlyWalks*100));return(
                     <div className="yl-walkgoal">
-                      <div className="yl-walkgoal-head"><span className="yl-walkgoal-title"><Icon name="paw" size={13}/> 今月のめやす（参考）</span><span className="yl-walkgoal-tag">{g.sizeLabel}・{g.stageLabel}</span></div>
-                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">距離</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:kmPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.km.toFixed(1)}<span className="yl-walkgoal-goal"> / {g.monthlyKm}km</span></span></div>
-                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">回数</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:cntPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.count}<span className="yl-walkgoal-goal"> / {g.monthlyWalks}回</span></span></div>
-                      <p className="yl-walkgoal-note">犬種{g.knownBreed?"":"（未設定→中型で計算）"}と年齢{g.knownAge?"":"（未設定→成犬で計算）"}からの<b>一般的な目安（参考値）</b>です。健康状態や個体差で必要な運動量は変わります。体調やかかりつけ獣医さんの助言に合わせて調整してください。</p>
+                      <div className="yl-walkgoal-head"><span className="yl-walkgoal-title"><Icon name="paw" size={13}/> {t("walk.goalTitle")}</span><span className="yl-walkgoal-tag">{g.sizeLabel}・{g.stageLabel}</span></div>
+                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">{t("walk.distance")}</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:kmPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.km.toFixed(1)}<span className="yl-walkgoal-goal"> / {g.monthlyKm}km</span></span></div>
+                      <div className="yl-walkgoal-row"><span className="yl-walkgoal-lbl">{t("walk.count")}</span><span className="yl-walkgoal-bar"><span className="yl-walkgoal-fill" style={{width:cntPct+"%"}}/></span><span className="yl-walkgoal-val">{walkMonthStats.count}<span className="yl-walkgoal-goal"> / {g.monthlyWalks}{t("walk.timesUnit")}</span></span></div>
+                      <p className="yl-walkgoal-note">{t("walk.dcPre")}{g.knownBreed?"":t("walk.dcBreedUnset")}{t("walk.dcMid")}{g.knownAge?"":t("walk.dcAgeUnset")}{t("walk.dcPost1")}<b>{t("walk.dcBold")}</b>{t("walk.dcPost2")}</p>
                     </div>
                   );})()}
                   {walkRecords.length>0&&(()=>{const maxKm=Math.max(0.1,...walkMonthly.map(m=>m.km));const cur=walkMonthly[walkMonthly.length-1],prev=walkMonthly[walkMonthly.length-2]||{km:0,count:0};const dkm=cur.km-prev.km;const totalKm=walkMonthly.reduce((s,m)=>s+m.km,0);return(
                     <div className="yl-walkrev">
-                      <div className="yl-walkrev-head"><span className="yl-walkrev-title"><Icon name="activity" size={14}/> おさんぽのふりかえり</span>{prev.km>0&&<span className={"yl-walkrev-delta"+(dkm>=0?" up":" down")}>先月比 {dkm>=0?"+":""}{dkm.toFixed(1)}km</span>}</div>
+                      <div className="yl-walkrev-head"><span className="yl-walkrev-title"><Icon name="activity" size={14}/> {t("walk.reviewTitle")}</span>{prev.km>0&&<span className={"yl-walkrev-delta"+(dkm>=0?" up":" down")}>{t("walk.vsLast")}{dkm>=0?"+":""}{dkm.toFixed(1)}km</span>}</div>
                       <div className="yl-walkrev-bars">{walkMonthly.map((m,i)=>(
                         <div key={m.key} className={"yl-walkrev-col"+(i===walkMonthly.length-1?" on":"")}>
                           <span className="yl-walkrev-bar"><span className="yl-walkrev-fill" style={{height:Math.round(m.km/maxKm*100)+"%"}}/></span>
                           <span className="yl-walkrev-mlabel">{m.label}</span>
                         </div>
                       ))}</div>
-                      <p className="yl-walkrev-sum">今月 <b>{cur.km.toFixed(1)}km</b>・<b>{cur.count}回</b>{cur.sec>0?`・${Math.round(cur.sec/60)}分`:""}　／　6か月合計 {totalKm.toFixed(1)}km</p>
+                      <p className="yl-walkrev-sum">{t("walk.summaryThisMonth")}<b>{cur.km.toFixed(1)}km</b>・<b>{cur.count}{t("walk.walksUnit")}</b>{cur.sec>0?t("walk.summaryMin",{m:Math.round(cur.sec/60)}):""}{t("walk.summarySep")}{totalKm.toFixed(1)}km</p>
                     </div>
                   );})()}
                   {walk&&walk.space===tab?(
                     <div className="yl-walkrec-live">
                       <div className="yl-walkrec-stats">
-                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(Math.max(0,Math.round((walkNow-walk.start)/1000)))}</span><span className="yl-walkrec-statl">時間</span></div>
-                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDist(walk.distanceM||0)}</span><span className="yl-walkrec-statl">距離</span></div>
+                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(Math.max(0,Math.round((walkNow-walk.start)/1000)))}</span><span className="yl-walkrec-statl">{t("walk.time")}</span></div>
+                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDist(walk.distanceM||0)}</span><span className="yl-walkrec-statl">{t("walk.distance")}</span></div>
                       </div>
                       {walk.route&&walk.route.length>=2&&<svg className="yl-walkrec-map live" viewBox="0 0 300 120" preserveAspectRatio="none"><polyline points={routePath(walk.route,300,120)} fill="none" stroke="#E39A5C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      <p className="yl-walkrec-hint">{walkGpsErr?walkGpsErr:(walk.route&&walk.route.length?`GPSでルート記録中（${walk.route.length}点）`:"GPSでルートを記録中…歩き出すと距離が増えます")}</p>
-                      <div className="yl-walkrec-livebtns"><button className="yl-walkrec-stop" onClick={stopWalk}><Icon name="check" size={16}/> 終了して記録</button><button className="yl-walkrec-cancel" onClick={cancelWalk}>やめる</button></div>
+                      <p className="yl-walkrec-hint">{walkGpsErr?walkGpsErr:(walk.route&&walk.route.length?t("walk.gpsRecording",{n:walk.route.length}):t("walk.gpsStart"))}</p>
+                      <div className="yl-walkrec-livebtns"><button className="yl-walkrec-stop" onClick={stopWalk}><Icon name="check" size={16}/> {t("walk.stopSave")}</button><button className="yl-walkrec-cancel" onClick={cancelWalk}>{t("common.stop")}</button></div>
                     </div>
                   ):walk?(
-                    <p className="yl-walkrec-other"><Icon name="paw" size={14}/> 別のコの散歩を記録中です</p>
+                    <p className="yl-walkrec-other"><Icon name="paw" size={14}/> {t("walk.otherRunning")}</p>
                   ):(
-                    <button className="yl-walkrec-start" onClick={startWalk}><Icon name="paw" size={18}/> 散歩スタート</button>
+                    <button className="yl-walkrec-start" onClick={startWalk}><Icon name="paw" size={18}/> {t("walk.startBtn")}</button>
                   )}
                   {walkRecords.length>0&&(
                     <ul className="yl-walkrec-list">
@@ -4967,7 +4969,7 @@ function App(){
                         <li key={w.id} className="yl-walkrec-item">
                           <span className="yl-walkrec-thumb">{rp?<svg viewBox="0 0 72 48" preserveAspectRatio="none"><polyline points={rp} fill="none" stroke="#E39A5C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>:<Icon name="paw" size={16}/>}</span>
                           <span className="yl-walkrec-body"><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
-                          <button className="yl-walkrec-del" onClick={()=>askDelete("散歩の記録",()=>removeWalk(w.id))} aria-label="削除">×</button>
+                          <button className="yl-walkrec-del" onClick={()=>askDelete(t("walk.delLabel"),()=>removeWalk(w.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       );})}
                     </ul>
