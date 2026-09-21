@@ -1255,6 +1255,7 @@ const MESSAGES={
     "del.confirmTitle":"本当に削除しますか？","del.confirmBody":"「{label}」を削除します。この操作は元に戻せません。","del.confirmBodyPlain":"この操作は元に戻せません。","del.confirmBtn":"削除する",
     "health.addTitle":"からだの記録","health.bp":"血圧","health.temp":"体温","health.glucose":"血糖値","health.bpHigh":"上","health.bpLow":"下","health.optionalPh":"任意","health.smallAnimalHint":"小動物は0.1g単位","health.condLabel":"体調","health.saveBtn":"からだを記録","health.targetWeight":"目標体重","health.targetHint":"目標との差を表示。",
     "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"さんぽ・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録",
+    "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1334,6 +1335,7 @@ const MESSAGES={
     "del.confirmTitle":"Delete this?","del.confirmBody":"Delete “{label}”. This can’t be undone.","del.confirmBodyPlain":"This can’t be undone.","del.confirmBtn":"Delete",
     "health.addTitle":"Body record","health.bp":"Blood pressure","health.temp":"Temperature","health.glucose":"Blood glucose","health.bpHigh":"Sys","health.bpLow":"Dia","health.optionalPh":"optional","health.smallAnimalHint":"Small animals: 0.1 g steps","health.condLabel":"Condition","health.saveBtn":"Log body","health.targetWeight":"Target weight","health.targetHint":"Shows the gap to your target.",
     "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes",
+    "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
   },
 };
 function tr(lang,key,vars){
@@ -6151,20 +6153,20 @@ function App(){
         return(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">ごはんの記録</h3>
+            <h3 className="yl-modal-title">{t("feed.addTitle")}</h3>
             <div className="yl-feed-units">{feedUnitsOrdered.map(u=><button key={u.k} className={"yl-feed-unit"+(feedUnit===u.k?" on":"")} onClick={()=>setFeedUnit(u.k)}>{u.l}</button>)}</div>
             {feedUnit==="serving"?(<>
-              <label className="yl-opt" style={{marginTop:12}}>1回分の量<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={feedServing} onChange={e=>setFeedServing(e.target.value)} placeholder="例：100"/><span className="yl-health-unit">g</span></span></label>
-              <p className="yl-health-hint" style={{marginTop:4}}>{baseNow?`1回分＝${baseNow}g として総量に反映します（初回だけ設定すればOK）`:"未設定でも記録できます（設定すると総量に反映）"}</p>
-              <p className="yl-feed-mlabel">分量</p>
+              <label className="yl-opt" style={{marginTop:12}}>{t("feed.servingLabel")}<span className="yl-health-field"><input type="number" inputMode="numeric" className="yl-health-num" value={feedServing} onChange={e=>setFeedServing(e.target.value)} placeholder={t("feed.servingPh")}/><span className="yl-health-unit">g</span></span></label>
+              <p className="yl-health-hint" style={{marginTop:4}}>{baseNow?t("feed.hintSet",{g:baseNow}):t("feed.hintUnset")}</p>
+              <p className="yl-feed-mlabel">{t("feed.amount")}</p>
               <div className="yl-feed-mults">{[0.5,1,1.5,2].map(m=><button key={m} className={"yl-feed-mult"+(feedMult===m?" on":"")} onClick={()=>setFeedMult(m)}>×{m}</button>)}</div>
-              {previewG!=null&&<p className="yl-feed-preview">＝ 約 <b>{previewG}g</b>（{feedMult}回分）</p>}
+              {previewG!=null&&<p className="yl-feed-preview">{t("feed.previewPre")}<b>{previewG}g</b>{t("feed.previewPost",{n:feedMult})}</p>}
             </>):(
-              <label className="yl-opt" style={{marginTop:12}}>分量<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={feedAmt} onChange={e=>setFeedAmt(e.target.value)} placeholder="0" autoFocus/><span className="yl-health-unit">{feedUnitLabel(feedUnit)}</span></span></label>
+              <label className="yl-opt" style={{marginTop:12}}>{t("feed.amount")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={feedAmt} onChange={e=>setFeedAmt(e.target.value)} placeholder="0" autoFocus/><span className="yl-health-unit">{feedUnitLabel(feedUnit)}</span></span></label>
             )}
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:14}} onClick={saveFeed}><Icon name="utensils" size={16}/> ごはんを記録</button>
-            {feedTodayG>0&&<p className="yl-feed-today">今日の合計 約{feedTodayG}g（{feedToday.length}回）</p>}
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:14}} onClick={saveFeed}><Icon name="utensils" size={16}/> {t("feed.saveBtn")}</button>
+            {feedTodayG>0&&<p className="yl-feed-today">{t("feed.today",{g:feedTodayG,n:feedToday.length})}</p>}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
         );})()}
