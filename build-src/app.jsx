@@ -261,7 +261,7 @@ const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 // 人メンバーの種別（記録項目の出し分け）。赤ちゃん→子ども→大人→高齢者の順で提示。
 const PERSON_TYPES=[{k:"baby",l:"赤ちゃん",lEn:"Baby",lEs:"Bebé",emoji:"👶"},{k:"child",l:"子ども",lEn:"Child",lEs:"Niño/a",emoji:"🧒"},{k:"adult",l:"大人",lEn:"Adult",lEs:"Adulto",emoji:"🧑"},{k:"senior",l:"高齢者",lEn:"Senior",lEs:"Mayor",emoji:"👵"}];
 // {k,l,lEn} 形式のロケール対応ラベル（種別・性別など）。
-const lOf=(o)=>o?(APP_LANG==="ja"?o.l:APP_LANG==="es"?(o.lEs||o.lEn||o.l):(o.lEn||o.l)):"";
+const lOf=(o)=>o?(APP_LANG==="ja"?o.l:APP_LANG==="zh"?(o.lZh||o.lEn||o.l):APP_LANG==="es"?(o.lEs||o.lEn||o.l):(o.lEn||o.l)):"";
 const ME_EMOJIS=["🙂","😊","😄","🥰","😎","🤓","🧑","👩","👨","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","🦊","🐱","🌸","🌺","🌈","⭐","✨","🍀","🎯","🔥","💫"];
 const REPEATS=[{key:"none",label:"なし"},{key:"daily",label:"毎日"},{key:"weekly",label:"毎週"},{key:"monthly",label:"毎月"},{key:"yearly",label:"毎年"}];
 // 1日のルーティン（タスクテンプレ）
@@ -439,9 +439,9 @@ const BABY_KINDS=[{key:"checkup",label:"乳児健診",labelEn:"Baby check-up",la
 const SELF_KINDS=[{key:"checkup",label:"健康診断",labelEn:"Check-up",labelEs:"Revisión",emoji:"🩺"},{key:"vaccine",label:"予防接種",labelEn:"Vaccination",labelEs:"Vacunación",emoji:"💉"},{key:"hospital",label:"通院",labelEn:"Doctor visit",labelEs:"Médico",emoji:"🏥"},{key:"med",label:"投薬・服薬",labelEn:"Medication",labelEs:"Medicación",emoji:"💊"},{key:"dental",label:"歯科",labelEn:"Dental",labelEs:"Dentista",emoji:"🦷"},{key:"other",label:"その他",labelEn:"Other",labelEs:"Otro",emoji:"📄"}];
 const careKindsFor=(m)=>{if(!m)return SELF_KINDS;if(m.kind==="person")return m.personType==="senior"?SENIOR_KINDS:m.personType==="baby"?BABY_KINDS:PERSON_KINDS;if(m.species==="dog")return DOG_KINDS;if(m.species==="cat")return CAT_KINDS;if(m.species==="other")return OTHER_PET_KINDS;return OTHER_PET_KINDS;};
 // ケア種別の表示ラベル（ロケール対応。日本語は非破壊で label をそのまま返す）。
-const careLabel=(k)=>k?(APP_LANG==="ja"?k.label:APP_LANG==="es"?(k.labelEs||k.labelEn||k.label):(k.labelEn||k.label)):"";
+const careLabel=(k)=>k?(APP_LANG==="ja"?k.label:APP_LANG==="zh"?(k.labelZh||k.labelEn||k.label):APP_LANG==="es"?(k.labelEs||k.labelEn||k.label):(k.labelEn||k.label)):"";
 // 汎用の {label,labelEn} ロケール対応ラベル（症状・今日のようす・体調などのデータ辞書用）。
-const lblOf=(o)=>o?(APP_LANG==="ja"?o.label:APP_LANG==="es"?(o.labelEs||o.labelEn||o.label):(o.labelEn||o.label)):"";
+const lblOf=(o)=>o?(APP_LANG==="ja"?o.label:APP_LANG==="zh"?(o.labelZh||o.labelEn||o.label):APP_LANG==="es"?(o.labelEs||o.labelEn||o.label):(o.labelEn||o.label)):"";
 // ケア種別 → ラインアイコン名（SF Symbols相当）
 const CARE_ICON={daycare:"building",vaccine:"syringe",rabies:"paw",filaria:"bug",med:"pill",trim:"scissors",hospital:"activity",other:"filetext",checkup:"stethoscope",groom:"sparkles",lesson:"bag",event:"calendar",school:"building",dental:"tooth",pickup:"pill",care:"users",rehab:"activity",nurse:"stethoscope"};
 const careIcon=(k)=>CARE_ICON[k]||"paw";
@@ -817,7 +817,7 @@ const expenseCatsFor=(kind)=>kind==="pet"?EXPENSE_CATS_PET:EXPENSE_CATS_PERSON;
 const ALL_EXPENSE_CATS=[...EXPENSE_CATS_PET,...EXPENSE_CATS_PERSON.filter(p=>!EXPENSE_CATS_PET.some(q=>q.key===p.key))];
 const expCatMeta=(k)=>ALL_EXPENSE_CATS.find(c=>c.key===k)||ALL_EXPENSE_CATS[ALL_EXPENSE_CATS.length-1];
 // 支出カテゴリの表示ラベル（ロケール対応。日本語は非破壊）。
-const expCatLabel=(c)=>c?(APP_LANG==="ja"?c.label:APP_LANG==="es"?(c.labelEs||c.labelEn||c.label):(c.labelEn||c.label)):"";
+const expCatLabel=(c)=>c?(APP_LANG==="ja"?c.label:APP_LANG==="zh"?(c.labelZh||c.labelEn||c.label):APP_LANG==="es"?(c.labelEs||c.labelEn||c.label):(c.labelEn||c.label)):"";
 const fmtYen=(n)=>"¥"+Math.round(n||0).toLocaleString("ja-JP");
 
 const EMOJI_RULES=[[["目","眼","メガネ","視力","コンタクト"],"👁️"],[["マラソン","ラン","走","ジョギング","駅伝"],"🏃"],[["ジム","筋トレ","トレーニング","クロスフィット","crossfit","筋"],"🏋️"],[["自転車","サイクリング","ロングライド","ライド","ロード"],"🚴"],[["泳","スイミング","プール","水泳"],"🏊"],[["ヨガ","ストレッチ","瞑想"],"🧘"],[["ピアノ","ジャズ","鍵盤","セッション"],"🎹"],[["ギター","楽器","音楽","バンド"],"🎸"],[["ライブ","コンサート","歌","カラオケ"],"🎤"],[["映画","シネマ"],"🎬"],[["本","読書","読む"],"📚"],[["試験","資格","勉強","検定","TOEIC","G検定","学習"],"🎓"],[["面接","転職","仕事","キャリア","案件","副業"],"💼"],[["会議","打ち合わせ","打合せ","MTG","ミーティング","商談"],"📊"],[["飲み","飲み会","会食","宴会","パーティ","ランチ会","歓迎会","送別会","二次会"],"🍻"],[["旅","旅行","海外","訪ね","観光","ステイ"],"✈️"],[["海","ビーチ","南国"],"🏖️"],[["山","登山","富士","ハイキング","トレッキング"],"⛰️"],[["語","スペイン語","英語","中国語","会話"],"🗣️"],[["写真","カメラ","撮"],"📷"],[["料理","ごはん","ご飯","レストラン","食","クッキング"],"🍳"],[["コーヒー","カフェ","珈琲"],"☕"],[["貯金","お金","投資","iDeCo","ふるさと納税","資産","NISA"],"💰"],[["病院","通院","受診","健診","健康診断","診察"],"🏥"],[["ワクチン","予防接種","注射","接種"],"💉"],[["フィラリア","蚊","ノミ","ダニ"],"🦟"],[["狂犬病"],"🐕"],[["歯","歯科","デンタル"],"🦷"],[["美容","トリミング","カット","ヘア","サロン"],"✂️"],[["散歩","お散歩","ウォーキング"],"🦮"],[["習い事","レッスン","塾","スクール"],"🎒"],[["誕生","記念","バースデー"],"🎂"],[["結婚","プロポーズ","婚"],"💍"],[["掃除","片付","そうじ"],"🧹"],[["引っ越","引越","移住"],"📦"],[["占い","星","運勢"],"✨"]];
@@ -1220,7 +1220,7 @@ const csvCell=(v)=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.r
 // ───────── 多言語化の基盤（英語パイロット。ja=ソース言語＝フォールバック / en=英語） ─────────
 // 方針：未翻訳キーは ja にフォールバックし、ja も無ければキー文字列を返す。UIテキストのみ対象で、
 // ユーザーの登録データ（名前・誕生日・体重など）は翻訳しない。ES・简体中文は同じ辞書にlanguage追加で拡張。
-const LOCALES={ja:"ja-JP",en:"en-US",es:"es-ES"};
+const LOCALES={ja:"ja-JP",en:"en-US",es:"es-ES",zh:"zh-CN"};
 // モジュールレベルのコンポーネント（BdayInput等、Appの t にアクセスできない箇所）用の現在言語。
 // App の lang 変更 effect で更新し、再レンダー時に参照する。
 let APP_LANG="ja";
@@ -1489,6 +1489,94 @@ const MESSAGES={
     "lost.step0":"Lugar y hora","lost.step1":"Info de la mascota","lost.step2":"Cartel","lost.stepFmt":"{n}. {lab}","lost.step0LeadBold":"Primero, mantén la calma.","lost.step0LeadRest":" Indica dónde y cuándo se le vio por última vez. Puedes corregirlo después.","lost.placeLabel":"Dónde se le vio por última vez","lost.placeHint":"Indica dónde pudo perderse","lost.placePh":"p. ej. cerca de la entrada del parque / junto a la estación","lost.placeNoteLabel":"Detalles del lugar (opcional)","lost.placeNotePh":"p. ej. frente a la tienda / salida este","lost.whenLabel":"Fecha/hora en que se le vio","lost.whenPh":"p. ej. hacia las 18:00 del 18 de sept.","lost.step1Lead":"Haremos el cartel con esto. Revisa la foto y los datos.","lost.featType":"Tipo","lost.featCoat":"Pelaje","lost.featGender":"Sexo","lost.featAge":"Edad","lost.featWeight":"Peso","lost.featCollar":"Collar / arnés","lost.collarLabel":"Collar / arnés (opcional)","lost.collarPh":"p. ej. collar rojo con chapa","lost.situationLabel":"Cómo se escapó (opcional)","lost.situationPh":"p. ej. se asustó con fuegos artificiales y soltó la correa","lost.temperLabel":"Carácter (ajusta el mensaje automáticamente)","lost.noteLabel":"Algo más (opcional)","lost.notePh":"p. ej. ayuda a difundir en redes sociales, por favor","lost.registerContact":"Registra un contacto (necesario para que quien lo encuentre te avise)","lost.found":"Encontrado","lost.headDog":"Perro perdido — ayuda, por favor","lost.headOther":"Ayuda a encontrarlo, por favor","lost.sightPlace":"Visto por última vez en","lost.sightWhen":"Visto el","lost.situationTitle":"Cómo se escapó","lost.contactPlea":"Si lo ves, contáctanos aquí, por favor","lost.contactEmpty":"※ Registra un contacto de emergencia en «Información importante» y aparecerá aquí","lost.action":"[Importante] Si lo ves, llama a este número enseguida, por favor. No lo persigas.","lost.footNote":"No lo persigas — dinos dónde y cuándo lo viste. Imprime o muestra en pantalla; funciona sin señal.","lost.afterTitle":"Listo. Ahora, corre la voz.","lost.foundToggle":"Encontrado (mostrar «Encontrado» en el cartel)","lost.privacy":"No incluimos tu dirección ni el número de microchip. Solo se muestran los contactos guardados.","lost.nextPet":"Siguiente: info de la mascota","lost.back":"Atrás","lost.makePoster":"Crear cartel","lost.share":"Compartir","lost.fileSuffix":"perdido","temper.unset":"Sin definir","temper.friendly":"Sociable","temper.normal":"Normal","temper.timid":"Miedoso",
     "ob.title":"El día a día de tu familia, en un solo lugar.","ob.sub":"Mascotas y niños por igual — desde el registro diario hasta estar listos ante lo inesperado.","ob.start":"Empezar","ob.trySample":"Probar con datos de ejemplo","ob.h2":"Primero, añade a alguien","ob.choicePet":"🐶 Una mascota (perro, gato, etc.)","ob.choiceMe":"👤 Yo (también mi cuidado)","ob.choicePerson":"👨‍👩‍👧 Familia (una persona)","ob.skip":"Ahora no","ob.photoIcon":"Usar una foto como icono","ob.iconHintPre":"Elige un emoji, o añade una foto desde la ","ob.iconHintPost":" de la derecha","ob.namePetPh":"Nombre (p. ej. Pochi)","ob.nameMePh":"Tu nombre (p. ej. Kaori)","ob.namePersonPh":"Nombre (p. ej. Yuto)","ob.birthday":"Cumpleaños (año opcional)","ob.back":"Atrás",
   },
+  zh:{
+    "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
+    "seg.daily":"日常","seg.manage":"管理",
+    "home.family":"家人","home.okNoRecord":"暂无记录","home.okPet":"{name}很好","home.okGeneric":"一切都好",
+    "level.ok":"正常","level.warn":"注意","level.alert":"需要照护","level.none":"无数据","level.memorial":"纪念中",
+    "home.layerToday":"今天","home.calmTitle":"今天一切平静","home.calmNone":"祝你今天顺心",
+    "home.calmOnePet":"{emoji} {name}很安稳","home.calmOne":"{emoji} {name}也很安稳","home.calmAll":"{emojis} 大家都很安稳",
+    "home.todayTodos":"今天的待办","home.export":"导出","home.moreCount":"还有{n}项",
+    "home.dontMiss":"别错过","home.upcoming":"即将到来","home.quickCond":"今天大家怎么样？","home.quickCondBtn":"都很好",
+    "home.restock":"该补货了","home.recap":"小结","home.statWeekCare":"本周照护","home.statTodayRoutine":"今天的日常",
+    "rel.today":"今天","rel.overdue":"已逾期","rel.tomorrow":"明天","rel.inDays":"{d}天后","rel.dueInDays":"{d}天后到期","rel.overdueBy":"逾期{d}天",
+    "settings.title":"设置","set.language":"语言","set.appearance":"外观",
+    "theme.aria":"主题","theme.system":"跟随设备","theme.light":"浅色","theme.dark":"深色",
+    "set.notifications":"通知","set.notifDesc":"为日程和生日提供温和的提醒。","set.notifOn":"通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
+    "set.weather":"天气地点","set.weatherDesc":"家、家人住处、公园的天气 — 最多{n}个地点。","set.weatherMax":"最多{n}个地点。删除一个再添加。","set.addLocation":"添加地点",
+    "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）",
+    "common.save":"保存","common.cancel":"取消","common.stop":"取消",
+    "set.colorTime":"颜色变化的时机（照护与任务记录）","set.colorWarn":"变黄的天数","set.colorAlert":"变红的天数","set.colorNow":"当前：","set.colorDaySuffix":"天 → ","unit.dShort":"天",
+    "set.petSafety":"宠物安全","safety.toxic":"有毒食物与危险","safety.emergency":"夜间与急救准备","safety.disaster":"防灾与疏散准备",
+    "set.backup":"备份","set.backupDesc":"你的照片和记录仅保存在本设备上。 ","set.backupDesc2":"导出以妥善保存。","backup.export":"导出数据（含照片）","backup.exportCsv":"将记录导出为CSV","backup.restoreWarn":"恢复会用备份覆盖当前数据。是否继续？","backup.chooseFile":"选择要恢复的文件","backup.restore":"从备份恢复",
+    "set.familyShare":"家庭共享","share.settings":"共享设置",
+    "set.about":"关于","about.help":"使用说明","about.whatsNew":"更新内容","about.tourAgain":"重看引导","about.aboutApp":"关于本应用","about.reset":"清除数据并重新开始",
+    "rel.daysAgo":"{n}天前","rel.today2":"今天","rel.overdueDeadline":"已逾期","rel.todayDeadline":"今天到期","rel.dueInDaysDeadline":"{n}天后到期",
+    "common.add":"添加","common.delete":"删除","common.edit":"编辑","common.done":"完成","common.clear":"清除","common.me":"我","common.optional":"（可选）",
+    "a11y.delete":"删除","a11y.pickColor":"选择颜色","a11y.editProfile":"编辑资料","a11y.editPhotoProfile":"编辑照片和资料","a11y.editIconName":"更改图标和名称",
+    "ph.name":"名称","ph.title":"标题",
+    "gender.boy":"男孩","gender.girl":"女孩","neuter.done":"是","neuter.not":"还没有",
+    "ptype.baby":"婴儿","ptype.child":"儿童","ptype.adult":"成人","ptype.senior":"长者",
+    "toast.saved":"已保存 ✓","toast.added":"已添加 ✓","toast.deleted":"已删除","toast.nameNeeded":"请输入名称","toast.titleNeeded":"请输入标题",
+    "toast.healthSaved":"健康记录已保存 📈","toast.weightNum":"体重必须是数字","toast.healthNeeded":"请输入体重等数值","toast.heightNum":"身高必须是数字",
+    "toast.foodSaved":"食物已保存 🍚","toast.foodNameNeeded":"请输入食物名称","toast.pickFood":"请选择食物","toast.amountNeeded":"请输入数量","toast.qtyNeeded":"请输入数量","toast.milkNeeded":"请输入奶量（ml）",
+    "toast.diarySaved":"今日记录已保存 📝","toast.diaryPick":"选择状态，或添加备注",
+    "toast.cardSaved":"卡片已保存 📌","toast.cardNeed":"添加一些信息或照片","toast.medSaved":"用药已保存","toast.medName":"请输入药物名称","toast.stockSaved":"库存已保存 📦","toast.routineSaved":"日常已保存 🗓","toast.noteSaved":"备注已保存","toast.noteNeed":"添加照片、备注或日记",
+    "toast.memorySaved":"已保存到回忆 📸","toast.memoryDeleted":"回忆已删除","toast.photoMax":"最多4张照片","toast.photoAdded":"照片已添加 📷","toast.fileTooBig":"文件过大（最大20MB）","toast.imgFail":"无法加载图片","toast.imgSaveFail":"无法保存。请换一张图片试试。","toast.storageFull":"存储空间不足",
+    "toast.recordedWell":"已标记为状态良好 👌","toast.alreadyRecorded":"今天已记录 👌","toast.pickWho":"请选择要记录的对象","toast.dupItem":"该项目已存在","toast.tomorrow":"已移到明天","toast.dateFixed":"日期已更新 ✓","toast.iconSet":"图标已设置","toast.certDeleted":"证明已删除","toast.growthSaved":"已保存到里程碑","toast.belongNeeded":"请输入物品","toast.belongAdded":"物品已添加 🎒",
+    "toast.logged":"已记录 {emoji} {title} ✓","toast.memberDeleted":"已删除{name}",
+    "care.overdue":"逾期{n}","care.soon":"即将到期{n}","care.ok":"照护正常","vis.private":"私密","vis.shared":"已共享",
+    "hero.addPhoto":"添加照片","hero.rainbow":"彩虹桥","hero.togetherThanks":" · 相伴{n}天，谢谢你","me.setBirthday":"添加你的生日",
+    "prof.title":"{name}的资料","prof.familyDefault":"家人","sp.catShort":"猫","sp.dogShort":"狗","sp.petShort":"宠物",
+    "prof.usePhoto":"使用照片","prof.backToEmoji":"返回表情","prof.nickname":"昵称（可选）","ph.nickname":"如 Yui、小Yui","prof.folder":"文件夹（分组，可选）","ph.folderPerson":"如 家人 / 楼上父母","ph.folderPet":"如 狗 / 仓鼠",
+    "prof.calColor":"日历颜色","prof.calColorDesc":"在日历上更容易区分。","prof.birthday":"生日（年份可选）","prof.gotcha":"领养日（年份可选）","prof.gotchaDesc":"庆祝它来到你身边的日子。",
+    "prof.breedCat":"品种","prof.breedDog":"品种","prof.breedOther":"类型","ph.breedDog":"搜索或输入品种（任何品种都可以）","ph.breedCat":"搜索或输入品种（任何品种都可以）","ph.breedOther":"类型（自由输入）","prof.breedDescDog":"有助于估算散步时长。","prof.breedDescOther":"便于按体型记录。",
+    "prof.coat":"毛色（可选）","ph.coat":"输入以搜索（可自由输入）","prof.gender":"性别（可选）","prof.genderDesc":"也会显示在寻宠海报上。","prof.neuter":"绝育","prof.microchip":"芯片号码（可选）","ph.microchip":"15位数字（如 392...）","prof.microchipDesc":"在走失或防灾时很有用。",
+    "prof.personType":"类型（显示哪些项目）","prof.blood":"血型（可选）","blood.suffix":"型","prof.rainbow":"彩虹桥（纪念，可选）","prof.rainbowSet":"记录告别并切换到纪念模式","prof.rainbowDesc":"暂停提醒，静静地回顾回忆。",
+    "prof.visShared":"与你邀请的家人共享该成员的记录。","prof.visPrivate":"仅保存在本设备，不与家人共享。","prof.visNote":"把私密内容（过敏、生理周期、医疗备注）设为「仅自己」。","prof.saveMember":"保存","prof.deleteMember":"删除该成员",
+    "fun.gotchaToday":"相伴{y}年了！","fun.gotchaTodayNoYear":"领养日！","fun.gotchaAnniv":"领养日 {date}","fun.gotchaAnnivY":"领养日 {date}（{y}年）","fun.together":"相伴{n}天","fun.neuter":"绝育：{s}","member.addFamily":"添加家人或宠物",
+    "word.pet":"照护","word.person":"计划","rec.memberTitle":"{name}的{word}","rec.tapEditDate":"点按编辑日期",
+    "rel.stillNone":"尚未记录","rel.weeksAgo":"{n}周前","rel.monthsAgo":"约{n}个月前",
+    "rec.routineTitle":"今天的日常","rec.addFromPlus":"用 ＋ 按钮添加","rec.choreTitlePet":"每日照护","rec.choreTitleMe":"自我照护记录","rec.choreTitleOther":"照护记录","rec.choreDescPet":"点按「完成」记录。颜色显示距上次的时间。","rec.choreDescOther":"点按「完成」记录。一眼看出距上次的时间。","rec.did":"完成","rec.lastDone":"上次 {date} · {txt}","rec.totalCount":" （共{n}次）",
+    "common.all":"全部","a11y.prevMonth":"上个月","a11y.nextMonth":"下个月","cal.addRecord":"＋ 记录","cal.noRecords":"暂无记录","cal.exportIcs":"将事件导出到你的日历（.ics）","cal.foot":"点按日期以记录或回顾","cal.dayTitle":"{md} {wd}",
+    "bday.month":"月","bday.day":"日","bday.yearOpt":"年（可选）","bday.monthSuffix":"月","bday.daySuffix":"日",
+    "common.close":"关闭","food.editTitle":"编辑食物","food.newTitle":"添加食物","ph.foodName":"食物名称（如 鸡肉、干粮）","ph.brand":"品牌（可选）","food.type":"类型","foodtype.dry":"干粮","foodtype.wet":"湿粮","foodtype.homemade":"自制","foodtype.treat":"零食","foodtype.supplement":"保健品","foodtype.other":"其他","food.amountUnit":"每份分量（可选）","ph.amount":"数量","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"个","food.timesTime":"每天次数与时间（可选）","ph.times":"次/天","ph.feedTime":"时间（如 7:00、19:00）","food.kcal":"热量（可选，若知道）","food.kcalDesc":"自动计算热量。只填分量也可以。","food.mealTitle":"记录一餐","food.food":"食物","food.when":"何时","mealslot.morning":"早上","mealslot.noon":"中午","mealslot.night":"晚上","mealslot.treat":"零食","food.qty":"分量","food.approxKcal":"约{kc}kcal","food.logBtn":"记录","bday.addTitle":"添加生日或纪念日","ph.bdayName":"名称（如 Yui的生日）","bday.dateYearOpt":"日期（年份可选）",
+    "rec.healthTitle":"健康","chart.weight":"体重","chart.height":"身高","chart.bpSys":"血压（收缩压）","health.chartSoon":"再记录一次就会出现体重趋势图。","health.emptyPlus":"用 ＋ 按钮记录体重等。","health.recordOf":"{date}的记录","health.bpPrefix":"血压 ",
+    "rec.medsTitle":"用药与保健品","med.finished":"已结束","med.progress":"{days}天 · 第{n}天 · 剩{left}天","med.tookDone":"已服用 ✓","med.took":"服用","ph.medName":"药物或保健品名称（如 维生素）","med.daysUnit":"天","common.register":"＋ 登记",
+    "rec.sheetsTitle":"整合成一张表","rec.sheetsDescPet":"就诊或寄养时的一张表。","rec.sheetsDescOther":"交接或急救时的一张表。","rec.vetSummary":"兽医摘要","rec.careSheet":"寄养照护表","rec.lostPoster":"寻宠海报","rec.handoverToday":"今天的交接表","rec.emergencyCard":"急救卡",
+    "rec.feedTitle":"食物与用餐","food.delMeal":"用餐记录","food.delRecord":"记录","food.registerLink":"＋ 添加食物","food.todayCount":"今天：{n}","food.pickToLog":"选择一种食物来记录用餐。","food.recordLabel":"已记录","food.tapToLog":"点按记录","food.todayMeal":"点按记录今天的用餐。","food.amountOnly":"只记录分量","food.registerBig":"添加食物","food.defaultName":"用餐",
+    "rec.toiletTitle":"如厕成功率","toilet.peeRate":"小便成功","toilet.poopRate":"大便成功","toilet.none":"无数据","toilet.count":" （{success}/{total}）","toilet.logBtn":"记录如厕",
+    "rec.diaryTitle":"今日状态","diary.recordedDone":"今天的状态已记录","diary.editMore":"添加/编辑","diary.recordBtn":"记录状态","chart.energy":"精神趋势（1–5）","chart.sleep":"睡眠趋势","chart.appetite":"食欲趋势（1–3）","diary.empty":"用「记录状态」来记录",
+    "life.editTitle":"编辑记录","life.newTitle":"记录这一天","cat.memory":"回忆/日记","cat.event":"事件","ph.eventTitle":"事件标题（如 兽医）","ph.memoTitle":"备注（可选，如 第一次去海边）","common.photo":"照片","ph.diary":"日记（可选）","life.tag":"标签","life.firstTag":"第一次","ph.tag":"如 演出 / 便当 / 骑车","life.date":"日期","life.time":"时间","life.repeat":"重复","repeat.none":"不重复","repeat.daily":"每天","repeat.weekly":"每周","repeat.monthly":"每月","repeat.yearly":"每年","life.notify":"通知（可选）","notif.allowShort":"允许","remind.0":"开始时","remind.5":"提前5分钟","remind.30":"提前30分钟","remind.60":"提前1小时","remind.1440":"前一天","life.notifyHint":"🔔太多容易忽略 — 只留需要的。",
+    "rec.trayTitle":"重要信息","rec.trayCount":" （{n}）","rec.trayHint":"把联系人、过敏和兽医信息保存为卡片。","card.nightTag":"夜间",
+    "card.editTitle":"编辑卡片","card.newTitle":"添加卡片","cardkind.emergency":"紧急联系人","cardkind.allergy":"过敏与禁忌","cardkind.hospital":"兽医备注","cardkind.shelter":"避难与防灾备注","cardkind.insurance":"保险信息","cardkind.other":"备注","ph.cardTitle":"标题（如 常去的兽医）","ph.cardBody":"联系人、过敏、备注、剩余药量等。",
+    "rec.walkTitle":"散步记录","walk.goalTitle":"本月参考量","walk.distance":"距离","walk.count":"次数","walk.timesUnit":"次","walk.dcPre":"根据品种","walk.dcMid":"和年龄","walk.dcPost1":"的","walk.dcBold":"一般参考值","walk.dcPost2":"。实际运动量因健康状况和个体差异而不同 — 请根据它的状态和兽医的建议来调整。","walk.dcBreedUnset":"（未设置→按中型计算）","walk.dcAgeUnset":"（未设置→按成犬计算）","walk.reviewTitle":"散步回顾","walk.vsLast":"较上月 ","walk.summaryThisMonth":"本月 ","walk.walksUnit":"次","walk.summaryMin":" · {m}分钟","walk.summarySep":" / 6个月合计 ","walk.time":"时间","walk.gpsRecording":"正在用GPS记录路线（{n}点）","walk.gpsStart":"正在用GPS记录路线…开始走动距离就会增加","walk.stopSave":"结束并保存","walk.otherRunning":"正在记录另一位的散步","walk.startBtn":"开始散步","walk.delLabel":"散步记录",
+    "growth.title":"成长记录","growth.desc":"用照片记录每一个第一次。","growth.custom":"自定义添加（如 会翻单杠了）","growth.camTitle":"添加作品/照片","growth.photoSaved":"作品/照片已保存","common.plusRecord":"＋ 记录","common.plusAdd":"＋ 添加","common.amount":"数量","common.foot":"和家人的每一天，都在同一个地方。","a11y.edit":"编辑",
+    "review.title":"本月回顾","review.daysLabel":"健康记录（天）","review.sleepLabel":"平均睡眠（h）","review.movesLabel":"运动记录","review.logsLabel":"任务记录","review.vsPrev":"较上月：{parts}","review.openTasks":"未完成任务：{n}","review.note":"※ 只是把记录的事实罗列出来，不做好坏判断。","review.pDays":"记录 {v}天","review.pSleep":"睡眠 {v}h","review.pLogs":"任务 {v}",
+    "album.title":"回忆","album.cancelSel":"取消","album.select":"选择","album.loading":"加载中…","album.bulkAdd":"批量添加照片（按拍摄日期自动归类）","album.selHint":"点按照片进行选择（最多{n}张）→ 用下方的「移到其他」把它们一起移到其他家庭成员。","album.empty":"用一张照片和一句话留住它","album.selCount":"已选{n}张","album.moveBtn":"移到其他","album.moveDesc":"把选中的{n}个回忆一起移动。",
+    "points.title":"帮忙积分","points.total":"合计{n}分","points.week":" （本周{n}）","points.custom":"自定义添加（+1分）",
+    "allow.title":"零花钱账本","allow.balance":"剩余","allow.memoPh":"备注（零食等 · 可选）","allowdir.in":"收入","allowdir.out":"支出","allowdir.save":"存起",
+    "meds.namePh":"药物或保健品名称（如 抗生素、维生素）",
+    "belong.title":"物品（按星期）","belong.empty":"点按右下角的 ＋ 来添加物品",
+    "foodreg.title":"食物登记","foodreg.desc":"登记常用的食物。","foodreg.addFood":"登记食物/用餐","foodreg.calc":"计算每日食量",
+    "supply.title":"耗材库存","supply.emptyMe":"别让保健品和日用品用光。","supply.empty":"登记食物后会自动提醒剩余量","supply.bought":"已购买","supply.check":"查看","supply.lineOut":"可能已用完 — 该补货了","supply.lineLow":"大约还剩{n}天","supply.lineOk":"有库存（大约还剩{n}天）","supply.careOut":"无库存 — 需补货","supply.careLow":"还剩{n} — 快补货",
+    "exp.title":"支出","exp.scopeThisFallback":"这一位","exp.scopeAll":"所有人","exp.emptyAll":"还没有支出记录。","exp.emptyThis":"点按右下角的 ＋ 添加","exp.total":"合计","exp.year":"{y}年","exp.monthlyAvg":"月均","exp.annual":"年度预估","exp.byMember":"按成员","exp.byCategory":"按类别","exp.trend":"每月趋势","exp.trendRecent":" （近{n}个月）","exp.trendEmpty":"随着数据增多，会显示每月趋势。","exp.delLabel":"{date}的支出","exp.editTitle":"编辑支出","exp.dateLabel":"日期（用于补录收据、代填等）",
+    "certs.title":"就诊与证明","certs.cert":"证明","certs.addCert":"＋ 添加证明","certs.empty":"点按 ＋ 选择类型和日期，保存证明。","certs.certHint":"证明（点按放大）","certs.noDate":"无日期","certs.yearLabel":"{y}年","certs.addablePhoto":"可以添加照片（证明）的记录","certs.tapAddPhoto":"点按添加证明照片","renew.expired":"已逾期{n}天","renew.today":"今天到期","renew.left":"还剩{n}天",
+    "common.memoOpt":"备注（可选）","exp.addTitle":"记录支出","exp.addHint":"以今天的日期保存。点按明细可编辑。","exp.notePh":"备注（可选）","belong.addTitle":"添加物品","belong.addPh":"如 体操服 / 图书馆的书 / 书法用具","belong.dowSuffix":"",
+    "hub.title":"想记录什么？","hub.addable":"可添加的功能","hub.schedulePet":"照护与计划","hub.scheduleMe":"计划与待办","hub.toilet":"如厕记录","hub.routine":"日常（习惯）","hub.health":"体重与身体","hub.belong":"物品（按星期）","hub.bday":"生日与纪念日",
+    "del.confirmTitle":"确定要删除吗？","del.confirmBody":"删除「{label}」。此操作无法撤销。","del.confirmBodyPlain":"此操作无法撤销。","del.confirmBtn":"删除",
+    "health.addTitle":"身体记录","health.bp":"血压","health.temp":"体温","health.glucose":"血糖","health.bpHigh":"高压","health.bpLow":"低压","health.optionalPh":"可选","health.smallAnimalHint":"小动物以0.1g为单位","health.condLabel":"状态","health.saveBtn":"记录身体","health.targetWeight":"目标体重","health.targetHint":"显示与目标的差距。",
+    "diary.quickHealthy":"今天也很好（一键完成）","diary.hint":"只在想详细记录时（可选）。","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态",
+    "feed.addTitle":"用餐记录","feed.servingLabel":"每份分量","feed.servingPh":"如 100","feed.hintSet":"1份＝{g}g，会计入总量（只需设置一次）","feed.hintUnset":"不设置也可以记录（设置后会计入总量）","feed.amount":"分量","feed.previewPre":"＝ 约 ","feed.previewPost":"（{n}份）","feed.saveBtn":"记录用餐","feed.today":"今天合计 约{g}g（{n}次）",
+    "sched.titlePet":"添加照护或计划","sched.titleSelf":"添加健康或照护","sched.titleMe":"添加计划或待办","sched.frequent":"常用","sched.contentPh":"输入内容…","sched.addLabelPh":"添加{label}…","sched.content":"内容","sched.dateOptMe":"日期/期限（可选）","sched.time":"时间","sched.dateHint":"填入日期/期限后，会显示在当天的日历上。","sched.certPhoto":"证明/照片（可选）","sched.changePhoto":"更换照片","sched.attachPhoto":"＋ 附加照片","sched.notify":"通知","sched.quickAdd":"一键添加（复制上次）","sched.lastDate":"上次 {date}","sched.dateDone":"实施日","sched.dateDate":"日期","sched.dateVisit":"就诊日","sched.dateDue":"期限","care.fallback":"照护","filter.all":"全部",
+    "toilet.hint":"点按记录（今天，当前时间）。","toilet.pee":"小便","toilet.success":"✓ 成功","toilet.fail":"✕ 失败","toilet.hardness":"大便硬度（7级）","toilet.bristolNote":"4是健康的。如果1或7持续，请咨询兽医。","toilet.alertBody":"需要注意：消化道异物、肠梗阻、中毒","toilet.alertLink":"查看危险物清单","toilet.ideal":"（理想）","toilet.disclaimer":"就诊的参考（并非诊断）。","toilet.trendLoose":"稀便持续中。如果拖久了，建议就诊。","toilet.trendHard":"硬便持续中。注意补水和饮食，担心时请就诊。",
+    "emg.title":"夜间与急救","emg.lead":"出现异常时，先给医院打电话。不要自行处理 — 请遵从指示。","emg.step1":"打电话","emg.callDefault":"常去/夜间急救","emg.registerHosp":"登记医院联系方式","emg.registerHospSub":"把夜间急救和常去兽医的号码放在手边","emg.note1":"能否接诊及诊疗方式因医院而异，有的需要提前联系。请向医院确认最新的诊疗时间和联系方式。","emg.redHead":"出现这些信号：立刻联系，不要犹豫","emg.dontHead":"不要做的事","emg.dont1":"自行催吐、喂药或喂水","emg.dont2":"只凭网上的信息就决定「再观察」","emg.dont3":"先联系医院，遵从指示","emg.step2":"电话里要说的","emg.profNone":"尚未登记资料","emg.toxHead":"误食检查内容","emg.toxWhat":"吃了什么","emg.toxAmount":"数量","emg.toxWhen":"何时","emg.toxWeight":"体重","emg.toxSymptom":"症状","emg.say1":"当前状态（意识、呼吸、抽搐、出血、有无呕吐/腹泻）","emg.say2":"何时、发生了什么（若误食：吃了什么、多少、时间）","emg.say3":"基础病、正在服用的药、有无常去的兽医","emg.tipsHead":"想说得更详细的话","emg.step3":"带上","emg.note2":"就诊比准备更重要。带上手边现有的东西马上出发也没关系。","emg.contactsTitle":"已登记的联系方式","emg.register":"＋ 登记","emg.contactsEmpty":"登记好动物医院和家人/寄养的号码会更安心。可以从这里拨打，也会保存在卡片里。","emg.groupHosp":"🏥 动物医院","emg.groupPerson":"👤 家人/寄养","emg.addNumber":"添加号码","emg.hospFallback":"医院","emg.contactFallback":"联系方式","emg.prepHead":"平时的准备（在平静的时候）","emg.foot":"※ 医院信息可能会变，请务必向各医院确认最新情况。紧急时不要犹豫，联系常去的兽医或附近的夜间急救。",
+    "disaster.title":"防灾与疏散准备","disaster.alert":"灾害时，与宠物「一同疏散」是基本原则。请做好日常准备，并提前确认疏散地点。","disaster.shelterTitle":"我家的疏散地点","disaster.registerShelter":"＋ 登记疏散地点","disaster.shelterEmpty":"把疏散地点和寄养处与家人共享。也会保存在卡片里。","disaster.shelterFallback":"疏散地点","disaster.prepTitle":"随身与储备（宠物用）","disaster.tipsHead":"关键时刻的要点","disaster.foot":"※ 指定避难所是否接收宠物及地点因地区而异。请务必提前向当地政府或自主防灾组织确认。",
+    "safety.sectionLabel":"紧急时刻","safety.sectionNote":"用已登记的信息，快速制作寻宠海报或急救卡。","safety.toxicShort":"误食与中毒","safety.emergencyShort":"夜间与急救","safety.emergencyCard":"急救卡","safety.lostPoster":"寻宠海报","safety.disasterShort":"防灾与疏散",
+    "common.saveImage":"保存为图片","common.print":"打印","common.addPhotoMax4":"添加照片（最多4张）","ecard.meFallback":"我","ecard.allergy":"过敏/禁忌","ecard.meds":"用药中","ecard.contacts":"紧急联系人/常去兽医","ecard.contactsEmpty":"※ 在「重要信息」中登记联系人后会显示在这里","ecard.addInfo":"添加联系人/信息","ecard.note":"※ 供紧急时出示或打印携带。数据保存在本设备，即使没有信号也能显示。","ecard.fileSuffix":"急救卡",
+    "lost.step0":"地点与时间","lost.step1":"宠物信息","lost.step2":"海报","lost.stepFmt":"{n}. {lab}","lost.step0LeadBold":"先别慌。","lost.step0LeadRest":" 填写最后一次看到它的地点和时间。之后可以修改。","lost.placeLabel":"最后看到的地点","lost.placeHint":"填写它可能走失的地点","lost.placePh":"如 公园入口附近 / 车站前","lost.placeNoteLabel":"地点补充（可选）","lost.placeNotePh":"如 便利店对面 / 东出口","lost.whenLabel":"看到的日期时间","lost.whenPh":"如 9月18日 18点左右","lost.step1Lead":"将用这些信息制作海报。请确认照片和特征。","lost.featType":"类型","lost.featCoat":"毛色","lost.featGender":"性别","lost.featAge":"年龄","lost.featWeight":"体重","lost.featCollar":"项圈/胸背带","lost.collarLabel":"项圈/胸背带（可选）","lost.collarPh":"如 红色项圈、有身份牌","lost.situationLabel":"走失时的情况（可选）","lost.situationPh":"如 被烟花吓到挣脱了牵引绳","lost.temperLabel":"性格（自动调整请求语）","lost.noteLabel":"其他想说的（可选）","lost.notePh":"如 也请帮忙在社交媒体上转发","lost.registerContact":"登记联系方式（发现者联系时需要）","lost.found":"已找到","lost.headDog":"寻找走失的狗","lost.headOther":"正在寻找","lost.sightPlace":"最后目击地点","lost.sightWhen":"目击时间","lost.situationTitle":"走失时的情况","lost.contactPlea":"如果看到，请联系我们","lost.contactEmpty":"※ 在「重要信息」中登记紧急联系人后会显示在这里","lost.action":"【重要】如果看到，请立刻拨打此号码。请不要追赶。","lost.footNote":"请不要追赶 — 告诉我们你看到的地点和时间。可打印或在屏幕上出示，没有信号也能显示。","lost.afterTitle":"完成了。接下来，把消息传出去吧。","lost.foundToggle":"已找到（在海报上显示「已找到」）","lost.privacy":"不会刊登你的住址或芯片号码。只显示已登记的联系方式。","lost.nextPet":"下一步：宠物信息","lost.back":"返回","lost.makePoster":"制作海报","lost.share":"分享","lost.fileSuffix":"走失","temper.unset":"未设置","temper.friendly":"亲人","temper.normal":"普通","temper.timid":"胆小",
+    "ob.title":"家人的每一天，都在同一个地方。","ob.sub":"宠物和孩子都适用 — 从日常记录到应对万一的准备。","ob.start":"开始","ob.trySample":"用示例数据体验","ob.h2":"先添加一位","ob.choicePet":"🐶 我家的（狗、猫等）","ob.choiceMe":"👤 自己（也照护自己）","ob.choicePerson":"👨‍👩‍👧 家人（人）","ob.skip":"暂不添加","ob.photoIcon":"用照片作为图标","ob.iconHintPre":"选择表情，或从右边的 ","ob.iconHintPost":" 使用照片","ob.namePetPh":"名称（如 小白）","ob.nameMePh":"你的名字（如 Kaori）","ob.namePersonPh":"名称（如 Yuto）","ob.birthday":"生日（年份可选）","ob.back":"返回",
+  },
 };
 function tr(lang,key,vars){
   let s=(MESSAGES[lang]&&MESSAGES[lang][key]);
@@ -1499,7 +1587,7 @@ function tr(lang,key,vars){
   return s;
 }
 // 言語判定：navigator の言語を ja/en にマップ（該当なしは ja）。初回のみ利用。
-function detectLang(){try{const ls=navigator.languages||[navigator.language||"ja"];for(const l of ls){const p=(l||"").toLowerCase();if(p.startsWith("en"))return "en";if(p.startsWith("ja"))return "ja";if(p.startsWith("es"))return "es";}}catch(e){}return "ja";}
+function detectLang(){try{const ls=navigator.languages||[navigator.language||"ja"];for(const l of ls){const p=(l||"").toLowerCase();if(p.startsWith("en"))return "en";if(p.startsWith("ja"))return "ja";if(p.startsWith("es"))return "es";if(p.startsWith("zh"))return "zh";}}catch(e){}return "ja";}
 // Intl.DateTimeFormat ベースの日付・曜日（絶対日付表示用の基盤。ja出力は既存表記に一致）。
 function fmtDateLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!m||!d)return"";const dt=new Date(y&&y>1900?y:2001,m-1,d);try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",lang==="ja"?{month:"long",day:"numeric"}:{month:"short",day:"numeric"}).format(dt);}catch(e){return`${m}/${d}`;}}
 function fmtWeekdayLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!y||!m||!d)return"";try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{weekday:"short"}).format(new Date(y,m-1,d));}catch(e){return"";}}
@@ -1890,9 +1978,9 @@ function App(){
   const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
   const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
   // 表示言語（ja/en）。UI設定なのでローカル保存。既存ユーザー保護のため初回は日本語がデフォルト。
-  const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en"||s==="es")return s;}catch(e){}return "ja";});
+  const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en"||s==="es"||s==="zh")return s;}catch(e){}return "ja";});
   // loalife-lang-v1 が未設定なら初回言語選択を表示（既存ユーザー＝設定済みには出さない）。
-  const[langChosen,setLangChosen]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");return s==="ja"||s==="en"||s==="es";}catch(e){return true;}});
+  const[langChosen,setLangChosen]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");return s==="ja"||s==="en"||s==="es"||s==="zh";}catch(e){return true;}});
   APP_LANG=lang; // モジュールレベルのコンポーネント用（レンダー時に同期）
   // 言語が未確定（初回選択中）のうちは loalife-lang-v1 を書き込まない（未設定状態を保つ）。
   useEffect(()=>{try{if(langChosen)localStorage.setItem("loalife-lang-v1",lang);}catch(e){}try{document.documentElement.lang=lang;}catch(e){}},[lang,langChosen]);
@@ -4090,9 +4178,9 @@ function App(){
         <div className="yl-ob-inner">
           <div className="yl-ob-emoji">🐾</div>
           <h1 className="yl-langfirst-brand">LoaLife</h1>
-          <p className="yl-langfirst-lead">言語を選択 / Choose your language / Elige tu idioma</p>
-          <div className="yl-theme-seg yl-langfirst-seg" role="group" aria-label="言語 / Language / Idioma">
-            {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"]].map(([v,label,flag])=>(
+          <p className="yl-langfirst-lead">言語を選択 / Choose your language / Elige tu idioma / 选择语言</p>
+          <div className="yl-theme-seg yl-langfirst-seg" role="group" aria-label="言語 / Language / Idioma / 语言">
+            {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"],["zh","简体中文","🇨🇳"]].map(([v,label,flag])=>(
               <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>setLang(v)} aria-pressed={lang===v}>
                 <span aria-hidden="true">{flag}</span> <span>{label}</span>
               </button>
@@ -4578,7 +4666,7 @@ function App(){
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="globe" size={16}/> {t("set.language")}</h3>
               <div className="yl-theme-seg" role="group" aria-label={t("set.language")}>
-                {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"]].map(([v,label,flag])=>(
+                {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"],["zh","简体中文","🇨🇳"]].map(([v,label,flag])=>(
                   <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>setLang(v)} aria-pressed={lang===v}>
                     <span aria-hidden="true">{flag}</span> <span>{label}</span>
                   </button>
