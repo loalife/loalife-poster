@@ -936,10 +936,10 @@ function careState(item){
 function renewLeft(item){
   if(!isRenewCare(item)||!item.dueDate)return null;
   const d=daysUntil(item.dueDate);if(d==null)return null;
-  if(d<0)return{txt:`期限切れ ${-d}日`,tone:"over"};
-  if(d===0)return{txt:"今日で期限",tone:"soon"};
-  if(d<=30)return{txt:`あと${d}日`,tone:"soon"};
-  return{txt:`あと${d}日`,tone:"ok"};
+  if(d<0)return{txt:tr(APP_LANG,"renew.expired",{n:-d}),tone:"over"};
+  if(d===0)return{txt:tr(APP_LANG,"renew.today"),tone:"soon"};
+  if(d<=30)return{txt:tr(APP_LANG,"renew.left",{n:d}),tone:"soon"};
+  return{txt:tr(APP_LANG,"renew.left",{n:d}),tone:"ok"};
 }
 
 function daysUntilBirthday(birthday) {
@@ -1249,6 +1249,7 @@ const MESSAGES={
     "foodreg.title":"フードの登録","foodreg.desc":"よく使うフードを登録しておく。","foodreg.addFood":"フード・食事を登録","foodreg.calc":"1日のフード量を計算",
     "supply.title":"消耗品の在庫","supply.emptyMe":"サプリや日用品、切らさないように。","supply.empty":"フードなどを登録すると、残りを自動でお知らせ","supply.bought":"買った","supply.check":"確認","supply.lineOut":"切れているかも・買い足しを","supply.lineLow":"あと{n}日で切れそう","supply.lineOk":"在庫OK（あと{n}日分）","supply.careOut":"在庫なし・買い足しを","supply.careLow":"のこり{n}回・そろそろ買い足し",
     "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出",
+    "certs.title":"通院・証明書","certs.cert":"証明書","certs.addCert":"＋ 証明書を追加","certs.empty":"＋から種類と日付を選び、証明書を保存。","certs.certHint":"証明書（タップで拡大）","certs.noDate":"日付なし","certs.yearLabel":"{y}年","certs.addablePhoto":"写真（証明書）を追加できる記録","certs.tapAddPhoto":"タップで証明書の写真を追加","renew.expired":"期限切れ {n}日","renew.today":"今日で期限","renew.left":"あと{n}日",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1322,6 +1323,7 @@ const MESSAGES={
     "foodreg.title":"Food registry","foodreg.desc":"Register foods you use often.","foodreg.addFood":"Register food/meal","foodreg.calc":"Calculate daily food amount",
     "supply.title":"Supplies stock","supply.emptyMe":"Keep supplements and daily items from running out.","supply.empty":"Register foods and we'll auto-track what's left","supply.bought":"Bought","supply.check":"Check","supply.lineOut":"May be out — time to restock","supply.lineLow":"About {n} days left","supply.lineOk":"In stock (about {n} days left)","supply.careOut":"Out of stock — restock","supply.careLow":"{n} left — restock soon",
     "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}",
+    "certs.title":"Care & certificates","certs.cert":"Certificate","certs.addCert":"＋ Add certificate","certs.empty":"Tap ＋ to pick a type and date, then save a certificate.","certs.certHint":"Certificates (tap to enlarge)","certs.noDate":"No date","certs.yearLabel":"{y}","certs.addablePhoto":"Records you can add a photo (certificate) to","certs.tapAddPhoto":"Tap to add a certificate photo","renew.expired":"Expired {n}d","renew.today":"Due today","renew.left":"{n}d left",
   },
 };
 function tr(lang,key,vars){
@@ -4819,26 +4821,26 @@ function App(){
               if(isMemberTab||curKind==="me")defs.push({key:"certs",el:(
                 <section className="yl-certs">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">通院・証明書</h2>
-                    {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>＋ 追加</button>}
+                    <h2 className="yl-routine-title">{t("certs.title")}</h2>
+                    {(certs.length>0||careNoPhoto.length>0)&&<button className="yl-album-add" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}>{t("common.plusAdd")}</button>}
                   </div>
                   {(certs.length>0||careNoPhoto.length>0)&&(()=>{
                     const allCare=[...certs,...careNoPhoto];
                     const chips=careKindsFor(activeMember).filter(k=>k.key!=="other"&&allCare.some(c=>c.careKind===k.key)).map(k=>({key:k.key,label:k.label,icon:careIcon(k.key)}));
-                    if(certs.length>0)chips.push({key:"__cert",label:"証明書",icon:"filetext"});
+                    if(certs.length>0)chips.push({key:"__cert",label:t("certs.cert"),icon:"filetext"});
                     return chips.length>0?(<div className="yl-typerow" style={{marginBottom:12}}>{chips.map(c=><span key={c.key} className="yl-chip" style={{cursor:"default"}}><Icon name={c.icon} size={14}/> {c.label}</span>)}</div>):null;
                   })()}
                   {certs.length===0&&careNoPhoto.length===0?(
                     <div className="yl-cert-empty">
-                      <button className="yl-quick-big" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}><Icon name="camera" size={18}/> ＋ 証明書を追加</button>
-                      <p className="yl-routine-empty" style={{marginTop:10}}>＋から種類と日付を選び、証明書を保存。</p>
+                      <button className="yl-quick-big" onClick={()=>{if(!isMemberTab)setSelfCare(true);setInputSheet("schedule");}}><Icon name="camera" size={18}/> {t("certs.addCert")}</button>
+                      <p className="yl-routine-empty" style={{marginTop:10}}>{t("certs.empty")}</p>
                     </div>
                   ):(<>
                     {certs.length>0&&(<>
-                      <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="filetext" size={13}/> 証明書（タップで拡大）</p>
+                      <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="filetext" size={13}/> {t("certs.certHint")}</p>
                       {certsByYear.map(g=>(
                         <div key={g.year} className="yl-cert-year">
-                          <span className="yl-cert-yearlabel">{g.year==="----"?"日付なし":`${g.year}年`}</span>
+                          <span className="yl-cert-yearlabel">{g.year==="----"?t("certs.noDate"):t("certs.yearLabel",{y:g.year})}</span>
                           <div className="yl-certs-row">
                             {g.items.map(c=>{
                               const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
@@ -4856,12 +4858,12 @@ function App(){
                     </>)}
                     {careNoPhoto.length>0&&(
                       <div className="yl-cert-addable" style={{marginTop:certs.length>0?12:0}}>
-                        <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="camera" size={13}/> 写真（証明書）を追加できる記録</p>
+                        <p className="yl-set-desc" style={{margin:"0 0 8px",display:"flex",alignItems:"center",gap:5}}><Icon name="camera" size={13}/> {t("certs.addablePhoto")}</p>
                         <div className="yl-certs-row">
                           {careNoPhoto.map(c=>{
                             const label=(careKindsFor(activeMember).find(k=>k.key===c.careKind)||{}).label||c.title;
                             return(
-                              <label key={c.id} className="yl-cert-cell" style={{cursor:"pointer"}} title="タップで証明書の写真を追加" onClick={e=>e.stopPropagation()}>
+                              <label key={c.id} className="yl-cert-cell" style={{cursor:"pointer"}} title={t("certs.tapAddPhoto")} onClick={e=>e.stopPropagation()}>
                                 <span className="yl-cert-ph"><Icon name="camera" size={20}/></span>
                                 <span className="yl-cert-cap"><Icon name={careIcon(c.careKind)} size={12}/> {label}</span>
                                 {(()=>{const rl=renewLeft(c);return rl?<span className={"yl-cert-exp "+rl.tone}>{rl.txt}</span>:null;})()}
