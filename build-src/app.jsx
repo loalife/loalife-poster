@@ -1228,6 +1228,12 @@ const MESSAGES={
     "common.all":"すべて","a11y.prevMonth":"前の月","a11y.nextMonth":"次の月","cal.addRecord":"＋ 記録","cal.noRecords":"記録はまだありません","cal.exportIcs":"予定をカレンダーアプリに出力（.ics）","cal.foot":"日付をタップで記録・ふりかえり","cal.dayTitle":"{md}（{wd}）",
     "bday.month":"月","bday.day":"日","bday.yearOpt":"年（任意）","bday.monthSuffix":"月","bday.daySuffix":"日",
     "common.close":"とじる","food.editTitle":"フードを編集","food.newTitle":"フード・食事を登録","ph.foodName":"フード・食事名（例：○○チキン ドライ）","ph.brand":"メーカー・ブランド（任意）","food.type":"種類","foodtype.dry":"ドライ","foodtype.wet":"ウェット","foodtype.homemade":"手作り","foodtype.treat":"おやつ","foodtype.supplement":"サプリ","foodtype.other":"その他","food.amountUnit":"1回の量・単位（任意）","ph.amount":"量","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"個","food.timesTime":"1日の回数・時間（任意）","ph.times":"回","ph.feedTime":"時間（例：朝7時・夜19時）","food.kcal":"カロリー（任意・分かる場合）","food.kcalDesc":"登録するとカロリーを自動計算。未入力でも量だけ記録OK。","food.mealTitle":"食事を記録","food.food":"フード","food.when":"いつ","mealslot.morning":"朝","mealslot.noon":"昼","mealslot.night":"夜","mealslot.treat":"おやつ","food.qty":"量","food.approxKcal":"約{kc}kcal","food.logBtn":"記録","bday.addTitle":"誕生日・記念日を追加","ph.bdayName":"名前・予定（例：ゆいの誕生日）","bday.dateYearOpt":"日付（年は任意）",
+    "rec.healthTitle":"からだの記録","chart.weight":"体重","chart.height":"身長","chart.bpSys":"血圧（上）","health.chartSoon":"あと1回記録すると、体重の推移グラフが出ます。","health.emptyPlus":"右下の ＋ から体重などを記録。","health.recordOf":"{date}の記録","health.bpPrefix":"血圧 ",
+    "rec.medsTitle":"お薬・サプリ","med.finished":"のみ終わりました","med.progress":"{days}日間・{n}日目・のこり{left}日","med.tookDone":"のんだ✓","med.took":"のんだ","ph.medName":"お薬・サプリ名（例：ビタミン・処方薬）","med.daysUnit":"日間","common.register":"＋ 登録",
+    "rec.sheetsTitle":"まとめて1枚に","rec.sheetsDescPet":"通院・お預けのときに、記録を1枚で。","rec.sheetsDescOther":"お預け・もしもの時に、1枚で。","rec.vetSummary":"獣医さん用サマリー","rec.careSheet":"預け先・お世話シート","rec.lostPoster":"迷子ポスター","rec.handoverToday":"今日の引き継ぎシート","rec.emergencyCard":"緊急カード",
+    "rec.feedTitle":"フード・食事","food.delMeal":"食事の記録","food.delRecord":"記録","food.registerLink":"＋ フード登録","food.todayCount":"今日 {n}回","food.pickToLog":"フードを選んで食事を記録。","food.recordLabel":"記録","food.tapToLog":"タップして記録","food.todayMeal":"タップで今日のごはん。","food.amountOnly":"量だけ記録","food.registerBig":"フード・食事を登録する","food.defaultName":"ごはん",
+    "rec.toiletTitle":"トイレ成功率","toilet.peeRate":"おしっこ成功率","toilet.poopRate":"うんち成功率","toilet.none":"記録なし","toilet.count":" ({success}/{total}回)","toilet.logBtn":"トイレを記録する",
+    "rec.diaryTitle":"今日のようす","diary.recordedDone":"今日の体調は記録ずみ","diary.editMore":"追記・編集","diary.recordBtn":"体調を記録","chart.energy":"元気の推移（5段階）","chart.sleep":"睡眠時間の推移","chart.appetite":"食欲の推移（3段階）","diary.empty":"「体調を記録」から残せます",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1281,6 +1287,12 @@ const MESSAGES={
     "common.all":"All","a11y.prevMonth":"Previous month","a11y.nextMonth":"Next month","cal.addRecord":"＋ Record","cal.noRecords":"No records yet","cal.exportIcs":"Export events to your calendar (.ics)","cal.foot":"Tap a date to log or look back","cal.dayTitle":"{wd}, {md}",
     "bday.month":"Month","bday.day":"Day","bday.yearOpt":"Year (optional)","bday.monthSuffix":"","bday.daySuffix":"",
     "common.close":"Close","food.editTitle":"Edit food","food.newTitle":"Add food or meal","ph.foodName":"Food or meal name (e.g. Chicken, dry)","ph.brand":"Brand (optional)","food.type":"Type","foodtype.dry":"Dry","foodtype.wet":"Wet","foodtype.homemade":"Homemade","foodtype.treat":"Treat","foodtype.supplement":"Supplement","foodtype.other":"Other","food.amountUnit":"Amount per serving (optional)","ph.amount":"Qty","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"pcs","food.timesTime":"Times/day & time (optional)","ph.times":"×/day","ph.feedTime":"Time (e.g. 7am, 7pm)","food.kcal":"Calories (optional, if known)","food.kcalDesc":"Auto-calculates calories. Amount only is fine too.","food.mealTitle":"Log a meal","food.food":"Food","food.when":"When","mealslot.morning":"Morning","mealslot.noon":"Noon","mealslot.night":"Night","mealslot.treat":"Treat","food.qty":"Amount","food.approxKcal":"~{kc} kcal","food.logBtn":"Log","bday.addTitle":"Add a birthday or anniversary","ph.bdayName":"Name (e.g. Yui's birthday)","bday.dateYearOpt":"Date (year optional)",
+    "rec.healthTitle":"Health","chart.weight":"Weight","chart.height":"Height","chart.bpSys":"Blood pressure (sys)","health.chartSoon":"One more entry and the weight trend chart appears.","health.emptyPlus":"Log weight and more with the ＋ button.","health.recordOf":"{date} record","health.bpPrefix":"BP ",
+    "rec.medsTitle":"Meds & supplements","med.finished":"Finished","med.progress":"{days} days · day {n} · {left} left","med.tookDone":"Taken ✓","med.took":"Take","ph.medName":"Med or supplement name (e.g. vitamin)","med.daysUnit":"days","common.register":"＋ Register",
+    "rec.sheetsTitle":"All in one sheet","rec.sheetsDescPet":"One sheet for vet visits or pet-sitting.","rec.sheetsDescOther":"One sheet for handoffs or emergencies.","rec.vetSummary":"Vet summary","rec.careSheet":"Pet-sitter care sheet","rec.lostPoster":"Lost-pet poster","rec.handoverToday":"Today's handover sheet","rec.emergencyCard":"Emergency card",
+    "rec.feedTitle":"Food & meals","food.delMeal":"meal record","food.delRecord":"record","food.registerLink":"＋ Add food","food.todayCount":"Today: {n}","food.pickToLog":"Pick a food to log a meal.","food.recordLabel":"Logged","food.tapToLog":"Tap to log","food.todayMeal":"Tap to log today's meal.","food.amountOnly":"Log amount only","food.registerBig":"Add a food or meal","food.defaultName":"Meal",
+    "rec.toiletTitle":"Potty success rate","toilet.peeRate":"Pee success","toilet.poopRate":"Poop success","toilet.none":"No data","toilet.count":" ({success}/{total})","toilet.logBtn":"Log potty",
+    "rec.diaryTitle":"Today's notes","diary.recordedDone":"Today's condition logged","diary.editMore":"Add / edit","diary.recordBtn":"Log condition","chart.energy":"Energy trend (1–5)","chart.sleep":"Sleep trend","chart.appetite":"Appetite trend (1–3)","diary.empty":"Log it via \"Log condition\"",
   },
 };
 function tr(lang,key,vars){
@@ -4836,18 +4848,18 @@ function App(){
               )});
               defs.push({key:"health",el:(
                 <section className="yl-health">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>からだの記録</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.healthTitle")}</h2>
                   {isMemberTab&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?<><Icon name="sparkles" size={13}/> 目標達成中！この調子で</>:weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
-                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label="体重"/>:<p className="yl-routine-empty">{weightPts.length===1?"あと1回記録すると、体重の推移グラフが出ます。":"右下の ＋ から体重などを記録。"}</p>}
-                  {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label="身長"/>}
-                  {bpPts.length>=2&&<MiniChart points={bpPts} unit="mmHg" color="#B23A48" label="血圧（上）"/>}
+                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label={t("chart.weight")}/>:<p className="yl-routine-empty">{weightPts.length===1?t("health.chartSoon"):t("health.emptyPlus")}</p>}
+                  {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label={t("chart.height")}/>}
+                  {bpPts.length>=2&&<MiniChart points={bpPts} unit="mmHg" color="#B23A48" label={t("chart.bpSys")}/>}
                   {healthRecords.length>0&&(
                     <ul className="yl-health-list">
                       {[...healthRecords].reverse().slice(0,6).map(r=>(
                         <li key={r.id} className="yl-health-item">
                           <span className="yl-health-date">{fmtDate(r.date)}</span>
-                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>血圧 {r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
-                          <button className="yl-health-del" onClick={()=>askDelete(`${fmtDate(r.date)}の記録`,()=>removeHealth(r.id))} aria-label="削除">×</button>
+                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          <button className="yl-health-del" onClick={()=>askDelete(t("health.recordOf",{date:fmtDate(r.date)}),()=>removeHealth(r.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       ))}
                     </ul>
@@ -4856,26 +4868,26 @@ function App(){
               )});
               if(curKind==="me")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬・サプリ</h2>
-                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
-                  <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder="お薬・サプリ名（例：ビタミン・処方薬）"/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>日間</span><button className="yl-addbtn sm" onClick={addMedCourse}>＋ 登録</button></div>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.medsTitle")}</h2>
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
+                  <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder={t("ph.medName")}/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>{t("med.daysUnit")}</span><button className="yl-addbtn sm" onClick={addMedCourse}>{t("common.register")}</button></div>
                 </section>
               )});
               if(curKind==="pet")defs.push({key:"vet",el:(
                 <section className="yl-vetcard">
-                  <h2 className="yl-routine-title" style={{marginBottom:8}}>まとめて1枚に</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>通院・お預けのときに、記録を1枚で。</p>
-                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> 獣医さん用サマリー</button>
-                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> 預け先・お世話シート</button>
-                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setLostOpen(true)}><Icon name="alert" size={18}/> 迷子ポスター</button>
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>{t("rec.sheetsTitle")}</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>{t("rec.sheetsDescPet")}</p>
+                  <button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="filetext" size={18}/> {t("rec.vetSummary")}</button>
+                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> {t("rec.careSheet")}</button>
+                  <button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setLostOpen(true)}><Icon name="alert" size={18}/> {t("rec.lostPoster")}</button>
                 </section>
               )});
               if(curKind==="person"||curKind==="me")defs.push({key:"sheet1",el:(
                 <section className="yl-vetcard">
-                  <h2 className="yl-routine-title" style={{marginBottom:8}}>まとめて1枚に</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>お預け・もしもの時に、1枚で。</p>
-                  {curKind==="person"&&<button className="yl-quick-big" onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> 今日の引き継ぎシート</button>}
-                  <button className="yl-quick-big" style={curKind==="person"?{marginTop:8}:undefined} onClick={()=>setEmergencyCardOpen(true)}><Icon name="alert" size={18}/> 緊急カード</button>
+                  <h2 className="yl-routine-title" style={{marginBottom:8}}>{t("rec.sheetsTitle")}</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>{t("rec.sheetsDescOther")}</p>
+                  {curKind==="person"&&<button className="yl-quick-big" onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> {t("rec.handoverToday")}</button>}
+                  <button className="yl-quick-big" style={curKind==="person"?{marginTop:8}:undefined} onClick={()=>setEmergencyCardOpen(true)}><Icon name="alert" size={18}/> {t("rec.emergencyCard")}</button>
                 </section>
               )});
               if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
@@ -4959,69 +4971,69 @@ function App(){
               if(curKind==="pet")defs.push({key:"feed",el:(
                 <section className="yl-feedsec">
                   <div className="yl-toilet-head">
-                    <h2 className="yl-routine-title" style={{margin:0}}>フード・食事</h2>
-                    {foodDefs.length>0&&<button className="yl-linkbtn" onClick={openFoodNew}>＋ フード登録</button>}
+                    <h2 className="yl-routine-title" style={{margin:0}}>{t("rec.feedTitle")}</h2>
+                    {foodDefs.length>0&&<button className="yl-linkbtn" onClick={openFoodNew}>{t("food.registerLink")}</button>}
                   </div>
                   {feedToday.length>0?(
                     <div className="yl-meal-summary">
-                      <span className="yl-meal-sumchip">今日 {mealSummary.count}回</span>
+                      <span className="yl-meal-sumchip">{t("food.todayCount",{n:mealSummary.count})}</span>
                       {Object.entries(mealSummary.byUnit).map(([u,v])=><span key={u} className="yl-meal-sumchip">{Math.round(v*10)/10}{foodUnitLabel(u)}</span>)}
-                      {mealSummary.kcal!=null&&<span className="yl-meal-sumchip kcal">約{mealSummary.kcal}kcal</span>}
+                      {mealSummary.kcal!=null&&<span className="yl-meal-sumchip kcal">{t("food.approxKcal",{kc:mealSummary.kcal})}</span>}
                     </div>
                   ):(
-                    <p className="yl-routine-empty" style={{padding:"4px 0 0"}}>フードを選んで食事を記録。</p>
+                    <p className="yl-routine-empty" style={{padding:"4px 0 0"}}>{t("food.pickToLog")}</p>
                   )}
                   {feedToday.length>0&&(
                     <div className="yl-meal-today">
                       {MEAL_SLOTS.map(s=>{const rows=feedToday.filter(x=>x.slot===s.k);if(rows.length===0)return null;return(
                         <div key={s.k} className="yl-meal-slot">
-                          <span className="yl-meal-slotlabel">{s.l}</span>
+                          <span className="yl-meal-slotlabel">{t("mealslot."+s.k)}</span>
                           <div className="yl-meal-rows">{rows.map(x=>(
-                            <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||"ごはん"}</span><span className="yl-meal-amt">{x.amount}{foodUnitLabel(x.unit)}{x.kcal!=null?` ・ ${x.kcal}kcal`:""}</span><button className="yl-feed-del" onClick={()=>askDelete("食事の記録",()=>removeFeed(x.id))} aria-label="削除">×</button></div>
+                            <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{x.amount}{foodUnitLabel(x.unit)}{x.kcal!=null?` ・ ${x.kcal}kcal`:""}</span><button className="yl-feed-del" onClick={()=>askDelete(t("food.delMeal"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
                           ))}</div>
                         </div>
                       );})}
                       {(()=>{const other=feedToday.filter(x=>!x.slot);if(other.length===0)return null;return(
-                        <div className="yl-meal-slot"><span className="yl-meal-slotlabel">記録</span><div className="yl-meal-rows">{other.map(x=>(
-                          <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||"ごはん"}</span><span className="yl-meal-amt">{feedEntryText(x)}</span><button className="yl-feed-del" onClick={()=>askDelete("記録",()=>removeFeed(x.id))} aria-label="削除">×</button></div>
+                        <div className="yl-meal-slot"><span className="yl-meal-slotlabel">{t("food.recordLabel")}</span><div className="yl-meal-rows">{other.map(x=>(
+                          <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{feedEntryText(x)}</span><button className="yl-feed-del" onClick={()=>askDelete(t("food.delRecord"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
                         ))}</div></div>
                       );})()}
                     </div>
                   )}
                   {foodDefs.length>0?(<>
-                    <p className="yl-meal-pick-label">タップして記録</p>
+                    <p className="yl-meal-pick-label">{t("food.tapToLog")}</p>
                     <div className="yl-meal-pick">{foodDefs.map(d=>(
                       <button key={d.id} className="yl-meal-chip" onClick={()=>openMeal(d.id)}><Icon name={foodTypeMeta(d.foodType).ic} size={13}/> <span className="yl-meal-chipname">{d.name}</span></button>
                     ))}</div>
-                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>タップで今日のごはん。<button className="yl-linkbtn" onClick={openFeed}>量だけ記録</button></p>
+                    <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>{t("food.todayMeal")}<button className="yl-linkbtn" onClick={openFeed}>{t("food.amountOnly")}</button></p>
                   </>):(
-                    <button className="yl-quick-big" style={{marginTop:10}} onClick={openFoodNew}><Icon name="utensils" size={18}/> フード・食事を登録する</button>
+                    <button className="yl-quick-big" style={{marginTop:10}} onClick={openFoodNew}><Icon name="utensils" size={18}/> {t("food.registerBig")}</button>
                   )}
                 </section>
               )});
               if(curKind==="pet"&&hasToilet)defs.push({key:"toilet",el:(
                 <section className="yl-toiletstats">
                   <div className="yl-toilet-head">
-                    <h2 className="yl-routine-title" style={{margin:0}}>トイレ成功率</h2>
-                    <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}日</button>)}</span>
+                    <h2 className="yl-routine-title" style={{margin:0}}>{t("rec.toiletTitle")}</h2>
+                    <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}{t("unit.dShort")}</button>)}</span>
                   </div>
-                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,ico,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label"><Icon name={ico} size={14}/> {label}</span>{s.total===0?<span className="yl-toilet-stat-none">記録なし</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt"> ({s.success}/{s.total}回)</span></span></>}</div>);return(<><Row label="おしっこ成功率" ico="droplet" s={st.pee}/><Row label="うんち成功率" ico="droplet" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg"><Icon name="droplet" size={13}/> うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
+                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,ico,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label"><Icon name={ico} size={14}/> {label}</span>{s.total===0?<span className="yl-toilet-stat-none">{t("toilet.none")}</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt">{t("toilet.count",{success:s.success,total:s.total})}</span></span></>}</div>);return(<><Row label={t("toilet.peeRate")} ico="droplet" s={st.pee}/><Row label={t("toilet.poopRate")} ico="droplet" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg"><Icon name="droplet" size={13}/> うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
                   {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone} style={{marginTop:2}}><Icon name="alert" size={13}/> {poopTrend.txt}</p>}
-                  <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}><Icon name="paw" size={18}/> トイレを記録する</button>
+                  <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}><Icon name="paw" size={18}/> {t("toilet.logBtn")}</button>
                 </section>
               )});
               defs.push({key:"diary",el:(
                 <section className="yl-diary">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>今日のようす</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.diaryTitle")}</h2>
                   {todayHasCond(tab)?(
-                    <button className="yl-quick-done tap" onClick={()=>setInputSheet("diary")}><Icon name="check" size={14}/> 今日の体調は記録ずみ<span className="yl-quick-edit">追記・編集</span></button>
+                    <button className="yl-quick-done tap" onClick={()=>setInputSheet("diary")}><Icon name="check" size={14}/> {t("diary.recordedDone")}<span className="yl-quick-edit">{t("diary.editMore")}</span></button>
                   ):(
-                    <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}><Icon name="note" size={18}/> 体調を記録</button>
+                    <button className="yl-quick-big" onClick={()=>setInputSheet("diary")}><Icon name="note" size={18}/> {t("diary.recordBtn")}</button>
                   )}
-                  {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label="元気の推移（5段階）"/>}
-                  {curKind!=="pet"&&sleepPts.length>1&&<MiniChart points={sleepPts} unit="h" color="#6F7BB3" label="睡眠時間の推移"/>}
-                  {curKind!=="pet"&&appetitePts.length>1&&<MiniChart points={appetitePts} unit="" color="#C77A2E" label="食欲の推移（3段階）"/>}
-                  {diaryRecords.length===0&&<p className="yl-routine-empty">「体調を記録」から残せます</p>}
+                  {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label={t("chart.energy")}/>}
+                  {curKind!=="pet"&&sleepPts.length>1&&<MiniChart points={sleepPts} unit="h" color="#6F7BB3" label={t("chart.sleep")}/>}
+                  {curKind!=="pet"&&appetitePts.length>1&&<MiniChart points={appetitePts} unit="" color="#C77A2E" label={t("chart.appetite")}/>}
+                  {diaryRecords.length===0&&<p className="yl-routine-empty">{t("diary.empty")}</p>}
                   {diaryByDate.length>0&&(
                     <ul className="yl-daycards">
                       {diaryByDate.slice(0,31).map(({date,recs})=>{
