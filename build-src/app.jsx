@@ -1234,6 +1234,9 @@ const MESSAGES={
     "rec.feedTitle":"フード・食事","food.delMeal":"食事の記録","food.delRecord":"記録","food.registerLink":"＋ フード登録","food.todayCount":"今日 {n}回","food.pickToLog":"フードを選んで食事を記録。","food.recordLabel":"記録","food.tapToLog":"タップして記録","food.todayMeal":"タップで今日のごはん。","food.amountOnly":"量だけ記録","food.registerBig":"フード・食事を登録する","food.defaultName":"ごはん",
     "rec.toiletTitle":"トイレ成功率","toilet.peeRate":"おしっこ成功率","toilet.poopRate":"うんち成功率","toilet.none":"記録なし","toilet.count":" ({success}/{total}回)","toilet.logBtn":"トイレを記録する",
     "rec.diaryTitle":"今日のようす","diary.recordedDone":"今日の体調は記録ずみ","diary.editMore":"追記・編集","diary.recordBtn":"体調を記録","chart.energy":"元気の推移（5段階）","chart.sleep":"睡眠時間の推移","chart.appetite":"食欲の推移（3段階）","diary.empty":"「体調を記録」から残せます",
+    "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記（長文・任意）","life.tag":"タグ","life.firstTag":"はじめて","ph.tag":"例：発表会 / お弁当 / 自転車","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","life.notify":"通知（任意）","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
+    "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間",
+    "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1293,6 +1296,9 @@ const MESSAGES={
     "rec.feedTitle":"Food & meals","food.delMeal":"meal record","food.delRecord":"record","food.registerLink":"＋ Add food","food.todayCount":"Today: {n}","food.pickToLog":"Pick a food to log a meal.","food.recordLabel":"Logged","food.tapToLog":"Tap to log","food.todayMeal":"Tap to log today's meal.","food.amountOnly":"Log amount only","food.registerBig":"Add a food or meal","food.defaultName":"Meal",
     "rec.toiletTitle":"Potty success rate","toilet.peeRate":"Pee success","toilet.poopRate":"Poop success","toilet.none":"No data","toilet.count":" ({success}/{total})","toilet.logBtn":"Log potty",
     "rec.diaryTitle":"Today's notes","diary.recordedDone":"Today's condition logged","diary.editMore":"Add / edit","diary.recordBtn":"Log condition","chart.energy":"Energy trend (1–5)","chart.sleep":"Sleep trend","chart.appetite":"Appetite trend (1–3)","diary.empty":"Log it via \"Log condition\"",
+    "life.editTitle":"Edit record","life.newTitle":"Log this day","cat.memory":"Memory / diary","cat.event":"Event","ph.eventTitle":"Event title (e.g. Vet)","ph.memoTitle":"A note (optional, e.g. First beach trip)","common.photo":"Photo","ph.diary":"Diary (optional)","life.tag":"Tag","life.firstTag":"First","ph.tag":"e.g. Recital / Bento / Bike","life.date":"Date","life.time":"Time","life.repeat":"Repeat","repeat.none":"None","repeat.daily":"Daily","repeat.weekly":"Weekly","repeat.monthly":"Monthly","repeat.yearly":"Yearly","life.notify":"Notifications (optional)","notif.allowShort":"Allow","remind.0":"At start","remind.5":"5 min before","remind.30":"30 min before","remind.60":"1 hr before","remind.1440":"Day before","life.notifyHint":"Too many 🔔 are easy to miss — keep just what you need.",
+    "rec.trayTitle":"Important info","rec.trayCount":" ({n})","rec.trayHint":"Save contacts, allergies, and vet info as cards.","card.nightTag":"Night",
+    "card.editTitle":"Edit card","card.newTitle":"Add card","cardkind.emergency":"Emergency contact","cardkind.allergy":"Allergies & no-gos","cardkind.hospital":"Vet & clinic notes","cardkind.shelter":"Shelter & disaster notes","cardkind.insurance":"Insurance info","cardkind.other":"Note","ph.cardTitle":"Title (e.g. Regular vet)","ph.cardBody":"Contacts, allergies, notes, meds remaining, etc.",
   },
 };
 function tr(lang,key,vars){
@@ -5216,20 +5222,20 @@ function App(){
               defs.push({key:"cards",el:(
                 <section className="yl-tray">
                   <button className="yl-tray-head" onClick={()=>setTrayOpen(o=>!o)}>
-                    <span className="yl-tray-title"><Icon name="pin" size={15}/> 大切な情報{cards.length>0?`（${cards.length}）`:""}</span>
+                    <span className="yl-tray-title"><Icon name="pin" size={15}/> {t("rec.trayTitle")}{cards.length>0?t("rec.trayCount",{n:cards.length}):""}</span>
                     <span className="yl-tray-arrow">{trayOpen?"▲":"▼"}</span>
                   </button>
                   {trayOpen&&(
                     <div className="yl-tray-body">
-                      <p className="yl-tray-hint">緊急連絡先・アレルギー・かかりつけ等をカードで保存。</p>
+                      <p className="yl-tray-hint">{t("rec.trayHint")}</p>
                       {cards.map(c=>(
                         <button key={c.id} className="yl-infocard" onClick={()=>openCardEdit(c)}>
                           <span className="yl-infocard-emoji"><Icon name={cardIcon(c.kind)} size={20}/></span>
-                          <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}{c.night?<span className="yl-emg-tag">夜間</span>:null}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}{(c.hours||c.addr)&&<span className="yl-infocard-meta">{[c.hours&&`🕐 ${c.hours}`,c.addr&&`📍 ${c.addr}`].filter(Boolean).join("　")}</span>}</span>
+                          <span className="yl-infocard-body"><span className="yl-infocard-title">{c.title}{c.night?<span className="yl-emg-tag">{t("card.nightTag")}</span>:null}</span>{c.body&&<span className="yl-infocard-text">{c.body}</span>}{(c.hours||c.addr)&&<span className="yl-infocard-meta">{[c.hours&&`🕐 ${c.hours}`,c.addr&&`📍 ${c.addr}`].filter(Boolean).join("　")}</span>}</span>
                           {firstPhotoId(c)&&photos[firstPhotoId(c)]&&<img className="yl-infocard-thumb" src={photos[firstPhotoId(c)]} alt=""/>}
                         </button>
                       ))}
-                      <div className="yl-tray-add">{CARD_PRESETS.map(p=><button key={p.key} className="yl-tray-addbtn" onClick={()=>openCardNew(p.key)}><Icon name={cardIcon(p.key)} size={14}/> {p.label}</button>)}</div>
+                      <div className="yl-tray-add">{CARD_PRESETS.map(p=><button key={p.key} className="yl-tray-addbtn" onClick={()=>openCardNew(p.key)}><Icon name={cardIcon(p.key)} size={14}/> {t("cardkind."+p.key)}</button>)}</div>
                     </div>
                   )}
                 </section>
@@ -5692,44 +5698,44 @@ function App(){
       {lifeDraft&&(
         <div className="yl-overlay" onClick={()=>setLifeDraft(null)}>
           <div className="yl-modal edit life" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">{lifeDraft.mode==="edit"?"記録を編集":"この日を記録"}</h3>
+            <h3 className="yl-modal-title">{lifeDraft.mode==="edit"?t("life.editTitle"):t("life.newTitle")}</h3>
             {/* カテゴリ */}
-            <div className="yl-typerow" style={{marginBottom:10}}>{CAL_CATS.map(c=><button key={c.key} className={"yl-chip"+(lifeDraft.category===c.key?" on":"")} style={lifeDraft.category===c.key?{background:"#E39A5C",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,category:c.key}))}>{c.emoji} {c.label}</button>)}</div>
+            <div className="yl-typerow" style={{marginBottom:10}}>{CAL_CATS.map(c=><button key={c.key} className={"yl-chip"+(lifeDraft.category===c.key?" on":"")} style={lifeDraft.category===c.key?{background:"#E39A5C",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,category:c.key}))}>{c.emoji} {t("cat."+c.key)}</button>)}</div>
             {/* 誰の */}
             <div className="yl-typerow" style={{marginBottom:10}}>{spaces.map(s=><button key={s.id} className={"yl-chip yl-chip-person"+(lifeDraft.space===s.id?" on":"")} style={lifeDraft.space===s.id?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,space:s.id}))}>{avatarNode(s,"xs")} {s.name}</button>)}</div>
-            <input className="yl-input" value={lifeDraft.title} onChange={e=>setLifeDraft(p=>({...p,title:e.target.value}))} placeholder={lifeDraft.category==="event"?"予定のタイトル（例：病院）":"ひとこと（任意・例：はじめて海へ）"}/>
+            <input className="yl-input" value={lifeDraft.title} onChange={e=>setLifeDraft(p=>({...p,title:e.target.value}))} placeholder={lifeDraft.category==="event"?t("ph.eventTitle"):t("ph.memoTitle")}/>
             {/* 写真（複数可・証明書/処方箋もここに） */}
             <div className="yl-life-photos">
               {lifeDraft.photos.map(p=>(
                 <div key={p.id} className="yl-life-thumb">
                   <img src={p.dataUrl} alt=""/>
-                  <button className="yl-life-thumb-del" onClick={()=>removeLifePhoto(p.id)} aria-label="削除">×</button>
+                  <button className="yl-life-thumb-del" onClick={()=>removeLifePhoto(p.id)} aria-label={t("a11y.delete")}>×</button>
                 </div>
               ))}
-              <label className="yl-life-addphoto">＋<span>写真</span><input type="file" accept="image/*" multiple style={{display:"none"}} onChange={pickLifePhoto}/></label>
+              <label className="yl-life-addphoto">＋<span>{t("common.photo")}</span><input type="file" accept="image/*" multiple style={{display:"none"}} onChange={pickLifePhoto}/></label>
             </div>
-            <textarea className="yl-life-note" value={lifeDraft.note} onChange={e=>setLifeDraft(p=>({...p,note:e.target.value}))} placeholder="日記（長文・任意）" rows={3}/>
+            <textarea className="yl-life-note" value={lifeDraft.note} onChange={e=>setLifeDraft(p=>({...p,note:e.target.value}))} placeholder={t("ph.diary")} rows={3}/>
             {lifeDraft.category==="memory"&&(()=>{
               const tags=lifeDraft.tags||[];
               const addTag=(t)=>{const v=(t||"").replace(/^#/,"").trim();if(!v||tags.includes(v))return;setLifeDraft(p=>({...p,tags:[...(p.tags||[]),v]}));setTagInput("");};
               return(
                 <div className="yl-tagedit">
-                  <span className="yl-tagedit-label"><Icon name="tag" size={14}/> タグ</span>
+                  <span className="yl-tagedit-label"><Icon name="tag" size={14}/> {t("life.tag")}</span>
                   <div className="yl-tagedit-chips">
-                    {tags.map(t=><span key={t} className="yl-tagedit-chip">#{t}<button onClick={()=>setLifeDraft(p=>({...p,tags:p.tags.filter(x=>x!==t)}))} aria-label="削除">×</button></span>)}
-                    {!tags.includes(FIRST_TAG)&&<button className="yl-tagedit-quick" onClick={()=>addTag(FIRST_TAG)}><Icon name="sparkles" size={13}/> はじめて</button>}
+                    {tags.map(tg=><span key={tg} className="yl-tagedit-chip">#{tg}<button onClick={()=>setLifeDraft(p=>({...p,tags:p.tags.filter(x=>x!==tg)}))} aria-label={t("a11y.delete")}>×</button></span>)}
+                    {!tags.includes(FIRST_TAG)&&<button className="yl-tagedit-quick" onClick={()=>addTag(FIRST_TAG)}><Icon name="sparkles" size={13}/> {t("life.firstTag")}</button>}
                   </div>
-                  <div className="yl-tagedit-add"><input className="yl-input sm" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}}} placeholder="例：発表会 / お弁当 / 自転車"/><button className="yl-addbtn sm" onClick={()=>addTag(tagInput)}>追加</button></div>
+                  <div className="yl-tagedit-add"><input className="yl-input sm" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}}} placeholder={t("ph.tag")}/><button className="yl-addbtn sm" onClick={()=>addTag(tagInput)}>{t("common.add")}</button></div>
                 </div>
               );
             })()}
-            <div className="yl-optrow"><label className="yl-opt">日付<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">時間<TimeInput value={lifeDraft.time} onChange={t=>setLifeDraft(p=>({...p,time:t}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">繰り返し<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select></label>}</div>
+            <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
             {/* 通知は「予定」のときだけ。思い出・日記は過去の記録なので事前通知は表示しない */}
-            {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> 通知（任意）{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{o.label}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>}
+            {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("life.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>}
             <div className="yl-modal-btns">
-              {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={saveLife}>保存</button>
+              {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>{t("common.delete")}</button>}
+              <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" onClick={saveLife}>{t("common.save")}</button>
             </div>
           </div>
         </div>
@@ -5737,10 +5743,10 @@ function App(){
       {cardEdit&&(
         <div className="yl-overlay" onClick={()=>setCardEdit(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name={cardIcon(cardEdit.kind)} size={18}/> {cardEdit.id?"カードを編集":"カードを追加"}</h3>
-            <div className="yl-typerow" style={{marginBottom:10}}>{CARD_PRESETS.map(p=><button key={p.key} className={"yl-chip"+(cardEdit.kind===p.key?" on":"")} style={cardEdit.kind===p.key?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setCardEdit(c=>({...c,kind:p.key,title:c.title||cardMeta(p.key).label}))}><Icon name={cardIcon(p.key)} size={14}/> {p.label}</button>)}</div>
-            <input className="yl-input" value={cardEdit.title} onChange={e=>setCardEdit(c=>({...c,title:e.target.value}))} placeholder="タイトル（例：かかりつけ病院）"/>
-            <textarea className="yl-life-note" value={cardEdit.body} onChange={e=>setCardEdit(c=>({...c,body:e.target.value}))} placeholder="連絡先・アレルギー・注意点・お薬の残り期間など" rows={4}/>
+            <h3 className="yl-modal-title"><Icon name={cardIcon(cardEdit.kind)} size={18}/> {cardEdit.id?t("card.editTitle"):t("card.newTitle")}</h3>
+            <div className="yl-typerow" style={{marginBottom:10}}>{CARD_PRESETS.map(p=><button key={p.key} className={"yl-chip"+(cardEdit.kind===p.key?" on":"")} style={cardEdit.kind===p.key?{background:"#D98A4E",color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setCardEdit(c=>({...c,kind:p.key,title:c.title||cardMeta(p.key).label}))}><Icon name={cardIcon(p.key)} size={14}/> {t("cardkind."+p.key)}</button>)}</div>
+            <input className="yl-input" value={cardEdit.title} onChange={e=>setCardEdit(c=>({...c,title:e.target.value}))} placeholder={t("ph.cardTitle")}/>
+            <textarea className="yl-life-note" value={cardEdit.body} onChange={e=>setCardEdit(c=>({...c,body:e.target.value}))} placeholder={t("ph.cardBody")} rows={4}/>
             {cardEdit.kind==="hospital"&&(<>
               <input className="yl-input" value={cardEdit.hours||""} onChange={e=>setCardEdit(c=>({...c,hours:e.target.value}))} placeholder="受付・診療時間（任意 例：24時間／夜間 20:00〜翌8:00）"/>
               <input className="yl-input" value={cardEdit.addr||""} onChange={e=>setCardEdit(c=>({...c,addr:e.target.value}))} placeholder="住所（任意）"/>
