@@ -1112,14 +1112,19 @@ function downloadTextFile(content, filename, mime="text/csv"){
 // ・iPhone等は共有シート（navigator.share）でアルバム保存・LINE送信できるように。
 //   非対応環境（PC等）はファイルダウンロードにフォールバック。
 // 返り値: "shared" | "download" | "aborted"
-async function nodeToImageBlob(node){
+async function nodeToImageBlob(node, opts={}){
+  const sheet=!!opts.sheet; // シート系は2カラムの用紙風にして縦長・余白を抑える
   const canvas=await html2canvas(node,{
     backgroundColor:"#ffffff",
-    scale:Math.min(2,(window.devicePixelRatio||1)*1.5),
+    scale:2,
     useCORS:true,
     logging:false,
+    windowWidth:sheet?800:undefined, // 420px超で2カラムグリッドが効く
     ignoreElements:(el)=>el.classList&&el.classList.contains("yl-noprint"),
-    onclone:(docu)=>{try{docu.documentElement.setAttribute("data-theme","light");}catch(e){}},
+    onclone:(docu)=>{try{
+      docu.documentElement.setAttribute("data-theme","light");
+      if(sheet){const t=docu.querySelector(".yl-vetsum");if(t){t.classList.add("yl-shot");const m=t.closest(".yl-modal");if(m){m.style.maxWidth="none";m.style.width="auto";m.style.padding="0";}}}
+    }catch(e){}},
   });
   const blob=await new Promise((resolve)=>{if(canvas.toBlob)canvas.toBlob(resolve,"image/png");else{try{const durl=canvas.toDataURL("image/png");const bin=atob(durl.split(",")[1]);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);resolve(new Blob([arr],{type:"image/png"}));}catch(e){resolve(null);}}});
   if(!blob)throw new Error("no blob");
@@ -1132,8 +1137,8 @@ function downloadBlob(blob, filename){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
-async function saveNodeAsImage(node, filename){
-  const blob=await nodeToImageBlob(node);
+async function saveNodeAsImage(node, filename, opts){
+  const blob=await nodeToImageBlob(node,opts);
   // 共有シートが画像ファイルに対応していれば優先（iOS: 「画像を保存」でアルバムへ）。
   try{
     const file=new File([blob],filename,{type:"image/png"});
@@ -2748,13 +2753,13 @@ function App(){
   // 共有・引き継ぎ用の表示：カロリー密度（kcal/100g）ではなく「1回◯・1日◯回（＝1日の目安kcal）」で、そのまま行動できる形に。
   const foodDefShareText=(d)=>{const parts=[];if(d.amount!==""&&d.amount!=null)parts.push(`1回 ${d.amount}${foodUnitLabel(d.unit)}`);if(d.timesPerDay!==""&&d.timesPerDay!=null)parts.push(`1日${d.timesPerDay}回`);let s=parts.join(" ・ ");const per=computeMealKcal(d,d.amount);const t=Number(d.timesPerDay);if(per!=null&&t>0)s+=`${s?"（":""}約${Math.round(per*t)}kcal/日${s?"）":""}`;return s;};
   // 「画像で保存」：指定セレクタのシート・カードをPNGとして書き出す。
-  const saveSheetImage=async(selector,filename)=>{
+  const saveSheetImage=async(selector,filename,opts)=>{
     if(imgSaving)return;
     const node=document.querySelector(selector);
     if(!node){showFlash("画像を作成できませんでした");return;}
     setImgSaving(true);showFlash("画像を作成中…");
     try{
-      const r=await saveNodeAsImage(node,filename);
+      const r=await saveNodeAsImage(node,filename,opts);
       if(r==="shared")showFlash("「画像を保存」でアルバムに保存できます 🖼️");
       else if(r==="download")showFlash("画像を保存しました 🖼️");
       else showFlash(""); // キャンセル時は静かに閉じる
@@ -5678,7 +5683,7 @@ function App(){
             </div>
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setVetOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-記録サマリー-${todayIso}.png`)}><Icon name="download" size={16}/> 画像で保存</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-記録サマリー-${todayIso}.png`,{sheet:true})}><Icon name="download" size={16}/> 画像で保存</button>
               <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
             </div>
           </div>
@@ -5731,7 +5736,7 @@ function App(){
             </div>
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${isPet?"お世話シート":"引き継ぎシート"}-${todayIso}.png`)}><Icon name="download" size={16}/> 画像で保存</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${isPet?"お世話シート":"引き継ぎシート"}-${todayIso}.png`,{sheet:true})}><Icon name="download" size={16}/> 画像で保存</button>
               <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button>
             </div>
           </div>
