@@ -1107,9 +1107,12 @@ function downloadTextFile(content, filename, mime="text/csv"){
     try{window.location.href="data:"+mime+";charset=utf-8,"+encodeURIComponent(content);}catch(_){}
   }
 }
-// DOMノードをPNG画像として保存（シート・カード・ポスターの「画像で保存」用）。
-// ・.yl-noprint（ボタン等）は写さない ・常にライト配色で書き出す（共有・印刷しやすいように）。
-async function saveNodeAsImage(node, filename){
+// DOMノードをPNG画像化して保存/共有（シート・カード・ポスターの「画像で保存」用）。
+// ・.yl-noprint（ボタン等）は写さない ・常にライト配色で書き出す。
+// ・iPhone等は共有シート（navigator.share）でアルバム保存・LINE送信できるように。
+//   非対応環境（PC等）はファイルダウンロードにフォールバック。
+// 返り値: "shared" | "download" | "aborted"
+async function nodeToImageBlob(node){
   const canvas=await html2canvas(node,{
     backgroundColor:"#ffffff",
     scale:Math.min(2,(window.devicePixelRatio||1)*1.5),
@@ -1118,21 +1121,29 @@ async function saveNodeAsImage(node, filename){
     ignoreElements:(el)=>el.classList&&el.classList.contains("yl-noprint"),
     onclone:(docu)=>{try{docu.documentElement.setAttribute("data-theme","light");}catch(e){}},
   });
-  await new Promise((resolve,reject)=>{
-    const done=(blob)=>{
-      if(!blob){reject(new Error("no blob"));return;}
-      try{
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;a.download=filename;a.rel="noopener";
-        document.body.appendChild(a);a.click();document.body.removeChild(a);
-        setTimeout(()=>URL.revokeObjectURL(url),3000);
-        resolve();
-      }catch(e){reject(e);}
-    };
-    if(canvas.toBlob)canvas.toBlob(done,"image/png");
-    else{try{const durl=canvas.toDataURL("image/png");const a=document.createElement("a");a.href=durl;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);resolve();}catch(e){reject(e);}}
-  });
+  const blob=await new Promise((resolve)=>{if(canvas.toBlob)canvas.toBlob(resolve,"image/png");else{try{const durl=canvas.toDataURL("image/png");const bin=atob(durl.split(",")[1]);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);resolve(new Blob([arr],{type:"image/png"}));}catch(e){resolve(null);}}});
+  if(!blob)throw new Error("no blob");
+  return blob;
+}
+function downloadBlob(blob, filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;a.rel="noopener";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+async function saveNodeAsImage(node, filename){
+  const blob=await nodeToImageBlob(node);
+  // 共有シートが画像ファイルに対応していれば優先（iOS: 「画像を保存」でアルバムへ）。
+  try{
+    const file=new File([blob],filename,{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+      try{await navigator.share({files:[file]});return "shared";}
+      catch(e){if(e&&e.name==="AbortError")return "aborted";/* 権限切れ等はDLへフォールバック */}
+    }
+  }catch(e){/* File未対応等はDLへ */}
+  downloadBlob(blob,filename);
+  return "download";
 }
 // CSV 1セルのエスケープ（カンマ・改行・引用符を含む場合は "" で囲む）。
 const csvCell=(v)=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
@@ -2742,7 +2753,12 @@ function App(){
     const node=document.querySelector(selector);
     if(!node){showFlash("画像を作成できませんでした");return;}
     setImgSaving(true);showFlash("画像を作成中…");
-    try{await saveNodeAsImage(node,filename);showFlash("画像を保存しました 🖼️");}
+    try{
+      const r=await saveNodeAsImage(node,filename);
+      if(r==="shared")showFlash("「画像を保存」でアルバムに保存できます 🖼️");
+      else if(r==="download")showFlash("画像を保存しました 🖼️");
+      else showFlash(""); // キャンセル時は静かに閉じる
+    }
     catch(e){showFlash("画像を保存できませんでした");}
     finally{setImgSaving(false);}
   };
