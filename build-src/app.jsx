@@ -1112,20 +1112,34 @@ function downloadTextFile(content, filename, mime="text/csv"){
 // ・iPhone等は共有シート（navigator.share）でアルバム保存・LINE送信できるように。
 //   非対応環境（PC等）はファイルダウンロードにフォールバック。
 // 返り値: "shared" | "download" | "aborted"
+// 元canvasを指定サイズの枠に中央配置（SNSのストーリー等、決まった縦横比に整える用）。
+function frameCanvas(src, W, H, bg){
+  const c=document.createElement("canvas");c.width=W;c.height=H;
+  const ctx=c.getContext("2d");ctx.fillStyle=bg||"#ffffff";ctx.fillRect(0,0,W,H);
+  const pad=Math.round(W*0.045);
+  const s=Math.min((W-pad*2)/src.width,(H-pad*2)/src.height);
+  const w=Math.round(src.width*s),h=Math.round(src.height*s);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+  ctx.drawImage(src,Math.round((W-w)/2),Math.round((H-h)/2),w,h);
+  return c;
+}
 async function nodeToImageBlob(node, opts={}){
   const sheet=!!opts.sheet; // シート系は2カラムの用紙風にして縦長・余白を抑える
-  const canvas=await html2canvas(node,{
+  const story=!!opts.story; // 迷子ポスターはSNS/ストーリー向けに幅広2カラム＋9:16の枠に整える
+  let canvas=await html2canvas(node,{
     backgroundColor:"#ffffff",
     scale:2,
     useCORS:true,
     logging:false,
-    windowWidth:sheet?800:undefined, // 420px超で2カラムグリッドが効く
+    windowWidth:sheet?800:(story?960:undefined), // 420px超で2カラムグリッドが効く
     ignoreElements:(el)=>el.classList&&el.classList.contains("yl-noprint"),
     onclone:(docu)=>{try{
       docu.documentElement.setAttribute("data-theme","light");
       if(sheet){const t=docu.querySelector(".yl-vetsum");if(t){t.classList.add("yl-shot");const m=t.closest(".yl-modal");if(m){m.style.maxWidth="none";m.style.width="auto";m.style.padding="0";}}}
+      if(story){const t=docu.querySelector(".yl-lost-poster")||docu.querySelector(".yl-lost");if(t){t.classList.add("yl-lost-story");const m=t.closest(".yl-modal");if(m){m.style.maxWidth="none";m.style.width="auto";m.style.padding="0";}}}
     }catch(e){}},
   });
+  if(story)canvas=frameCanvas(canvas,1080,1920,"#ffffff"); // Instagramストーリー等の9:16に合わせる
   const blob=await new Promise((resolve)=>{if(canvas.toBlob)canvas.toBlob(resolve,"image/png");else{try{const durl=canvas.toDataURL("image/png");const bin=atob(durl.split(",")[1]);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);resolve(new Blob([arr],{type:"image/png"}));}catch(e){resolve(null);}}});
   if(!blob)throw new Error("no blob");
   return blob;
@@ -5878,7 +5892,7 @@ function App(){
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               {lostStep===0&&<><button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(1)}>次へ：ペット情報</button></>}
               {lostStep===1&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(0)}>もどる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(2)}>ポスターを作成</button></>}
-              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost",`迷子-${safeName(m.name)}.png`)}><Icon name="download" size={16}/> 画像で保存</button><button className="yl-addbtn modal ghost" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有</button><button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button></>}
+              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost-poster",`迷子-${safeName(m.name)}.png`,{story:true})}><Icon name="download" size={16}/> 画像で保存</button><button className="yl-addbtn modal ghost" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有</button><button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button></>}
             </div>
           </div>
         </div>
