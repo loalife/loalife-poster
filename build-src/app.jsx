@@ -1238,6 +1238,14 @@ const MESSAGES={
     "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間",
     "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など",
     "rec.walkTitle":"おさんぽ記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。健康状態や個体差で必要な運動量は変わります。体調やかかりつけ獣医さんの助言に合わせて調整してください。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中（{n}点）","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"散歩スタート","walk.delLabel":"散歩の記録",
+    "growth.title":"成長の記録","growth.desc":"はじめてできた瞬間を、写真とともに。","growth.custom":"自分で追加（例：逆上がりができた）","growth.camTitle":"作品・写真を追加","growth.photoSaved":"作品・写真を保存しました","common.plusRecord":"＋ 記録","common.plusAdd":"＋ 追加","common.amount":"金額","common.foot":"大切な家族の毎日を、ひとつの場所で。","a11y.edit":"編集",
+    "review.title":"今月のふりかえり","review.daysLabel":"体調の記録（日）","review.sleepLabel":"平均睡眠(h)","review.movesLabel":"運動の記録","review.logsLabel":"やること記録","review.vsPrev":"先月とくらべて：{parts}","review.openTasks":"未完了のやること：{n}件","review.note":"※記録した事実をならべたものです。良し悪しの判定はしません。","review.pDays":"記録 {v}日","review.pSleep":"睡眠 {v}h","review.pLogs":"やること {v}回",
+    "album.title":"思い出","album.cancelSel":"選択をやめる","album.select":"選択","album.loading":"読み込み中…","album.bulkAdd":"写真をまとめて追加（撮影日で自動振り分け）","album.selHint":"写真をタップして選択（最大{n}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。","album.empty":"写真とひとことで残せます","album.selCount":"{n}枚を選択中","album.moveBtn":"別の子へ移動","album.moveDesc":"選択した {n}枚 の思い出を、まとめて移動します。",
+    "points.title":"お手伝いポイント","points.total":"合計 {n}pt","points.week":"（今週 {n}）","points.custom":"自分で追加（+1pt）",
+    "allow.title":"おこづかい帳","allow.balance":"のこり","allow.memoPh":"メモ（おかし 等・任意）","allowdir.in":"もらった","allowdir.out":"つかった","allowdir.save":"ちょきん",
+    "meds.namePh":"お薬・サプリ名（例：抗生剤・ビタミン）",
+    "belong.title":"持ち物（曜日ごと）","belong.empty":"右下の ＋ から持ち物を登録",
+    "foodreg.title":"フードの登録","foodreg.desc":"よく使うフードを登録しておく。","foodreg.addFood":"フード・食事を登録","foodreg.calc":"1日のフード量を計算",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1301,6 +1309,14 @@ const MESSAGES={
     "rec.trayTitle":"Important info","rec.trayCount":" ({n})","rec.trayHint":"Save contacts, allergies, and vet info as cards.","card.nightTag":"Night",
     "card.editTitle":"Edit card","card.newTitle":"Add card","cardkind.emergency":"Emergency contact","cardkind.allergy":"Allergies & no-gos","cardkind.hospital":"Vet & clinic notes","cardkind.shelter":"Shelter & disaster notes","cardkind.insurance":"Insurance info","cardkind.other":"Note","ph.cardTitle":"Title (e.g. Regular vet)","ph.cardBody":"Contacts, allergies, notes, meds remaining, etc.",
     "rec.walkTitle":"Walk log","walk.goalTitle":"This month's guide (reference)","walk.distance":"Distance","walk.count":"Walks","walk.timesUnit":"","walk.dcPre":"Based on breed","walk.dcMid":" and age","walk.dcPost1":", a ","walk.dcBold":"general guideline (reference)","walk.dcPost2":". Actual needs vary with health and each dog — adjust to their condition and your vet's advice.","walk.dcBreedUnset":" (not set → medium)","walk.dcAgeUnset":" (not set → adult)","walk.reviewTitle":"Walk review","walk.vsLast":"vs last month ","walk.summaryThisMonth":"This month ","walk.walksUnit":" walks","walk.summaryMin":" · {m} min","walk.summarySep":" / 6-mo total ","walk.time":"Time","walk.gpsRecording":"Recording route by GPS ({n} pts)","walk.gpsStart":"Recording route by GPS… start walking and the distance grows","walk.stopSave":"Finish & save","walk.otherRunning":"A walk for another one is being tracked","walk.startBtn":"Start walk","walk.delLabel":"walk record",
+    "growth.title":"Growth log","growth.desc":"Capture each first, with a photo.","growth.custom":"Add your own (e.g. did a pull-up)","growth.camTitle":"Add work/photo","growth.photoSaved":"Saved the work/photo","common.plusRecord":"＋ Log","common.plusAdd":"＋ Add","common.amount":"Amount","common.foot":"Every day with your family, in one place.","a11y.edit":"Edit",
+    "review.title":"This month's review","review.daysLabel":"Health logs (days)","review.sleepLabel":"Avg sleep (h)","review.movesLabel":"Exercise logs","review.logsLabel":"Task logs","review.vsPrev":"vs last month: {parts}","review.openTasks":"Open tasks: {n}","review.note":"※ Just the facts you logged, listed — no good/bad judgment.","review.pDays":"records {v}d","review.pSleep":"sleep {v}h","review.pLogs":"tasks {v}",
+    "album.title":"Memories","album.cancelSel":"Cancel","album.select":"Select","album.loading":"Loading…","album.bulkAdd":"Add photos in bulk (auto-sorted by date taken)","album.selHint":"Tap photos to select (up to {n}) → use “Move to another” below to move them together to another family member.","album.empty":"Keep them with a photo and a note","album.selCount":"{n} selected","album.moveBtn":"Move to another","album.moveDesc":"Move the {n} selected memories together.",
+    "points.title":"Helper points","points.total":"Total {n} pt","points.week":" (this week {n})","points.custom":"Add your own (+1pt)",
+    "allow.title":"Allowance book","allow.balance":"Left","allow.memoPh":"Memo (snacks, etc. · optional)","allowdir.in":"Got","allowdir.out":"Spent","allowdir.save":"Saved",
+    "meds.namePh":"Med or supplement name (e.g. antibiotic, vitamin)",
+    "belong.title":"Belongings (by day)","belong.empty":"Tap ＋ at bottom-right to add belongings",
+    "foodreg.title":"Food registry","foodreg.desc":"Register foods you use often.","foodreg.addFood":"Register food/meal","foodreg.calc":"Calculate daily food amount",
   },
 };
 function tr(lang,key,vars){
@@ -5091,18 +5107,18 @@ function App(){
               )});
               if(curKind==="person"&&["child","baby"].includes(activeMember.personType||"child"))defs.push({key:"growth",el:(
                 <section className="yl-growth">
-                  <h2 className="yl-routine-title" style={{marginBottom:6}}>成長の記録</h2>
-                  <p className="yl-set-desc" style={{marginBottom:10}}>はじめてできた瞬間を、写真とともに。</p>
+                  <h2 className="yl-routine-title" style={{marginBottom:6}}>{t("growth.title")}</h2>
+                  <p className="yl-set-desc" style={{marginBottom:10}}>{t("growth.desc")}</p>
                   <div className="yl-growth-cats">{MILESTONE_CATS.map(c=><button key={c.key} className={"yl-growth-cat"+(msCat===c.key?" on":"")} onClick={()=>setMsCat(c.key)}><Icon name={c.icon} size={14}/> {c.label}</button>)}</div>
                   <div className="yl-growth-presets">{MILESTONE_PRESETS[msCat].filter(p=>!growthRecords.some(g=>g.title===p)).map(p=><button key={p} className="yl-growth-preset" onClick={()=>addMilestone(msCat,p)}>＋ {p}</button>)}</div>
-                  <div className="yl-growth-custom"><input className="yl-input sm" value={msDraft} onChange={e=>setMsDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMilestone(msCat,msDraft)} placeholder="自分で追加（例：逆上がりができた）"/><button className="yl-addbtn sm" onClick={()=>addMilestone(msCat,msDraft)}>＋ 記録</button></div>
+                  <div className="yl-growth-custom"><input className="yl-input sm" value={msDraft} onChange={e=>setMsDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMilestone(msCat,msDraft)} placeholder={t("growth.custom")}/><button className="yl-addbtn sm" onClick={()=>addMilestone(msCat,msDraft)}>{t("common.plusRecord")}</button></div>
                   {growthRecords.length>0&&(
                     <ul className="yl-growth-list">
                       {growthRecords.map(g=>{const cm=milestoneCatMeta(g.category);const at=activeMember.birthday?ageAtLabel(activeMember.birthday,g.date):"";const pid=firstPhotoId(g);return(
                         <li key={g.id} className="yl-growth-item">
                           {pid&&photos[pid]?<button className="yl-growth-thumbwrap" onClick={()=>viewPhoto(pid)}><img className="yl-growth-thumb" src={photos[pid]} alt=""/></button>:<span className={"yl-growth-badge cat-"+g.category}><Icon name={cm.icon} size={14}/></span>}
                           <span className="yl-growth-body"><span className="yl-growth-title">{g.title}</span><span className="yl-growth-meta">{cm.label}・{fmtDate(g.date)}{at?`・${at}`:""}</span></span>
-                          {!pid&&<label className="yl-growth-cam" title="作品・写真を追加" onClick={e=>e.stopPropagation()}><Icon name="camera" size={15}/><input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,g.id,"作品・写真を保存しました")}/></label>}
+                          {!pid&&<label className="yl-growth-cam" title={t("growth.camTitle")} onClick={e=>e.stopPropagation()}><Icon name="camera" size={15}/><input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,g.id,t("growth.photoSaved"))}/></label>}
                           <button className="yl-health-del" onClick={()=>askDelete(g.title,()=>removeMilestone(g.id))} aria-label="削除">×</button>
                         </li>
                       );})}
@@ -5110,41 +5126,41 @@ function App(){
                   )}
                 </section>
               )});
-              if(selfReview)defs.push({key:"review",el:(()=>{const{cur,prev,openTasks}=selfReview;const dDays=cur.days-prev.days;const dLogs=cur.logs-prev.logs;const dSleep=(cur.sleep!=null&&prev.sleep!=null)?cur.sleep-prev.sleep:null;const parts=[];if(dDays!==0)parts.push(`記録 ${dDays>0?"+":""}${dDays}日`);if(dSleep!=null&&Math.abs(dSleep)>=0.1)parts.push(`睡眠 ${dSleep>0?"+":""}${dSleep.toFixed(1)}h`);if(dLogs!==0)parts.push(`やること ${dLogs>0?"+":""}${dLogs}回`);return(
+              if(selfReview)defs.push({key:"review",el:(()=>{const{cur,prev,openTasks}=selfReview;const dDays=cur.days-prev.days;const dLogs=cur.logs-prev.logs;const dSleep=(cur.sleep!=null&&prev.sleep!=null)?cur.sleep-prev.sleep:null;const parts=[];if(dDays!==0)parts.push(t("review.pDays",{v:(dDays>0?"+":"")+dDays}));if(dSleep!=null&&Math.abs(dSleep)>=0.1)parts.push(t("review.pSleep",{v:(dSleep>0?"+":"")+dSleep.toFixed(1)}));if(dLogs!==0)parts.push(t("review.pLogs",{v:(dLogs>0?"+":"")+dLogs}));return(
                 <section className="yl-vetcard">
-                  <div className="yl-walkrev-head" style={{marginBottom:10}}><span className="yl-walkrev-title"><Icon name="activity" size={14}/> 今月のふりかえり</span></div>
+                  <div className="yl-walkrev-head" style={{marginBottom:10}}><span className="yl-walkrev-title"><Icon name="activity" size={14}/> {t("review.title")}</span></div>
                   <div className="yl-summary-row">
-                    <div className="yl-stat"><span className="yl-stat-n">{cur.days}</span><span className="yl-stat-l">体調の記録（日）</span></div>
-                    <div className="yl-stat"><span className="yl-stat-n">{cur.sleep!=null?cur.sleep.toFixed(1):"—"}</span><span className="yl-stat-l">平均睡眠(h)</span></div>
-                    <div className="yl-stat"><span className="yl-stat-n">{curKind==="me"?cur.moves:cur.logs}</span><span className="yl-stat-l">{curKind==="me"?"運動の記録":"やること記録"}</span></div>
+                    <div className="yl-stat"><span className="yl-stat-n">{cur.days}</span><span className="yl-stat-l">{t("review.daysLabel")}</span></div>
+                    <div className="yl-stat"><span className="yl-stat-n">{cur.sleep!=null?cur.sleep.toFixed(1):"—"}</span><span className="yl-stat-l">{t("review.sleepLabel")}</span></div>
+                    <div className="yl-stat"><span className="yl-stat-n">{curKind==="me"?cur.moves:cur.logs}</span><span className="yl-stat-l">{curKind==="me"?t("review.movesLabel"):t("review.logsLabel")}</span></div>
                   </div>
-                  {parts.length>0&&<p className="yl-set-desc" style={{marginTop:10}}>先月とくらべて：{parts.join("・")}</p>}
-                  {openTasks>0&&<p className="yl-set-desc" style={{marginTop:6}}>未完了のやること：{openTasks}件</p>}
-                  <p className="yl-vetsum-note" style={{borderTop:"none",marginTop:8,paddingTop:0}}>※記録した事実をならべたものです。良し悪しの判定はしません。</p>
+                  {parts.length>0&&<p className="yl-set-desc" style={{marginTop:10}}>{t("review.vsPrev",{parts:parts.join(lang==="ja"?"・":" · ")})}</p>}
+                  {openTasks>0&&<p className="yl-set-desc" style={{marginTop:6}}>{t("review.openTasks",{n:openTasks})}</p>}
+                  <p className="yl-vetsum-note" style={{borderTop:"none",marginTop:8,paddingTop:0}}>{t("review.note")}</p>
                 </section>
               );})()});
               defs.push({key:"album",el:(
                 <section className="yl-album">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">思い出</h2>
+                    <h2 className="yl-routine-title">{t("album.title")}</h2>
                     <div className="yl-album-headacts">
                       {memories.length>0&&(albumSel?(
-                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel(null)}>選択をやめる</button>
+                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel(null)}>{t("album.cancelSel")}</button>
                       ):(
-                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel([])}>選択</button>
+                        <button className="yl-album-selbtn" onClick={()=>setAlbumSel([])}>{t("album.select")}</button>
                       ))}
-                      {!albumSel&&<button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>＋ 追加</button>}
+                      {!albumSel&&<button className="yl-album-add" onClick={()=>openLifeNew(todayIso,tab)}>{t("common.plusAdd")}</button>}
                     </div>
                   </div>
                   {!albumSel&&(
                     <label className={"yl-album-bulk"+(bulkBusy?" busy":"")}>
-                      <Icon name="calendar" size={15}/> {bulkBusy?"読み込み中…":"写真をまとめて追加（撮影日で自動振り分け）"}
+                      <Icon name="calendar" size={15}/> {bulkBusy?t("album.loading"):t("album.bulkAdd")}
                       <input type="file" accept="image/*" multiple style={{display:"none"}} disabled={bulkBusy} onChange={bulkAddPhotos}/>
                     </label>
                   )}
-                  {albumSel&&<p className="yl-album-selhint">写真をタップして選択（最大{ALBUM_SEL_MAX}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。</p>}
+                  {albumSel&&<p className="yl-album-selhint">{t("album.selHint",{n:ALBUM_SEL_MAX})}</p>}
                   {memories.length===0?(
-                    <p className="yl-routine-empty">写真とひとことで残せます</p>
+                    <p className="yl-routine-empty">{t("album.empty")}</p>
                   ):(
                     <div className={"yl-album-grid"+(albumSel?" selecting":"")}>
                       {memories.map(mem=>{const on=albumSel&&albumSel.includes(mem.id);return(
@@ -5158,67 +5174,67 @@ function App(){
                   )}
                   {albumSel&&(
                     <div className="yl-album-selbar">
-                      <span className="yl-album-selcount">{albumSel.length}枚を選択中</span>
-                      <button className="yl-album-movebtn" disabled={albumSel.length===0} onClick={()=>setAlbumMoveOpen(true)}><Icon name="users" size={15}/> 別の子へ移動</button>
+                      <span className="yl-album-selcount">{t("album.selCount",{n:albumSel.length})}</span>
+                      <button className="yl-album-movebtn" disabled={albumSel.length===0} onClick={()=>setAlbumMoveOpen(true)}><Icon name="users" size={15}/> {t("album.moveBtn")}</button>
                     </div>
                   )}
                 </section>
               )});
               if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"help",el:(
                 <section className="yl-help-sec">
-                  <div className="yl-routine-head"><h2 className="yl-routine-title">お手伝いポイント</h2><span className="yl-point-total"><Icon name="sparkles" size={14}/> 合計 {pointStats.total}pt<span className="yl-point-week">（今週 {pointStats.week}）</span></span></div>
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">{t("points.title")}</h2><span className="yl-point-total"><Icon name="sparkles" size={14}/> {t("points.total",{n:pointStats.total})}<span className="yl-point-week">{t("points.week",{n:pointStats.week})}</span></span></div>
                   <div className="yl-growth-presets">{HELP_PRESETS.map(h=><button key={h.task} className="yl-growth-preset" onClick={()=>addPoint(h.task,h.pt)}>＋ {h.task} <b>+{h.pt}</b></button>)}</div>
-                  <div className="yl-growth-custom"><input className="yl-input sm" value={pointTask} onChange={e=>setPointTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addPoint(pointTask,1)} placeholder="自分で追加（+1pt）"/><button className="yl-addbtn sm" onClick={()=>addPoint(pointTask,1)}>＋ 記録</button></div>
-                  {pointRecords.length>0&&<ul className="yl-point-list">{pointRecords.slice(0,8).map(p=>(<li key={p.id} className="yl-point-item"><span className="yl-point-date">{fmtDate(p.date)}</span><span className="yl-point-task">{p.task}</span><span className="yl-point-pt">+{p.points}pt</span><button className="yl-health-del" onClick={()=>removePoint(p.id)} aria-label="削除">×</button></li>))}</ul>}
+                  <div className="yl-growth-custom"><input className="yl-input sm" value={pointTask} onChange={e=>setPointTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addPoint(pointTask,1)} placeholder={t("points.custom")}/><button className="yl-addbtn sm" onClick={()=>addPoint(pointTask,1)}>{t("common.plusRecord")}</button></div>
+                  {pointRecords.length>0&&<ul className="yl-point-list">{pointRecords.slice(0,8).map(p=>(<li key={p.id} className="yl-point-item"><span className="yl-point-date">{fmtDate(p.date)}</span><span className="yl-point-task">{p.task}</span><span className="yl-point-pt">+{p.points}pt</span><button className="yl-health-del" onClick={()=>removePoint(p.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}
                 </section>
               )});
               if(curKind==="person"&&(activeMember.personType||"child")==="child")defs.push({key:"allowance",el:(
                 <section className="yl-allow-sec">
-                  <div className="yl-routine-head"><h2 className="yl-routine-title">おこづかい帳</h2><span className="yl-allow-bal">のこり <strong>{fmtYen(allowanceBalance)}</strong></span></div>
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">{t("allow.title")}</h2><span className="yl-allow-bal">{t("allow.balance")} <strong>{fmtYen(allowanceBalance)}</strong></span></div>
                   <div className="yl-allow-input">
-                    <span className="yl-seg-mini">{ALLOWANCE_DIRS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(allowDir===o.k?" on":"")} onClick={()=>setAllowDir(o.k)}>{o.l}</button>)}</span>
-                    <div className="yl-allow-row"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={allowAmt} onChange={e=>setAllowAmt(e.target.value)} placeholder="金額"/></span><input className="yl-input sm" value={allowReason} onChange={e=>setAllowReason(e.target.value)} placeholder="メモ（おかし 等・任意）"/><button className="yl-addbtn sm" onClick={addAllowance}>＋</button></div>
+                    <span className="yl-seg-mini">{ALLOWANCE_DIRS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+(allowDir===o.k?" on":"")} onClick={()=>setAllowDir(o.k)}>{t("allowdir."+o.k)}</button>)}</span>
+                    <div className="yl-allow-row"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={allowAmt} onChange={e=>setAllowAmt(e.target.value)} placeholder={t("common.amount")}/></span><input className="yl-input sm" value={allowReason} onChange={e=>setAllowReason(e.target.value)} placeholder={t("allow.memoPh")}/><button className="yl-addbtn sm" onClick={addAllowance}>＋</button></div>
                   </div>
-                  {allowanceRecords.length>0&&<ul className="yl-allow-list">{allowanceRecords.slice(0,8).map(a=>{const dm=ALLOWANCE_DIRS.find(o=>o.k===a.dir)||ALLOWANCE_DIRS[0];return(<li key={a.id} className="yl-allow-item"><span className="yl-point-date">{fmtDate(a.date)}</span><span className={"yl-allow-tag dir-"+a.dir}>{dm.l}</span>{a.reason&&<span className="yl-allow-reason">{a.reason}</span>}<span className={"yl-allow-amt"+(dm.sign<0?" out":dm.sign>0?" in":"")}>{dm.sign<0?"-":dm.sign>0?"+":""}{fmtYen(a.amount)}</span><button className="yl-health-del" onClick={()=>removeAllowance(a.id)} aria-label="削除">×</button></li>);})}</ul>}
+                  {allowanceRecords.length>0&&<ul className="yl-allow-list">{allowanceRecords.slice(0,8).map(a=>{const dm=ALLOWANCE_DIRS.find(o=>o.k===a.dir)||ALLOWANCE_DIRS[0];return(<li key={a.id} className="yl-allow-item"><span className="yl-point-date">{fmtDate(a.date)}</span><span className={"yl-allow-tag dir-"+a.dir}>{t("allowdir."+dm.k)}</span>{a.reason&&<span className="yl-allow-reason">{a.reason}</span>}<span className={"yl-allow-amt"+(dm.sign<0?" out":dm.sign>0?" in":"")}>{dm.sign<0?"-":dm.sign>0?"+":""}{fmtYen(a.amount)}</span><button className="yl-health-del" onClick={()=>removeAllowance(a.id)} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
                 </section>
               )});
               if(curKind==="person"&&(["child","baby"].includes(activeMember.personType||"child")||activeMember.personType==="senior"))defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>お薬・サプリ</h2>
-                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?"のみ終わりました":`${m.days}日間・${dayNo>0?dayNo:1}日目・のこり${left}日`}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?"のんだ✓":"のんだ"}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label="削除">×</button></li>);})}</ul>}
-                  <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder="お薬・サプリ名（例：抗生剤・ビタミン）"/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>日間</span><button className="yl-addbtn sm" onClick={addMedCourse}>＋ 登録</button></div>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.medsTitle")}</h2>
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
+                  <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder={t("meds.namePh")}/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>{t("med.daysUnit")}</span><button className="yl-addbtn sm" onClick={addMedCourse}>{t("common.register")}</button></div>
                 </section>
               )});
               if(curKind==="person")defs.push({key:"belong",el:(
                 <section className="yl-belong">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>持ち物（曜日ごと）</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("belong.title")}</h2>
                   {belongings.length>0&&(
                     <div className="yl-belong-week">
-                      {WEEKDAYS_JA.map((w,i)=>{const list=belongings.filter(b=>b.dow===i);if(!list.length)return null;return(
+                      {weekdaysShort.map((w,i)=>{const list=belongings.filter(b=>b.dow===i);if(!list.length)return null;return(
                         <div key={i} className="yl-belong-day">
                           <span className={"yl-belong-dow"+(i===0?" sun":i===6?" sat":"")}>{w}</span>
-                          <span className="yl-belong-items">{list.map(b=><span key={b.id} className="yl-belong-chip">{b.title}<button className="yl-belong-del" onClick={()=>removeBelonging(b.id)} aria-label="削除">×</button></span>)}</span>
+                          <span className="yl-belong-items">{list.map(b=><span key={b.id} className="yl-belong-chip">{b.title}<button className="yl-belong-del" onClick={()=>removeBelonging(b.id)} aria-label={t("a11y.delete")}>×</button></span>)}</span>
                         </div>
                       );})}
                     </div>
                   )}
-                  {belongings.length===0&&<p className="yl-routine-empty">右下の ＋ から持ち物を登録</p>}
+                  {belongings.length===0&&<p className="yl-routine-empty">{t("belong.empty")}</p>}
                 </section>
               )});
               if(curKind==="pet")defs.push({key:"foodreg",el:(
                 <section className="yl-foodreg">
-                  <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>フードの登録</h2></div>
-                  <p className="yl-set-desc">よく使うフードを登録しておく。</p>
+                  <div className="yl-toilet-head"><h2 className="yl-routine-title" style={{margin:0}}>{t("foodreg.title")}</h2></div>
+                  <p className="yl-set-desc">{t("foodreg.desc")}</p>
                   {foodDefs.length>0&&<ul className="yl-foodlist">{foodDefs.map(d=>(
                     <li key={d.id} className="yl-fooditem">
                       <span className={"yl-food-badge t-"+d.foodType}><Icon name={foodTypeMeta(d.foodType).ic} size={12}/> {foodTypeMeta(d.foodType).l}</span>
                       <span className="yl-food-body"><span className="yl-food-name">{d.name}</span>{[d.brand,foodDefText(d)].filter(Boolean).length>0&&<span className="yl-food-meta">{[d.brand,foodDefText(d)].filter(Boolean).join(" ・ ")}</span>}</span>
-                      <button className="yl-food-edit" onClick={()=>openFoodEdit(d)} aria-label="編集"><Icon name="pencil" size={13}/></button>
-                      <button className="yl-health-del" onClick={()=>askDelete(d.name,()=>removeFoodDef(d.id))} aria-label="削除">×</button>
+                      <button className="yl-food-edit" onClick={()=>openFoodEdit(d)} aria-label={t("a11y.edit")}><Icon name="pencil" size={13}/></button>
+                      <button className="yl-health-del" onClick={()=>askDelete(d.name,()=>removeFoodDef(d.id))} aria-label={t("a11y.delete")}>×</button>
                     </li>
                   ))}</ul>}
-                  <button className="yl-addbtn sm" style={{marginTop:foodDefs.length?4:8}} onClick={openFoodNew}><Icon name="plus" size={14}/> フード・食事を登録</button>
-                  {(activeMember.species==="dog"||activeMember.species==="cat")&&<button className="yl-addbtn sm" style={{marginTop:8}} onClick={openFoodCalc}><Icon name="scale" size={14}/> 1日のフード量を計算</button>}
+                  <button className="yl-addbtn sm" style={{marginTop:foodDefs.length?4:8}} onClick={openFoodNew}><Icon name="plus" size={14}/> {t("foodreg.addFood")}</button>
+                  {(activeMember.species==="dog"||activeMember.species==="cat")&&<button className="yl-addbtn sm" style={{marginTop:8}} onClick={openFoodCalc}><Icon name="scale" size={14}/> {t("foodreg.calc")}</button>}
                 </section>
               )});
               defs.push({key:"cards",el:(
@@ -5246,7 +5262,7 @@ function App(){
             })()}
           </>
         )}
-        <p className="yl-foot">大切な家族の毎日を、ひとつの場所で。</p>
+        <p className="yl-foot">{t("common.foot")}</p>
       </div>
 
       {isPersonMode&&!hubOpen&&!inputSheet&&(
@@ -5670,7 +5686,7 @@ function App(){
       {albumMoveOpen&&(()=>{const targets=spaces.filter(s=>s.id!==tab);return(
         <div className="yl-overlay" onClick={()=>setAlbumMoveOpen(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <h3 className="yl-modal-title">どの子へ移動しますか？</h3>
-          <p className="yl-modal-body" style={{margin:"0 0 14px"}}>選択した {(albumSel||[]).length}枚 の思い出を、まとめて移動します。</p>
+          <p className="yl-modal-body" style={{margin:"0 0 14px"}}>{t("album.moveDesc",{n:(albumSel||[]).length})}</p>
           {targets.length===0?(
             <p className="yl-empty" style={{marginBottom:14}}>移動先がいません。先に家族・うちのこを登録してください。</p>
           ):(
