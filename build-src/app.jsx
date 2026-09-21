@@ -1167,6 +1167,71 @@ async function saveNodeAsImage(node, filename, opts){
 // CSV 1セルのエスケープ（カンマ・改行・引用符を含む場合は "" で囲む）。
 const csvCell=(v)=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
 
+// ───────── 多言語化の基盤（英語パイロット。ja=ソース言語＝フォールバック / en=英語） ─────────
+// 方針：未翻訳キーは ja にフォールバックし、ja も無ければキー文字列を返す。UIテキストのみ対象で、
+// ユーザーの登録データ（名前・誕生日・体重など）は翻訳しない。ES・简体中文は同じ辞書にlanguage追加で拡張。
+const LOCALES={ja:"ja-JP",en:"en-US"};
+const MESSAGES={
+  ja:{
+    "nav.home":"ホーム","nav.calendar":"カレンダー","nav.settings":"設定","title.daily":"毎日",
+    "seg.daily":"毎日","seg.manage":"管理",
+    "home.family":"家族のようす","home.okNoRecord":"まだ記録がありません","home.okPet":"{name}は順調です","home.okGeneric":"順調です",
+    "level.ok":"順調","level.warn":"注意","level.alert":"要対応","level.none":"記録なし","level.memorial":"追悼",
+    "home.layerToday":"今日","home.calmTitle":"今日は安心です","home.calmNone":"ゆっくり過ごせる一日を",
+    "home.calmOnePet":"{emoji} {name}は穏やかです","home.calmOne":"{emoji} {name}も穏やかです","home.calmAll":"{emojis} みんな穏やかです",
+    "home.todayTodos":"今日やること","home.export":"出力","home.moreCount":"ほかに {n} 件",
+    "home.dontMiss":"見逃せないこと","home.upcoming":"直近の予定","home.quickCond":"今日のみんなの調子は？","home.quickCondBtn":"今日も元気",
+    "home.restock":"そろそろ買い足し","home.recap":"小さなふりかえり","home.statWeekCare":"今週やったケア","home.statTodayRoutine":"今日のルーティン",
+    "rel.today":"今日","rel.overdue":"やり残し","rel.tomorrow":"明日","rel.inDays":"あと{d}日","rel.dueInDays":"あと{d}日で期限","rel.overdueBy":"{d}日超過",
+    "settings.title":"設定","set.language":"言語","set.appearance":"外観・テーマ",
+    "theme.aria":"テーマ","theme.system":"端末に合わせる","theme.light":"ライト","theme.dark":"ダーク",
+    "set.notifications":"通知","set.notifDesc":"予定や誕生日を、通知でそっと。","set.notifOn":"通知は許可されています","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
+    "set.weather":"天気の地点","set.weatherDesc":"自宅も実家も公園も、気になる場所の天気を（最大{n}件）。","set.weatherMax":"最大{n}件まで。削除すると追加できます。","set.addLocation":"地点を追加",
+    "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）",
+    "common.save":"保存","common.cancel":"キャンセル","common.stop":"やめる",
+    "set.colorTime":"色が変わる時間（お世話・やることログ）","set.colorWarn":"黄色になるまで","set.colorAlert":"赤になるまで","set.colorNow":"現在：","set.colorDaySuffix":"日で","unit.dShort":"日",
+    "set.petSafety":"ペットの安全","safety.toxic":"誤食・中毒の危険物リスト","safety.emergency":"夜間・救急の備え","safety.disaster":"防災・避難の備え",
+    "set.backup":"バックアップ","set.backupDesc":"写真も記録も、この端末の中だけ。","set.backupDesc2":"書き出して保管を。","backup.export":"データを書き出す（写真ふくむ）","backup.exportCsv":"記録をCSVで書き出す","backup.restoreWarn":"読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？","backup.chooseFile":"ファイルを選んで復元","backup.restore":"バックアップから復元する",
+    "set.familyShare":"家族で共有","share.settings":"共有の設定",
+    "set.about":"アプリについて","about.help":"使い方・機能紹介","about.whatsNew":"変更点・新機能","about.tourAgain":"使い方をもう一度見る","about.aboutApp":"このアプリについて","about.reset":"データを消して最初から",
+  },
+  en:{
+    "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
+    "seg.daily":"Daily","seg.manage":"Manage",
+    "home.family":"Family","home.okNoRecord":"No records yet","home.okPet":"{name} is doing well","home.okGeneric":"Doing well",
+    "level.ok":"On track","level.warn":"Watch","level.alert":"Needs care","level.none":"No data","level.memorial":"In memory",
+    "home.layerToday":"Today","home.calmTitle":"All calm today","home.calmNone":"Wishing you an easy day",
+    "home.calmOnePet":"{emoji} {name} is settled","home.calmOne":"{emoji} {name} is settled too","home.calmAll":"{emojis} Everyone's settled",
+    "home.todayTodos":"Today's to-dos","home.export":"Export","home.moreCount":"{n} more",
+    "home.dontMiss":"Don't miss","home.upcoming":"Coming up","home.quickCond":"How's everyone today?","home.quickCondBtn":"All good",
+    "home.restock":"Time to restock","home.recap":"A little recap","home.statWeekCare":"Care this week","home.statTodayRoutine":"Today's routines",
+    "rel.today":"Today","rel.overdue":"Overdue","rel.tomorrow":"Tomorrow","rel.inDays":"In {d} days","rel.dueInDays":"Due in {d} days","rel.overdueBy":"{d}d overdue",
+    "settings.title":"Settings","set.language":"Language","set.appearance":"Appearance",
+    "theme.aria":"Theme","theme.system":"Match device","theme.light":"Light","theme.dark":"Dark",
+    "set.notifications":"Notifications","set.notifDesc":"Gentle nudges for schedules and birthdays.","set.notifOn":"Notifications are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
+    "set.weather":"Weather locations","set.weatherDesc":"Weather for home, family's place, the park — up to {n} spots.","set.weatherMax":"Up to {n} spots. Remove one to add more.","set.addLocation":"Add a location",
+    "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)",
+    "common.save":"Save","common.cancel":"Cancel","common.stop":"Cancel",
+    "set.colorTime":"When colors change (care & task log)","set.colorWarn":"Turns yellow after","set.colorAlert":"Turns red after","set.colorNow":"Now: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
+    "set.petSafety":"Pet safety","safety.toxic":"Toxic foods & hazards","safety.emergency":"Night & emergency prep","safety.disaster":"Disaster & evacuation prep",
+    "set.backup":"Backup","set.backupDesc":"Your photos and records stay on this device only. ","set.backupDesc2":"Export to keep them safe.","backup.export":"Export data (with photos)","backup.exportCsv":"Export records as CSV","backup.restoreWarn":"Restoring overwrites your current data with the backup. Continue?","backup.chooseFile":"Choose a file to restore","backup.restore":"Restore from backup",
+    "set.familyShare":"Family sharing","share.settings":"Sharing settings",
+    "set.about":"About","about.help":"How it works","about.whatsNew":"What's new","about.tourAgain":"Replay the walkthrough","about.aboutApp":"About this app","about.reset":"Erase data & start over",
+  },
+};
+function tr(lang,key,vars){
+  let s=(MESSAGES[lang]&&MESSAGES[lang][key]);
+  if(s==null)s=(MESSAGES.ja&&MESSAGES.ja[key]);
+  if(s==null)return key;
+  if(vars)s=s.replace(/\{(\w+)\}/g,(mm,k)=>vars[k]!=null?String(vars[k]):mm);
+  return s;
+}
+// 言語判定：navigator の言語を ja/en にマップ（該当なしは ja）。初回のみ利用。
+function detectLang(){try{const ls=navigator.languages||[navigator.language||"ja"];for(const l of ls){const p=(l||"").toLowerCase();if(p.startsWith("en"))return "en";if(p.startsWith("ja"))return "ja";}}catch(e){}return "ja";}
+// Intl.DateTimeFormat ベースの日付・曜日（絶対日付表示用の基盤。ja出力は既存表記に一致）。
+function fmtDateLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!m||!d)return"";const dt=new Date(y&&y>1900?y:2001,m-1,d);try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",lang==="ja"?{month:"long",day:"numeric"}:{month:"short",day:"numeric"}).format(dt);}catch(e){return`${m}/${d}`;}}
+function fmtWeekdayLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!y||!m||!d)return"";try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{weekday:"short"}).format(new Date(y,m-1,d));}catch(e){return"";}}
+
 const HOURS=Array.from({length:24},(_,i)=>i);
 const MINS=[0,5,10,15,20,25,30,35,40,45,50,55];
 // Lucide ベースのラインアイコン（絵文字置き換え用）。currentColor で色を継承。
@@ -1227,6 +1292,7 @@ const ICONS={
   frown:'<circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2M9 9h.01M15 9h.01"/>',
   angry:'<circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2M7.5 8 10 9M14 9l2.5-1M9 10h.01M15 10h.01"/>',
   moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v2M10 2v2M14 2v2"/>',
   trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/>',
   chevron:'<path d="M9 6l6 6-6 6"/>',
@@ -1551,6 +1617,20 @@ function App(){
   const[helpOpen,setHelpOpen]=useState(false);
   const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
   const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
+  // 表示言語（ja/en）。UI設定なのでローカル保存。既存ユーザー保護のため初回は日本語がデフォルト。
+  const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en")return s;}catch(e){}return "ja";});
+  useEffect(()=>{try{localStorage.setItem("loalife-lang-v1",lang);}catch(e){}try{document.documentElement.lang=lang;}catch(e){}},[lang]);
+  const t=useCallback((k,v)=>tr(lang,k,v),[lang]);
+  // 相対日付タグ（既存の日本語タグ文字列を解釈して各言語へ。ja選択時は元の文言と一致）。
+  const locTag=useCallback((tag)=>{
+    if(tag==null)return tag;
+    if(tag==="今日")return t("rel.today");
+    if(tag==="やり残し")return t("rel.overdue");
+    if(tag==="明日")return t("rel.tomorrow");
+    const m=/^あと(\d+)日(で期限)?$/.exec(tag);
+    if(m)return m[2]?t("rel.dueInDays",{d:m[1]}):t("rel.inDays",{d:m[1]});
+    return tag; // 時刻など（そのまま）
+  },[t]);
   // 外観テーマ（system=端末に追従 / light / dark）。UI設定なのでローカル保存。
   const[theme,setTheme]=useState(()=>{try{return localStorage.getItem("loalife-theme-v1")||"system";}catch(e){return "system";}});
   useEffect(()=>{
@@ -3734,10 +3814,10 @@ function App(){
         <header className="yl-head">
           {isPersonMode
             ?<div className="yl-headseg" data-tour="headseg" role="tablist">
-              <button role="tab" aria-selected={personSeg==="record"} className={"yl-headseg-btn"+(personSeg==="record"?" on":"")} onClick={()=>setPersonSeg("record")}><Icon name="record" size={15}/> 毎日</button>
-              <button role="tab" aria-selected={personSeg==="manage"} className={"yl-headseg-btn"+(personSeg==="manage"?" on":"")} onClick={()=>setPersonSeg("manage")}><Icon name="users" size={15}/> 管理</button>
+              <button role="tab" aria-selected={personSeg==="record"} className={"yl-headseg-btn"+(personSeg==="record"?" on":"")} onClick={()=>setPersonSeg("record")}><Icon name="record" size={15}/> {t("seg.daily")}</button>
+              <button role="tab" aria-selected={personSeg==="manage"} className={"yl-headseg-btn"+(personSeg==="manage"?" on":"")} onClick={()=>setPersonSeg("manage")}><Icon name="users" size={15}/> {t("seg.manage")}</button>
             </div>
-            :<h1 className="yl-title">{tab==="home"?"ホーム":tab==="cal"?"カレンダー":tab==="settings"?"設定":"毎日"}</h1>}
+            :<h1 className="yl-title">{tab==="home"?t("nav.home"):tab==="cal"?t("nav.calendar"):tab==="settings"?t("nav.settings"):t("title.daily")}</h1>}
           <div className="yl-head-actions">
             {/* 共有は Firebase 設定済みのときだけ表示（未設定だと押しても行き止まりのため隠す） */}
             {FB_READY&&(
@@ -3811,10 +3891,10 @@ function App(){
 
             {/* 家族一覧：ホームの主役。タップでその子のページへ（メンバー中心ナビの入口） */}
             {homeSpaces.length>0&&<section className="yl-fammain">
-              <h2 className="yl-sec-title">家族のようす</h2>
+              <h2 className="yl-sec-title">{t("home.family")}</h2>
               <div className="yl-statusgrid">{homeSpaces.map(s=>{
                 const lv=spaceLevel(s.id);const meta=LEVEL_META[lv];const concern=spaceConcern(s.id);
-                const okMsg=lv==="none"?"まだ記録がありません":(s.kind==="pet"?`${s.name}は順調です`:"順調です");
+                const okMsg=lv==="none"?t("home.okNoRecord"):(s.kind==="pet"?t("home.okPet",{name:s.name}):t("home.okGeneric"));
                 return(
                   <button key={s.id} className={"yl-statuscard lv-"+lv} onClick={()=>{setTab(s.id);setMemberSel(s.id);setPersonSeg("record");}}>
                     <span className="yl-status-emoji">{avatarNode(s,"md")}</span>
@@ -3822,7 +3902,7 @@ function App(){
                       <span className="yl-status-name">{s.name}</span>
                       <span className={"yl-status-line lv-"+lv}>{concern||okMsg}</span>
                     </span>
-                    <span className={"yl-level-badge lv-"+lv}>{meta.label}</span>
+                    <span className={"yl-level-badge lv-"+lv}>{t("level."+lv)}</span>
                     <span className="yl-status-go" aria-hidden="true">›</span>
                   </button>
                 );
@@ -3832,7 +3912,7 @@ function App(){
             {/* ━━ 第1層「今日」：3秒で今日やることが分かる場 ━━ */}
             {(()=>{const todayClear=homeData.todos.length===0&&homeData.bombs.length===0;return(
             <div className="yl-layer">
-              <span className="yl-layer-label">今日</span>
+              <span className="yl-layer-label">{t("home.layerToday")}</span>
               {todayBirthdays.length>0&&(
                 <section className="yl-bday-cheer">
                   <span className="yl-bday-cheer-ico">🎂</span>
@@ -3874,14 +3954,14 @@ function App(){
               {todayClear?(
                 <section className="yl-hero calm">
                   <div className="yl-hero-emoji"><Icon name="sun" size={40} stroke={1.7}/></div>
-                  <p className="yl-hero-title">今日は安心です</p>
-                  <p className="yl-hero-sub">{members.length===0?"ゆっくり過ごせる一日を":(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return `${pets[0].emoji} ${pets[0].name}は穏やかです`;if(members.length===1)return `${members[0].emoji} ${members[0].name}も穏やかです`;return `${members.map(m=>m.emoji).join("")} みんな穏やかです`;})()}</p>
+                  <p className="yl-hero-title">{t("home.calmTitle")}</p>
+                  <p className="yl-hero-sub">{members.length===0?t("home.calmNone"):(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return t("home.calmOnePet",{emoji:pets[0].emoji,name:pets[0].name});if(members.length===1)return t("home.calmOne",{emoji:members[0].emoji,name:members[0].name});return t("home.calmAll",{emojis:members.map(m=>m.emoji).join("")});})()}</p>
                 </section>
               ):homeData.todos.length>0&&(
                 <section className="yl-todo">
                   <div className="yl-dash-head">
-                    <h2 className="yl-sec-title" style={{marginBottom:0}}>今日やること</h2>
-                    <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート"><Icon name="calendar" size={14}/> 出力</button>
+                    <h2 className="yl-sec-title" style={{marginBottom:0}}>{t("home.todayTodos")}</h2>
+                    <button className="yl-cal-export" onClick={()=>setCalPicker({bulk:true})} title="カレンダーにエクスポート"><Icon name="calendar" size={14}/> {t("home.export")}</button>
                   </div>
                   {/* 「誰の」でまとめて横断表示。チェックで完了（種別ごとの既存ハンドラへ）。 */}
                   {todayByMember.map(g=>(
@@ -3897,10 +3977,10 @@ function App(){
                             <button className="yl-check" onClick={()=>completeHomeTask(t.key)} aria-label="完了にする"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
                             <span className="yl-todo-emoji"><Icon name={guessIcon(t.title)} size={16}/></span>
                             <span className="yl-todo-body" onClick={()=>setTab(g.space)}><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span></span>
-                            <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{t.tag}</span>
+                            <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{locTag(t.tag)}</span>
                           </li>
                         ))}
-                        {g.todos.length>5&&<li className="yl-todo-more2" onClick={()=>setTab(g.space)}>ほかに {g.todos.length-5} 件</li>}
+                        {g.todos.length>5&&<li className="yl-todo-more2" onClick={()=>setTab(g.space)}>{t("home.moreCount",{n:g.todos.length-5})}</li>}
                       </ul>
                     </div>
                   ))}
@@ -3908,13 +3988,13 @@ function App(){
               )}
               {homeData.bombs.length>0&&(
                 <section className="yl-bombs">
-                  <h2 className="yl-sec-title alert">見逃せないこと</h2>
+                  <h2 className="yl-sec-title alert">{t("home.dontMiss")}</h2>
                   <ul className="yl-bomb-list">
                     {homeData.bombs.slice(0,3).map(({item,d})=>(
                       <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
                         <span className="yl-bomb-emoji"><Icon name={guessIcon(item.title,"alert")} size={20}/></span>
                         <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
-                        <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?`${-d}日超過`:d===0?"今日":d===1?"明日":`あと${d}日`}</span>
+                        <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?t("rel.overdueBy",{d:-d}):d===0?t("rel.today"):d===1?t("rel.tomorrow"):t("rel.inDays",{d})}</span>
                       </li>
                     ))}
                   </ul>
@@ -3922,13 +4002,13 @@ function App(){
               )}
               {homeData.upcoming.length>0&&(
                 <section className="yl-upcoming">
-                  <p className="yl-upcoming-label"><Icon name="calendar" size={14}/> 直近の予定</p>
+                  <p className="yl-upcoming-label"><Icon name="calendar" size={14}/> {t("home.upcoming")}</p>
                   <ul className="yl-upcoming-list">
                     {homeData.upcoming.slice(0,4).map(u=>(
                       <li key={u.key} className="yl-upcoming-item" onClick={()=>setTab(u.space)}>
                         <span className="yl-upcoming-emoji"><Icon name={guessIcon(u.title,"calendar")} size={18}/></span>
                         <span className="yl-upcoming-text">{u.title}<span className="yl-upcoming-who"> ・{nameOf(u.space)}</span></span>
-                        <span className="yl-upcoming-tag">{u.tag}</span>
+                        <span className="yl-upcoming-tag">{locTag(u.tag)}</span>
                       </li>
                     ))}
                   </ul>
@@ -3937,13 +4017,13 @@ function App(){
               {/* ワンタップ記録：今日まだ体調記録が無いメンバーを、押すだけで完了できる導線 */}
               {(()=>{const need=homeSpaces.filter(s=>!todayHasCond(s.id));return need.length>0&&(
                 <section className="yl-quickcond">
-                  <p className="yl-quickcond-label">今日のみんなの調子は？</p>
+                  <p className="yl-quickcond-label">{t("home.quickCond")}</p>
                   <ul className="yl-quickcond-list">
                     {need.map(s=>(
                       <li key={s.id} className="yl-quickcond-item">
                         <span className="yl-quickcond-emoji">{avatarNode(s,"sm")}</span>
                         <span className="yl-quickcond-name">{s.name}</span>
-                        <button className="yl-quickcond-btn" onClick={()=>quickHealthy(s.id)}><Icon name="check" size={15}/> 今日も元気</button>
+                        <button className="yl-quickcond-btn" onClick={()=>quickHealthy(s.id)}><Icon name="check" size={15}/> {t("home.quickCondBtn")}</button>
                       </li>
                     ))}
                   </ul>
@@ -4091,7 +4171,7 @@ function App(){
                   )}
                   {restockList.length>0&&(
                     <section className="yl-supply">
-                      <h2 className="yl-sec-title">そろそろ買い足し</h2>
+                      <h2 className="yl-sec-title">{t("home.restock")}</h2>
                       <ul className="yl-supply-list">
                         {restockList.map(r=>(
                           <li key={r.kind+":"+r.id} className={"yl-supply-item "+r.tone}>
@@ -4108,7 +4188,7 @@ function App(){
                       </ul>
                     </section>
                   )}
-                  <section className="yl-summary"><h2 className="yl-sec-title light">小さなふりかえり</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">今週やったケア</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">今日のルーティン</span></div></div></section>
+                  <section className="yl-summary"><h2 className="yl-sec-title light">{t("home.recap")}</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">{t("home.statWeekCare")}</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">{t("home.statTodayRoutine")}</span></div></div></section>
                   {homeExpense.total===0&&restockList.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>記録はまだありません</p>}
                 </div>
               )}
@@ -4181,11 +4261,21 @@ function App(){
           </div>
         ):tab==="settings"?(
           <div className="yl-settings">
-            <h2 className="yl-sec-title" style={{marginBottom:12}}>設定</h2>
+            <h2 className="yl-sec-title" style={{marginBottom:12}}>{t("settings.title")}</h2>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="sun" size={16}/> 外観・テーマ</h3>
-              <div className="yl-theme-seg" role="group" aria-label="テーマ">
-                {[["system","端末に合わせる","phone"],["light","ライト","sun"],["dark","ダーク","moon"]].map(([v,label,ic])=>(
+              <h3 className="yl-set-title"><Icon name="globe" size={16}/> {t("set.language")}</h3>
+              <div className="yl-theme-seg" role="group" aria-label={t("set.language")}>
+                {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"]].map(([v,label,flag])=>(
+                  <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>setLang(v)} aria-pressed={lang===v}>
+                    <span aria-hidden="true">{flag}</span> <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title"><Icon name="sun" size={16}/> {t("set.appearance")}</h3>
+              <div className="yl-theme-seg" role="group" aria-label={t("theme.aria")}>
+                {[["system",t("theme.system"),"phone"],["light",t("theme.light"),"sun"],["dark",t("theme.dark"),"moon"]].map(([v,label,ic])=>(
                   <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>setTheme(v)} aria-pressed={theme===v}>
                     <Icon name={ic} size={16}/> <span>{label}</span>
                   </button>
@@ -4193,78 +4283,78 @@ function App(){
               </div>
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="bell" size={16}/> 通知</h3>
-              <p className="yl-set-desc">予定や誕生日を、通知でそっと。</p>
-              {notifPerm==="granted"?<p className="yl-set-ok"><Icon name="check" size={13}/> 通知は許可されています</p>:notifPerm==="denied"?<p className="yl-set-warn">端末の設定で通知がオフになっています</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>通知を許可する</button>}
+              <h3 className="yl-set-title"><Icon name="bell" size={16}/> {t("set.notifications")}</h3>
+              <p className="yl-set-desc">{t("set.notifDesc")}</p>
+              {notifPerm==="granted"?<p className="yl-set-ok"><Icon name="check" size={13}/> {t("set.notifOn")}</p>:notifPerm==="denied"?<p className="yl-set-warn">{t("set.notifDenied")}</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>{t("set.notifAllow")}</button>}
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="thermometer" size={16}/> 天気の地点</h3>
-              <p className="yl-set-desc">自宅も実家も公園も、気になる場所の天気を（最大{LOC_MAX}件）。</p>
+              <h3 className="yl-set-title"><Icon name="thermometer" size={16}/> {t("set.weather")}</h3>
+              <p className="yl-set-desc">{t("set.weatherDesc",{n:LOC_MAX})}</p>
               {weatherLocs.length>0&&<ul className="yl-wxmanage">{weatherLocs.map((l,i)=>(
                 <li key={l.id} className="yl-wxmrow">
                   {wxRename&&wxRename.id===l.id?(
-                    <span className="yl-wxm-edit"><input className="yl-input sm" value={wxRename.val} onChange={e=>setWxRename({id:l.id,val:e.target.value})} onKeyDown={e=>e.key==="Enter"&&(()=>{renamePlace(l.id,wxRename.val);setWxRename(null);})()} placeholder="地点名（例：自宅・実家・軽井沢）" autoFocus/><button className="yl-addbtn sm" onClick={()=>{renamePlace(l.id,wxRename.val);setWxRename(null);}}>保存</button><button className="yl-modal-cancel" onClick={()=>setWxRename(null)}>キャンセル</button></span>
+                    <span className="yl-wxm-edit"><input className="yl-input sm" value={wxRename.val} onChange={e=>setWxRename({id:l.id,val:e.target.value})} onKeyDown={e=>e.key==="Enter"&&(()=>{renamePlace(l.id,wxRename.val);setWxRename(null);})()} placeholder={t("wx.namePlaceholder")} autoFocus/><button className="yl-addbtn sm" onClick={()=>{renamePlace(l.id,wxRename.val);setWxRename(null);}}>{t("common.save")}</button><button className="yl-modal-cancel" onClick={()=>setWxRename(null)}>{t("common.cancel")}</button></span>
                   ):(<>
-                    <span className="yl-wxm-name"><Icon name="pin" size={13}/> <span className="yl-wxm-nametext">{l.name}</span>{i===0&&<span className="yl-wxm-badge">先頭</span>}</span>
+                    <span className="yl-wxm-name"><Icon name="pin" size={13}/> <span className="yl-wxm-nametext">{l.name}</span>{i===0&&<span className="yl-wxm-badge">{t("wx.first")}</span>}</span>
                     <span className="yl-wxm-acts">
-                      <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,-1)} disabled={i===0} aria-label="上へ">↑</button>
-                      <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,1)} disabled={i===weatherLocs.length-1} aria-label="下へ">↓</button>
-                      {i!==0&&<button className="yl-wxm-btn" onClick={()=>pinPlace(l.id)} aria-label="先頭に固定">★</button>}
-                      <button className="yl-wxm-btn" onClick={()=>setWxRename({id:l.id,val:l.name})} aria-label="名前を変更"><Icon name="pencil" size={13}/></button>
-                      <button className="yl-wxm-btn del" onClick={()=>removePlace(l.id)} aria-label="削除">×</button>
+                      <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,-1)} disabled={i===0} aria-label={t("wx.moveUp")}>↑</button>
+                      <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,1)} disabled={i===weatherLocs.length-1} aria-label={t("wx.moveDown")}>↓</button>
+                      {i!==0&&<button className="yl-wxm-btn" onClick={()=>pinPlace(l.id)} aria-label={t("wx.pinTop")}>★</button>}
+                      <button className="yl-wxm-btn" onClick={()=>setWxRename({id:l.id,val:l.name})} aria-label={t("wx.rename")}><Icon name="pencil" size={13}/></button>
+                      <button className="yl-wxm-btn del" onClick={()=>removePlace(l.id)} aria-label={t("wx.delete")}>×</button>
                     </span>
                   </>)}
                 </li>
               ))}</ul>}
-              {weatherLocs.length<LOC_MAX?<button className="yl-addbtn sm" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={14}/> 地点を追加</button>:<p className="yl-set-desc">最大{LOC_MAX}件まで。削除すると追加できます。</p>}
+              {weatherLocs.length<LOC_MAX?<button className="yl-addbtn sm" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={14}/> {t("set.addLocation")}</button>:<p className="yl-set-desc">{t("set.weatherMax",{n:LOC_MAX})}</p>}
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="clock" size={16}/> 色が変わる時間（お世話・やることログ）</h3>
+              <h3 className="yl-set-title"><Icon name="clock" size={16}/> {t("set.colorTime")}</h3>
               <div className="yl-colordays">
-                <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> 黄色になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>日</span></label>
-                <label className="yl-colordays-field"><span className="yl-legend-dot alert"/> 赤になるまで<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>日</span></label>
+                <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> {t("set.colorWarn")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>{t("unit.dShort")}</span></label>
+                <label className="yl-colordays-field"><span className="yl-legend-dot alert"/> {t("set.colorAlert")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>{t("unit.dShort")}</span></label>
               </div>
-              <p className="yl-set-desc" style={{marginTop:6}}>現在：{colorDays.warn}日で<span className="yl-legend-dot warn"/>・{colorDays.alert}日で<span className="yl-legend-dot alert"/></p>
+              <p className="yl-set-desc" style={{marginTop:6}}>{t("set.colorNow")}{colorDays.warn}{t("set.colorDaySuffix")}<span className="yl-legend-dot warn"/>・{colorDays.alert}{t("set.colorDaySuffix")}<span className="yl-legend-dot alert"/></p>
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="alert" size={16}/> ペットの安全</h3>
+              <h3 className="yl-set-title"><Icon name="alert" size={16}/> {t("set.petSafety")}</h3>
               <div className="yl-set-actions">
-                <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> 誤食・中毒の危険物リスト</button>
-                <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> 夜間・救急の備え</button>
-                <button className="yl-addbtn sm" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> 防災・避難の備え</button>
+                <button className="yl-addbtn sm" onClick={()=>{setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={14}/> {t("safety.toxic")}</button>
+                <button className="yl-addbtn sm" onClick={()=>setEmergencyOpen(true)}><Icon name="activity" size={14}/> {t("safety.emergency")}</button>
+                <button className="yl-addbtn sm" onClick={()=>setDisasterOpen(true)}><Icon name="home" size={14}/> {t("safety.disaster")}</button>
               </div>
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="download" size={16}/> バックアップ</h3>
-              <p className="yl-set-desc">写真も記録も、この端末の中だけ。<span className="yl-nowrap">書き出して保管を。</span></p>
+              <h3 className="yl-set-title"><Icon name="download" size={16}/> {t("set.backup")}</h3>
+              <p className="yl-set-desc">{t("set.backupDesc")}<span className="yl-nowrap">{t("set.backupDesc2")}</span></p>
               <div className="yl-set-actions">
-                <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> データを書き出す（写真ふくむ）</button>
-                <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> 記録をCSVで書き出す</button>
+                <button className="yl-addbtn sm" onClick={exportData}><Icon name="download" size={14}/> {t("backup.export")}</button>
+                <button className="yl-addbtn sm" onClick={exportCSV}><Icon name="filetext" size={14}/> {t("backup.exportCsv")}</button>
                 {confirmRestore?(
                   <div className="yl-restore-confirm">
-                    <p className="yl-set-warn" style={{margin:"0 0 8px"}}>読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？</p>
-                    <label className="yl-addbtn sm" style={{display:"inline-flex",cursor:"pointer"}}><Icon name="folder" size={14}/> ファイルを選んで復元<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
-                    <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>やめる</button>
+                    <p className="yl-set-warn" style={{margin:"0 0 8px"}}>{t("backup.restoreWarn")}</p>
+                    <label className="yl-addbtn sm" style={{display:"inline-flex",cursor:"pointer"}}><Icon name="folder" size={14}/> {t("backup.chooseFile")}<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
+                    <button className="yl-modal-cancel" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>{t("common.stop")}</button>
                   </div>
                 ):(
-                  <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> バックアップから復元する</button>
+                  <button className="yl-reset" onClick={()=>setConfirmRestore(true)}><Icon name="folder" size={14}/> {t("backup.restore")}</button>
                 )}
               </div>
             </section>
             {FB_READY&&(
               <section className="yl-set-sec">
-                <h3 className="yl-set-title"><Icon name="users" size={16}/> 家族で共有</h3>
-                <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>共有の設定</button></div>
+                <h3 className="yl-set-title"><Icon name="users" size={16}/> {t("set.familyShare")}</h3>
+                <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>{t("share.settings")}</button></div>
               </section>
             )}
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="note" size={16}/> アプリについて</h3>
+              <h3 className="yl-set-title"><Icon name="note" size={16}/> {t("set.about")}</h3>
               <div className="yl-set-actions">
-                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>使い方・機能紹介</button>
-                <button className="yl-addbtn sm" onClick={()=>setWhatsNewOpen(true)}><Icon name="sparkles" size={14}/> 変更点・新機能</button>
-                <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> 使い方をもう一度見る</button>
-                <button className="yl-addbtn sm" onClick={()=>setAboutOpen(true)}><Icon name="note" size={14}/> このアプリについて</button>
-                <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ データを消して最初から</button>
+                <button className="yl-addbtn sm" onClick={()=>setHelpOpen(true)}>{t("about.help")}</button>
+                <button className="yl-addbtn sm" onClick={()=>setWhatsNewOpen(true)}><Icon name="sparkles" size={14}/> {t("about.whatsNew")}</button>
+                <button className="yl-addbtn sm" onClick={()=>{resetGuides();startTour();}}><Icon name="sparkles" size={14}/> {t("about.tourAgain")}</button>
+                <button className="yl-addbtn sm" onClick={()=>setAboutOpen(true)}><Icon name="note" size={14}/> {t("about.aboutApp")}</button>
+                <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ {t("about.reset")}</button>
               </div>
             </section>
           </div>
@@ -5044,9 +5134,9 @@ function App(){
       {/* 下部タブナビゲーション（常時表示・行動で分類） */}
       {!onboarding&&(()=>{
         const items=[
-          {key:"home",icon:"home",label:"ホーム",on:tab==="home"||isPersonMode,act:()=>setTab("home")},
-          {key:"cal",icon:"calendar",label:"カレンダー",on:tab==="cal",act:()=>setTab("cal")},
-          {key:"settings",icon:"settings",label:"設定",on:tab==="settings",act:()=>setTab("settings")},
+          {key:"home",icon:"home",label:t("nav.home"),on:tab==="home"||isPersonMode,act:()=>setTab("home")},
+          {key:"cal",icon:"calendar",label:t("nav.calendar"),on:tab==="cal",act:()=>setTab("cal")},
+          {key:"settings",icon:"settings",label:t("nav.settings"),on:tab==="settings",act:()=>setTab("settings")},
         ];
         return(
           <nav className="yl-bottomnav">
