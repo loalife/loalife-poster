@@ -228,13 +228,13 @@ const SEC_DEF={
 const SECSEG=Object.fromEntries(Object.entries(SEC_DEF).flatMap(([seg,keys])=>keys.map(k=>[k,seg])));
 // 迷子ポスターの「見かけた場合のお願い」定型文。性格(temper)に応じて自動で切り替える。
 const PLEA_PRESETS=[
-  {key:"normal",label:"ふつう",text:"見かけた方は追いかけず、見かけた場所・時間をご連絡ください。"},
-  {key:"timid",label:"怖がり・警戒心が強い",text:"怖がって逃げる可能性があります。追いかけず、距離を保ったままご連絡ください。"},
-  {key:"friendly",label:"人なつっこい",text:"人なつっこい子です。可能なら やさしく声をかけて保護し、ご連絡ください。"},
+  {key:"normal",label:"ふつう",text:"見かけた方は追いかけず、見かけた場所・時間をご連絡ください。",textEn:"If you see them, please don't chase — just tell us where and when you saw them."},
+  {key:"timid",label:"怖がり・警戒心が強い",text:"怖がって逃げる可能性があります。追いかけず、距離を保ったままご連絡ください。",textEn:"They may get scared and run. Please don't chase; keep your distance and contact us."},
+  {key:"friendly",label:"人なつっこい",text:"人なつっこい子です。可能なら やさしく声をかけて保護し、ご連絡ください。",textEn:"They're friendly. If you can, gently call to them, keep them safe, and contact us."},
 ];
 // 性格が登録されていれば、それに合う定型文を初期選択にする（ユーザーは変更可）。
 const pleaKeyFor=(m)=>{const li=m&&m.lostInfo||{};if(li.pleaKey)return li.pleaKey;const t=li.temper||"";if(t==="timid")return"timid";if(t==="friendly")return"friendly";return"normal";};
-const pleaTextOf=(m)=>{const k=pleaKeyFor(m);return(PLEA_PRESETS.find(p=>p.key===k)||PLEA_PRESETS[0]).text;};
+const pleaTextOf=(m)=>{const k=pleaKeyFor(m);const pr=PLEA_PRESETS.find(p=>p.key===k)||PLEA_PRESETS[0];return APP_LANG==="ja"?pr.text:pr.textEn;};
 const TEMPER_OPTS=[{k:"",l:"未設定"},{k:"friendly",l:"人なつっこい"},{k:"normal",l:"ふつう"},{k:"timid",l:"怖がり"}];
 // 連絡先が電話番号っぽいか（国内・数字10〜11桁、先頭0）。ポスターで大きな発信ボタンにするか判定。
 const isPhoneLike=(s)=>{const d=(s||"").replace(/[^0-9]/g,"");return d.length>=10&&d.length<=11&&d[0]==="0";};
@@ -1302,6 +1302,7 @@ const MESSAGES={
     "disaster.title":"防災・避難の備え","disaster.alert":"災害時はペットとの「同行避難」が基本です。日ごろの備えと、避難先の事前確認をしておきましょう。","disaster.shelterTitle":"わが家の避難先","disaster.registerShelter":"＋ 避難先を登録","disaster.shelterEmpty":"避難先や預け先を、家族で共有。カードにも残ります。","disaster.shelterFallback":"避難先","disaster.prepTitle":"持ち出し・備蓄（ペット用）","disaster.tipsHead":"いざという時のポイント","disaster.foot":"※ 指定避難所のペット受け入れ可否・場所は自治体ごとに異なります。お住まいの自治体・自主防災組織で必ず事前にご確認ください。",
     "safety.sectionLabel":"いざという時","safety.sectionNote":"登録済みの情報から、迷子ポスターや緊急カードをすぐ作れます。","safety.toxicShort":"誤食・中毒","safety.emergencyShort":"夜間・救急","safety.emergencyCard":"緊急カード","safety.lostPoster":"迷子ポスター","safety.disasterShort":"防災・避難",
     "common.saveImage":"画像で保存","common.print":"印刷","common.addPhotoMax4":"写真を追加（最大4枚）","ecard.meFallback":"わたし","ecard.allergy":"アレルギー・禁忌","ecard.meds":"服薬中","ecard.contacts":"緊急連絡先・かかりつけ","ecard.contactsEmpty":"※「大切な情報」に連絡先を登録すると、ここに表示されます","ecard.addInfo":"連絡先・情報を追加","ecard.note":"※もしもの時に見せる・印刷して持たせる用。データは端末内保存なので電波がなくても表示できます。","ecard.fileSuffix":"緊急カード",
+    "lost.step0":"場所・日時","lost.step1":"ペット情報","lost.step2":"ポスター","lost.stepFmt":"{n}. {lab}","lost.step0LeadBold":"まず、落ち着いて。","lost.step0LeadRest":"最後に見かけた場所と時間を入れましょう。あとから直せます。","lost.placeLabel":"最後に見かけた場所","lost.placeHint":"迷子になった可能性がある場所を入れてください","lost.placePh":"例：〇〇公園の入口付近 ／ 〇〇駅前","lost.placeNoteLabel":"場所の補足（任意）","lost.placeNotePh":"例：コンビニの向かい ／ 東口","lost.whenLabel":"見かけた日時","lost.whenPh":"例：9月18日 18時ごろ","lost.step1Lead":"この内容でポスターを作ります。写真と特徴を確認してください。","lost.featType":"種類","lost.featCoat":"毛色","lost.featGender":"性別","lost.featAge":"年齢","lost.featWeight":"体重","lost.featCollar":"首輪・ハーネス","lost.collarLabel":"首輪・ハーネス（任意）","lost.collarPh":"例：赤い首輪・迷子札あり","lost.situationLabel":"逃げたときの様子（任意）","lost.situationPh":"例：花火に驚いてリードが外れた","lost.temperLabel":"性格（お願い文を自動で調整）","lost.noteLabel":"その他 伝えたいこと（任意）","lost.notePh":"例：SNSでも拡散のご協力をお願いします","lost.registerContact":"連絡先を登録（見つけた人からの連絡に必要）","lost.found":"発見済み","lost.headDog":"迷子犬を探しています","lost.headOther":"さがしています","lost.sightPlace":"最後に目撃された場所","lost.sightWhen":"目撃日時","lost.situationTitle":"逃げたときの様子","lost.contactPlea":"見かけた方は、こちらまでご連絡ください","lost.contactEmpty":"※「大切な情報」に緊急連絡先を登録すると、ここに表示されます","lost.action":"【重要】もし見かけたら、この番号にすぐお電話ください。追いかけないでください。","lost.footNote":"追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。","lost.afterTitle":"できました。次に、みんなに知らせましょう。","lost.foundToggle":"見つかった（ポスターに「発見済み」を表示）","lost.privacy":"住所やマイクロチップ番号は載せません。連絡先は登録済みのものだけ表示されます。","lost.nextPet":"次へ：ペット情報","lost.back":"もどる","lost.makePoster":"ポスターを作成","lost.share":"共有","lost.fileSuffix":"迷子","temper.unset":"未設定","temper.friendly":"人なつっこい","temper.normal":"ふつう","temper.timid":"怖がり",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1388,6 +1389,7 @@ const MESSAGES={
     "disaster.title":"Disaster & evacuation prep","disaster.alert":"In a disaster, evacuating together with your pet is the norm. Prepare day to day and check your evacuation site in advance.","disaster.shelterTitle":"Our evacuation site","disaster.registerShelter":"＋ Register a site","disaster.shelterEmpty":"Share evacuation and sitter options with family. Kept on cards too.","disaster.shelterFallback":"Evacuation site","disaster.prepTitle":"Go-bag & stockpile (for pets)","disaster.tipsHead":"Key points when it counts","disaster.foot":"※ Whether designated shelters accept pets, and where, varies by municipality. Always confirm in advance with your local government or neighborhood disaster group.",
     "safety.sectionLabel":"In an emergency","safety.sectionNote":"From your saved info, quickly make a lost-pet poster or emergency card.","safety.toxicShort":"Toxic & poisoning","safety.emergencyShort":"Night & emergency","safety.emergencyCard":"Emergency card","safety.lostPoster":"Lost-pet poster","safety.disasterShort":"Disaster & evacuation",
     "common.saveImage":"Save as image","common.print":"Print","common.addPhotoMax4":"Add photos (up to 4)","ecard.meFallback":"Me","ecard.allergy":"Allergies / contraindications","ecard.meds":"On medication","ecard.contacts":"Emergency contacts / regular vet","ecard.contactsEmpty":"※ Register contacts in “Important info” and they'll show here","ecard.addInfo":"Add contacts / info","ecard.note":"※ To show or print and carry for emergencies. Data is stored on your device, so it shows even without signal.","ecard.fileSuffix":"emergency-card",
+    "lost.step0":"Place & time","lost.step1":"Pet info","lost.step2":"Poster","lost.stepFmt":"{n}. {lab}","lost.step0LeadBold":"First, stay calm.","lost.step0LeadRest":" Enter where and when they were last seen. You can fix it later.","lost.placeLabel":"Where last seen","lost.placeHint":"Enter where they may have gone missing","lost.placePh":"e.g. near the park entrance / by the station","lost.placeNoteLabel":"Place notes (optional)","lost.placeNotePh":"e.g. across from the convenience store / east exit","lost.whenLabel":"Date/time seen","lost.whenPh":"e.g. around 6pm on Sep 18","lost.step1Lead":"We'll make the poster from this. Check the photo and details.","lost.featType":"Type","lost.featCoat":"Coat","lost.featGender":"Sex","lost.featAge":"Age","lost.featWeight":"Weight","lost.featCollar":"Collar / harness","lost.collarLabel":"Collar / harness (optional)","lost.collarPh":"e.g. red collar with ID tag","lost.situationLabel":"How they got out (optional)","lost.situationPh":"e.g. startled by fireworks, slipped the leash","lost.temperLabel":"Temperament (auto-adjusts the plea)","lost.noteLabel":"Anything else (optional)","lost.notePh":"e.g. please help share on social media","lost.registerContact":"Register a contact (needed for finders to reach you)","lost.found":"Found","lost.headDog":"Lost dog — please help","lost.headOther":"Please help find","lost.sightPlace":"Last seen at","lost.sightWhen":"Seen on","lost.situationTitle":"How they got out","lost.contactPlea":"If you see them, please contact us here","lost.contactEmpty":"※ Register an emergency contact in “Important info” and it'll show here","lost.action":"[Important] If you see them, please call this number right away. Please don't chase them.","lost.footNote":"Please don't chase — let us know where and when you saw them. Print or show on screen; works without signal.","lost.afterTitle":"Done. Next, let's spread the word.","lost.foundToggle":"Found (show “Found” on the poster)","lost.privacy":"We don't include your address or microchip number. Only saved contacts are shown.","lost.nextPet":"Next: pet info","lost.back":"Back","lost.makePoster":"Make poster","lost.share":"Share","lost.fileSuffix":"lost","temper.unset":"Not set","temper.friendly":"Friendly","temper.normal":"Normal","temper.timid":"Timid",
   },
 };
 function tr(lang,key,vars){
@@ -6106,12 +6108,12 @@ function App(){
         const wl=items.filter(x=>x.space===tab&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
         // 特徴を「アイコン＋見出し＋内容」の縦リストに整理（値のあるものだけ）
         const featRows=[
-          {ic:"paw",label:"種類",value:[isDog?"犬":m.species==="cat"?"猫":"",m.breed].filter(Boolean).join("・")},
-          {ic:"palette",label:"毛色",value:m.coat},
-          {ic:"heart",label:"性別",value:m.gender},
-          {ic:"cake",label:"年齢",value:m.birthday&&ageLabel(m.birthday)},
-          {ic:"scale",label:"体重",value:wl&&`${wl.weight}${wl.wunit||"kg"}`},
-          {ic:"tag",label:"首輪・ハーネス",value:li.collar},
+          {ic:"paw",label:t("lost.featType"),value:[isDog?"犬":m.species==="cat"?"猫":"",m.breed].filter(Boolean).join("・")},
+          {ic:"palette",label:t("lost.featCoat"),value:m.coat},
+          {ic:"heart",label:t("lost.featGender"),value:m.gender},
+          {ic:"cake",label:t("lost.featAge"),value:m.birthday&&ageLabel(m.birthday)},
+          {ic:"scale",label:t("lost.featWeight"),value:wl&&`${wl.weight}${wl.wunit||"kg"}`},
+          {ic:"tag",label:t("lost.featCollar"),value:li.collar},
         ].filter(r=>r.value);
         // メイン写真＋追加写真をまとめて横並びギャラリーに（実写を大きく見せる）
         const gallery=[];if(av)gallery.push({pid:m.avatar,src:av,poster:false});(m.posterPhotos||[]).forEach(pid=>{if(photos[pid])gallery.push({pid,src:photos[pid],poster:true});});
@@ -6124,77 +6126,77 @@ function App(){
         <div className="yl-overlay" onClick={()=>setLostOpen(false)}>
           <div className="yl-modal vetmodal yl-lostflow" onClick={e=>e.stopPropagation()}>
             <div className="yl-lostflow-steps yl-noprint">
-              {["場所・日時","ペット情報","ポスター"].map((lab,i)=><span key={i} className={"yl-lostflow-step"+(lostStep===i?" on":"")+(lostStep>i?" done":"")}>{i+1}. {lab}</span>)}
+              {[t("lost.step0"),t("lost.step1"),t("lost.step2")].map((lab,i)=><span key={i} className={"yl-lostflow-step"+(lostStep===i?" on":"")+(lostStep>i?" done":"")}>{t("lost.stepFmt",{n:i+1,lab})}</span>)}
             </div>
             {lostStep===0&&<div className="yl-lostflow-body yl-noprint">
-              <p className="yl-lostflow-lead"><b>まず、落ち着いて。</b>最後に見かけた場所と時間を入れましょう。あとから直せます。</p>
-              <label className="yl-opt">最後に見かけた場所<span className="yl-opt-hint">迷子になった可能性がある場所を入れてください</span><input className="yl-input sm" autoFocus value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder="例：〇〇公園の入口付近 ／ 〇〇駅前"/></label>
-              <label className="yl-opt">場所の補足（任意）<input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder="例：コンビニの向かい ／ 東口"/></label>
-              <label className="yl-opt">見かけた日時<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder="例：9月18日 18時ごろ"/></label>
+              <p className="yl-lostflow-lead"><b>{t("lost.step0LeadBold")}</b>{t("lost.step0LeadRest")}</p>
+              <label className="yl-opt">{t("lost.placeLabel")}<span className="yl-opt-hint">{t("lost.placeHint")}</span><input className="yl-input sm" autoFocus value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder={t("lost.placePh")}/></label>
+              <label className="yl-opt">{t("lost.placeNoteLabel")}<input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder={t("lost.placeNotePh")}/></label>
+              <label className="yl-opt">{t("lost.whenLabel")}<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder={t("lost.whenPh")}/></label>
             </div>}
             {lostStep===1&&<div className="yl-lostflow-body yl-noprint">
-              <p className="yl-lostflow-lead">この内容でポスターを作ります。写真と特徴を確認してください。</p>
+              <p className="yl-lostflow-lead">{t("lost.step1Lead")}</p>
               <div className="yl-lostflow-idcard">
                 {gallery.length>0
                   ? <div className={"yl-lost-gallery n"+Math.min(gallery.length,4)}>{gallery.map(g=><span key={g.pid} className="yl-lost-gphoto"><img src={g.src} alt=""/>{g.poster&&<button className="yl-lost-photodel" onClick={()=>removePosterPhoto(m.id,g.pid)} aria-label="削除">×</button>}</span>)}</div>
                   : <div className="yl-lost-photo"><span className="yl-lost-emoji">{m.emoji||"🐶"}</span></div>}
-                <label className="yl-lost-addphoto"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
+                <label className="yl-lost-addphoto"><Icon name="camera" size={14}/> {t("common.addPhotoMax4")}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
                 <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
                 {featRows.length>0&&<ul className="yl-lost-featlist">{featRows.map((f,i)=><li key={i} className="yl-lost-featitem"><span className="yl-lost-featic"><Icon name={f.ic} size={16}/></span><span className="yl-lost-featlabel">{f.label}</span><span className="yl-lost-featval">{f.value}</span></li>)}</ul>}
               </div>
-              <label className="yl-opt">首輪・ハーネス（任意）<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder="例：赤い首輪・迷子札あり"/></label>
-              <label className="yl-opt">逃げたときの様子（任意）<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder="例：花火に驚いてリードが外れた"/></label>
-              <div className="yl-opt">性格（お願い文を自動で調整）<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{o.l}</button>)}</span></div>
-              <label className="yl-opt">その他 伝えたいこと（任意）<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder="例：SNSでも拡散のご協力をお願いします"/></label>
-              {contacts.length===0&&<button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> 連絡先を登録（見つけた人からの連絡に必要）</button>}
+              <label className="yl-opt">{t("lost.collarLabel")}<input className="yl-input sm" value={li.collar||""} onChange={e=>setLostField(m.id,{collar:e.target.value})} placeholder={t("lost.collarPh")}/></label>
+              <label className="yl-opt">{t("lost.situationLabel")}<input className="yl-input sm" value={li.situation||""} onChange={e=>setLostField(m.id,{situation:e.target.value})} placeholder={t("lost.situationPh")}/></label>
+              <div className="yl-opt">{t("lost.temperLabel")}<span className="yl-seg-mini">{TEMPER_OPTS.map(o=><button key={o.k} className={"yl-seg-mini-btn"+((li.temper||"")===o.k?" on":"")} onClick={()=>setLostField(m.id,{temper:o.k,pleaKey:o.k||"normal"})}>{t("temper."+(o.k||"unset"))}</button>)}</span></div>
+              <label className="yl-opt">{t("lost.noteLabel")}<input className="yl-input sm" value={li.note||""} onChange={e=>setLostField(m.id,{note:e.target.value})} placeholder={t("lost.notePh")}/></label>
+              {contacts.length===0&&<button className="yl-lost-editlink" onClick={()=>{setLostOpen(false);setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setTrayOpen(true);}}><Icon name="plus" size={13}/> {t("lost.registerContact")}</button>}
             </div>}
             {lostStep===2&&<>
             <div className={"yl-lost yl-lost-poster"+(found?" found":"")}>
-              {found&&<p className="yl-lost-found"><Icon name="check" size={16}/> 発見済み</p>}
-              <p className="yl-lost-head">{isDog?"迷子犬を探しています":"さがしています"}</p>
+              {found&&<p className="yl-lost-found"><Icon name="check" size={16}/> {t("lost.found")}</p>}
+              <p className="yl-lost-head">{isDog?t("lost.headDog"):t("lost.headOther")}</p>
               {gallery.length>0
-                ? <div className={"yl-lost-gallery n"+Math.min(gallery.length,4)}>{gallery.map(g=><span key={g.pid} className="yl-lost-gphoto"><img src={g.src} alt=""/>{g.poster&&<button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(m.id,g.pid)} aria-label="削除">×</button>}</span>)}</div>
+                ? <div className={"yl-lost-gallery n"+Math.min(gallery.length,4)}>{gallery.map(g=><span key={g.pid} className="yl-lost-gphoto"><img src={g.src} alt=""/>{g.poster&&<button className="yl-lost-photodel yl-noprint" onClick={()=>removePosterPhoto(m.id,g.pid)} aria-label={t("a11y.delete")}>×</button>}</span>)}</div>
                 : <div className="yl-lost-photo"><span className="yl-lost-emoji">{m.emoji||"🐶"}</span></div>}
-              <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> 写真を追加（最大4枚）<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
+              <label className="yl-lost-addphoto yl-noprint"><Icon name="camera" size={14}/> {t("common.addPhotoMax4")}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addPosterPhoto(m.id,e)}/></label>
               <p className="yl-lost-name">{m.name}{m.nickname?`（${m.nickname}）`:""}</p>
               {featRows.length>0&&<ul className="yl-lost-featlist">{featRows.map((f,i)=><li key={i} className="yl-lost-featitem"><span className="yl-lost-featic"><Icon name={f.ic} size={16}/></span><span className="yl-lost-featlabel">{f.label}</span><span className="yl-lost-featval">{f.value}</span></li>)}</ul>}
               {(li.place||li.when)&&<div className="yl-lost-sighting">
                 {li.place&&<div className="yl-lost-place">
-                  <span className="yl-lost-place-label"><Icon name="pin" size={14}/> 最後に目撃された場所</span>
+                  <span className="yl-lost-place-label"><Icon name="pin" size={14}/> {t("lost.sightPlace")}</span>
                   <span className="yl-lost-place-main">{li.place}</span>
                   {li.placeNote&&<span className="yl-lost-place-note">{li.placeNote}</span>}
                 </div>}
                 {li.when&&<div className="yl-lost-place yl-lost-when">
-                  <span className="yl-lost-place-label"><Icon name="clock" size={14}/> 目撃日時</span>
+                  <span className="yl-lost-place-label"><Icon name="clock" size={14}/> {t("lost.sightWhen")}</span>
                   <span className="yl-lost-place-main">{li.when}</span>
                 </div>}
               </div>}
               {(li.situation||notes.length>0||li.note)&&<div className="yl-lost-info">
-                {li.situation&&<p><b>逃げたときの様子</b> {li.situation}</p>}
+                {li.situation&&<p><b>{t("lost.situationTitle")}</b> {li.situation}</p>}
                 {notes.map(c=><p key={c.id}><b>{c.title}</b> {c.body}</p>)}
                 {li.note&&<p>{li.note}</p>}
               </div>}
               <div className="yl-lost-plea"><span className="yl-lost-plea-mark" aria-hidden="true">⚠️</span><span className="yl-lost-plea-txt">{pleaTextOf(m)}</span></div>
               <div className="yl-lost-contact">
-                <p className="yl-lost-clabel">見かけた方は、こちらまでご連絡ください</p>
+                <p className="yl-lost-clabel">{t("lost.contactPlea")}</p>
                 {contacts.length?contacts.map(c=>isPhoneLike(c.body)
                   ? <a key={c.id} className="yl-lost-telbtn" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>{c.title&&<span className="yl-lost-tellabel">{c.title}</span>}<span className="yl-lost-telrow"><span className="yl-lost-telic" aria-hidden="true">📞</span><span className="yl-lost-telnum">{fmtJPPhone(c.body)}</span></span></a>
                   : <p key={c.id} className="yl-lost-cnum">{c.title}：{c.body}</p>
-                ):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>※「大切な情報」に緊急連絡先を登録すると、ここに表示されます</p>}
-                {contacts.some(c=>isPhoneLike(c.body))&&<p className="yl-lost-action">【重要】もし見かけたら、この番号にすぐお電話ください。追いかけないでください。</p>}
+                ):<p className="yl-lost-cnum yl-noprint" style={{color:"var(--placeholder)"}}>{t("lost.contactEmpty")}</p>}
+                {contacts.some(c=>isPhoneLike(c.body))&&<p className="yl-lost-action">{t("lost.action")}</p>}
               </div>
-              <p className="yl-lost-foot"><span className="yl-lost-foot-note">追いかけず、見かけた場所と時間をお知らせください。印刷・画面提示OK、電波がなくても表示できます。</span>{(posterHost||stamp)&&<span className="yl-lost-foot-meta">{posterHost}{posterHost&&" ・ "}{stamp}</span>}</p>
+              <p className="yl-lost-foot"><span className="yl-lost-foot-note">{t("lost.footNote")}</span>{(posterHost||stamp)&&<span className="yl-lost-foot-meta">{posterHost}{posterHost&&" ・ "}{stamp}</span>}</p>
             </div>
             <div className="yl-lostflow-after yl-noprint">
-              <p className="yl-lostflow-afterttl">できました。次に、みんなに知らせましょう。</p>
-              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> 見つかった（ポスターに「発見済み」を表示）</label>
-              <p className="yl-lost-privacy"><Icon name="shield" size={12}/> 住所やマイクロチップ番号は載せません。連絡先は登録済みのものだけ表示されます。</p>
+              <p className="yl-lostflow-afterttl">{t("lost.afterTitle")}</p>
+              <label className="yl-lost-foundtoggle"><input type="checkbox" checked={found} onChange={e=>setLostField(m.id,{found:e.target.checked})}/> {t("lost.foundToggle")}</label>
+              <p className="yl-lost-privacy"><Icon name="shield" size={12}/> {t("lost.privacy")}</p>
             </div>
             </>}
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
-              {lostStep===0&&<><button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>とじる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(1)}>次へ：ペット情報</button></>}
-              {lostStep===1&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(0)}>もどる</button><button className="yl-addbtn modal" onClick={()=>setLostStep(2)}>ポスターを作成</button></>}
-              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>もどる</button><button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost-poster",`迷子-${safeName(m.name)}.png`,{story:true})}><Icon name="download" size={16}/> 画像で保存</button><button className="yl-addbtn modal ghost" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> 共有</button><button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> 印刷</button></>}
+              {lostStep===0&&<><button className="yl-modal-cancel" onClick={()=>setLostOpen(false)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={()=>setLostStep(1)}>{t("lost.nextPet")}</button></>}
+              {lostStep===1&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(0)}>{t("lost.back")}</button><button className="yl-addbtn modal" onClick={()=>setLostStep(2)}>{t("lost.makePoster")}</button></>}
+              {lostStep===2&&<><button className="yl-modal-cancel" onClick={()=>setLostStep(1)}>{t("lost.back")}</button><button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-lost-poster",`${t("lost.fileSuffix")}-${safeName(m.name)}.png`,{story:true})}><Icon name="download" size={16}/> {t("common.saveImage")}</button><button className="yl-addbtn modal ghost" onClick={()=>shareLost(m)}><Icon name="link" size={16}/> {t("lost.share")}</button><button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> {t("common.print")}</button></>}
             </div>
           </div>
         </div>
