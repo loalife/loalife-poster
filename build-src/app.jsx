@@ -1257,6 +1257,7 @@ const MESSAGES={
     "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"さんぽ・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録",
     "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
     "sched.titlePet":"ケア・予定を追加","sched.titleSelf":"健康・ケアを追加","sched.titleMe":"予定・ToDoを追加","sched.frequent":"よく使う","sched.contentPh":"内容を入力…","sched.addLabelPh":"{label}を追加…","sched.content":"内容","sched.dateOptMe":"日付・期限（任意）","sched.time":"時間","sched.dateHint":"日付・期限を入れると、その日のカレンダーに表示されます。","sched.certPhoto":"証明書・写真（任意）","sched.changePhoto":"写真を変更","sched.attachPhoto":"＋ 写真を添付","sched.notify":"通知","sched.quickAdd":"1タップ追加（前回コピー）","sched.lastDate":"前回 {date}","sched.dateDone":"実施日","sched.dateDate":"日付","sched.dateVisit":"受診日","sched.dateDue":"期限",
+    "toilet.hint":"タップで記録（今日・現在時刻）。","toilet.pee":"おしっこ","toilet.success":"✓ 成功","toilet.fail":"✕ 失敗","toilet.hardness":"うんちの硬さ（7段階）","toilet.bristolNote":"4が健康的。1や7が続くときは獣医さんに相談を。","toilet.alertBody":"気をつけたいこと：消化管異物・腸閉塞・中毒","toilet.alertLink":"危険物リストで詳しく","toilet.ideal":"（理想的）","toilet.disclaimer":"受診の目安です（診断ではありません）。","toilet.trendLoose":"ゆるいうんちが続いています。長引くようなら受診の目安です。","toilet.trendHard":"硬いうんちが続いています。水分や食事、気になるときは受診を。",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1338,6 +1339,7 @@ const MESSAGES={
     "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes",
     "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
     "sched.titlePet":"Add care or plan","sched.titleSelf":"Add health or care","sched.titleMe":"Add plan or to-do","sched.frequent":"Frequent","sched.contentPh":"Enter details…","sched.addLabelPh":"Add {label}…","sched.content":"item","sched.dateOptMe":"Date / deadline (optional)","sched.time":"Time","sched.dateHint":"Add a date or deadline and it appears on that day's calendar.","sched.certPhoto":"Certificate / photo (optional)","sched.changePhoto":"Change photo","sched.attachPhoto":"＋ Attach photo","sched.notify":"Notify","sched.quickAdd":"One-tap add (copy last)","sched.lastDate":"Last {date}","sched.dateDone":"Date done","sched.dateDate":"Date","sched.dateVisit":"Visit date","sched.dateDue":"Due",
+    "toilet.hint":"Tap to log (today, current time).","toilet.pee":"Pee","toilet.success":"✓ Success","toilet.fail":"✕ Miss","toilet.hardness":"Stool firmness (7 levels)","toilet.bristolNote":"4 is healthy. If 1 or 7 keeps up, check with your vet.","toilet.alertBody":"Watch for: GI foreign objects, intestinal blockage, poisoning","toilet.alertLink":"See the hazards list","toilet.ideal":" (ideal)","toilet.disclaimer":"A guide for when to see a vet (not a diagnosis).","toilet.trendLoose":"Loose stools have continued. If it lasts, consider seeing a vet.","toilet.trendHard":"Hard stools have continued. Watch hydration and diet; see a vet if concerned.",
   },
 };
 function tr(lang,key,vars){
@@ -3316,10 +3318,10 @@ function App(){
   const poopTrend=useMemo(()=>{
     const rs=items.filter(x=>x.space===tab&&x.type==="toilet"&&x.tkind==="poop"&&x.bristol).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)).slice(0,3);
     if(rs.length<3)return null;
-    if(rs.every(r=>r.bristol>=6))return{txt:"ゆるいうんちが続いています。長引くようなら受診の目安です。",tone:"loose"};
-    if(rs.every(r=>r.bristol<=2))return{txt:"硬いうんちが続いています。水分や食事、気になるときは受診を。",tone:"hard"};
+    if(rs.every(r=>r.bristol>=6))return{txt:t("toilet.trendLoose"),tone:"loose"};
+    if(rs.every(r=>r.bristol<=2))return{txt:t("toilet.trendHard"),tone:"hard"};
     return null;
-  },[items,tab]);
+  },[items,tab,t]);
   // トイレ成功率：現在のメンバーの、期間内(7/14/30日)の成功/合計をおしっこ・うんち別に集計。
   const toiletStats=useMemo(()=>{
     const mk=(days)=>{const from=plusDays(-(days-1));const recs=items.filter(x=>x.space===tab&&x.type==="toilet"&&x.date&&x.date>=from);
@@ -5871,37 +5873,37 @@ function App(){
       {inputSheet==="toilet"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name="droplet" size={18}/> トイレ記録</h3>
-            <p className="yl-diary-hint">タップで記録（今日・現在時刻）。</p>
+            <h3 className="yl-modal-title"><Icon name="droplet" size={18}/> {t("hub.toilet")}</h3>
+            <p className="yl-diary-hint">{t("toilet.hint")}</p>
             <div className="yl-toilet-row">
-              <span className="yl-toilet-label"><Icon name="droplet" size={15}/> おしっこ</span>
-              <button className="yl-toilet-btn ok" onClick={()=>logToilet("pee",true)}>✓ 成功</button>
-              <button className="yl-toilet-btn ng" onClick={()=>logToilet("pee",false)}>✕ 失敗</button>
+              <span className="yl-toilet-label"><Icon name="droplet" size={15}/> {t("toilet.pee")}</span>
+              <button className="yl-toilet-btn ok" onClick={()=>logToilet("pee",true)}>{t("toilet.success")}</button>
+              <button className="yl-toilet-btn ng" onClick={()=>logToilet("pee",false)}>{t("toilet.fail")}</button>
             </div>
             <div className="yl-toilet-row">
-              <span className="yl-toilet-label"><Icon name="droplet" size={15}/> うんち</span>
-              <button className="yl-toilet-btn ok" onClick={()=>logToilet("poop",true,bristolScore)}>✓ 成功</button>
-              <button className="yl-toilet-btn ng" onClick={()=>logToilet("poop",false)}>✕ 失敗</button>
+              <span className="yl-toilet-label"><Icon name="droplet" size={15}/> {t("diary.poop")}</span>
+              <button className="yl-toilet-btn ok" onClick={()=>logToilet("poop",true,bristolScore)}>{t("toilet.success")}</button>
+              <button className="yl-toilet-btn ng" onClick={()=>logToilet("poop",false)}>{t("toilet.fail")}</button>
             </div>
             <div className="yl-bristol">
-              <span className="yl-toilet-condlabel">うんちの硬さ（7段階）</span>
-              <p className="yl-bristol-note">4が健康的。1や7が続くときは獣医さんに相談を。</p>
+              <span className="yl-toilet-condlabel">{t("toilet.hardness")}</span>
+              <p className="yl-bristol-note">{t("toilet.bristolNote")}</p>
               <button className="yl-poop-alert" onClick={()=>{setInputSheet(null);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}>
-                <span className="yl-poop-alert-body"><Icon name="alert" size={14}/> 気をつけたいこと：消化管異物・腸閉塞・中毒</span>
-                <span className="yl-poop-alert-link">危険物リストで詳しく<Icon name="chevron" size={14}/></span>
+                <span className="yl-poop-alert-body"><Icon name="alert" size={14}/> {t("toilet.alertBody")}</span>
+                <span className="yl-poop-alert-link">{t("toilet.alertLink")}<Icon name="chevron" size={14}/></span>
               </button>
               <ul className="yl-poop-scale">{BRISTOL.map(bb=>(
                 <li key={bb.n}><button className={"yl-poop-card tone-"+bb.tone+(bristolScore===bb.n?" on":"")} onClick={()=>setBristolScore(bb.n)}>
                   <span className={"yl-poop-num tone-"+bb.tone}>{bb.n}</span>
                   <span className="yl-poop-illust"><PoopShape n={bb.n} size={34}/></span>
-                  <span className="yl-poop-text"><span className="yl-poop-label">{bb.label}{bb.n===4?"（理想的）":""}</span><span className="yl-poop-desc">{bb.desc}</span></span>
+                  <span className="yl-poop-text"><span className="yl-poop-label">{bb.label}{bb.n===4?t("toilet.ideal"):""}</span><span className="yl-poop-desc">{bb.desc}</span></span>
                   {bristolScore===bb.n&&<span className="yl-poop-check"><Icon name="check" size={15}/></span>}
                 </button></li>
               ))}</ul>
             </div>
             {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone}><Icon name="alert" size={13}/> {poopTrend.txt}</p>}
-            <p className="yl-health-hint" style={{marginTop:10}}>受診の目安です（診断ではありません）。</p>
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <p className="yl-health-hint" style={{marginTop:10}}>{t("toilet.disclaimer")}</p>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
       )}
