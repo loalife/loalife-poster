@@ -807,11 +807,13 @@ const cardIcon=(k)=>CARD_ICON[k]||"note";
 // 思い出の「はじめて」タグ
 const FIRST_TAG="はじめて";
 // 支出カテゴリー（対象によって出し分け：ペットと人で項目が変わる）
-const EXPENSE_CATS_PET=[{key:"hospital",label:"病院代",emoji:"🏥",color:"#B23A48"},{key:"food",label:"ごはん・おやつ",emoji:"🍚",color:"#C77A2E"},{key:"hygiene",label:"トイレ・衛生",emoji:"🧻",color:"#557E63"},{key:"grooming",label:"トリミング・美容",emoji:"✂️",color:"#B23A48"},{key:"goods",label:"おもちゃ・用品",emoji:"🧸",color:"#C77A2E"},{key:"insurance",label:"ペット保険",emoji:"🛡️",color:"#3B7BF6"},{key:"other",label:"その他",emoji:"📦",color:"#8A8178"}];
-const EXPENSE_CATS_PERSON=[{key:"medical",label:"医療費",emoji:"🏥",color:"#B23A48"},{key:"food",label:"食費",emoji:"🍚",color:"#C77A2E"},{key:"education",label:"学費・習い事",emoji:"🎒",color:"#3B7BF6"},{key:"clothing",label:"衣類",emoji:"👕",color:"#B23A48"},{key:"daily",label:"日用品",emoji:"🧴",color:"#557E63"},{key:"transport",label:"交通費",emoji:"🚃",color:"#557E63"},{key:"leisure",label:"レジャー・娯楽",emoji:"🎟️",color:"#C77A2E"},{key:"other",label:"その他",emoji:"📦",color:"#8A8178"}];
+const EXPENSE_CATS_PET=[{key:"hospital",label:"病院代",labelEn:"Vet bills",emoji:"🏥",color:"#B23A48"},{key:"food",label:"ごはん・おやつ",labelEn:"Food & treats",emoji:"🍚",color:"#C77A2E"},{key:"hygiene",label:"トイレ・衛生",labelEn:"Litter & hygiene",emoji:"🧻",color:"#557E63"},{key:"grooming",label:"トリミング・美容",labelEn:"Grooming",emoji:"✂️",color:"#B23A48"},{key:"goods",label:"おもちゃ・用品",labelEn:"Toys & supplies",emoji:"🧸",color:"#C77A2E"},{key:"insurance",label:"ペット保険",labelEn:"Pet insurance",emoji:"🛡️",color:"#3B7BF6"},{key:"other",label:"その他",labelEn:"Other",emoji:"📦",color:"#8A8178"}];
+const EXPENSE_CATS_PERSON=[{key:"medical",label:"医療費",labelEn:"Medical",emoji:"🏥",color:"#B23A48"},{key:"food",label:"食費",labelEn:"Food",emoji:"🍚",color:"#C77A2E"},{key:"education",label:"学費・習い事",labelEn:"Education & lessons",emoji:"🎒",color:"#3B7BF6"},{key:"clothing",label:"衣類",labelEn:"Clothing",emoji:"👕",color:"#B23A48"},{key:"daily",label:"日用品",labelEn:"Daily goods",emoji:"🧴",color:"#557E63"},{key:"transport",label:"交通費",labelEn:"Transport",emoji:"🚃",color:"#557E63"},{key:"leisure",label:"レジャー・娯楽",labelEn:"Leisure",emoji:"🎟️",color:"#C77A2E"},{key:"other",label:"その他",labelEn:"Other",emoji:"📦",color:"#8A8178"}];
 const expenseCatsFor=(kind)=>kind==="pet"?EXPENSE_CATS_PET:EXPENSE_CATS_PERSON;
 const ALL_EXPENSE_CATS=[...EXPENSE_CATS_PET,...EXPENSE_CATS_PERSON.filter(p=>!EXPENSE_CATS_PET.some(q=>q.key===p.key))];
 const expCatMeta=(k)=>ALL_EXPENSE_CATS.find(c=>c.key===k)||ALL_EXPENSE_CATS[ALL_EXPENSE_CATS.length-1];
+// 支出カテゴリの表示ラベル（ロケール対応。日本語は非破壊）。
+const expCatLabel=(c)=>c?(APP_LANG==="ja"?c.label:(c.labelEn||c.label)):"";
 const fmtYen=(n)=>"¥"+Math.round(n||0).toLocaleString("ja-JP");
 
 const EMOJI_RULES=[[["目","眼","メガネ","視力","コンタクト"],"👁️"],[["マラソン","ラン","走","ジョギング","駅伝"],"🏃"],[["ジム","筋トレ","トレーニング","クロスフィット","crossfit","筋"],"🏋️"],[["自転車","サイクリング","ロングライド","ライド","ロード"],"🚴"],[["泳","スイミング","プール","水泳"],"🏊"],[["ヨガ","ストレッチ","瞑想"],"🧘"],[["ピアノ","ジャズ","鍵盤","セッション"],"🎹"],[["ギター","楽器","音楽","バンド"],"🎸"],[["ライブ","コンサート","歌","カラオケ"],"🎤"],[["映画","シネマ"],"🎬"],[["本","読書","読む"],"📚"],[["試験","資格","勉強","検定","TOEIC","G検定","学習"],"🎓"],[["面接","転職","仕事","キャリア","案件","副業"],"💼"],[["会議","打ち合わせ","打合せ","MTG","ミーティング","商談"],"📊"],[["飲み","飲み会","会食","宴会","パーティ","ランチ会","歓迎会","送別会","二次会"],"🍻"],[["旅","旅行","海外","訪ね","観光","ステイ"],"✈️"],[["海","ビーチ","南国"],"🏖️"],[["山","登山","富士","ハイキング","トレッキング"],"⛰️"],[["語","スペイン語","英語","中国語","会話"],"🗣️"],[["写真","カメラ","撮"],"📷"],[["料理","ごはん","ご飯","レストラン","食","クッキング"],"🍳"],[["コーヒー","カフェ","珈琲"],"☕"],[["貯金","お金","投資","iDeCo","ふるさと納税","資産","NISA"],"💰"],[["病院","通院","受診","健診","健康診断","診察"],"🏥"],[["ワクチン","予防接種","注射","接種"],"💉"],[["フィラリア","蚊","ノミ","ダニ"],"🦟"],[["狂犬病"],"🐕"],[["歯","歯科","デンタル"],"🦷"],[["美容","トリミング","カット","ヘア","サロン"],"✂️"],[["散歩","お散歩","ウォーキング"],"🦮"],[["習い事","レッスン","塾","スクール"],"🎒"],[["誕生","記念","バースデー"],"🎂"],[["結婚","プロポーズ","婚"],"💍"],[["掃除","片付","そうじ"],"🧹"],[["引っ越","引越","移住"],"📦"],[["占い","星","運勢"],"✨"]];
@@ -1290,7 +1292,7 @@ const MESSAGES={
     "belong.title":"持ち物（曜日ごと）","belong.empty":"右下の ＋ から持ち物を登録",
     "foodreg.title":"フードの登録","foodreg.desc":"よく使うフードを登録しておく。","foodreg.addFood":"フード・食事を登録","foodreg.calc":"1日のフード量を計算",
     "supply.title":"消耗品の在庫","supply.emptyMe":"サプリや日用品、切らさないように。","supply.empty":"フードなどを登録すると、残りを自動でお知らせ","supply.bought":"買った","supply.check":"確認","supply.lineOut":"切れているかも・買い足しを","supply.lineLow":"あと{n}日で切れそう","supply.lineOk":"在庫OK（あと{n}日分）","supply.careOut":"在庫なし・買い足しを","supply.careLow":"のこり{n}回・そろそろ買い足し",
-    "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出",
+    "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出","exp.editTitle":"支出を編集","exp.dateLabel":"日付（レシート遅れ・代理入力などの修正用）",
     "certs.title":"通院・証明書","certs.cert":"証明書","certs.addCert":"＋ 証明書を追加","certs.empty":"＋から種類と日付を選び、証明書を保存。","certs.certHint":"証明書（タップで拡大）","certs.noDate":"日付なし","certs.yearLabel":"{y}年","certs.addablePhoto":"写真（証明書）を追加できる記録","certs.tapAddPhoto":"タップで証明書の写真を追加","renew.expired":"期限切れ {n}日","renew.today":"今日で期限","renew.left":"あと{n}日",
     "common.memoOpt":"メモ（任意）","exp.addTitle":"支出を記録","exp.addHint":"今日の日付で記録。修正は明細をタップ。","exp.notePh":"メモ（任意）","belong.addTitle":"持ち物を追加","belong.addPh":"例：体操服 / 図書の本 / 習字道具","belong.dowSuffix":"曜",
     "hub.title":"何を記録しますか？","hub.addable":"追加できる機能","hub.schedulePet":"ケア・予定","hub.scheduleMe":"予定・ToDo","hub.toilet":"トイレ記録","hub.routine":"ルーティン（習慣）","hub.health":"体重・からだ","hub.belong":"持ち物（曜日）","hub.bday":"誕生日・記念日",
@@ -1377,7 +1379,7 @@ const MESSAGES={
     "belong.title":"Belongings (by day)","belong.empty":"Tap ＋ at bottom-right to add belongings",
     "foodreg.title":"Food registry","foodreg.desc":"Register foods you use often.","foodreg.addFood":"Register food/meal","foodreg.calc":"Calculate daily food amount",
     "supply.title":"Supplies stock","supply.emptyMe":"Keep supplements and daily items from running out.","supply.empty":"Register foods and we'll auto-track what's left","supply.bought":"Bought","supply.check":"Check","supply.lineOut":"May be out — time to restock","supply.lineLow":"About {n} days left","supply.lineOk":"In stock (about {n} days left)","supply.careOut":"Out of stock — restock","supply.careLow":"{n} left — restock soon",
-    "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}",
+    "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}","exp.editTitle":"Edit expense","exp.dateLabel":"Date (for late receipts, proxy entry, etc.)",
     "certs.title":"Care & certificates","certs.cert":"Certificate","certs.addCert":"＋ Add certificate","certs.empty":"Tap ＋ to pick a type and date, then save a certificate.","certs.certHint":"Certificates (tap to enlarge)","certs.noDate":"No date","certs.yearLabel":"{y}","certs.addablePhoto":"Records you can add a photo (certificate) to","certs.tapAddPhoto":"Tap to add a certificate photo","renew.expired":"Expired {n}d","renew.today":"Due today","renew.left":"{n}d left",
     "common.memoOpt":"Memo (optional)","exp.addTitle":"Record expense","exp.addHint":"Saved with today's date. Tap an item to edit.","exp.notePh":"Memo (optional)","belong.addTitle":"Add belongings","belong.addPh":"e.g. gym clothes / library book / calligraphy set","belong.dowSuffix":"",
     "hub.title":"What would you like to record?","hub.addable":"Add a feature","hub.schedulePet":"Care & plans","hub.scheduleMe":"Plans & to-dos","hub.toilet":"Toilet log","hub.routine":"Routines (habits)","hub.health":"Weight & body","hub.belong":"Belongings (by day)","hub.bday":"Birthdays & anniversaries",
@@ -4850,7 +4852,7 @@ function App(){
                         </div>
                         <ul className="yl-exp-legend">
                           {expStats.cats.map(c=>(
-                            <li key={c.key} className="yl-exp-leg"><span className="yl-exp-leg-dot" style={{background:c.color}}/><span className="yl-exp-leg-name">{c.label}</span><span className="yl-exp-leg-amt">{fmtYen(c.amount)}</span><span className="yl-exp-leg-pct">{Math.round(c.amount/expStats.total*100)}%</span></li>
+                            <li key={c.key} className="yl-exp-leg"><span className="yl-exp-leg-dot" style={{background:c.color}}/><span className="yl-exp-leg-name">{expCatLabel(c)}</span><span className="yl-exp-leg-amt">{fmtYen(c.amount)}</span><span className="yl-exp-leg-pct">{Math.round(c.amount/expStats.total*100)}%</span></li>
                           ))}
                         </ul>
                       </div>
@@ -4876,7 +4878,7 @@ function App(){
                       {expenseRecords.slice(0,8).map(r=>(
                         <li key={r.id} className="yl-exp-item tap" onClick={()=>openExpEdit(r)}>
                           <span className="yl-exp-idate">{fmtDate(r.date)}</span>
-                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}><Icon name={guessIcon(expCatMeta(r.category).label,"wallet")} size={13}/> {expCatMeta(r.category).label}</span>
+                          <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}><Icon name={guessIcon(expCatMeta(r.category).label,"wallet")} size={13}/> {expCatLabel(expCatMeta(r.category))}</span>
                           {r.note&&<span className="yl-exp-inote">{r.note}</span>}
                           <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
                           <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(t("exp.delLabel",{date:fmtDate(r.date)}),()=>removeExpense(r.id));}} aria-label={t("a11y.delete")}>×</button>
@@ -5859,14 +5861,14 @@ function App(){
       {expEdit&&(
         <div className="yl-overlay" onClick={()=>setExpEdit(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">支出を編集</h3>
-            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expEdit.amount} onChange={e=>setExpEdit(x=>({...x,amount:e.target.value}))} placeholder="金額"/></span><select className="yl-select" value={expEdit.category} onChange={e=>setExpEdit(x=>({...x,category:e.target.value}))}>{(()=>{const cats=expenseCatsFor(curKind);const has=cats.some(c=>c.key===expEdit.category);return(has?cats:[...cats,expCatMeta(expEdit.category)]).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>);})()}</select></div>
-            <input className="yl-input" style={{marginTop:10}} value={expEdit.note} onChange={e=>setExpEdit(x=>({...x,note:e.target.value}))} placeholder="メモ（任意）"/>
-            <label className="yl-opt" style={{marginTop:10}}>日付（レシート遅れ・代理入力などの修正用）<input type="date" className="yl-date" value={expEdit.date} onChange={e=>setExpEdit(x=>({...x,date:e.target.value}))}/></label>
+            <h3 className="yl-modal-title">{t("exp.editTitle")}</h3>
+            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expEdit.amount} onChange={e=>setExpEdit(x=>({...x,amount:e.target.value}))} placeholder={t("common.amount")}/></span><select className="yl-select" value={expEdit.category} onChange={e=>setExpEdit(x=>({...x,category:e.target.value}))}>{(()=>{const cats=expenseCatsFor(curKind);const has=cats.some(c=>c.key===expEdit.category);return(has?cats:[...cats,expCatMeta(expEdit.category)]).map(c=><option key={c.key} value={c.key}>{c.emoji} {expCatLabel(c)}</option>);})()}</select></div>
+            <input className="yl-input" style={{marginTop:10}} value={expEdit.note} onChange={e=>setExpEdit(x=>({...x,note:e.target.value}))} placeholder={t("common.memoOpt")}/>
+            <label className="yl-opt" style={{marginTop:10}}>{t("exp.dateLabel")}<input type="date" className="yl-date" value={expEdit.date} onChange={e=>setExpEdit(x=>({...x,date:e.target.value}))}/></label>
             <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={()=>askDelete(`${fmtDate(expEdit.date)}の支出`,()=>{removeExpense(expEdit.id);setExpEdit(null);})}>削除</button>
-              <button className="yl-modal-cancel" onClick={()=>setExpEdit(null)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={saveExpEdit}>保存</button>
+              <button className="yl-modal-cancel" onClick={()=>askDelete(t("exp.delLabel",{date:fmtDate(expEdit.date)}),()=>{removeExpense(expEdit.id);setExpEdit(null);})}>{t("common.delete")}</button>
+              <button className="yl-modal-cancel" onClick={()=>setExpEdit(null)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" onClick={saveExpEdit}>{t("common.save")}</button>
             </div>
           </div>
         </div>
@@ -6255,7 +6257,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{t("exp.addTitle")}</h3>
-            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder={t("common.amount")}/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}</select></div>
+            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder={t("common.amount")}/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {expCatLabel(c)}</option>)}</select></div>
             <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:6}} value={expNote} onChange={e=>setExpNote(e.target.value)} placeholder={t("exp.notePh")}/>
             <p className="yl-foot" style={{margin:"8px 0 0",textAlign:"left"}}>{t("exp.addHint")}</p>
             <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>{t("exp.addTitle")}</button>
