@@ -1683,8 +1683,13 @@ function App(){
   const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
   // 表示言語（ja/en）。UI設定なのでローカル保存。既存ユーザー保護のため初回は日本語がデフォルト。
   const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en")return s;}catch(e){}return "ja";});
+  // loalife-lang-v1 が未設定なら初回言語選択を表示（既存ユーザー＝設定済みには出さない）。
+  const[langChosen,setLangChosen]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");return s==="ja"||s==="en";}catch(e){return true;}});
   APP_LANG=lang; // モジュールレベルのコンポーネント用（レンダー時に同期）
-  useEffect(()=>{try{localStorage.setItem("loalife-lang-v1",lang);}catch(e){}try{document.documentElement.lang=lang;}catch(e){}},[lang]);
+  // 言語が未確定（初回選択中）のうちは loalife-lang-v1 を書き込まない（未設定状態を保つ）。
+  useEffect(()=>{try{if(langChosen)localStorage.setItem("loalife-lang-v1",lang);}catch(e){}try{document.documentElement.lang=lang;}catch(e){}},[lang,langChosen]);
+  // 初回言語選択の確定（設定画面と共通の setLang を使い、保存ロジックは二重化しない）。
+  const confirmLang=useCallback(()=>{try{localStorage.setItem("loalife-lang-v1",lang);}catch(e){}setLangChosen(true);},[lang]);
   const t=useCallback((k,v)=>tr(lang,k,v),[lang]);
   // 相対日付タグ（既存の日本語タグ文字列を解釈して各言語へ。ja選択時は元の文言と一致）。
   const locTag=useCallback((tag)=>{
@@ -3868,6 +3873,28 @@ function App(){
       </div>
     );
   };
+
+  // 初回言語選択：loalife-lang-v1 未設定のときだけ、通常UI（オンボーディング含む）より前に表示。
+  // 言語未確定なので日本語・英語を併記（t() に依存しない）。
+  if(!langChosen){
+    return(
+      <div className="yl-ob yl-langfirst">
+        <div className="yl-ob-inner">
+          <div className="yl-ob-emoji">🐾</div>
+          <h1 className="yl-langfirst-brand">LoaLife</h1>
+          <p className="yl-langfirst-lead">言語を選択 / Choose your language</p>
+          <div className="yl-theme-seg yl-langfirst-seg" role="group" aria-label="言語 / Language">
+            {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"]].map(([v,label,flag])=>(
+              <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>setLang(v)} aria-pressed={lang===v}>
+                <span aria-hidden="true">{flag}</span> <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <button className="yl-ob-btn" onClick={confirmLang}>はじめる / Continue</button>
+        </div>
+      </div>
+    );
+  }
 
   return(
     <div className={"yl-root"+(!onboarding&&tab==="cal"?"":" no-membar")}>
