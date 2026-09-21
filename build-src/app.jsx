@@ -1250,6 +1250,7 @@ const MESSAGES={
     "supply.title":"消耗品の在庫","supply.emptyMe":"サプリや日用品、切らさないように。","supply.empty":"フードなどを登録すると、残りを自動でお知らせ","supply.bought":"買った","supply.check":"確認","supply.lineOut":"切れているかも・買い足しを","supply.lineLow":"あと{n}日で切れそう","supply.lineOk":"在庫OK（あと{n}日分）","supply.careOut":"在庫なし・買い足しを","supply.careLow":"のこり{n}回・そろそろ買い足し",
     "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出",
     "certs.title":"通院・証明書","certs.cert":"証明書","certs.addCert":"＋ 証明書を追加","certs.empty":"＋から種類と日付を選び、証明書を保存。","certs.certHint":"証明書（タップで拡大）","certs.noDate":"日付なし","certs.yearLabel":"{y}年","certs.addablePhoto":"写真（証明書）を追加できる記録","certs.tapAddPhoto":"タップで証明書の写真を追加","renew.expired":"期限切れ {n}日","renew.today":"今日で期限","renew.left":"あと{n}日",
+    "common.memoOpt":"メモ（任意）","exp.addTitle":"支出を記録","exp.addHint":"今日の日付で記録。修正は明細をタップ。","exp.notePh":"メモ（任意）","belong.addTitle":"持ち物を追加","belong.addPh":"例：体操服 / 図書の本 / 習字道具","belong.dowSuffix":"曜",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1324,6 +1325,7 @@ const MESSAGES={
     "supply.title":"Supplies stock","supply.emptyMe":"Keep supplements and daily items from running out.","supply.empty":"Register foods and we'll auto-track what's left","supply.bought":"Bought","supply.check":"Check","supply.lineOut":"May be out — time to restock","supply.lineLow":"About {n} days left","supply.lineOk":"In stock (about {n} days left)","supply.careOut":"Out of stock — restock","supply.careLow":"{n} left — restock soon",
     "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}",
     "certs.title":"Care & certificates","certs.cert":"Certificate","certs.addCert":"＋ Add certificate","certs.empty":"Tap ＋ to pick a type and date, then save a certificate.","certs.certHint":"Certificates (tap to enlarge)","certs.noDate":"No date","certs.yearLabel":"{y}","certs.addablePhoto":"Records you can add a photo (certificate) to","certs.tapAddPhoto":"Tap to add a certificate photo","renew.expired":"Expired {n}d","renew.today":"Due today","renew.left":"{n}d left",
+    "common.memoOpt":"Memo (optional)","exp.addTitle":"Record expense","exp.addHint":"Saved with today's date. Tap an item to edit.","exp.notePh":"Memo (optional)","belong.addTitle":"Add belongings","belong.addPh":"e.g. gym clothes / library book / calligraphy set","belong.dowSuffix":"",
   },
 };
 function tr(lang,key,vars){
@@ -6186,25 +6188,25 @@ function App(){
       {inputSheet==="expense"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">支出を記録</h3>
-            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder="金額"/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}</select></div>
-            <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:6}} value={expNote} onChange={e=>setExpNote(e.target.value)} placeholder="メモ（任意）"/>
-            <p className="yl-foot" style={{margin:"8px 0 0",textAlign:"left"}}>今日の日付で記録。修正は明細をタップ。</p>
-            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>支出を記録</button>
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <h3 className="yl-modal-title">{t("exp.addTitle")}</h3>
+            <div className="yl-exp-input"><span className="yl-exp-amt"><span className="yl-exp-yen">¥</span><input type="number" inputMode="numeric" className="yl-health-num" value={expAmount} onChange={e=>setExpAmount(e.target.value)} placeholder={t("common.amount")}/></span><select className="yl-select" value={expenseCatsFor(curKind).some(c=>c.key===expCat)?expCat:expenseCatsFor(curKind)[0].key} onChange={e=>setExpCat(e.target.value)}>{expenseCatsFor(curKind).map(c=><option key={c.key} value={c.key}>{c.emoji} {c.label}</option>)}</select></div>
+            <input className="yl-input sm" style={{width:"100%",boxSizing:"border-box",marginTop:6}} value={expNote} onChange={e=>setExpNote(e.target.value)} placeholder={t("exp.notePh")}/>
+            <p className="yl-foot" style={{margin:"8px 0 0",textAlign:"left"}}>{t("exp.addHint")}</p>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:8}} onClick={saveExpense}>{t("exp.addTitle")}</button>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
       )}
       {inputSheet==="belong"&&(
         <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name="bag" size={18}/> 持ち物を追加</h3>
+            <h3 className="yl-modal-title"><Icon name="bag" size={18}/> {t("belong.addTitle")}</h3>
             <div className="yl-belong-add">
-              <select className="yl-select" value={belongDow} onChange={e=>setBelongDow(Number(e.target.value))}>{WEEKDAYS_JA.map((w,i)=><option key={i} value={i}>{w}曜</option>)}</select>
-              <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder="例：体操服 / 図書の本 / 習字道具"/>
-              <button className="yl-addbtn sm" onClick={addBelonging}>追加</button>
+              <select className="yl-select" value={belongDow} onChange={e=>setBelongDow(Number(e.target.value))}>{weekdaysShort.map((w,i)=><option key={i} value={i}>{w}{t("belong.dowSuffix")}</option>)}</select>
+              <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder={t("belong.addPh")}/>
+              <button className="yl-addbtn sm" onClick={addBelonging}>{t("common.add")}</button>
             </div>
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>とじる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
       )}
