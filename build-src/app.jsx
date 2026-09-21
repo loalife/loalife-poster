@@ -5310,7 +5310,7 @@ function App(){
                   <p className="yl-set-desc">{t("foodreg.desc")}</p>
                   {foodDefs.length>0&&<ul className="yl-foodlist">{foodDefs.map(d=>(
                     <li key={d.id} className="yl-fooditem">
-                      <span className={"yl-food-badge t-"+d.foodType}><Icon name={foodTypeMeta(d.foodType).ic} size={12}/> {foodTypeMeta(d.foodType).l}</span>
+                      <span className={"yl-food-badge t-"+d.foodType}><Icon name={foodTypeMeta(d.foodType).ic} size={12}/> {t("foodtype."+d.foodType)}</span>
                       <span className="yl-food-body"><span className="yl-food-name">{d.name}</span>{[d.brand,foodDefText(d)].filter(Boolean).length>0&&<span className="yl-food-meta">{[d.brand,foodDefText(d)].filter(Boolean).join(" ・ ")}</span>}</span>
                       <button className="yl-food-edit" onClick={()=>openFoodEdit(d)} aria-label={t("a11y.edit")}><Icon name="pencil" size={13}/></button>
                       <button className="yl-health-del" onClick={()=>askDelete(d.name,()=>removeFoodDef(d.id))} aria-label={t("a11y.delete")}>×</button>
