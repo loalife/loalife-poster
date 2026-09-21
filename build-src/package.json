@@ -4,6 +4,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^12.15.0",
+    "html2canvas": "^1.4.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   }
