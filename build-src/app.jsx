@@ -253,9 +253,9 @@ function supplyStatus(item){
 }
 function supplyLine(item){
   const s=supplyStatus(item);if(!s)return"";
-  if(s.tone==="out")return"切れているかも・買い足しを";
-  if(s.tone==="low")return`あと${s.left}日で切れそう`;
-  return`在庫OK（あと${s.left}日分）`;
+  if(s.tone==="out")return tr(APP_LANG,"supply.lineOut");
+  if(s.tone==="low")return tr(APP_LANG,"supply.lineLow",{n:s.left});
+  return tr(APP_LANG,"supply.lineOk",{n:s.left});
 }
 
 // --- 逆算リマインド（在庫切れ・期限が迫ったものを1日1回まとめて通知）---
@@ -425,6 +425,7 @@ function calCategory(it){
   return"event";
 }
 const WEEKDAYS_JA=["日","月","火","水","木","金","土"];
+const MON_EN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmtMonthDay=(s)=>{if(!s)return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
 const mmdd=(s)=>s?s.slice(5):""; // "MM-DD"
 const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d).getDay();};
@@ -1246,6 +1247,8 @@ const MESSAGES={
     "meds.namePh":"お薬・サプリ名（例：抗生剤・ビタミン）",
     "belong.title":"持ち物（曜日ごと）","belong.empty":"右下の ＋ から持ち物を登録",
     "foodreg.title":"フードの登録","foodreg.desc":"よく使うフードを登録しておく。","foodreg.addFood":"フード・食事を登録","foodreg.calc":"1日のフード量を計算",
+    "supply.title":"消耗品の在庫","supply.emptyMe":"サプリや日用品、切らさないように。","supply.empty":"フードなどを登録すると、残りを自動でお知らせ","supply.bought":"買った","supply.check":"確認","supply.lineOut":"切れているかも・買い足しを","supply.lineLow":"あと{n}日で切れそう","supply.lineOk":"在庫OK（あと{n}日分）","supply.careOut":"在庫なし・買い足しを","supply.careLow":"のこり{n}回・そろそろ買い足し",
+    "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1317,6 +1320,8 @@ const MESSAGES={
     "meds.namePh":"Med or supplement name (e.g. antibiotic, vitamin)",
     "belong.title":"Belongings (by day)","belong.empty":"Tap ＋ at bottom-right to add belongings",
     "foodreg.title":"Food registry","foodreg.desc":"Register foods you use often.","foodreg.addFood":"Register food/meal","foodreg.calc":"Calculate daily food amount",
+    "supply.title":"Supplies stock","supply.emptyMe":"Keep supplements and daily items from running out.","supply.empty":"Register foods and we'll auto-track what's left","supply.bought":"Bought","supply.check":"Check","supply.lineOut":"May be out — time to restock","supply.lineLow":"About {n} days left","supply.lineOk":"In stock (about {n} days left)","supply.careOut":"Out of stock — restock","supply.careLow":"{n} left — restock soon",
+    "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}",
   },
 };
 function tr(lang,key,vars){
@@ -3343,9 +3348,9 @@ function App(){
   const restockList=useMemo(()=>{
     const out=[];
     lowSupplies.forEach(({item,st})=>out.push({id:item.id,item,kind:"supply",tone:st.tone,left:st.left,line:supplyLine(item)}));
-    items.filter(x=>x.type==="care"&&typeof x.stock==="number"&&x.stock<=1&&!x.done).forEach(x=>out.push({id:x.id,item:x,kind:"care",tone:x.stock<=0?"out":"low",left:x.stock,line:x.stock<=0?"在庫なし・買い足しを":`のこり${x.stock}回・そろそろ買い足し`}));
+    items.filter(x=>x.type==="care"&&typeof x.stock==="number"&&x.stock<=1&&!x.done).forEach(x=>out.push({id:x.id,item:x,kind:"care",tone:x.stock<=0?"out":"low",left:x.stock,line:x.stock<=0?t("supply.careOut"):t("supply.careLow",{n:x.stock})}));
     return out.sort((a,b)=>{const ta=a.tone==="out"?0:1,tb=b.tone==="out"?0:1;return ta-tb||((a.left??999)-(b.left??999));});
-  },[lowSupplies,items]);
+  },[lowSupplies,items,t]);
   // ホームの支出サマリー（安心の場：総額＋メンバー別簡易比較＋急増のみ。詳細一覧は出さない）
   const homeExpense=useMemo(()=>{
     const ym=todayIso.slice(0,7);const pm=new Date(Number(ym.slice(0,4)),Number(ym.slice(5))-2,1);const prevYm=`${pm.getFullYear()}-${String(pm.getMonth()+1).padStart(2,"0")}`;
@@ -4319,11 +4324,11 @@ function App(){
                             <button className="yl-supply-main" onClick={()=>{setTab(r.item.space);if(r.kind==="care")setPersonSeg("manage");}}>
                               <span className="yl-supply-emoji"><Icon name={r.kind==="care"?"pill":guessIcon(r.item.title,"package")} size={18}/></span>
                               <span className="yl-supply-info">
-                                <span className="yl-supply-name">{r.item.title}<span className="yl-supply-who"> ・{nameOf(r.item.space)}</span></span>
+                                <span className="yl-supply-name">{r.item.title}<span className="yl-supply-who">{(lang==="ja"?" ・":" · ")+nameOf(r.item.space)}</span></span>
                                 <span className={"yl-supply-line "+r.tone}>{r.line}</span>
                               </span>
                             </button>
-                            {r.kind==="supply"?<button className="yl-supply-bought" onClick={()=>markBought(r.item.id)}>買った</button>:<button className="yl-supply-bought" onClick={()=>{setTab(r.item.space);setPersonSeg("manage");}}>確認</button>}
+                            {r.kind==="supply"?<button className="yl-supply-bought" onClick={()=>markBought(r.item.id)}>{t("supply.bought")}</button>:<button className="yl-supply-bought" onClick={()=>{setTab(r.item.space);setPersonSeg("manage");}}>{t("supply.check")}</button>}
                           </li>
                         ))}
                       </ul>
@@ -4715,10 +4720,10 @@ function App(){
               defs.push({key:"supply",el:(
                 <section className="yl-supply">
                   <div className="yl-routine-head">
-                    <h2 className="yl-routine-title">消耗品の在庫</h2>
+                    <h2 className="yl-routine-title">{t("supply.title")}</h2>
                   </div>
                   {supplies.length===0?(
-                    <p className="yl-routine-empty">{tab==="me"?"サプリや日用品、切らさないように。":"フードなどを登録すると、残りを自動でお知らせ"}</p>
+                    <p className="yl-routine-empty">{tab==="me"?t("supply.emptyMe"):t("supply.empty")}</p>
                   ):(
                     <ul className="yl-supply-list">
                       {supplies.map(s=>{
@@ -4732,7 +4737,7 @@ function App(){
                                 <span className={"yl-supply-line "+st.tone}>{supplyLine(s)}</span>
                               </span>
                             </button>
-                            <button className="yl-supply-bought" onClick={()=>markBought(s.id)}>買った</button>
+                            <button className="yl-supply-bought" onClick={()=>markBought(s.id)}>{t("supply.bought")}</button>
                           </li>
                         );
                       })}
@@ -4743,19 +4748,19 @@ function App(){
               defs.push({key:"expense",el:(
                 <section className="yl-exp">
                   <div className="yl-exp-head">
-                    <h2 className="yl-routine-title" style={{margin:0}}>支出</h2>
-                    <span className="yl-exp-scope">{[{k:"this",l:nameOf(tab)||"このコ"},{k:"all",l:"みんな"}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}><span className="yl-exp-scopelab">{o.l}</span></button>)}</span>
+                    <h2 className="yl-routine-title" style={{margin:0}}>{t("exp.title")}</h2>
+                    <span className="yl-exp-scope">{[{k:"this",l:nameOf(tab)||t("exp.scopeThisFallback")},{k:"all",l:t("exp.scopeAll")}].map(o=><button key={o.k} className={"yl-exp-scopebtn"+(expScope===o.k?" on":"")} onClick={()=>setExpScope(o.k)}><span className="yl-exp-scopelab">{o.l}</span></button>)}</span>
                   </div>
-                  {expStats.total===0?<p className="yl-routine-empty">{expScope==="all"?"まだ支出の記録がありません。":"右下の ＋ から追加"}</p>:(<>
+                  {expStats.total===0?<p className="yl-routine-empty">{expScope==="all"?t("exp.emptyAll"):t("exp.emptyThis")}</p>:(<>
                     <div className="yl-exp-stats">
-                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">合計</span><strong className="yl-exp-stat-v">{fmtYen(expStats.total)}</strong></div>
-                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{expStats.year}年</span><strong className="yl-exp-stat-v">{fmtYen(expStats.thisYear)}</strong></div>
-                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">月平均</span><strong className="yl-exp-stat-v">{fmtYen(expStats.monthlyAvg)}</strong></div>
-                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">年間見込み</span><strong className="yl-exp-stat-v">{fmtYen(expStats.annual)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{t("exp.total")}</span><strong className="yl-exp-stat-v">{fmtYen(expStats.total)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{t("exp.year",{y:expStats.year})}</span><strong className="yl-exp-stat-v">{fmtYen(expStats.thisYear)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{t("exp.monthlyAvg")}</span><strong className="yl-exp-stat-v">{fmtYen(expStats.monthlyAvg)}</strong></div>
+                      <div className="yl-exp-stat"><span className="yl-exp-stat-l">{t("exp.annual")}</span><strong className="yl-exp-stat-v">{fmtYen(expStats.annual)}</strong></div>
                     </div>
                     {expScope==="all"&&expStats.byMember.length>0&&(
                       <div className="yl-exp-block">
-                        <p className="yl-exp-blocktitle">メンバー別</p>
+                        <p className="yl-exp-blocktitle">{t("exp.byMember")}</p>
                         <ul className="yl-exp-members">
                           {expStats.byMember.map(m=>(
                             <li key={m.space} className="yl-exp-member">
@@ -4768,10 +4773,10 @@ function App(){
                       </div>
                     )}
                     <div className="yl-exp-block">
-                      <p className="yl-exp-blocktitle">カテゴリ別</p>
+                      <p className="yl-exp-blocktitle">{t("exp.byCategory")}</p>
                       <div className="yl-exp-donutrow">
                         <div className="yl-donut" style={{background:`conic-gradient(${(()=>{let acc=0;const stops=expStats.cats.map(c=>{const s=acc/expStats.total*100;acc+=c.amount;const e=acc/expStats.total*100;return `${c.color} ${s}% ${e}%`;});return stops.join(",")||"#E5DED4 0% 100%"})()})`}}>
-                          <div className="yl-donut-hole"><span>合計</span><strong>{fmtYen(expStats.total)}</strong></div>
+                          <div className="yl-donut-hole"><span>{t("exp.total")}</span><strong>{fmtYen(expStats.total)}</strong></div>
                         </div>
                         <ul className="yl-exp-legend">
                           {expStats.cats.map(c=>(
@@ -4781,18 +4786,18 @@ function App(){
                       </div>
                     </div>
                     <div className="yl-exp-block">
-                      <p className="yl-exp-blocktitle">月ごとの推移{expStats.trendReady?`（直近${expStats.trendMonths}ヶ月）`:""}</p>
-                      {expStats.trendReady?(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));return(
+                      <p className="yl-exp-blocktitle">{t("exp.trend")}{expStats.trendReady?t("exp.trendRecent",{n:expStats.trendMonths}):""}</p>
+                      {expStats.trendReady?(()=>{const mx=Math.max(1,...expStats.series.map(s=>s.total));const monLab=(m)=>lang==="ja"?m+"月":MON_EN[m-1];return(
                         <div className="yl-exp-trend">
                           {expStats.series.map((s,i)=>(
-                            <div key={s.ym} className="yl-exp-trendcol" title={`${s.m}月 ${fmtYen(s.total)}`}>
+                            <div key={s.ym} className="yl-exp-trendcol" title={`${monLab(s.m)} ${fmtYen(s.total)}`}>
                               <span className="yl-exp-trendbar-wrap"><span className="yl-exp-trendbar" style={{height:s.total>0?Math.max(4,Math.round(s.total/mx*100))+"%":"0"}}/></span>
-                              <span className="yl-exp-trendlab">{(i===0||s.m===1||i===expStats.series.length-1)?s.m+"月":""}</span>
+                              <span className="yl-exp-trendlab">{(i===0||s.m===1||i===expStats.series.length-1)?monLab(s.m):""}</span>
                             </div>
                           ))}
                         </div>
                       );})():(
-                        <p className="yl-exp-trend-empty">データが増えると、月ごとの推移が表示されます。</p>
+                        <p className="yl-exp-trend-empty">{t("exp.trendEmpty")}</p>
                       )}
                     </div>
                   </>)}
@@ -4804,7 +4809,7 @@ function App(){
                           <span className="yl-exp-icat" style={{color:expCatMeta(r.category).color}}><Icon name={guessIcon(expCatMeta(r.category).label,"wallet")} size={13}/> {expCatMeta(r.category).label}</span>
                           {r.note&&<span className="yl-exp-inote">{r.note}</span>}
                           <span className="yl-exp-iamt">{fmtYen(r.amount)}</span>
-                          <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(`${fmtDate(r.date)}の支出`,()=>removeExpense(r.id));}} aria-label="削除">×</button>
+                          <button className="yl-health-del" onClick={e=>{e.stopPropagation();askDelete(t("exp.delLabel",{date:fmtDate(r.date)}),()=>removeExpense(r.id));}} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       ))}
                     </ul>
