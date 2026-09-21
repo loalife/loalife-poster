@@ -1251,6 +1251,8 @@ const MESSAGES={
     "exp.title":"支出","exp.scopeThisFallback":"このコ","exp.scopeAll":"みんな","exp.emptyAll":"まだ支出の記録がありません。","exp.emptyThis":"右下の ＋ から追加","exp.total":"合計","exp.year":"{y}年","exp.monthlyAvg":"月平均","exp.annual":"年間見込み","exp.byMember":"メンバー別","exp.byCategory":"カテゴリ別","exp.trend":"月ごとの推移","exp.trendRecent":"（直近{n}ヶ月）","exp.trendEmpty":"データが増えると、月ごとの推移が表示されます。","exp.delLabel":"{date}の支出",
     "certs.title":"通院・証明書","certs.cert":"証明書","certs.addCert":"＋ 証明書を追加","certs.empty":"＋から種類と日付を選び、証明書を保存。","certs.certHint":"証明書（タップで拡大）","certs.noDate":"日付なし","certs.yearLabel":"{y}年","certs.addablePhoto":"写真（証明書）を追加できる記録","certs.tapAddPhoto":"タップで証明書の写真を追加","renew.expired":"期限切れ {n}日","renew.today":"今日で期限","renew.left":"あと{n}日",
     "common.memoOpt":"メモ（任意）","exp.addTitle":"支出を記録","exp.addHint":"今日の日付で記録。修正は明細をタップ。","exp.notePh":"メモ（任意）","belong.addTitle":"持ち物を追加","belong.addPh":"例：体操服 / 図書の本 / 習字道具","belong.dowSuffix":"曜",
+    "hub.title":"何を記録しますか？","hub.addable":"追加できる機能","hub.schedulePet":"ケア・予定","hub.scheduleMe":"予定・ToDo","hub.toilet":"トイレ記録","hub.routine":"ルーティン（習慣）","hub.health":"体重・からだ","hub.belong":"持ち物（曜日）","hub.bday":"誕生日・記念日",
+    "del.confirmTitle":"本当に削除しますか？","del.confirmBody":"「{label}」を削除します。この操作は元に戻せません。","del.confirmBodyPlain":"この操作は元に戻せません。","del.confirmBtn":"削除する",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -1326,6 +1328,8 @@ const MESSAGES={
     "exp.title":"Expenses","exp.scopeThisFallback":"This one","exp.scopeAll":"Everyone","exp.emptyAll":"No expenses recorded yet.","exp.emptyThis":"Tap ＋ at bottom-right to add","exp.total":"Total","exp.year":"{y}","exp.monthlyAvg":"Monthly avg","exp.annual":"Annual est.","exp.byMember":"By member","exp.byCategory":"By category","exp.trend":"Monthly trend","exp.trendRecent":" (last {n} mo)","exp.trendEmpty":"As data grows, the monthly trend will appear.","exp.delLabel":"expense on {date}",
     "certs.title":"Care & certificates","certs.cert":"Certificate","certs.addCert":"＋ Add certificate","certs.empty":"Tap ＋ to pick a type and date, then save a certificate.","certs.certHint":"Certificates (tap to enlarge)","certs.noDate":"No date","certs.yearLabel":"{y}","certs.addablePhoto":"Records you can add a photo (certificate) to","certs.tapAddPhoto":"Tap to add a certificate photo","renew.expired":"Expired {n}d","renew.today":"Due today","renew.left":"{n}d left",
     "common.memoOpt":"Memo (optional)","exp.addTitle":"Record expense","exp.addHint":"Saved with today's date. Tap an item to edit.","exp.notePh":"Memo (optional)","belong.addTitle":"Add belongings","belong.addPh":"e.g. gym clothes / library book / calligraphy set","belong.dowSuffix":"",
+    "hub.title":"What would you like to record?","hub.addable":"Add a feature","hub.schedulePet":"Care & plans","hub.scheduleMe":"Plans & to-dos","hub.toilet":"Toilet log","hub.routine":"Routines (habits)","hub.health":"Weight & body","hub.belong":"Belongings (by day)","hub.bday":"Birthdays & anniversaries",
+    "del.confirmTitle":"Delete this?","del.confirmBody":"Delete “{label}”. This can’t be undone.","del.confirmBodyPlain":"This can’t be undone.","del.confirmBtn":"Delete",
   },
 };
 function tr(lang,key,vars){
@@ -6289,18 +6293,18 @@ function App(){
         const has=(t)=>items.some(x=>x.space===tab&&x.type===t);
         const open=(fn)=>{setHubOpen(false);fn();};
         const OPTS=[
-          {key:"schedule",icon:"calendar",label:isMemberTab?"ケア・予定":"予定・ToDo",freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
-          {key:"diary",icon:"note",label:"今日のようす",freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
-          ...(curKind==="pet"?[{key:"feed",icon:"utensils",label:"フード・食事",freq:1,used:has("feed"),act:()=>openMeal(foodDefs[0]?.id)}]:[]),
-          ...(curKind==="pet"?[{key:"toilet",icon:"paw",label:"トイレ記録",freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
-          {key:"routine",icon:"repeat",label:"ルーティン（習慣）",freq:1,used:has("routine"),act:openRoutineCustom},
-          {key:"health",icon:"scale",label:"体重・からだ",freq:2,used:has("health"),act:()=>setInputSheet("health")},
-          {key:"expense",icon:"wallet",label:"支出",freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
-          {key:"memory",icon:"camera",label:"思い出",freq:2,used:has("memory"),act:()=>openLifeNew(todayIso,tab)},
-          {key:"supply",icon:"package",label:"消耗品の在庫",freq:3,used:has("supply"),act:openSupplyCustom},
-          {key:"card",icon:"pin",label:"大切な情報",freq:3,used:has("card"),act:()=>openCardNew("other")},
-          ...(curKind==="person"?[{key:"belong",icon:"bag",label:"持ち物（曜日）",freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
-          ...(!isMemberTab?[{key:"bday",icon:"gift",label:"誕生日・記念日",freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
+          {key:"schedule",icon:"calendar",label:isMemberTab?t("hub.schedulePet"):t("hub.scheduleMe"),freq:1,used:isMemberTab?items.some(x=>x.space===tab&&x.type==="care"):items.some(x=>x.space==="me"&&ME_TYPES.includes(x.type)),act:()=>setInputSheet("schedule")},
+          {key:"diary",icon:"note",label:t("rec.diaryTitle"),freq:1,used:has("diary"),act:()=>setInputSheet("diary")},
+          ...(curKind==="pet"?[{key:"feed",icon:"utensils",label:t("rec.feedTitle"),freq:1,used:has("feed"),act:()=>openMeal(foodDefs[0]?.id)}]:[]),
+          ...(curKind==="pet"?[{key:"toilet",icon:"paw",label:t("hub.toilet"),freq:1,used:has("toilet"),act:()=>setInputSheet("toilet")}]:[]),
+          {key:"routine",icon:"repeat",label:t("hub.routine"),freq:1,used:has("routine"),act:openRoutineCustom},
+          {key:"health",icon:"scale",label:t("hub.health"),freq:2,used:has("health"),act:()=>setInputSheet("health")},
+          {key:"expense",icon:"wallet",label:t("exp.title"),freq:2,used:has("expense"),act:()=>setInputSheet("expense")},
+          {key:"memory",icon:"camera",label:t("album.title"),freq:2,used:has("memory"),act:()=>openLifeNew(todayIso,tab)},
+          {key:"supply",icon:"package",label:t("supply.title"),freq:3,used:has("supply"),act:openSupplyCustom},
+          {key:"card",icon:"pin",label:t("rec.trayTitle"),freq:3,used:has("card"),act:()=>openCardNew("other")},
+          ...(curKind==="person"?[{key:"belong",icon:"bag",label:t("hub.belong"),freq:3,used:has("belonging"),act:()=>setInputSheet("belong")}]:[]),
+          ...(!isMemberTab?[{key:"bday",icon:"gift",label:t("hub.bday"),freq:3,used:items.some(x=>x.space==="me"&&x.type==="bday"),act:()=>setInputSheet("bday")}]:[]),
         ];
         // メイン表示は「よく使う機能」＋「ユーザーが明示的に追加した機能」のみ。
         // 「使ったかどうか」では並びが変わらない（安定性）。
@@ -6311,22 +6315,22 @@ function App(){
         return(
           <div className="yl-overlay yl-hub-ov" onClick={()=>setHubOpen(false)}>
             <div className="yl-hub" onClick={e=>e.stopPropagation()}>
-              <div className="yl-hub-head"><h3 className="yl-hub-title">何を記録しますか？</h3><span className="yl-hub-who">{nameOf(tab)}</span></div>
+              <div className="yl-hub-head"><h3 className="yl-hub-title">{t("hub.title")}</h3><span className="yl-hub-who">{nameOf(tab)}</span></div>
               <Grid list={core}/>
               {addable.length>0&&(
                 <div className="yl-hub-add">
-                  <p className="yl-hub-add-label">追加できる機能</p>
+                  <p className="yl-hub-add-label">{t("hub.addable")}</p>
                   <div className="yl-hub-grid">
                     {addable.map(o=><button key={o.key} className="yl-hub-item addable" onClick={()=>{addToMenu(o.key);open(o.act);}}><span className="yl-hub-addbadge"><Icon name="plus" size={12}/></span><span className="yl-hub-emoji"><Icon name={o.icon} size={24}/></span><span className="yl-hub-label">{o.label}</span></button>)}
                   </div>
                 </div>
               )}
-              <button className="yl-hub-close" onClick={()=>setHubOpen(false)}>とじる</button>
+              <button className="yl-hub-close" onClick={()=>setHubOpen(false)}>{t("common.close")}</button>
             </div>
           </div>
         );
       })()}
-      {confirmAct&&<div className="yl-overlay" onClick={()=>setConfirmAct(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="trash" size={30}/></div><h3 className="yl-modal-title">本当に削除しますか？</h3>{confirmAct.label?<p className="yl-modal-body">「{confirmAct.label}」を削除します。この操作は元に戻せません。</p>:<p className="yl-modal-body">この操作は元に戻せません。</p>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmAct(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>{const f=confirmAct.fn;setConfirmAct(null);f&&f();}}>削除する</button></div></div></div>}
+      {confirmAct&&<div className="yl-overlay" onClick={()=>setConfirmAct(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="trash" size={30}/></div><h3 className="yl-modal-title">{t("del.confirmTitle")}</h3>{confirmAct.label?<p className="yl-modal-body">{t("del.confirmBody",{label:confirmAct.label})}</p>:<p className="yl-modal-body">{t("del.confirmBodyPlain")}</p>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmAct(null)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>{const f=confirmAct.fn;setConfirmAct(null);f&&f();}}>{t("del.confirmBtn")}</button></div></div></div>}
       {profilePrompt&&(()=>{const m=members.find(x=>x.id===profilePrompt);return(
         <div className="yl-overlay" onClick={()=>setProfilePrompt(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <div className="yl-modal-emoji"><Icon name="sparkles" size={28}/></div>
