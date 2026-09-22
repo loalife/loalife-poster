@@ -1245,7 +1245,7 @@ const MESSAGES={
     "theme.aria":"テーマ","theme.system":"端末に合わせる","theme.light":"ライト","theme.dark":"ダーク",
     "set.notifications":"通知","set.notifDesc":"予定や誕生日を、通知でそっと。","set.notifOn":"通知は許可されています","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
     "set.weather":"天気の地点","set.weatherDesc":"自宅も実家も公園も、気になる場所の天気を（最大{n}件）。","set.weatherMax":"最大{n}件まで。削除すると追加できます。","set.addLocation":"地点を追加",
-    "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）",
+    "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）","wx.currentLoc":"現在地","wx.locFallback":"地点","wx.maxReached":"地点は最大{n}件までです","wx.geoUnavailable":"この端末では位置情報が使えません","wx.geoFailed":"現在地を取得できませんでした","wx.addDesc":"自宅・実家・公園・旅行先などを登録。「現在地」は今いる場所。検索して登録もOK。","wx.useCurrent":"現在地を使う","wx.gettingLoc":"現在地を取得中…","wx.searchPlaceholder":"地名で検索（例：横浜・軽井沢）","wx.search":"検索","wx.searching":"検索中…","wx.noResults":"見つかりませんでした。別の地名でお試しください。","wx.popPrefix":"人口","wx.dupHint":"同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。","wx.setupCta":"地点を追加して天気・お散歩判定を表示","wx.refresh":"更新","wx.loading":"読み込み中…",
     "common.save":"保存","common.cancel":"キャンセル","common.stop":"やめる",
     "set.colorTime":"色が変わる時間（お世話・やることログ）","set.colorWarn":"黄色になるまで","set.colorAlert":"赤になるまで","set.colorNow":"現在：","set.colorDaySuffix":"日で","unit.dShort":"日",
     "set.petSafety":"ペットの安全","safety.toxic":"誤食・中毒の危険物リスト","safety.emergency":"夜間・救急の備え","safety.disaster":"防災・避難の備え",
@@ -1335,7 +1335,7 @@ const MESSAGES={
     "theme.aria":"Theme","theme.system":"Match device","theme.light":"Light","theme.dark":"Dark",
     "set.notifications":"Notifications","set.notifDesc":"Gentle nudges for schedules and birthdays.","set.notifOn":"Notifications are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
     "set.weather":"Weather locations","set.weatherDesc":"Weather for home, family's place, the park — up to {n} spots.","set.weatherMax":"Up to {n} spots. Remove one to add more.","set.addLocation":"Add a location",
-    "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)",
+    "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)","wx.currentLoc":"Current location","wx.locFallback":"Location","wx.maxReached":"Up to {n} locations","wx.geoUnavailable":"Location isn't available on this device","wx.geoFailed":"Couldn't get your current location","wx.addDesc":"Add home, family's place, a park, a trip spot… 'Current location' is where you are now. Search works too.","wx.useCurrent":"Use current location","wx.gettingLoc":"Getting location…","wx.searchPlaceholder":"Search by place name","wx.search":"Search","wx.searching":"Searching…","wx.noResults":"No results. Try another place name.","wx.popPrefix":"pop. ","wx.dupHint":"Watch for same-named places. You can rename later.","wx.setupCta":"Add a location to see weather & walk tips","wx.refresh":"Refresh","wx.loading":"Loading…",
     "common.save":"Save","common.cancel":"Cancel","common.stop":"Cancel",
     "set.colorTime":"When colors change (care & task log)","set.colorWarn":"Turns yellow after","set.colorAlert":"Turns red after","set.colorNow":"Now: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Pet safety","safety.toxic":"Toxic foods & hazards","safety.emergency":"Night & emergency prep","safety.disaster":"Disaster & evacuation prep",
@@ -1425,7 +1425,7 @@ const MESSAGES={
     "theme.aria":"Tema","theme.system":"Según el dispositivo","theme.light":"Claro","theme.dark":"Oscuro",
     "set.notifications":"Notificaciones","set.notifDesc":"Avisos suaves para citas y cumpleaños.","set.notifOn":"Notificaciones activadas","set.notifDenied":"Las notificaciones están desactivadas en los ajustes del dispositivo","set.notifAllow":"Permitir notificaciones",
     "set.weather":"Ubicaciones del clima","set.weatherDesc":"Clima para casa, la casa de la familia, el parque — hasta {n} lugares.","set.weatherMax":"Hasta {n} lugares. Quita uno para añadir más.","set.addLocation":"Añadir una ubicación",
-    "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)",
+    "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)","wx.currentLoc":"Ubicación actual","wx.locFallback":"Ubicación","wx.maxReached":"Hasta {n} ubicaciones","wx.geoUnavailable":"La ubicación no está disponible en este dispositivo","wx.geoFailed":"No se pudo obtener tu ubicación actual","wx.addDesc":"Añade casa, la casa de la familia, un parque, un destino… «Ubicación actual» es donde estás ahora. También puedes buscar.","wx.useCurrent":"Usar ubicación actual","wx.gettingLoc":"Obteniendo ubicación…","wx.searchPlaceholder":"Buscar por nombre de lugar","wx.search":"Buscar","wx.searching":"Buscando…","wx.noResults":"Sin resultados. Prueba con otro nombre.","wx.popPrefix":"pob. ","wx.dupHint":"Cuidado con lugares homónimos. Puedes renombrar después.","wx.setupCta":"Añade una ubicación para ver el clima y consejos de paseo","wx.refresh":"Actualizar","wx.loading":"Cargando…",
     "common.save":"Guardar","common.cancel":"Cancelar","common.stop":"Cancelar",
     "set.colorTime":"Cuándo cambian los colores (cuidados y registro de tareas)","set.colorWarn":"Se vuelve amarillo tras","set.colorAlert":"Se vuelve rojo tras","set.colorNow":"Ahora: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Seguridad de la mascota","safety.toxic":"Alimentos tóxicos y peligros","safety.emergency":"Preparación para urgencias nocturnas","safety.disaster":"Preparación ante desastres y evacuación",
@@ -1515,7 +1515,7 @@ const MESSAGES={
     "theme.aria":"主题","theme.system":"跟随设备","theme.light":"浅色","theme.dark":"深色",
     "set.notifications":"通知","set.notifDesc":"为日程和生日提供温和的提醒。","set.notifOn":"通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
     "set.weather":"天气地点","set.weatherDesc":"家、家人住处、公园的天气 — 最多{n}个地点。","set.weatherMax":"最多{n}个地点。删除一个再添加。","set.addLocation":"添加地点",
-    "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）",
+    "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）","wx.currentLoc":"当前位置","wx.locFallback":"地点","wx.maxReached":"最多{n}个地点","wx.geoUnavailable":"此设备无法使用定位","wx.geoFailed":"无法获取当前位置","wx.addDesc":"登记家、家人住处、公园、旅行地等。「当前位置」是你现在所在地。也可以搜索添加。","wx.useCurrent":"使用当前位置","wx.gettingLoc":"正在获取位置…","wx.searchPlaceholder":"按地名搜索","wx.search":"搜索","wx.searching":"搜索中…","wx.noResults":"未找到。请尝试其他地名。","wx.popPrefix":"人口","wx.dupHint":"注意同名地点。名称之后可修改。","wx.setupCta":"添加地点以显示天气与遛狗建议","wx.refresh":"刷新","wx.loading":"加载中…",
     "common.save":"保存","common.cancel":"取消","common.stop":"取消",
     "set.colorTime":"颜色变化的时机（照护与任务记录）","set.colorWarn":"变黄的天数","set.colorAlert":"变红的天数","set.colorNow":"当前：","set.colorDaySuffix":"天 → ","unit.dShort":"天",
     "set.petSafety":"宠物安全","safety.toxic":"有毒食物与危险","safety.emergency":"夜间与急救准备","safety.disaster":"防灾与疏散准备",
@@ -2400,7 +2400,8 @@ function App(){
   // 日本国内を優先し、人口が多い（＝よく知られた）地点を上位に並べて取り違えを防ぐ。
   const searchPlace=async()=>{const q=wxQuery.trim();if(!q)return;setWxSearching(true);setWxResults(null);
     try{
-      const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=20&language=ja&format=json`);
+      const gl=({ja:"ja",en:"en",es:"es",zh:"zh"})[lang]||"en";
+      const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=20&language=${gl}&format=json`);
       const j=await r.json();
       let list=Array.isArray(j.results)?j.results:[];
       const jp=list.filter(x=>x.country_code==="JP");
@@ -2413,6 +2414,10 @@ function App(){
   // 表示・保存用の地名（都道府県・市区町村を付けて取り違えを防ぐ）
   const placeParts=(res)=>[res.admin1,res.admin2,res.admin3].filter(v=>v&&v!==res.name);
   const placeLabel=(res)=>[res.name,...placeParts(res)].join("・");
+  // 保存済み地点名の表示：センチネル（現在地・地点）は言語化、それ以外は保存値をそのまま。
+  const locDisplayName=(l)=>{const n=l&&l.name;if(n==="現在地")return t("wx.currentLoc");if(n==="地点")return t("wx.locFallback");return n||t("wx.locFallback");};
+  // 人口表示（日中は「万」、他言語はロケール整形）。
+  const wxPop=(n)=>{if(!n)return null;if(lang==="ja"||lang==="zh")return `${t("wx.popPrefix")}${n>=10000?`${Math.round(n/10000)}万`:n.toLocaleString()}`;return `${t("wx.popPrefix")}${n.toLocaleString(LOCALES[lang]||"en-US")}`;};
   // 地点リストの保存（端末ローカル）。選択中の地点は旧キー（loalife-weatherloc）にも同期し、互換性を保つ。
   const persistLocs=(arr,selId)=>{
     setWeatherLocs(arr);
@@ -2421,9 +2426,9 @@ function App(){
     try{const sid=selId!==undefined?selId:weatherLocId;const sel=arr.find(l=>l.id===sid)||arr[0];if(sel)localStorage.setItem("loalife-weatherloc",JSON.stringify({name:sel.name,lat:sel.lat,lon:sel.lon}));else localStorage.removeItem("loalife-weatherloc");}catch(e){}
   };
   const addPlace=(loc)=>{
-    if(weatherLocs.length>=LOC_MAX){showFlash(`地点は最大${LOC_MAX}件までです`);return null;}
+    if(weatherLocs.length>=LOC_MAX){showFlash(t("wx.maxReached",{n:LOC_MAX}));return null;}
     const id="loc"+Date.now()+Math.floor(Math.random()*1000);
-    const entry={id,name:((loc.name||"地点").trim()||"地点").slice(0,24),lat:loc.lat,lon:loc.lon};
+    const entry={id,name:((loc.name||t("wx.locFallback")).trim()||t("wx.locFallback")).slice(0,24),lat:loc.lat,lon:loc.lon};
     setWeather(null);
     persistLocs([...weatherLocs,entry],id);
     return id;
@@ -2435,11 +2440,11 @@ function App(){
   const movePlace=(id,dir)=>{const i=weatherLocs.findIndex(l=>l.id===id);if(i<0)return;const j=i+dir;if(j<0||j>=weatherLocs.length)return;const arr=[...weatherLocs];[arr[i],arr[j]]=[arr[j],arr[i]];persistLocs(arr);};
   const pinPlace=(id)=>{const i=weatherLocs.findIndex(l=>l.id===id);if(i<=0)return;const arr=[...weatherLocs];const[it]=arr.splice(i,1);arr.unshift(it);persistLocs(arr);};
   const useCurrentLoc=()=>{
-    if(!navigator.geolocation){showFlash("この端末では位置情報が使えません");return;}
+    if(!navigator.geolocation){showFlash(t("wx.geoUnavailable"));return;}
     setWxGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos)=>{setWxGeoLoading(false);if(addPlace({name:"現在地",lat:pos.coords.latitude,lon:pos.coords.longitude}))setWxAddOpen(false);},
-      ()=>{setWxGeoLoading(false);showFlash("現在地を取得できませんでした");},
+      ()=>{setWxGeoLoading(false);showFlash(t("wx.geoFailed"));},
       {enableHighAccuracy:false,timeout:10000,maximumAge:300000}
     );
   };
@@ -4451,17 +4456,17 @@ function App(){
               {/* 地点切り替え：現在地／登録した場所を横並びで。タップでその地点の天気に切り替える。 */}
               <div className="yl-wxchips">
                 {weatherLocs.map(l=>(
-                  <button key={l.id} className={"yl-wxchip"+(l.id===weatherLoc.id?" on":"")} onClick={()=>selectPlace(l.id)}><Icon name="pin" size={11}/><span className="yl-wxchip-name">{l.name}</span></button>
+                  <button key={l.id} className={"yl-wxchip"+(l.id===weatherLoc.id?" on":"")} onClick={()=>selectPlace(l.id)}><Icon name="pin" size={11}/><span className="yl-wxchip-name">{locDisplayName(l)}</span></button>
                 ))}
-                {weatherLocs.length<LOC_MAX&&<button className="yl-wxchip add" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={12}/> 地点を追加</button>}
+                {weatherLocs.length<LOC_MAX&&<button className="yl-wxchip add" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={12}/> {t("set.addLocation")}</button>}
               </div>
               {(()=>{const wi=hasWalker?walkIndex(weather):null;const wa=hasWalker?walkAdvice(weather):null;const wt=hasWalker&&weather&&!weather.error&&weather.hours?walkTimeline(weather.hours):null;const tmr=weather&&!weather.error?weather.tomorrow:null;const wtT=hasWalker&&tmr&&tmr.hours?walkTimeline(tmr.hours):null;const wc=weather&&!weather.error&&weather.code!=null?weatherCodeMeta(weather.code):null;const jmaHi=(jmaWarn&&jmaWarn.warnings.length)?jmaWarn.warnings[0].level:0;const cardLv=jmaHi>=2?"danger":(wa&&wa.level==="danger")?"danger":(wi?wi.level:null);return(
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
-                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新">↻</button></div>
+                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")}>↻</button></div>
                   <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
                 </>):weather?(()=>{const advShort=(jmaHi>=2)?`${jmaWarn.warnings[0].name}発表中。お散歩は控えて`:wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
-                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label="更新" disabled={weatherLoading}>↻</button></div>
+                  <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")} disabled={weatherLoading}>↻</button></div>
                   {jmaWarn&&jmaWarn.warnings.length>0&&(
                     <div className="yl-jma">
                       <span className="yl-jma-head"><Icon name="alert" size={12}/> 気象庁・{jmaWarn.area}</span>
@@ -4511,10 +4516,10 @@ function App(){
                       </div>)}
                     </div>)}
                   </div>)}
-                </>);})():(<><div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {weatherLoc.name}</span></div><span className="yl-weather-load">{weatherLoading?"読み込み中…":"—"}</span></>)}
+                </>);})():(<><div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span></div><span className="yl-weather-load">{weatherLoading?t("wx.loading"):"—"}</span></>)}
               </div>
             );})()}</>):(
-              <button className="yl-weather-setup" onClick={()=>setWxAddOpen(true)}><Icon name="thermometer" size={16}/> 地点を追加して天気・お散歩判定を表示</button>
+              <button className="yl-weather-setup" onClick={()=>setWxAddOpen(true)}><Icon name="thermometer" size={16}/> {t("wx.setupCta")}</button>
             ))}
 
             {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
@@ -4709,12 +4714,12 @@ function App(){
                   {wxRename&&wxRename.id===l.id?(
                     <span className="yl-wxm-edit"><input className="yl-input sm" value={wxRename.val} onChange={e=>setWxRename({id:l.id,val:e.target.value})} onKeyDown={e=>e.key==="Enter"&&(()=>{renamePlace(l.id,wxRename.val);setWxRename(null);})()} placeholder={t("wx.namePlaceholder")} autoFocus/><button className="yl-addbtn sm" onClick={()=>{renamePlace(l.id,wxRename.val);setWxRename(null);}}>{t("common.save")}</button><button className="yl-modal-cancel" onClick={()=>setWxRename(null)}>{t("common.cancel")}</button></span>
                   ):(<>
-                    <span className="yl-wxm-name"><Icon name="pin" size={13}/> <span className="yl-wxm-nametext">{l.name}</span>{i===0&&<span className="yl-wxm-badge">{t("wx.first")}</span>}</span>
+                    <span className="yl-wxm-name"><Icon name="pin" size={13}/> <span className="yl-wxm-nametext">{locDisplayName(l)}</span>{i===0&&<span className="yl-wxm-badge">{t("wx.first")}</span>}</span>
                     <span className="yl-wxm-acts">
                       <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,-1)} disabled={i===0} aria-label={t("wx.moveUp")}>↑</button>
                       <button className="yl-wxm-btn" onClick={()=>movePlace(l.id,1)} disabled={i===weatherLocs.length-1} aria-label={t("wx.moveDown")}>↓</button>
                       {i!==0&&<button className="yl-wxm-btn" onClick={()=>pinPlace(l.id)} aria-label={t("wx.pinTop")}>★</button>}
-                      <button className="yl-wxm-btn" onClick={()=>setWxRename({id:l.id,val:l.name})} aria-label={t("wx.rename")}><Icon name="pencil" size={13}/></button>
+                      <button className="yl-wxm-btn" onClick={()=>setWxRename({id:l.id,val:locDisplayName(l)})} aria-label={t("wx.rename")}><Icon name="pencil" size={13}/></button>
                       <button className="yl-wxm-btn del" onClick={()=>removePlace(l.id)} aria-label={t("wx.delete")}>×</button>
                     </span>
                   </>)}
@@ -5810,16 +5815,16 @@ function App(){
       {wxAddOpen&&(
         <div className="yl-help-ov" onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
-            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="thermometer" size={18}/> 地点を追加</h2><button className="yl-help-close" onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}} aria-label="閉じる">×</button></div>
-            <p className="yl-set-desc">自宅・実家・公園・旅行先などを登録。<br/>「現在地」は今いる場所。検索して登録もOK。</p>
-            <button className="yl-addbtn sm" style={{marginTop:4}} onClick={useCurrentLoc} disabled={wxGeoLoading}><Icon name="pin" size={14}/> {wxGeoLoading?"現在地を取得中…":"現在地を使う"}</button>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="thermometer" size={18}/> {t("set.addLocation")}</h2><button className="yl-help-close" onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}} aria-label={t("common.close")}>×</button></div>
+            <p className="yl-set-desc">{t("wx.addDesc")}</p>
+            <button className="yl-addbtn sm" style={{marginTop:4}} onClick={useCurrentLoc} disabled={wxGeoLoading}><Icon name="pin" size={14}/> {wxGeoLoading?t("wx.gettingLoc"):t("wx.useCurrent")}</button>
             <div className="yl-wxsearch" style={{marginTop:12}}>
-              <input className="yl-input sm" value={wxQuery} onChange={e=>setWxQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlace()} placeholder="地名で検索（例：横浜・軽井沢）"/>
-              <button className="yl-addbtn sm" onClick={searchPlace} disabled={wxSearching}>{wxSearching?"検索中…":"検索"}</button>
+              <input className="yl-input sm" value={wxQuery} onChange={e=>setWxQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchPlace()} placeholder={t("wx.searchPlaceholder")}/>
+              <button className="yl-addbtn sm" onClick={searchPlace} disabled={wxSearching}>{wxSearching?t("wx.searching"):t("wx.search")}</button>
             </div>
-            {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>見つかりませんでした。別の地名でお試しください。</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=>{const sub=[...placeParts(r),r.country&&r.country!=="日本"?r.country:""].filter(Boolean).join(" ");return(<li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={14}/><span className="yl-wxrow-body"><span className="yl-wxrow-name">{r.name}</span>{sub&&<span className="yl-wxrow-sub">{sub}</span>}</span>{r.population?<span className="yl-wxrow-pop">人口{r.population>=10000?`${Math.round(r.population/10000)}万`:r.population.toLocaleString()}</span>:null}</button></li>);})}</ul>)}
-            <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。</p>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:10}} onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>とじる</button>
+            {wxResults!=null&&(wxResults.length===0?<p className="yl-set-desc" style={{marginTop:8}}>{t("wx.noResults")}</p>:<ul className="yl-wxlist">{wxResults.map((r,i)=>{const sub=[...placeParts(r),r.country_code&&r.country_code!=="JP"?r.country:""].filter(Boolean).join(" ");return(<li key={i}><button className="yl-wxrow" onClick={()=>pickPlace(r)}><Icon name="pin" size={14}/><span className="yl-wxrow-body"><span className="yl-wxrow-name">{r.name}</span>{sub&&<span className="yl-wxrow-sub">{sub}</span>}</span>{r.population?<span className="yl-wxrow-pop">{wxPop(r.population)}</span>:null}</button></li>);})}</ul>)}
+            <p className="yl-set-desc" style={{marginTop:8,fontSize:12}}>{t("wx.dupHint")}</p>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:10}} onClick={()=>{setWxAddOpen(false);setWxResults(null);setWxQuery("");}}>{t("common.close")}</button>
           </div>
         </div>
       )}
