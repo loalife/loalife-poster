@@ -562,7 +562,7 @@ function calcFoodAmount(species,bw,stageKey,bcs,me){
   return res;
 }
 // まとめて記録（多頭飼い向け）：選んだ子にワンタップで一括記録する日課
-const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚"},{title:"お薬",emoji:"💊"},{title:"散歩",emoji:"🦮"},{title:"トイレ",emoji:"🚽"}];
+const BATCH_ACTIONS=[{title:"ご飯",emoji:"🍚",lkey:"batch.meal"},{title:"お薬",emoji:"💊",lkey:"batch.med"},{title:"散歩",emoji:"🦮",lkey:"batch.walk"},{title:"トイレ",emoji:"🚽",lkey:"batch.toilet"}];
 // 前回実施日からの経過ラベル（前回いつ？をひと目で）
 // 前回からの経過ラベル。warn 日以上で黄、alert 日以上で赤（しきい値は設定で変更可）。
 function elapsedLabel(dateStr,warn=7,alert=14){
@@ -619,8 +619,8 @@ const POOP_SHAPE={
 const POOP_TONE_COLOR={hard:"#B98A5A",ok:"#A9803F",good:"#8A6A3E",soft:"#C89B5E",loose:"#CBA96A"};
 // WMO 天気コード → 絵文字＋日本語。Open-Meteo の weather_code に対応。
 function weatherCodeMeta(code){
-  const m={0:["☀️","快晴"],1:["🌤","晴れ"],2:["⛅","一部くもり"],3:["☁️","くもり"],45:["🌫","霧"],48:["🌫","霧氷"],51:["🌦","霧雨"],53:["🌦","霧雨"],55:["🌦","強い霧雨"],56:["🌧","着氷性の霧雨"],57:["🌧","着氷性の霧雨"],61:["🌧","小雨"],63:["🌧","雨"],65:["🌧","強い雨"],66:["🌧","着氷性の雨"],67:["🌧","着氷性の雨"],71:["🌨","小雪"],73:["🌨","雪"],75:["🌨","大雪"],77:["🌨","霧雪"],80:["🌦","にわか雨"],81:["🌦","にわか雨"],82:["🌦","激しいにわか雨"],85:["🌨","にわか雪"],86:["🌨","にわか雪"],95:["⛈","雷雨"],96:["⛈","雹を伴う雷雨"],99:["⛈","雹を伴う雷雨"]};
-  const e=m[code];return e?{emoji:e[0],label:e[1]}:{emoji:"🌡️",label:""};
+  const m={0:["☀️","wcode.clear"],1:["🌤","wcode.mostlySunny"],2:["⛅","wcode.partlyCloudy"],3:["☁️","wcode.cloudy"],45:["🌫","wcode.fog"],48:["🌫","wcode.rimeFog"],51:["🌦","wcode.drizzle"],53:["🌦","wcode.drizzle"],55:["🌦","wcode.heavyDrizzle"],56:["🌧","wcode.freezingDrizzle"],57:["🌧","wcode.freezingDrizzle"],61:["🌧","wcode.lightRain"],63:["🌧","wcode.rain"],65:["🌧","wcode.heavyRain"],66:["🌧","wcode.freezingRain"],67:["🌧","wcode.freezingRain"],71:["🌨","wcode.lightSnow"],73:["🌨","wcode.snow"],75:["🌨","wcode.heavySnow"],77:["🌨","wcode.snowGrains"],80:["🌦","wcode.showers"],81:["🌦","wcode.showers"],82:["🌦","wcode.heavyShowers"],85:["🌨","wcode.snowShowers"],86:["🌨","wcode.snowShowers"],95:["⛈","wcode.thunder"],96:["⛈","wcode.thunderHail"],99:["⛈","wcode.thunderHail"]};
+  const e=m[code];return e?{emoji:e[0],label:tr(APP_LANG,e[1])}:{emoji:"🌡️",label:""};
 }
 // 気象庁（JMA）警報・注意報：府県予報区コード＋代表座標。緯度経度から最寄りを選ぶ（府県単位の概況）。
 // 北海道・沖縄は地方ごとに分割。取得先: https://www.jma.go.jp/bosai/warning/data/warning/{code}.json
@@ -659,18 +659,18 @@ function walkAdvice(w){
   const t=w.temp,h=w.humidity,road=(typeof w.roadTemp==="number")?w.roadTemp:null,app=(typeof w.apparent==="number")?w.apparent:t;
   const code=w.code,precip=(typeof w.precip==="number")?w.precip:null,pop=(typeof w.pop==="number")?w.pop:null;
   if((road!=null&&road>=50)||app>=35||t>=35)
-    return{level:"danger",emoji:"🚫",label:"いまは控えて",msg:"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。"};
+    return{level:"danger",emoji:"🚫",label:tr(APP_LANG,"walk.adv.heatLabel"),msg:tr(APP_LANG,"walk.adv.heatMsg")};
   if([95,96,99].includes(code)||(precip!=null&&precip>=4))
-    return{level:"danger",emoji:"⛈",label:"いまは控えて",msg:"雷雨・大雨のおそれ。落ち着いてからにしましょう。"};
+    return{level:"danger",emoji:"⛈",label:tr(APP_LANG,"walk.adv.thunderLabel"),msg:tr(APP_LANG,"walk.adv.thunderMsg")};
   if((precip!=null&&precip>=0.3)||[61,63,65,66,67,80,81,82].includes(code))
-    return{level:"warn",emoji:"🌧",label:"雨に注意",msg:"雨で足元がすべりやすく、体も冷えます。無理せず短めに・雨具を。"};
+    return{level:"warn",emoji:"🌧",label:tr(APP_LANG,"walk.adv.rainLabel"),msg:tr(APP_LANG,"walk.adv.rainMsg")};
   if((road!=null&&road>=40)||app>=28||t>26||(typeof h==="number"&&h>=85))
-    return{level:"warn",emoji:"⚠️",label:"注意して",msg:"地面が熱め。短めに・日陰を選び、水分を持って。"};
+    return{level:"warn",emoji:"⚠️",label:tr(APP_LANG,"walk.adv.hotLabel"),msg:tr(APP_LANG,"walk.adv.hotMsg")};
   if(t<=0||(road!=null&&road<=0))
-    return{level:"warn",emoji:"❄️",label:"寒さ注意",msg:"路面凍結や冷えに注意。防寒して短めに。"};
+    return{level:"warn",emoji:"❄️",label:tr(APP_LANG,"walk.adv.coldLabel"),msg:tr(APP_LANG,"walk.adv.coldMsg")};
   if((pop!=null&&pop>=70)||[51,53,55].includes(code))
-    return{level:"warn",emoji:"🌧",label:"雨のおそれ",msg:"降り出しそうです。短時間で切り上げられるように。"};
-  return{level:"ok",emoji:"🐾",label:"お散歩日和",msg:"いまは比較的お散歩に向いています。"};
+    return{level:"warn",emoji:"🌧",label:tr(APP_LANG,"walk.adv.mayRainLabel"),msg:tr(APP_LANG,"walk.adv.mayRainMsg")};
+  return{level:"ok",emoji:"🐾",label:tr(APP_LANG,"walk.adv.okLabel"),msg:tr(APP_LANG,"walk.adv.okMsg")};
 }
 // お散歩指数：気温・蒸し暑さ・路面・雨・寒さ・風・紫外線・乾燥から0〜100で採点。
 // 各要因の減点（内訳）と主因も返す。
@@ -684,44 +684,44 @@ function walkIndex(w){
   const F=[];const add=(key,label,icon,pen)=>{if(pen>0)F.push({key,label,icon,penalty:Math.round(pen)});};
   // 暑さ（気温）
   let heat=0;if(t>=35)heat=85;else if(t>=30)heat=60;else if(t>=28)heat=42;else if(t>=26)heat=28;else if(t>=24)heat=14;
-  add("heat","暑さ","sun",heat);
+  add("heat",tr(APP_LANG,"walk.f.heat"),"sun",heat);
   // 寒さ（気温）
   let cold=0;if(t<0)cold=48;else if(t<3)cold=32;else if(t<7)cold=18;else if(t<11)cold=8;
-  add("cold","寒さ","snow",cold);
+  add("cold",tr(APP_LANG,"walk.f.cold"),"snow",cold);
   // 蒸し暑さ（気温高め＋多湿）
   let mug=0;if(h!=null&&t>=23){const over=Math.max(0,h-65);mug=Math.min(28,over*0.4+(t>=28?8:0));}
-  add("mug","蒸し暑さ","thermometer",mug);
+  add("mug",tr(APP_LANG,"walk.f.mug"),"thermometer",mug);
   // 路面の暑さ
   let rh=0;if(road!=null){if(road>=55)rh=40;else if(road>=50)rh=30;else if(road>=45)rh=20;else if(road>=40)rh=10;}
-  add("road","路面の暑さ","paw",rh);
+  add("road",tr(APP_LANG,"walk.f.road"),"paw",rh);
   // 雨・雪・雷・霧：天気コードに加え、実際の降水量と現在時間帯の降水確率も反映
   // （大雨警報級で降水確率が高い場合、今の天気コードが雨でなくても「日和」にしない）
-  let wx=0,wxl="雨",wxi="cloudrain";
-  if([51,53,55,56,57].includes(code)){wx=22;wxl="霧雨";}
-  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl="雨";}
-  else if([71,73,75,77,85,86].includes(code)){wx=42;wxl="雪";wxi="snow";}
-  else if([95,96,99].includes(code)){wx=70;wxl="雷雨";}
-  else if([45,48].includes(code)){wx=14;wxl="霧";}
+  let wx=0,wxl=tr(APP_LANG,"walk.wx.rain"),wxi="cloudrain";
+  if([51,53,55,56,57].includes(code)){wx=22;wxl=tr(APP_LANG,"walk.wx.drizzle");}
+  else if([61,63,65,66,67,80,81,82].includes(code)){wx=45;wxl=tr(APP_LANG,"walk.wx.rain");}
+  else if([71,73,75,77,85,86].includes(code)){wx=42;wxl=tr(APP_LANG,"walk.wx.snow");wxi="snow";}
+  else if([95,96,99].includes(code)){wx=70;wxl=tr(APP_LANG,"walk.wx.thunder");}
+  else if([45,48].includes(code)){wx=14;wxl=tr(APP_LANG,"walk.wx.fog");}
   const precip=(typeof w.precip==="number")?w.precip:null;
   const pop=(typeof w.pop==="number")?w.pop:null;
-  if(precip!=null&&precip>0){const p=precip>=4?72:precip>=1?55:38;if(p>wx){wx=p;wxl=precip>=4?"強い雨":"雨";wxi="cloudrain";}} // 実際に降っている
-  if(pop!=null){let p=0;if(pop>=90)p=60;else if(pop>=70)p=50;else if(pop>=60)p=42;else if(pop>=40)p=22;if(p>wx){wx=p;wxl=pop>=70?"雨のおそれ":"雨の可能性";wxi="cloudrain";}} // 降水確率
+  if(precip!=null&&precip>0){const p=precip>=4?72:precip>=1?55:38;if(p>wx){wx=p;wxl=precip>=4?tr(APP_LANG,"walk.wx.heavyRain"):tr(APP_LANG,"walk.wx.rain");wxi="cloudrain";}} // 実際に降っている
+  if(pop!=null){let p=0;if(pop>=90)p=60;else if(pop>=70)p=50;else if(pop>=60)p=42;else if(pop>=40)p=22;if(p>wx){wx=p;wxl=pop>=70?tr(APP_LANG,"walk.wx.rainLikely"):tr(APP_LANG,"walk.wx.rainChance");wxi="cloudrain";}} // 降水確率
   add("wx",wxl,wxi,wx);
   // 風
   let vp=0;if(wind!=null){if(wind>=12)vp=52;else if(wind>=8)vp=32;else if(wind>=5)vp=16;else if(wind>=3.5)vp=6;}
-  add("wind","風","wind",vp);
+  add("wind",tr(APP_LANG,"walk.f.wind"),"wind",vp);
   // 紫外線
   let uvp=0;if(uv!=null){if(uv>=11)uvp=26;else if(uv>=8)uvp=18;else if(uv>=6)uvp=10;else if(uv>=3)uvp=4;}
-  add("uv","紫外線","glasses",uvp);
+  add("uv",tr(APP_LANG,"walk.f.uv"),"glasses",uvp);
   // 乾燥
   let dry=0;if(h!=null){if(h<20)dry=12;else if(h<30)dry=6;}
-  add("dry","乾燥","droplet",dry);
+  add("dry",tr(APP_LANG,"walk.f.dry"),"droplet",dry);
   const total=F.reduce((a,f)=>a+f.penalty,0);
   const score=Math.max(0,Math.min(100,100-total));
   F.sort((a,b)=>b.penalty-a.penalty);
   const stars=score>=80?5:score>=60?4:score>=40?3:score>=20?2:1;
   const level=score>=60?"ok":score>=35?"warn":"danger";
-  const label=score>=80?"お散歩日和":score>=60?"まずまず":score>=40?"ふつう":score>=20?"やや不向き":"お散歩は控えめに";
+  const label=tr(APP_LANG,score>=80?"walk.lvl.excellent":score>=60?"walk.lvl.good":score>=40?"walk.lvl.fair":score>=20?"walk.lvl.poor":"walk.lvl.bad");
   return{score,stars,level,label,factors:F,main:F[0]||null};
 }
 // 1時間ぶんの散歩レベル判定（体感温度・降水・UV・雷を考慮。時間帯ごとに判定して時間軸で推奨を出す）。good/caution/avoid。
@@ -1246,6 +1246,8 @@ const MESSAGES={
     "set.notifications":"通知","set.notifDesc":"予定や誕生日を、通知でそっと。","set.notifOn":"通知は許可されています","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
     "set.weather":"天気の地点","set.weatherDesc":"自宅も実家も公園も、気になる場所の天気を（最大{n}件）。","set.weatherMax":"最大{n}件まで。削除すると追加できます。","set.addLocation":"地点を追加",
     "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）","wx.currentLoc":"現在地","wx.locFallback":"地点","wx.maxReached":"地点は最大{n}件までです","wx.geoUnavailable":"この端末では位置情報が使えません","wx.geoFailed":"現在地を取得できませんでした","wx.addDesc":"自宅・実家・公園・旅行先などを登録。「現在地」は今いる場所。検索して登録もOK。","wx.useCurrent":"現在地を使う","wx.gettingLoc":"現在地を取得中…","wx.searchPlaceholder":"地名で検索（例：横浜・軽井沢）","wx.search":"検索","wx.searching":"検索中…","wx.noResults":"見つかりませんでした。別の地名でお試しください。","wx.popPrefix":"人口","wx.dupHint":"同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。","wx.setupCta":"地点を追加して天気・お散歩判定を表示","wx.refresh":"更新","wx.loading":"読み込み中…",
+    "wcode.clear":"快晴","wcode.mostlySunny":"晴れ","wcode.partlyCloudy":"一部くもり","wcode.cloudy":"くもり","wcode.fog":"霧","wcode.rimeFog":"霧氷","wcode.drizzle":"霧雨","wcode.heavyDrizzle":"強い霧雨","wcode.freezingDrizzle":"着氷性の霧雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"強い雨","wcode.freezingRain":"着氷性の雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"霧雪","wcode.showers":"にわか雨","wcode.heavyShowers":"激しいにわか雨","wcode.snowShowers":"にわか雪","wcode.thunder":"雷雨","wcode.thunderHail":"雹を伴う雷雨","walk.adv.heatLabel":"いまは控えて","walk.adv.heatMsg":"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。","walk.adv.thunderLabel":"いまは控えて","walk.adv.thunderMsg":"雷雨・大雨のおそれ。落ち着いてからにしましょう。","walk.adv.rainLabel":"雨に注意","walk.adv.rainMsg":"雨で足元がすべりやすく、体も冷えます。無理せず短めに・雨具を。","walk.adv.hotLabel":"注意して","walk.adv.hotMsg":"地面が熱め。短めに・日陰を選び、水分を持って。","walk.adv.coldLabel":"寒さ注意","walk.adv.coldMsg":"路面凍結や冷えに注意。防寒して短めに。","walk.adv.mayRainLabel":"雨のおそれ","walk.adv.mayRainMsg":"降り出しそうです。短時間で切り上げられるように。","walk.adv.okLabel":"お散歩日和","walk.adv.okMsg":"いまは比較的お散歩に向いています。","walk.f.heat":"暑さ","walk.f.cold":"寒さ","walk.f.mug":"蒸し暑さ","walk.f.road":"路面の暑さ","walk.f.wind":"風","walk.f.uv":"紫外線","walk.f.dry":"乾燥","walk.wx.drizzle":"霧雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"霧","walk.wx.heavyRain":"強い雨","walk.wx.rainLikely":"雨のおそれ","walk.wx.rainChance":"雨の可能性","walk.lvl.excellent":"お散歩日和","walk.lvl.good":"まずまず","walk.lvl.fair":"ふつう","walk.lvl.poor":"やや不向き","walk.lvl.bad":"お散歩は控えめに","wx.errGet":"取得できませんでした","wx.retry":"再試行","wx.jma":"気象庁","wx.jmaActive":"{name}発表中。お散歩は控えて","walk.indexShort":"散歩指数","walk.advShort.danger":"今日はお散歩を控えめに","walk.advShort.warn":"短めのお散歩がおすすめ","walk.advShort.ok":"お散歩日和です","wx.feelsHumid":"体感 {f}℃ ・ 湿度 {h}%","wx.more":"詳細を見る","wx.less":"閉じる","wx.feels":"体感","wx.road":"路面","wx.nowObs":"現在（{time}時点）の実況・当日の予報","walk.indexFull":"お散歩指数 {score}／100","walk.roadApprox":"（路面約{t}℃）","walk.breakdown":"スコアの内訳（減点）","walk.whenTitle":"おさんぽ、いつがいい？","wx.today":"今日","wx.tomorrow":"明日","walk.tmrNA":"明日の予報はまだ取得できません","walk.timeAround":"{h}時ごろ","walk.timeRange":"{from}〜{to}時","walk.bestSuffix":"が気もちよさそう","walk.stayInToday":"今日はおうちでのんびり","walk.stayInTomorrow":"明日はおうちでのんびり","walk.axisMorning":"朝5時","walk.axis9":"9時","walk.axisNoon":"昼13時","walk.axis17":"17時","walk.axisNight":"夜22時","walk.legGood":"ごきげん","walk.legMid":"ほどほど","walk.legAvoid":"ひかえめに","batch.title":"まとめてお世話記録","batch.meal":"ご飯","batch.med":"お薬","batch.walk":"散歩","batch.toilet":"トイレ","daily.habitToday":"今日の習慣","daily.memories":"思い出","daily.seeMore":"もっと見る","daily.recordLayer":"記録","daily.restockBadge":"買い足し {n}","daily.monthExpense":"今月の支出","daily.vsLastUp":"先月より増","daily.noRecYet":"記録はまだありません","daily.reset":"サンプルを消して最初から",
+    "notices.title":"今日のLOALIFE","a11y.menu":"メニュー","notif.bannerText":"通知を許可すると、リマインダーや誕生日をお知らせします","ai.greetMorning":"おはよう","ai.greetDay":"こんにちは","ai.greetEve":"こんばんは","ai.todosN":"今日は {n}件 やることがあります。","ai.relaxed":"今日はゆっくり過ごせそうです。","ai.jmaWalk":"{name}発表中。お散歩は控えてください。","ai.walkBest":"{name}のお散歩は {time} がおすすめです。","ai.walkLight":"今日はお散歩を控えめにすると安心です。","ai.overdue":"{who}{title} が {n}日 過ぎています。","ai.dueToday":"{who}{title} は今日です。","ai.dueIn":"{who}{title} まで あと{n}日 です。",
     "common.save":"保存","common.cancel":"キャンセル","common.stop":"やめる",
     "set.colorTime":"色が変わる時間（お世話・やることログ）","set.colorWarn":"黄色になるまで","set.colorAlert":"赤になるまで","set.colorNow":"現在：","set.colorDaySuffix":"日で","unit.dShort":"日",
     "set.petSafety":"ペットの安全","safety.toxic":"誤食・中毒の危険物リスト","safety.emergency":"夜間・救急の備え","safety.disaster":"防災・避難の備え",
@@ -1336,6 +1338,8 @@ const MESSAGES={
     "set.notifications":"Notifications","set.notifDesc":"Gentle nudges for schedules and birthdays.","set.notifOn":"Notifications are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
     "set.weather":"Weather locations","set.weatherDesc":"Weather for home, family's place, the park — up to {n} spots.","set.weatherMax":"Up to {n} spots. Remove one to add more.","set.addLocation":"Add a location",
     "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)","wx.currentLoc":"Current location","wx.locFallback":"Location","wx.maxReached":"Up to {n} locations","wx.geoUnavailable":"Location isn't available on this device","wx.geoFailed":"Couldn't get your current location","wx.addDesc":"Add home, family's place, a park, a trip spot… 'Current location' is where you are now. Search works too.","wx.useCurrent":"Use current location","wx.gettingLoc":"Getting location…","wx.searchPlaceholder":"Search by place name","wx.search":"Search","wx.searching":"Searching…","wx.noResults":"No results. Try another place name.","wx.popPrefix":"pop. ","wx.dupHint":"Watch for same-named places. You can rename later.","wx.setupCta":"Add a location to see weather & walk tips","wx.refresh":"Refresh","wx.loading":"Loading…",
+    "wcode.clear":"Clear","wcode.mostlySunny":"Mostly sunny","wcode.partlyCloudy":"Partly cloudy","wcode.cloudy":"Cloudy","wcode.fog":"Fog","wcode.rimeFog":"Rime fog","wcode.drizzle":"Drizzle","wcode.heavyDrizzle":"Heavy drizzle","wcode.freezingDrizzle":"Freezing drizzle","wcode.lightRain":"Light rain","wcode.rain":"Rain","wcode.heavyRain":"Heavy rain","wcode.freezingRain":"Freezing rain","wcode.lightSnow":"Light snow","wcode.snow":"Snow","wcode.heavySnow":"Heavy snow","wcode.snowGrains":"Snow grains","wcode.showers":"Showers","wcode.heavyShowers":"Heavy showers","wcode.snowShowers":"Snow showers","wcode.thunder":"Thunderstorm","wcode.thunderHail":"Thunderstorm with hail","walk.adv.heatLabel":"Hold off for now","walk.adv.heatMsg":"Risk of heatstroke and paw burns. Go in the cool morning or evening.","walk.adv.thunderLabel":"Hold off for now","walk.adv.thunderMsg":"Thunderstorms or heavy rain likely. Wait until it settles.","walk.adv.rainLabel":"Watch for rain","walk.adv.rainMsg":"Wet ground is slippery and it gets cold. Keep it short and bring rain gear.","walk.adv.hotLabel":"Take care","walk.adv.hotMsg":"The ground is warm. Keep it short, choose shade, bring water.","walk.adv.coldLabel":"Cold warning","walk.adv.coldMsg":"Watch for icy ground and cold. Bundle up and keep it short.","walk.adv.mayRainLabel":"Rain likely","walk.adv.mayRainMsg":"Rain may start soon. Be ready to wrap up quickly.","walk.adv.okLabel":"Great for a walk","walk.adv.okMsg":"It's a relatively good time for a walk right now.","walk.f.heat":"Heat","walk.f.cold":"Cold","walk.f.mug":"Humidity & heat","walk.f.road":"Ground heat","walk.f.wind":"Wind","walk.f.uv":"UV","walk.f.dry":"Dryness","walk.wx.drizzle":"Drizzle","walk.wx.rain":"Rain","walk.wx.snow":"Snow","walk.wx.thunder":"Thunderstorm","walk.wx.fog":"Fog","walk.wx.heavyRain":"Heavy rain","walk.wx.rainLikely":"Rain likely","walk.wx.rainChance":"Chance of rain","walk.lvl.excellent":"Great for a walk","walk.lvl.good":"Pretty good","walk.lvl.fair":"So-so","walk.lvl.poor":"Not ideal","walk.lvl.bad":"Better to skip","wx.errGet":"Couldn't load","wx.retry":"Retry","wx.jma":"JMA","wx.jmaActive":"{name} in effect — take it easy on walks","walk.indexShort":"Walk score","walk.advShort.danger":"Keep walks light today","walk.advShort.warn":"A short walk is best","walk.advShort.ok":"Great for a walk","wx.feelsHumid":"Feels {f}℃ · {h}% humidity","wx.more":"Details","wx.less":"Close","wx.feels":"Feels","wx.road":"Ground","wx.nowObs":"Now (as of {time}) + today's forecast","walk.indexFull":"Walk score {score}/100","walk.roadApprox":"(ground ~{t}℃)","walk.breakdown":"Score breakdown (deductions)","walk.whenTitle":"When's a good time to walk?","wx.today":"Today","wx.tomorrow":"Tomorrow","walk.tmrNA":"Tomorrow's forecast isn't available yet","walk.timeAround":"around {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" looks nice","walk.stayInToday":"A cozy day in today","walk.stayInTomorrow":"A cozy day in tomorrow","walk.axisMorning":"5am","walk.axis9":"9am","walk.axisNoon":"1pm","walk.axis17":"5pm","walk.axisNight":"10pm","walk.legGood":"Great","walk.legMid":"OK","walk.legAvoid":"Avoid","batch.title":"Quick care log","batch.meal":"Meal","batch.med":"Meds","batch.walk":"Walk","batch.toilet":"Toilet","daily.habitToday":"Today's habits","daily.memories":"Memories","daily.seeMore":"See more","daily.recordLayer":"Records","daily.restockBadge":"Restock {n}","daily.monthExpense":"This month's spending","daily.vsLastUp":"Up vs last month","daily.noRecYet":"No records yet","daily.reset":"Clear samples and start over",
+    "notices.title":"Today's LOALIFE","a11y.menu":"Menu","notif.bannerText":"Allow notifications for reminders and birthdays","ai.greetMorning":"Good morning","ai.greetDay":"Hello","ai.greetEve":"Good evening","ai.todosN":"You have {n} to do today.","ai.relaxed":"Looks like an easy day today.","ai.jmaWalk":"{name} in effect. Please hold off on walks.","ai.walkBest":"Best walk time for {name}: {time}.","ai.walkLight":"Best to keep walks light today.","ai.overdue":"{who}{title} is {n} day(s) overdue.","ai.dueToday":"{who}{title} is today.","ai.dueIn":"{who}{title} in {n} day(s).",
     "common.save":"Save","common.cancel":"Cancel","common.stop":"Cancel",
     "set.colorTime":"When colors change (care & task log)","set.colorWarn":"Turns yellow after","set.colorAlert":"Turns red after","set.colorNow":"Now: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Pet safety","safety.toxic":"Toxic foods & hazards","safety.emergency":"Night & emergency prep","safety.disaster":"Disaster & evacuation prep",
@@ -1426,6 +1430,8 @@ const MESSAGES={
     "set.notifications":"Notificaciones","set.notifDesc":"Avisos suaves para citas y cumpleaños.","set.notifOn":"Notificaciones activadas","set.notifDenied":"Las notificaciones están desactivadas en los ajustes del dispositivo","set.notifAllow":"Permitir notificaciones",
     "set.weather":"Ubicaciones del clima","set.weatherDesc":"Clima para casa, la casa de la familia, el parque — hasta {n} lugares.","set.weatherMax":"Hasta {n} lugares. Quita uno para añadir más.","set.addLocation":"Añadir una ubicación",
     "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)","wx.currentLoc":"Ubicación actual","wx.locFallback":"Ubicación","wx.maxReached":"Hasta {n} ubicaciones","wx.geoUnavailable":"La ubicación no está disponible en este dispositivo","wx.geoFailed":"No se pudo obtener tu ubicación actual","wx.addDesc":"Añade casa, la casa de la familia, un parque, un destino… «Ubicación actual» es donde estás ahora. También puedes buscar.","wx.useCurrent":"Usar ubicación actual","wx.gettingLoc":"Obteniendo ubicación…","wx.searchPlaceholder":"Buscar por nombre de lugar","wx.search":"Buscar","wx.searching":"Buscando…","wx.noResults":"Sin resultados. Prueba con otro nombre.","wx.popPrefix":"pob. ","wx.dupHint":"Cuidado con lugares homónimos. Puedes renombrar después.","wx.setupCta":"Añade una ubicación para ver el clima y consejos de paseo","wx.refresh":"Actualizar","wx.loading":"Cargando…",
+    "wcode.clear":"Despejado","wcode.mostlySunny":"Mayormente soleado","wcode.partlyCloudy":"Parcialmente nublado","wcode.cloudy":"Nublado","wcode.fog":"Niebla","wcode.rimeFog":"Niebla helada","wcode.drizzle":"Llovizna","wcode.heavyDrizzle":"Llovizna intensa","wcode.freezingDrizzle":"Llovizna helada","wcode.lightRain":"Lluvia ligera","wcode.rain":"Lluvia","wcode.heavyRain":"Lluvia fuerte","wcode.freezingRain":"Lluvia helada","wcode.lightSnow":"Nieve ligera","wcode.snow":"Nieve","wcode.heavySnow":"Nieve intensa","wcode.snowGrains":"Granos de nieve","wcode.showers":"Chubascos","wcode.heavyShowers":"Chubascos fuertes","wcode.snowShowers":"Chubascos de nieve","wcode.thunder":"Tormenta","wcode.thunderHail":"Tormenta con granizo","walk.adv.heatLabel":"Mejor espera","walk.adv.heatMsg":"Riesgo de golpe de calor y quemaduras en las almohadillas. Sal en las horas frescas.","walk.adv.thunderLabel":"Mejor espera","walk.adv.thunderMsg":"Posible tormenta o lluvia fuerte. Espera a que se calme.","walk.adv.rainLabel":"Cuidado con la lluvia","walk.adv.rainMsg":"El suelo mojado resbala y enfría. Que sea corto y lleva impermeable.","walk.adv.hotLabel":"Ten cuidado","walk.adv.hotMsg":"El suelo está caliente. Corto, a la sombra y con agua.","walk.adv.coldLabel":"Aviso de frío","walk.adv.coldMsg":"Cuidado con el hielo y el frío. Abrígate y que sea corto.","walk.adv.mayRainLabel":"Posible lluvia","walk.adv.mayRainMsg":"Puede empezar a llover. Prepárate para terminar pronto.","walk.adv.okLabel":"Buen día de paseo","walk.adv.okMsg":"Ahora es un momento relativamente bueno para pasear.","walk.f.heat":"Calor","walk.f.cold":"Frío","walk.f.mug":"Bochorno","walk.f.road":"Calor del suelo","walk.f.wind":"Viento","walk.f.uv":"UV","walk.f.dry":"Sequedad","walk.wx.drizzle":"Llovizna","walk.wx.rain":"Lluvia","walk.wx.snow":"Nieve","walk.wx.thunder":"Tormenta","walk.wx.fog":"Niebla","walk.wx.heavyRain":"Lluvia fuerte","walk.wx.rainLikely":"Posible lluvia","walk.wx.rainChance":"Probabilidad de lluvia","walk.lvl.excellent":"Buen día de paseo","walk.lvl.good":"Bastante bien","walk.lvl.fair":"Normal","walk.lvl.poor":"Poco ideal","walk.lvl.bad":"Mejor evitar","wx.errGet":"No se pudo cargar","wx.retry":"Reintentar","wx.jma":"JMA","wx.jmaActive":"{name} activo — cuidado con los paseos","walk.indexShort":"Índice de paseo","walk.advShort.danger":"Paseos suaves hoy","walk.advShort.warn":"Mejor un paseo corto","walk.advShort.ok":"Buen día de paseo","wx.feelsHumid":"Sensación {f}℃ · {h}% humedad","wx.more":"Detalles","wx.less":"Cerrar","wx.feels":"Sensación","wx.road":"Suelo","wx.nowObs":"Ahora (a las {time}) + pronóstico de hoy","walk.indexFull":"Índice de paseo {score}/100","walk.roadApprox":"(suelo ~{t}℃)","walk.breakdown":"Desglose (penalizaciones)","walk.whenTitle":"¿Cuándo pasear?","wx.today":"Hoy","wx.tomorrow":"Mañana","walk.tmrNA":"El pronóstico de mañana aún no está disponible","walk.timeAround":"hacia las {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" parece agradable","walk.stayInToday":"Hoy, tranquilos en casa","walk.stayInTomorrow":"Mañana, tranquilos en casa","walk.axisMorning":"5:00","walk.axis9":"9:00","walk.axisNoon":"13:00","walk.axis17":"17:00","walk.axisNight":"22:00","walk.legGood":"Genial","walk.legMid":"Regular","walk.legAvoid":"Evitar","batch.title":"Registro rápido","batch.meal":"Comida","batch.med":"Medicina","batch.walk":"Paseo","batch.toilet":"Baño","daily.habitToday":"Hábitos de hoy","daily.memories":"Recuerdos","daily.seeMore":"Ver más","daily.recordLayer":"Registros","daily.restockBadge":"Reponer {n}","daily.monthExpense":"Gasto de este mes","daily.vsLastUp":"Más que el mes pasado","daily.noRecYet":"Aún no hay registros","daily.reset":"Borrar ejemplos y empezar",
+    "notices.title":"LOALIFE de hoy","a11y.menu":"Menú","notif.bannerText":"Permite notificaciones para recordatorios y cumpleaños","ai.greetMorning":"Buenos días","ai.greetDay":"Hola","ai.greetEve":"Buenas noches","ai.todosN":"Hoy tienes {n} cosas que hacer.","ai.relaxed":"Parece un día tranquilo.","ai.jmaWalk":"{name} activo. Evita los paseos.","ai.walkBest":"Mejor hora de paseo para {name}: {time}.","ai.walkLight":"Hoy, mejor paseos suaves.","ai.overdue":"{who}{title}: {n} día(s) de retraso.","ai.dueToday":"{who}{title} es hoy.","ai.dueIn":"{who}{title} en {n} día(s).",
     "common.save":"Guardar","common.cancel":"Cancelar","common.stop":"Cancelar",
     "set.colorTime":"Cuándo cambian los colores (cuidados y registro de tareas)","set.colorWarn":"Se vuelve amarillo tras","set.colorAlert":"Se vuelve rojo tras","set.colorNow":"Ahora: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Seguridad de la mascota","safety.toxic":"Alimentos tóxicos y peligros","safety.emergency":"Preparación para urgencias nocturnas","safety.disaster":"Preparación ante desastres y evacuación",
@@ -1516,6 +1522,8 @@ const MESSAGES={
     "set.notifications":"通知","set.notifDesc":"为日程和生日提供温和的提醒。","set.notifOn":"通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
     "set.weather":"天气地点","set.weatherDesc":"家、家人住处、公园的天气 — 最多{n}个地点。","set.weatherMax":"最多{n}个地点。删除一个再添加。","set.addLocation":"添加地点",
     "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）","wx.currentLoc":"当前位置","wx.locFallback":"地点","wx.maxReached":"最多{n}个地点","wx.geoUnavailable":"此设备无法使用定位","wx.geoFailed":"无法获取当前位置","wx.addDesc":"登记家、家人住处、公园、旅行地等。「当前位置」是你现在所在地。也可以搜索添加。","wx.useCurrent":"使用当前位置","wx.gettingLoc":"正在获取位置…","wx.searchPlaceholder":"按地名搜索","wx.search":"搜索","wx.searching":"搜索中…","wx.noResults":"未找到。请尝试其他地名。","wx.popPrefix":"人口","wx.dupHint":"注意同名地点。名称之后可修改。","wx.setupCta":"添加地点以显示天气与遛狗建议","wx.refresh":"刷新","wx.loading":"加载中…",
+    "wcode.clear":"晴","wcode.mostlySunny":"晴","wcode.partlyCloudy":"局部多云","wcode.cloudy":"多云","wcode.fog":"雾","wcode.rimeFog":"雾凇","wcode.drizzle":"毛毛雨","wcode.heavyDrizzle":"强毛毛雨","wcode.freezingDrizzle":"冻毛毛雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"大雨","wcode.freezingRain":"冻雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"雪粒","wcode.showers":"阵雨","wcode.heavyShowers":"强阵雨","wcode.snowShowers":"阵雪","wcode.thunder":"雷雨","wcode.thunderHail":"雷雨伴冰雹","walk.adv.heatLabel":"暂时避免","walk.adv.heatMsg":"有中暑和烫伤肉垫的危险。请在清晨或傍晚凉爽时段。","walk.adv.thunderLabel":"暂时避免","walk.adv.thunderMsg":"可能有雷雨或大雨。请等天气平稳后再出门。","walk.adv.rainLabel":"注意下雨","walk.adv.rainMsg":"地面湿滑且易着凉。请缩短时间并带好雨具。","walk.adv.hotLabel":"请注意","walk.adv.hotMsg":"地面偏热。请缩短时间、选阴凉处并带水。","walk.adv.coldLabel":"注意寒冷","walk.adv.coldMsg":"注意路面结冰和着凉。请保暖并缩短时间。","walk.adv.mayRainLabel":"可能下雨","walk.adv.mayRainMsg":"可能快下雨了。请做好尽快结束的准备。","walk.adv.okLabel":"适合散步","walk.adv.okMsg":"现在比较适合散步。","walk.f.heat":"炎热","walk.f.cold":"寒冷","walk.f.mug":"闷热","walk.f.road":"路面高温","walk.f.wind":"风","walk.f.uv":"紫外线","walk.f.dry":"干燥","walk.wx.drizzle":"毛毛雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"雾","walk.wx.heavyRain":"大雨","walk.wx.rainLikely":"可能下雨","walk.wx.rainChance":"有降雨可能","walk.lvl.excellent":"适合散步","walk.lvl.good":"还不错","walk.lvl.fair":"一般","walk.lvl.poor":"不太适合","walk.lvl.bad":"建议少出门","wx.errGet":"加载失败","wx.retry":"重试","wx.jma":"气象厅","wx.jmaActive":"{name}发布中——遛狗请注意","walk.indexShort":"遛狗指数","walk.advShort.danger":"今天少出门散步","walk.advShort.warn":"建议短时间散步","walk.advShort.ok":"适合散步","wx.feelsHumid":"体感 {f}℃ · 湿度 {h}%","wx.more":"查看详情","wx.less":"收起","wx.feels":"体感","wx.road":"路面","wx.nowObs":"当前（{time}）实况 + 当日预报","walk.indexFull":"遛狗指数 {score}/100","walk.roadApprox":"(路面约{t}℃)","walk.breakdown":"分数明细（扣分）","walk.whenTitle":"什么时候适合遛狗？","wx.today":"今天","wx.tomorrow":"明天","walk.tmrNA":"明天的预报暂时还没有","walk.timeAround":"{h}点左右","walk.timeRange":"{from}–{to}点","walk.bestSuffix":"应该很舒服","walk.stayInToday":"今天在家悠闲一下","walk.stayInTomorrow":"明天在家悠闲一下","walk.axisMorning":"早5点","walk.axis9":"9点","walk.axisNoon":"午13点","walk.axis17":"17点","walk.axisNight":"晚22点","walk.legGood":"舒适","walk.legMid":"一般","walk.legAvoid":"避免","batch.title":"一键记录照顾","batch.meal":"吃饭","batch.med":"吃药","batch.walk":"散步","batch.toilet":"如厕","daily.habitToday":"今日习惯","daily.memories":"回忆","daily.seeMore":"查看更多","daily.recordLayer":"记录","daily.restockBadge":"补货 {n}","daily.monthExpense":"本月支出","daily.vsLastUp":"比上月增加","daily.noRecYet":"还没有记录","daily.reset":"清除示例，重新开始",
+    "notices.title":"今日的LOALIFE","a11y.menu":"菜单","notif.bannerText":"允许通知以接收提醒和生日","ai.greetMorning":"早上好","ai.greetDay":"你好","ai.greetEve":"晚上好","ai.todosN":"今天有{n}件事要做。","ai.relaxed":"今天似乎可以轻松度过。","ai.jmaWalk":"{name}发布中。请暂缓遛狗。","ai.walkBest":"{name}的散步推荐时间：{time}。","ai.walkLight":"今天最好少出门散步。","ai.overdue":"{who}{title} 已过期{n}天。","ai.dueToday":"{who}{title} 就在今天。","ai.dueIn":"{who}{title} 还有{n}天。",
     "common.save":"保存","common.cancel":"取消","common.stop":"取消",
     "set.colorTime":"颜色变化的时机（照护与任务记录）","set.colorWarn":"变黄的天数","set.colorAlert":"变红的天数","set.colorNow":"当前：","set.colorDaySuffix":"天 → ","unit.dShort":"天",
     "set.petSafety":"宠物安全","safety.toxic":"有毒食物与危险","safety.emergency":"夜间与急救准备","safety.disaster":"防灾与疏散准备",
@@ -4013,23 +4021,23 @@ function App(){
   // AIサマリー：今日の要点を1〜3行で。あいさつ＋やること件数＋お散歩おすすめ＋直近の締切。
   const aiSummary=useMemo(()=>{
     const hr=new Date().getHours();
-    const greet=hr<4?"こんばんは":hr<11?"おはよう":hr<18?"こんにちは":"こんばんは";
+    const greet=t(hr<4?"ai.greetEve":hr<11?"ai.greetMorning":hr<18?"ai.greetDay":"ai.greetEve");
     const lines=[];
     const cnt=homeData.todos.length+homeData.bombs.length;
-    lines.push(cnt>0?`今日は ${cnt}件 やることがあります。`:"今日はゆっくり過ごせそうです。");
+    lines.push(cnt>0?t("ai.todosN",{n:cnt}):t("ai.relaxed"));
     const jmaSevere=hasWalker&&jmaWarn&&jmaWarn.warnings.length&&jmaWarn.warnings[0].level>=2;
     if(jmaSevere){
-      lines.push(`${jmaWarn.warnings[0].name}発表中。お散歩は控えてください。`);
+      lines.push(t("ai.jmaWalk",{name:jmaWarn.warnings[0].name}));
     }else if(hasWalker&&weather&&!weather.error&&weather.hours){
       const wt=walkTimeline(weather.hours);
       const pet=petMembers.find(m=>m.species==="dog"&&!m.memorial);
-      if(wt&&wt.best&&pet)lines.push(`${pet.name}のお散歩は ${wt.best.from===wt.best.to?wt.best.from+"時ごろ":wt.best.from+"〜"+wt.best.to+"時"} がおすすめです。`);
-      else if(wt&&!wt.best)lines.push("今日はお散歩を控えめにすると安心です。");
+      if(wt&&wt.best&&pet)lines.push(t("ai.walkBest",{name:pet.name,time:wt.best.from===wt.best.to?t("walk.timeAround",{h:wt.best.from}):t("walk.timeRange",{from:wt.best.from,to:wt.best.to})}));
+      else if(wt&&!wt.best)lines.push(t("ai.walkLight"));
     }
     const nb=homeData.bombs[0];
-    if(nb&&lines.length<3){const d=nb.d;const w=nameOf(nb.item.space);const who=w?w+"の":"";lines.push(d<0?`${who}${nb.item.title} が ${-d}日 過ぎています。`:d===0?`${who}${nb.item.title} は今日です。`:`${who}${nb.item.title} まで あと${d}日 です。`);}
+    if(nb&&lines.length<3){const d=nb.d;const w=nameOf(nb.item.space);const who=w?(lang==="ja"?w+"の":lang==="zh"?w+"的":lang==="en"?w+"'s ":w+": "):"";lines.push(d<0?t("ai.overdue",{who,title:nb.item.title,n:-d}):d===0?t("ai.dueToday",{who,title:nb.item.title}):t("ai.dueIn",{who,title:nb.item.title,n:d}));}
     return{greet,name:meName||"",lines:lines.slice(0,3)};
-  },[homeData,hasWalker,weather,petMembers,meName,jmaWarn]);
+  },[homeData,hasWalker,weather,petMembers,meName,jmaWarn,lang,t]);
 
   // ② 安心ステータス：各メンバーのレベルと一言
   // 「注意」は本当のケア漏れだけに絞る：期限切れ・在庫切れ＝要対応、重要ケアが迫る/在庫少＝注意。
@@ -4248,9 +4256,9 @@ function App(){
                 {inHousehold?"👨‍👩‍👧":"👤"}{fireUser?"":" 共有"}
               </button>
             )}
-            <button className="yl-menu-btn yl-bell" onClick={openNotices} aria-label="今日のLOALIFE" title="今日のLOALIFE"><Icon name="bell" size={20}/>{unreadNoticeCount>0&&<span className="yl-bell-badge">{unreadNoticeCount>9?"9+":unreadNoticeCount}</span>}</button>
-            <button className="yl-menu-btn" onClick={()=>setHelpOpen(true)} aria-label="使い方・機能紹介" title="使い方・機能紹介"><Icon name="note" size={20}/></button>
-            <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label="メニュー" title="メニュー"><Icon name="menu" size={22}/></button>
+            <button className="yl-menu-btn yl-bell" onClick={openNotices} aria-label={t("notices.title")} title={t("notices.title")}><Icon name="bell" size={20}/>{unreadNoticeCount>0&&<span className="yl-bell-badge">{unreadNoticeCount>9?"9+":unreadNoticeCount}</span>}</button>
+            <button className="yl-menu-btn" onClick={()=>setHelpOpen(true)} aria-label={t("about.help")} title={t("about.help")}><Icon name="note" size={20}/></button>
+            <button className="yl-menu-btn" onClick={()=>setMenuOpen(true)} aria-label={t("a11y.menu")} title={t("a11y.menu")}><Icon name="menu" size={22}/></button>
           </div>
         </header>
 
@@ -4290,7 +4298,7 @@ function App(){
             )}
             {members.length>0&&(
               <section className="yl-ai">
-                <p className="yl-ai-greet"><Icon name={new Date().getHours()<11?"sun":new Date().getHours()<18?"sun":"moon"} size={18}/> {aiSummary.greet}{aiSummary.name?`、${aiSummary.name}`:""}</p>
+                <p className="yl-ai-greet"><Icon name={new Date().getHours()<11?"sun":new Date().getHours()<18?"sun":"moon"} size={18}/> {aiSummary.greet}{aiSummary.name?((lang==="ja"?"、":lang==="zh"?"，":", ")+aiSummary.name):""}</p>
                 {aiSummary.lines.map((l,i)=><p key={i} className="yl-ai-line">{l}</p>)}
               </section>
             )}
@@ -4298,8 +4306,8 @@ function App(){
             {/* お願い系バナーは挨拶の下に、同時に1枚だけ（通知を優先） */}
             {members.length>0&&(()=>{const showNotif=showNotifBanner&&(hasReminders||members.some(m=>m.birthday));if(showNotif)return(
               <div className="yl-notif-banner">
-                <span>通知を許可すると、リマインダーや誕生日をお知らせします</span>
-                <button className="yl-notif-allow" onClick={handleNotifRequest}>許可する</button>
+                <span>{t("notif.bannerText")}</span>
+                <button className="yl-notif-allow" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>
               </div>
             );if(a2hsHint)return(
               <div className="yl-notif-banner">
@@ -4464,12 +4472,12 @@ function App(){
               <div className={"yl-weather"+(cardLv?" lv-"+cardLv:"")}>
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")}>↻</button></div>
-                  <span className="yl-weather-err">取得できませんでした <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>再試行</button></span>
-                </>):weather?(()=>{const advShort=(jmaHi>=2)?`${jmaWarn.warnings[0].name}発表中。お散歩は控えて`:wi?(wi.level==="danger"?"今日はお散歩を控えめに":wi.level==="warn"?"短めのお散歩がおすすめ":"お散歩日和です"):null;return(<>
+                  <span className="yl-weather-err">{t("wx.errGet")} <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>{t("wx.retry")}</button></span>
+                </>):weather?(()=>{const advShort=(jmaHi>=2)?t("wx.jmaActive",{name:jmaWarn.warnings[0].name}):wi?(wi.level==="danger"?t("walk.advShort.danger"):wi.level==="warn"?t("walk.advShort.warn"):t("walk.advShort.ok")):null;return(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")} disabled={weatherLoading}>↻</button></div>
                   {jmaWarn&&jmaWarn.warnings.length>0&&(
                     <div className="yl-jma">
-                      <span className="yl-jma-head"><Icon name="alert" size={12}/> 気象庁・{jmaWarn.area}</span>
+                      <span className="yl-jma-head"><Icon name="alert" size={12}/> {t("wx.jma")}・{jmaWarn.area}</span>
                       <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{w.name}</span>)}</span>
                     </div>
                   )}
@@ -4477,41 +4485,41 @@ function App(){
                     <span className="yl-wx-temp">{Math.round(weather.temp)}°</span>
                     <div className="yl-wx-heroright">
                       {wc&&<span className="yl-wx-cond">{wc.label}</span>}
-                      {wi&&<span className={"yl-wx-index lv-"+wi.level}><Icon name="paw" size={13}/> 散歩指数 {wi.score}</span>}
+                      {wi&&<span className={"yl-wx-index lv-"+wi.level}><Icon name="paw" size={13}/> {t("walk.indexShort")} {wi.score}</span>}
                     </div>
                   </div>
-                  <p className="yl-wx-advice">{advShort||`体感 ${weather.apparent!=null?Math.round(weather.apparent):Math.round(weather.temp)}℃ ・ 湿度 ${Math.round(weather.humidity)}%`}</p>
-                  <button className="yl-wx-more" onClick={()=>setWxDetail(o=>!o)}>{wxDetail?"閉じる":"詳細を見る"} <Icon name="chevron" size={13} className={wxDetail?"yl-rot90":""}/></button>
+                  <p className="yl-wx-advice">{advShort||t("wx.feelsHumid",{f:weather.apparent!=null?Math.round(weather.apparent):Math.round(weather.temp),h:Math.round(weather.humidity)})}</p>
+                  <button className="yl-wx-more" onClick={()=>setWxDetail(o=>!o)}>{wxDetail?t("wx.less"):t("wx.more")} <Icon name="chevron" size={13} className={wxDetail?"yl-rot90":""}/></button>
                   {wxDetail&&(<div className="yl-wx-detail">
                     <div className="yl-weather-vals">
-                      {weather.apparent!=null&&<span className="yl-weather-feels">体感 {Math.round(weather.apparent)}℃</span>}
+                      {weather.apparent!=null&&<span className="yl-weather-feels">{t("wx.feels")} {Math.round(weather.apparent)}℃</span>}
                       {(weather.hi!=null||weather.lo!=null)&&<span className="yl-weather-hilo">{weather.hi!=null?`↑${Math.round(weather.hi)}°`:""}{weather.lo!=null?` ↓${Math.round(weather.lo)}°`:""}</span>}
                       <span className="yl-weather-hum"><Icon name="droplet" size={13}/> {Math.round(weather.humidity)}%</span>
                       {weather.wind!=null&&<span className="yl-weather-wind"><Icon name="wind" size={13}/> {Math.round(weather.wind)}m/s</span>}
                       {weather.uv!=null&&<span className="yl-weather-uv"><Icon name="sun" size={13}/> UV {Math.round(weather.uv)}</span>}
-                      {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> 路面 {Math.round(weather.roadTemp)}℃</span>}
+                      {hasWalker&&weather.roadTemp!=null&&<span className="yl-weather-road"><Icon name="paw" size={13}/> {t("wx.road")} {Math.round(weather.roadTemp)}℃</span>}
                     </div>
-                    {weather.time&&<span className="yl-weather-time">現在（{weather.time.slice(11,16)}時点）の実況・当日の予報</span>}
+                    {weather.time&&<span className="yl-weather-time">{t("wx.nowObs",{time:weather.time.slice(11,16)})}</span>}
                     {wi&&(<div className="yl-walk">
-                      <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> お散歩指数 {wi.score}／100</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span></span>
-                      {wa&&wa.level==="danger"&&<span className="yl-walk-danger"><Icon name="alert" size={13}/> {wa.msg}{weather.roadTemp!=null?`（路面約${Math.round(weather.roadTemp)}℃）`:""}</span>}
+                      <span className="yl-walk-index"><span className={"yl-walk-badge lv-"+wi.level}><Icon name="paw" size={14}/> {t("walk.indexFull",{score:wi.score})}</span><span className="yl-walk-stars">{"★".repeat(wi.stars)}{"☆".repeat(5-wi.stars)}</span></span>
+                      {wa&&wa.level==="danger"&&<span className="yl-walk-danger"><Icon name="alert" size={13}/> {wa.msg}{weather.roadTemp!=null?t("walk.roadApprox",{t:Math.round(weather.roadTemp)}):""}</span>}
                       {wi.factors.length>0&&(
                         <div className="yl-walk-bd">
-                          <span className="yl-walk-bd-label">スコアの内訳（減点）</span>
+                          <span className="yl-walk-bd-label">{t("walk.breakdown")}</span>
                           <ul className="yl-walk-bd-list">{wi.factors.map(f=><li key={f.key} className="yl-walk-bd-item"><span className="yl-walk-bd-name"><Icon name={f.icon} size={13}/> {f.label}</span><span className="yl-walk-bd-bar"><span className="yl-walk-bd-fill" style={{width:Math.min(100,f.penalty)+"%"}}/></span><span className="yl-walk-bd-pen">−{f.penalty}</span></li>)}</ul>
                         </div>
                       )}
                       {(wt||wtT)&&(<div className="yl-walktime">
                         <div className="yl-walktime-head">
-                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> おさんぽ、いつがいい？</span>
-                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>今日</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>明日</button></span>}
+                          <span className="yl-walktime-title"><Icon name="paw" size={15}/> {t("walk.whenTitle")}</span>
+                          {wtT&&<span className="yl-walkday-toggle"><button className={"yl-walkday-btn"+(walkDay==="today"?" on":"")} onClick={()=>setWalkDay("today")}>{t("wx.today")}</button><button className={"yl-walkday-btn"+(walkDay==="tomorrow"?" on":"")} onClick={()=>setWalkDay("tomorrow")}>{t("wx.tomorrow")}</button></span>}
                         </div>
-                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">明日の予報はまだ取得できません</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
+                        {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">{t("walk.tmrNA")}</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
                           {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
-                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {active.best.from===active.best.to?`${active.best.from}時ごろ`:`${active.best.from}〜${active.best.to}時`}が気もちよさそう</span>:<span className="yl-walktime-badge none">{isT?"明日はおうちでのんびり":"今日はおうちでのんびり"}</span>}
+                          {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {(active.best.from===active.best.to?t("walk.timeAround",{h:active.best.from}):t("walk.timeRange",{from:active.best.from,to:active.best.to}))+t("walk.bestSuffix")}</span>:<span className="yl-walktime-badge none">{isT?t("walk.stayInTomorrow"):t("walk.stayInToday")}</span>}
                           <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
-                          <div className="yl-walktime-axis"><span>朝5時</span><span>9時</span><span>昼13時</span><span>17時</span><span>夜22時</span></div>
-                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> ごきげん</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> ほどほど</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> ひかえめに</span></div>
+                          <div className="yl-walktime-axis"><span>{t("walk.axisMorning")}</span><span>{t("walk.axis9")}</span><span>{t("walk.axisNoon")}</span><span>{t("walk.axis17")}</span><span>{t("walk.axisNight")}</span></div>
+                          <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> {t("walk.legGood")}</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> {t("walk.legMid")}</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> {t("walk.legAvoid")}</span></div>
                         </>);})()}
                       </div>)}
                     </div>)}
@@ -4525,25 +4533,25 @@ function App(){
             {/* 毎日いちばん使う「まとめてお世話記録」を天気のすぐ下に置き、開いてすぐ記録できるように */}
             {(()=>{const livePets=petMembers.filter(m=>!m.memorial);if(livePets.length===0)return null;const selIds=batchSel===null?livePets.map(m=>m.id):batchSel.filter(id=>livePets.some(m=>m.id===id));const toggle=(id)=>setBatchSel(()=>{const base=batchSel===null?livePets.map(m=>m.id):batchSel;return base.includes(id)?base.filter(x=>x!==id):[...base,id];});return(
               <section className="yl-batch">
-                <div className="yl-batch-head"><span className="yl-batch-title">まとめてお世話記録</span></div>
+                <div className="yl-batch-head"><span className="yl-batch-title">{t("batch.title")}</span></div>
                 <div className="yl-batch-pets">{livePets.map(m=>{const on=selIds.includes(m.id);return(
                   <button key={m.id} className={"yl-batch-pet"+(on?" on":"")} onClick={()=>toggle(m.id)}>{avatarNode(m,"xs")}<span className="yl-batch-petname">{m.name}</span>{on&&<span className="yl-batch-check">✓</span>}</button>);})}
                 </div>
-                <div className="yl-batch-acts">{BATCH_ACTIONS.filter(a=>a.title!=="散歩"||hasWalker).map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{a.title}</button>)}</div>
+                <div className="yl-batch-acts">{BATCH_ACTIONS.filter(a=>a.title!=="散歩"||hasWalker).map(a=><button key={a.title} className="yl-batch-act" disabled={selIds.length===0} onClick={()=>batchLog(a,selIds)}><span className="yl-batch-act-emoji"><Icon name={guessIcon(a.title)} size={18}/></span>{t(a.lkey)}</button>)}</div>
               </section>);})()}
 
             {/* ━━ 第2層「コンディション」：習慣と思い出の軽チェック ━━ */}
             <div className="yl-layer">
               {allRoutines.length>0&&(
                 <section className="yl-habit">
-                  <span className="yl-habit-label">今日の習慣</span>
+                  <span className="yl-habit-label">{t("daily.habitToday")}</span>
                   <span className="yl-habit-bar"><span className="yl-habit-fill" style={{width:Math.round(routineDoneToday/allRoutines.length*100)+"%"}}/></span>
                   <span className="yl-habit-count">{routineDoneToday}/{allRoutines.length}</span>
                 </section>
               )}
               {(()=>{const mems=items.filter(x=>x.type==="memory"&&firstPhotoId(x)&&photos[firstPhotoId(x)]).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)).slice(0,3);if(mems.length===0)return null;return(
                 <section className="yl-hmem">
-                  <div className="yl-hmem-head"><span className="yl-hmem-title">思い出</span><button className="yl-hmem-more" onClick={()=>{const sp=members[0]?members[0].id:"me";setTab(sp);setPersonSeg("record");}}>もっと見る</button></div>
+                  <div className="yl-hmem-head"><span className="yl-hmem-title">{t("daily.memories")}</span><button className="yl-hmem-more" onClick={()=>{const sp=members[0]?members[0].id:"me";setTab(sp);setPersonSeg("record");}}>{t("daily.seeMore")}</button></div>
                   <div className="yl-hmem-strip">{mems.map(m=>(<button key={m.id} className="yl-hmem-cell" onClick={()=>viewPhoto(firstPhotoId(m))}><img src={photos[firstPhotoId(m)]} alt=""/></button>))}</div>
                 </section>
               );})()}
@@ -4567,20 +4575,20 @@ function App(){
             {/* ━━ 第3層「記録」：低頻度。既定で畳んで安心の場を守る ━━ */}
             <div className="yl-layer">
               <button className="yl-layer-toggle" onClick={()=>setRecOpen(o=>!o)}>
-                <span className="yl-layer-label rec">記録</span>
-                {restockList.length>0&&<span className="yl-layer-badge">買い足し {restockList.length}</span>}
+                <span className="yl-layer-label rec">{t("daily.recordLayer")}</span>
+                {restockList.length>0&&<span className="yl-layer-badge">{t("daily.restockBadge",{n:restockList.length})}</span>}
                 <span className="yl-layer-arrow">{recOpen?"▲":"▼"}</span>
               </button>
               {recOpen&&(
                 <div className="yl-layer-body">
                   {homeExpense.total>0&&(
                     <section className="yl-hexp">
-                      <div className="yl-hexp-top"><span className="yl-hexp-label">今月の支出</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
+                      <div className="yl-hexp-top"><span className="yl-hexp-label">{t("daily.monthExpense")}</span><span className="yl-hexp-total">{fmtYen(homeExpense.total)}</span></div>
                       {homeExpense.rows.length>1&&(
                         <ul className="yl-hexp-rows">
                           {homeExpense.rows.slice(0,4).map(r=>(
                             <li key={r.space}><button className="yl-hexp-row" onClick={()=>setTab(r.space)}>
-                              <span className="yl-hexp-name">{r.name}{r.spike&&<span className="yl-hexp-spike"><Icon name="alert" size={12}/> 先月より増</span>}</span>
+                              <span className="yl-hexp-name">{r.name}{r.spike&&<span className="yl-hexp-spike"><Icon name="alert" size={12}/> {t("daily.vsLastUp")}</span>}</span>
                               <span className="yl-hexp-amt">{fmtYen(r.amount)}</span>
                             </button></li>
                           ))}
@@ -4608,11 +4616,11 @@ function App(){
                     </section>
                   )}
                   <section className="yl-summary"><h2 className="yl-sec-title light">{t("home.recap")}</h2><div className="yl-summary-row"><div className="yl-stat"><span className="yl-stat-n">{weekDone}</span><span className="yl-stat-l">{t("home.statWeekCare")}</span></div><div className="yl-stat"><span className="yl-stat-n">{allRoutines.length>0?`${routineDoneToday}/${allRoutines.length}`:"—"}</span><span className="yl-stat-l">{t("home.statTodayRoutine")}</span></div></div></section>
-                  {homeExpense.total===0&&restockList.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>記録はまだありません</p>}
+                  {homeExpense.total===0&&restockList.length===0&&<p className="yl-routine-empty" style={{padding:"4px 0"}}>{t("daily.noRecYet")}</p>}
                 </div>
               )}
             </div>
-            <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ サンプルを消して最初から</button>
+            <button className="yl-reset" onClick={()=>setConfirmReset(true)}>⟳ {t("daily.reset")}</button>
           </div>
         ):tab==="cal"?(
           <div className="yl-cal">
@@ -5831,7 +5839,7 @@ function App(){
       {noticesOpen&&(
         <div className="yl-help-ov" onClick={()=>setNoticesOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
-            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> 今日のLOALIFE</h2><button className="yl-help-close" onClick={()=>setNoticesOpen(false)} aria-label="閉じる">×</button></div>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> {t("notices.title")}</h2><button className="yl-help-close" onClick={()=>setNoticesOpen(false)} aria-label={t("common.close")}>×</button></div>
             {notices.length===0?(
               <p className="yl-notice-empty">今日はお知らせはありません。<br/>のんびり過ごせそうです。</p>
             ):(
