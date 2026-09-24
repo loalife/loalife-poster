@@ -26,9 +26,9 @@ const addInterval = (s,rep) => { const[y,m,d]=s.split("-").map(Number); const dt
 const fmtDate = (s) => { if(!s)return""; const[,m,d]=s.split("-").map(Number); return`${m}/${d}`; };
 // 授乳タイマー用のフォーマッタ（ms タイムスタンプ基準）。
 const isoOf = (ms) => iso(new Date(ms));
-const fmtDur = (sec) => sec<60?`${sec}秒`:`${Math.floor(sec/60)}分${sec%60?`${sec%60}秒`:""}`;
+const fmtDur = (sec) => {const S=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}秒`:`${n}s`;const M=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}分`:`${n}m`;return sec<60?S(sec):`${M(Math.floor(sec/60))}${sec%60?S(sec%60):""}`;};
 const fmtClock = (ms) => { const d=new Date(ms); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
-const sinceLabel = (ms) => { const mins=Math.max(0,Math.floor((Date.now()-ms)/60000)); if(mins<1)return"たった今"; if(mins<60)return`${mins}分`; const h=Math.floor(mins/60),m=mins%60; return`${h}時間${m?`${m}分`:""}`; };
+const sinceLabel = (ms) => { const mins=Math.max(0,Math.floor((Date.now()-ms)/60000)); const M=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}分`:`${n}m`; const H=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}時間`:`${n}h`; if(mins<1)return tr(APP_LANG,"time.justNow"); if(mins<60)return M(mins); const h=Math.floor(mins/60),m=mins%60; return`${H(h)}${m?M(m):""}`; };
 // 散歩記録：2点間の距離（メートル・Haversine）、距離表記、GPSルートのSVGトレース。
 const haversineM = (a,b) => { const R=6371000,rad=Math.PI/180; const dLat=(b.lat-a.lat)*rad,dLng=(b.lng-a.lng)*rad; const s=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(s))); };
 const fmtDist = (m) => m==null?"—":m>=1000?`${(m/1000).toFixed(2)}km`:`${Math.round(m)}m`;
@@ -637,6 +637,7 @@ const JMA_AREAS=[
   ["400000","福岡県",33.61,130.42],["410000","佐賀県",33.25,130.30],["420000","長崎県",32.74,129.87],["430000","熊本県",32.79,130.74],["440000","大分県",33.24,131.61],["450000","宮崎県",31.91,131.42],["460100","鹿児島県",31.56,130.56],
   ["471000","沖縄本島地方",26.21,127.68],["473000","宮古島地方",24.80,125.28],["474000","八重山地方",24.34,124.16],
 ];
+const jmaLabel=(w)=>w?tr(APP_LANG,"jma."+w.code):"";
 function nearestJmaArea(lat,lon){
   if(typeof lat!=="number"||typeof lon!=="number")return null;
   let best=null,bd=Infinity;
@@ -1247,7 +1248,7 @@ const MESSAGES={
     "theme.aria":"テーマ","theme.system":"端末に合わせる","theme.light":"ライト","theme.dark":"ダーク",
     "set.notifications":"通知","set.notifDesc":"予定や誕生日を、通知でそっと。","set.notifOn":"通知は許可されています","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
     "set.weather":"天気の地点","set.weatherDesc":"自宅も実家も公園も、気になる場所の天気を（最大{n}件）。","set.weatherMax":"最大{n}件まで。削除すると追加できます。","set.addLocation":"地点を追加",
-    "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）","wx.currentLoc":"現在地","wx.locFallback":"地点","wx.maxReached":"地点は最大{n}件までです","wx.geoUnavailable":"この端末では位置情報が使えません","wx.geoFailed":"現在地を取得できませんでした","wx.addDesc":"自宅・実家・公園・旅行先などを登録。「現在地」は今いる場所。検索して登録もOK。","wx.useCurrent":"現在地を使う","wx.gettingLoc":"現在地を取得中…","wx.searchPlaceholder":"地名で検索（例：横浜・軽井沢）","wx.search":"検索","wx.searching":"検索中…","wx.noResults":"見つかりませんでした。別の地名でお試しください。","wx.popPrefix":"人口","wx.dupHint":"同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。","wx.setupCta":"地点を追加して天気・お散歩判定を表示","wx.refresh":"更新","wx.loading":"読み込み中…",
+    "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）","wx.currentLoc":"現在地","wx.locFallback":"地点","wx.maxReached":"地点は最大{n}件までです","wx.geoUnavailable":"この端末では位置情報が使えません","wx.geoFailed":"現在地を取得できませんでした","wx.addDesc":"自宅・実家・公園・旅行先などを登録。「現在地」は今いる場所。検索して登録もOK。","wx.useCurrent":"現在地を使う","wx.gettingLoc":"現在地を取得中…","time.justNow":"たった今","toast.left":"左","toast.right":"右","toast.backupDoneN":"バックアップを書き出しました 💾（写真{n}枚ふくむ）","toast.backupDone":"バックアップを書き出しました 💾","toast.exportFail":"書き出せませんでした","toast.csvDone":"CSVを書き出しました","toast.fileReadFail":"このファイルは読み込めませんでした","toast.restoreDoneN":"復元しました 💾（写真{n}枚）","toast.restoreDone":"復元しました 💾","toast.notifOn":"通知を許可しました 🔔","toast.notifSettings":"端末の設定から通知をオンにできます","toast.notifIosHint":"ホーム画面に追加すると通知を使えます","toast.notifUnavailable":"この端末では通知を利用できません","toast.confirmMailSent":"確認メールを送りました。メール内のリンクを開いてください","toast.signedOut":"サインアウトしました","toast.joinedFamily":"家族に参加しました 👨‍👩‍👧","toast.leftFamily":"家族スペースを退出しました","toast.loggedNext":"✓ 記録しました。次は {date} ごろ 🗓","toast.copied":"内容をコピーしました。SNS等に貼り付けできます 📋","toast.shareUnavailable":"この端末では共有できません。印刷・スクショをご利用ください","toast.albumSelMax":"一度に選べるのは{n}枚までです","toast.photosMoved":"{n}枚を「{name}」へ移動しました 📸","toast.photosLoading":"写真を読み込み中…（{n}枚）","toast.storagePartial":"ストレージ不足のため{n}枚まで追加しました","toast.photosAdded":"{n}枚を撮影日ごとに追加しました（{days}日分）📅","toast.noPhotosAdded":"追加できる写真がありませんでした","toast.addedBang":"追加しました！","toast.bought":"{emoji} 買った！次は約{days}日後の目安です","toast.mealLoggedG":"ごはんを記録しました（約{g}g）🍚","toast.mealLogged":"ごはんを記録しました 🍚","toast.imgCreateFail":"画像を作成できませんでした","toast.imgCreating":"画像を作成中…","toast.imgSaveHint":"「画像を保存」でアルバムに保存できます 🖼️","toast.imgSaved":"画像を保存しました 🖼️","toast.needBwBcs":"先に体重・BCS・ME を入れてください","toast.foodSet":"「{name}」を 1回{g}g・1日{times}回 に設定しました 🍚","toast.mealLoggedKcal":"記録しました（約{kcal}kcal）🍚","toast.mealLogged2":"食事を記録しました 🍚","toast.nursingLogged":"授乳を記録しました（{side} {dur}）","toast.milkLogged":"ミルクを記録しました（{ml}ml）🍼","toast.walkOngoing":"すでに散歩を記録中です","toast.walkLogged":"おさんぽ記録：{dur}・{dist} 🐾","toast.needAmount":"金額を入力してください","toast.allowanceLogged":"おこづかいを記録しました","toast.expLogged":"支出を記録しました 💰","toast.expUpdated":"支出を更新しました 💰","toast.batchLogged":"{n}匹に「{emoji} {title}」を記録 ✓","toast.addedBday":"追加しました 🎂","toast.icsDownloaded":"カレンダーファイルをダウンロードしました 📅","wx.searchPlaceholder":"地名で検索（例：横浜・軽井沢）","wx.search":"検索","wx.searching":"検索中…","wx.noResults":"見つかりませんでした。別の地名でお試しください。","wx.popPrefix":"人口","wx.dupHint":"同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。","wx.setupCta":"地点を追加して天気・お散歩判定を表示","wx.refresh":"更新","jma.02":"暴風雪警報","jma.03":"大雨警報","jma.04":"洪水警報","jma.05":"暴風警報","jma.06":"大雪警報","jma.07":"波浪警報","jma.08":"高潮警報","jma.10":"大雨注意報","jma.12":"大雪注意報","jma.13":"風雪注意報","jma.14":"雷注意報","jma.15":"強風注意報","jma.16":"波浪注意報","jma.17":"融雪注意報","jma.18":"洪水注意報","jma.19":"高潮注意報","jma.20":"濃霧注意報","jma.21":"乾燥注意報","jma.22":"なだれ注意報","jma.23":"低温注意報","jma.24":"霜注意報","jma.25":"着氷注意報","jma.26":"着雪注意報","jma.32":"暴風雪特別警報","jma.33":"大雨特別警報","jma.35":"暴風特別警報","jma.36":"大雪特別警報","jma.37":"波浪特別警報","jma.38":"高潮特別警報","wx.loading":"読み込み中…",
     "wcode.clear":"快晴","wcode.mostlySunny":"晴れ","wcode.partlyCloudy":"一部くもり","wcode.cloudy":"くもり","wcode.fog":"霧","wcode.rimeFog":"霧氷","wcode.drizzle":"霧雨","wcode.heavyDrizzle":"強い霧雨","wcode.freezingDrizzle":"着氷性の霧雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"強い雨","wcode.freezingRain":"着氷性の雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"霧雪","wcode.showers":"にわか雨","wcode.heavyShowers":"激しいにわか雨","wcode.snowShowers":"にわか雪","wcode.thunder":"雷雨","wcode.thunderHail":"雹を伴う雷雨","walk.adv.heatLabel":"いまは控えて","walk.adv.heatMsg":"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。","walk.adv.thunderLabel":"いまは控えて","walk.adv.thunderMsg":"雷雨・大雨のおそれ。落ち着いてからにしましょう。","walk.adv.rainLabel":"雨に注意","walk.adv.rainMsg":"雨で足元がすべりやすく、体も冷えます。無理せず短めに・雨具を。","walk.adv.hotLabel":"注意して","walk.adv.hotMsg":"地面が熱め。短めに・日陰を選び、水分を持って。","walk.adv.coldLabel":"寒さ注意","walk.adv.coldMsg":"路面凍結や冷えに注意。防寒して短めに。","walk.adv.mayRainLabel":"雨のおそれ","walk.adv.mayRainMsg":"降り出しそうです。短時間で切り上げられるように。","walk.adv.okLabel":"お散歩日和","walk.adv.okMsg":"いまは比較的お散歩に向いています。","walk.f.heat":"暑さ","walk.f.cold":"寒さ","walk.f.mug":"蒸し暑さ","walk.f.road":"路面の暑さ","walk.f.wind":"風","walk.f.uv":"紫外線","walk.f.dry":"乾燥","walk.wx.drizzle":"霧雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"霧","walk.wx.heavyRain":"強い雨","walk.wx.rainLikely":"雨のおそれ","walk.wx.rainChance":"雨の可能性","walk.lvl.excellent":"お散歩日和","walk.lvl.good":"まずまず","walk.lvl.fair":"ふつう","walk.lvl.poor":"やや不向き","walk.lvl.bad":"お散歩は控えめに","wx.errGet":"取得できませんでした","wx.retry":"再試行","wx.jma":"気象庁","wx.jmaActive":"{name}発表中。お散歩は控えて","walk.indexShort":"散歩指数","walk.advShort.danger":"今日はお散歩を控えめに","walk.advShort.warn":"短めのお散歩がおすすめ","walk.advShort.ok":"お散歩日和です","wx.feelsHumid":"体感 {f}℃ ・ 湿度 {h}%","wx.more":"詳細を見る","wx.less":"閉じる","wx.feels":"体感","wx.road":"路面","wx.nowObs":"現在（{time}時点）の実況・当日の予報","walk.indexFull":"お散歩指数 {score}／100","walk.roadApprox":"（路面約{t}℃）","walk.breakdown":"スコアの内訳（減点）","walk.whenTitle":"おさんぽ、いつがいい？","wx.today":"今日","wx.tomorrow":"明日","walk.tmrNA":"明日の予報はまだ取得できません","walk.timeAround":"{h}時ごろ","walk.timeRange":"{from}〜{to}時","walk.bestSuffix":"が気もちよさそう","walk.stayInToday":"今日はおうちでのんびり","walk.stayInTomorrow":"明日はおうちでのんびり","walk.axisMorning":"朝5時","walk.axis9":"9時","walk.axisNoon":"昼13時","walk.axis17":"17時","walk.axisNight":"夜22時","walk.legGood":"ごきげん","walk.legMid":"ほどほど","walk.legAvoid":"ひかえめに","batch.title":"まとめてお世話記録","batch.meal":"ご飯","batch.med":"お薬","batch.walk":"散歩","batch.toilet":"トイレ","daily.habitToday":"今日の習慣","daily.memories":"思い出","daily.seeMore":"もっと見る","daily.recordLayer":"記録","daily.restockBadge":"買い足し {n}","daily.monthExpense":"今月の支出","daily.vsLastUp":"先月より増","daily.noRecYet":"記録はまだありません","daily.reset":"サンプルを消して最初から",
     "notices.title":"今日のLOALIFE","a11y.menu":"メニュー","notif.bannerText":"通知を許可すると、リマインダーや誕生日をお知らせします","ai.greetMorning":"おはよう","ai.greetDay":"こんにちは","ai.greetEve":"こんばんは","ai.todosN":"今日は {n}件 やることがあります。","ai.relaxed":"今日はゆっくり過ごせそうです。","ai.jmaWalk":"{name}発表中。お散歩は控えてください。","ai.walkBest":"{name}のお散歩は {time} がおすすめです。","ai.walkLight":"今日はお散歩を控えめにすると安心です。","ai.overdue":"{who}{title} が {n}日 過ぎています。","ai.dueToday":"{who}{title} は今日です。","ai.dueIn":"{who}{title} まで あと{n}日 です。",
     "common.save":"保存","common.cancel":"キャンセル","common.stop":"やめる",
@@ -1339,7 +1340,7 @@ const MESSAGES={
     "theme.aria":"Theme","theme.system":"Match device","theme.light":"Light","theme.dark":"Dark",
     "set.notifications":"Notifications","set.notifDesc":"Gentle nudges for schedules and birthdays.","set.notifOn":"Notifications are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
     "set.weather":"Weather locations","set.weatherDesc":"Weather for home, family's place, the park — up to {n} spots.","set.weatherMax":"Up to {n} spots. Remove one to add more.","set.addLocation":"Add a location",
-    "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)","wx.currentLoc":"Current location","wx.locFallback":"Location","wx.maxReached":"Up to {n} locations","wx.geoUnavailable":"Location isn't available on this device","wx.geoFailed":"Couldn't get your current location","wx.addDesc":"Add home, family's place, a park, a trip spot… 'Current location' is where you are now. Search works too.","wx.useCurrent":"Use current location","wx.gettingLoc":"Getting location…","wx.searchPlaceholder":"Search by place name","wx.search":"Search","wx.searching":"Searching…","wx.noResults":"No results. Try another place name.","wx.popPrefix":"pop. ","wx.dupHint":"Watch for same-named places. You can rename later.","wx.setupCta":"Add a location to see weather & walk tips","wx.refresh":"Refresh","wx.loading":"Loading…",
+    "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)","wx.currentLoc":"Current location","wx.locFallback":"Location","wx.maxReached":"Up to {n} locations","wx.geoUnavailable":"Location isn't available on this device","wx.geoFailed":"Couldn't get your current location","wx.addDesc":"Add home, family's place, a park, a trip spot… 'Current location' is where you are now. Search works too.","wx.useCurrent":"Use current location","wx.gettingLoc":"Getting location…","time.justNow":"just now","toast.left":"Left","toast.right":"Right","toast.backupDoneN":"Backup exported 💾 ({n} photos)","toast.backupDone":"Backup exported 💾","toast.exportFail":"Couldn't export","toast.csvDone":"CSV exported","toast.fileReadFail":"Couldn't read this file","toast.restoreDoneN":"Restored 💾 ({n} photos)","toast.restoreDone":"Restored 💾","toast.notifOn":"Notifications enabled 🔔","toast.notifSettings":"Turn on notifications in device settings","toast.notifIosHint":"Add to Home Screen to use notifications","toast.notifUnavailable":"Notifications aren't available on this device","toast.confirmMailSent":"Confirmation email sent — open the link in it","toast.signedOut":"Signed out","toast.joinedFamily":"Joined the family 👨‍👩‍👧","toast.leftFamily":"Left the family space","toast.loggedNext":"✓ Logged. Next around {date} 🗓","toast.copied":"Copied — paste it anywhere 📋","toast.shareUnavailable":"Sharing isn't available — print or screenshot instead","toast.albumSelMax":"Up to {n} at a time","toast.photosMoved":"Moved {n} to \"{name}\" 📸","toast.photosLoading":"Loading photos… ({n})","toast.storagePartial":"Low storage — added up to {n}","toast.photosAdded":"Added {n} photos by date ({days} days) 📅","toast.noPhotosAdded":"No photos to add","toast.addedBang":"Added!","toast.bought":"{emoji} Bought! Next in about {days} days","toast.mealLoggedG":"Meal logged (~{g}g) 🍚","toast.mealLogged":"Meal logged 🍚","toast.imgCreateFail":"Couldn't create the image","toast.imgCreating":"Creating image…","toast.imgSaveHint":"Use \"Save image\" to save to your album 🖼️","toast.imgSaved":"Image saved 🖼️","toast.needBwBcs":"Enter weight, BCS and ME first","toast.foodSet":"Set \"{name}\" to {g}g/serving, {times}×/day 🍚","toast.mealLoggedKcal":"Logged (~{kcal} kcal) 🍚","toast.mealLogged2":"Meal logged 🍚","toast.nursingLogged":"Feeding logged ({side} {dur})","toast.milkLogged":"Formula logged ({ml}ml) 🍼","toast.walkOngoing":"A walk is already being recorded","toast.walkLogged":"Walk logged: {dur} · {dist} 🐾","toast.needAmount":"Enter an amount","toast.allowanceLogged":"Allowance logged","toast.expLogged":"Expense logged 💰","toast.expUpdated":"Expense updated 💰","toast.batchLogged":"Logged {emoji} {title} for {n} ✓","toast.addedBday":"Added 🎂","toast.icsDownloaded":"Calendar file downloaded 📅","wx.searchPlaceholder":"Search by place name","wx.search":"Search","wx.searching":"Searching…","wx.noResults":"No results. Try another place name.","wx.popPrefix":"pop. ","wx.dupHint":"Watch for same-named places. You can rename later.","wx.setupCta":"Add a location to see weather & walk tips","wx.refresh":"Refresh","jma.02":"Blizzard warning","jma.03":"Heavy rain warning","jma.04":"Flood warning","jma.05":"Storm warning","jma.06":"Heavy snow warning","jma.07":"High wave warning","jma.08":"Storm surge warning","jma.10":"Heavy rain advisory","jma.12":"Heavy snow advisory","jma.13":"Snowstorm advisory","jma.14":"Thunderstorm advisory","jma.15":"Gale advisory","jma.16":"High wave advisory","jma.17":"Snowmelt advisory","jma.18":"Flood advisory","jma.19":"Storm surge advisory","jma.20":"Dense fog advisory","jma.21":"Dry air advisory","jma.22":"Avalanche advisory","jma.23":"Low temperature advisory","jma.24":"Frost advisory","jma.25":"Icing advisory","jma.26":"Snow accretion advisory","jma.32":"Emergency blizzard warning","jma.33":"Emergency heavy rain warning","jma.35":"Emergency storm warning","jma.36":"Emergency heavy snow warning","jma.37":"Emergency high wave warning","jma.38":"Emergency storm surge warning","wx.loading":"Loading…",
     "wcode.clear":"Clear","wcode.mostlySunny":"Mostly sunny","wcode.partlyCloudy":"Partly cloudy","wcode.cloudy":"Cloudy","wcode.fog":"Fog","wcode.rimeFog":"Rime fog","wcode.drizzle":"Drizzle","wcode.heavyDrizzle":"Heavy drizzle","wcode.freezingDrizzle":"Freezing drizzle","wcode.lightRain":"Light rain","wcode.rain":"Rain","wcode.heavyRain":"Heavy rain","wcode.freezingRain":"Freezing rain","wcode.lightSnow":"Light snow","wcode.snow":"Snow","wcode.heavySnow":"Heavy snow","wcode.snowGrains":"Snow grains","wcode.showers":"Showers","wcode.heavyShowers":"Heavy showers","wcode.snowShowers":"Snow showers","wcode.thunder":"Thunderstorm","wcode.thunderHail":"Thunderstorm with hail","walk.adv.heatLabel":"Hold off for now","walk.adv.heatMsg":"Risk of heatstroke and paw burns. Go in the cool morning or evening.","walk.adv.thunderLabel":"Hold off for now","walk.adv.thunderMsg":"Thunderstorms or heavy rain likely. Wait until it settles.","walk.adv.rainLabel":"Watch for rain","walk.adv.rainMsg":"Wet ground is slippery and it gets cold. Keep it short and bring rain gear.","walk.adv.hotLabel":"Take care","walk.adv.hotMsg":"The ground is warm. Keep it short, choose shade, bring water.","walk.adv.coldLabel":"Cold warning","walk.adv.coldMsg":"Watch for icy ground and cold. Bundle up and keep it short.","walk.adv.mayRainLabel":"Rain likely","walk.adv.mayRainMsg":"Rain may start soon. Be ready to wrap up quickly.","walk.adv.okLabel":"Great for a walk","walk.adv.okMsg":"It's a relatively good time for a walk right now.","walk.f.heat":"Heat","walk.f.cold":"Cold","walk.f.mug":"Humidity & heat","walk.f.road":"Ground heat","walk.f.wind":"Wind","walk.f.uv":"UV","walk.f.dry":"Dryness","walk.wx.drizzle":"Drizzle","walk.wx.rain":"Rain","walk.wx.snow":"Snow","walk.wx.thunder":"Thunderstorm","walk.wx.fog":"Fog","walk.wx.heavyRain":"Heavy rain","walk.wx.rainLikely":"Rain likely","walk.wx.rainChance":"Chance of rain","walk.lvl.excellent":"Great for a walk","walk.lvl.good":"Pretty good","walk.lvl.fair":"So-so","walk.lvl.poor":"Not ideal","walk.lvl.bad":"Better to skip","wx.errGet":"Couldn't load","wx.retry":"Retry","wx.jma":"JMA","wx.jmaActive":"{name} in effect — take it easy on walks","walk.indexShort":"Walk score","walk.advShort.danger":"Keep walks light today","walk.advShort.warn":"A short walk is best","walk.advShort.ok":"Great for a walk","wx.feelsHumid":"Feels {f}℃ · {h}% humidity","wx.more":"Details","wx.less":"Close","wx.feels":"Feels","wx.road":"Ground","wx.nowObs":"Now (as of {time}) + today's forecast","walk.indexFull":"Walk score {score}/100","walk.roadApprox":"(ground ~{t}℃)","walk.breakdown":"Score breakdown (deductions)","walk.whenTitle":"When's a good time to walk?","wx.today":"Today","wx.tomorrow":"Tomorrow","walk.tmrNA":"Tomorrow's forecast isn't available yet","walk.timeAround":"around {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" looks nice","walk.stayInToday":"A cozy day in today","walk.stayInTomorrow":"A cozy day in tomorrow","walk.axisMorning":"5am","walk.axis9":"9am","walk.axisNoon":"1pm","walk.axis17":"5pm","walk.axisNight":"10pm","walk.legGood":"Great","walk.legMid":"OK","walk.legAvoid":"Avoid","batch.title":"Quick care log","batch.meal":"Meal","batch.med":"Meds","batch.walk":"Walk","batch.toilet":"Toilet","daily.habitToday":"Today's habits","daily.memories":"Memories","daily.seeMore":"See more","daily.recordLayer":"Records","daily.restockBadge":"Restock {n}","daily.monthExpense":"This month's spending","daily.vsLastUp":"Up vs last month","daily.noRecYet":"No records yet","daily.reset":"Clear samples and start over",
     "notices.title":"Today's LOALIFE","a11y.menu":"Menu","notif.bannerText":"Allow notifications for reminders and birthdays","ai.greetMorning":"Good morning","ai.greetDay":"Hello","ai.greetEve":"Good evening","ai.todosN":"You have {n} to do today.","ai.relaxed":"Looks like an easy day today.","ai.jmaWalk":"{name} in effect. Please hold off on walks.","ai.walkBest":"Best walk time for {name}: {time}.","ai.walkLight":"Best to keep walks light today.","ai.overdue":"{who}{title} is {n} day(s) overdue.","ai.dueToday":"{who}{title} is today.","ai.dueIn":"{who}{title} in {n} day(s).",
     "common.save":"Save","common.cancel":"Cancel","common.stop":"Cancel",
@@ -1431,7 +1432,7 @@ const MESSAGES={
     "theme.aria":"Tema","theme.system":"Según el dispositivo","theme.light":"Claro","theme.dark":"Oscuro",
     "set.notifications":"Notificaciones","set.notifDesc":"Avisos suaves para citas y cumpleaños.","set.notifOn":"Notificaciones activadas","set.notifDenied":"Las notificaciones están desactivadas en los ajustes del dispositivo","set.notifAllow":"Permitir notificaciones",
     "set.weather":"Ubicaciones del clima","set.weatherDesc":"Clima para casa, la casa de la familia, el parque — hasta {n} lugares.","set.weatherMax":"Hasta {n} lugares. Quita uno para añadir más.","set.addLocation":"Añadir una ubicación",
-    "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)","wx.currentLoc":"Ubicación actual","wx.locFallback":"Ubicación","wx.maxReached":"Hasta {n} ubicaciones","wx.geoUnavailable":"La ubicación no está disponible en este dispositivo","wx.geoFailed":"No se pudo obtener tu ubicación actual","wx.addDesc":"Añade casa, la casa de la familia, un parque, un destino… «Ubicación actual» es donde estás ahora. También puedes buscar.","wx.useCurrent":"Usar ubicación actual","wx.gettingLoc":"Obteniendo ubicación…","wx.searchPlaceholder":"Buscar por nombre de lugar","wx.search":"Buscar","wx.searching":"Buscando…","wx.noResults":"Sin resultados. Prueba con otro nombre.","wx.popPrefix":"pob. ","wx.dupHint":"Cuidado con lugares homónimos. Puedes renombrar después.","wx.setupCta":"Añade una ubicación para ver el clima y consejos de paseo","wx.refresh":"Actualizar","wx.loading":"Cargando…",
+    "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)","wx.currentLoc":"Ubicación actual","wx.locFallback":"Ubicación","wx.maxReached":"Hasta {n} ubicaciones","wx.geoUnavailable":"La ubicación no está disponible en este dispositivo","wx.geoFailed":"No se pudo obtener tu ubicación actual","wx.addDesc":"Añade casa, la casa de la familia, un parque, un destino… «Ubicación actual» es donde estás ahora. También puedes buscar.","wx.useCurrent":"Usar ubicación actual","wx.gettingLoc":"Obteniendo ubicación…","time.justNow":"justo ahora","toast.left":"Izq.","toast.right":"Der.","toast.backupDoneN":"Copia exportada 💾 ({n} fotos)","toast.backupDone":"Copia exportada 💾","toast.exportFail":"No se pudo exportar","toast.csvDone":"CSV exportado","toast.fileReadFail":"No se pudo leer el archivo","toast.restoreDoneN":"Restaurado 💾 ({n} fotos)","toast.restoreDone":"Restaurado 💾","toast.notifOn":"Notificaciones activadas 🔔","toast.notifSettings":"Activa las notificaciones en los ajustes","toast.notifIosHint":"Añade a la pantalla de inicio para notificaciones","toast.notifUnavailable":"Las notificaciones no están disponibles","toast.confirmMailSent":"Correo de confirmación enviado — abre el enlace","toast.signedOut":"Sesión cerrada","toast.joinedFamily":"Te uniste a la familia 👨‍👩‍👧","toast.leftFamily":"Saliste del espacio familiar","toast.loggedNext":"✓ Registrado. Próximo hacia {date} 🗓","toast.copied":"Copiado — pégalo donde quieras 📋","toast.shareUnavailable":"No se puede compartir — imprime o captura","toast.albumSelMax":"Hasta {n} a la vez","toast.photosMoved":"{n} movidas a «{name}» 📸","toast.photosLoading":"Cargando fotos… ({n})","toast.storagePartial":"Poco espacio — se añadieron {n}","toast.photosAdded":"Añadidas {n} fotos por fecha ({days} días) 📅","toast.noPhotosAdded":"No había fotos para añadir","toast.addedBang":"¡Añadido!","toast.bought":"{emoji} ¡Comprado! Próximo en unos {days} días","toast.mealLoggedG":"Comida registrada (~{g}g) 🍚","toast.mealLogged":"Comida registrada 🍚","toast.imgCreateFail":"No se pudo crear la imagen","toast.imgCreating":"Creando imagen…","toast.imgSaveHint":"Usa «Guardar imagen» para guardarla 🖼️","toast.imgSaved":"Imagen guardada 🖼️","toast.needBwBcs":"Introduce antes peso, BCS y ME","toast.foodSet":"«{name}»: {g}g/toma, {times}×/día 🍚","toast.mealLoggedKcal":"Registrado (~{kcal} kcal) 🍚","toast.mealLogged2":"Comida registrada 🍚","toast.nursingLogged":"Toma registrada ({side} {dur})","toast.milkLogged":"Biberón registrado ({ml}ml) 🍼","toast.walkOngoing":"Ya se está registrando un paseo","toast.walkLogged":"Paseo registrado: {dur} · {dist} 🐾","toast.needAmount":"Introduce un importe","toast.allowanceLogged":"Paga registrada","toast.expLogged":"Gasto registrado 💰","toast.expUpdated":"Gasto actualizado 💰","toast.batchLogged":"{emoji} {title} registrado para {n} ✓","toast.addedBday":"Añadido 🎂","toast.icsDownloaded":"Archivo de calendario descargado 📅","wx.searchPlaceholder":"Buscar por nombre de lugar","wx.search":"Buscar","wx.searching":"Buscando…","wx.noResults":"Sin resultados. Prueba con otro nombre.","wx.popPrefix":"pob. ","wx.dupHint":"Cuidado con lugares homónimos. Puedes renombrar después.","wx.setupCta":"Añade una ubicación para ver el clima y consejos de paseo","wx.refresh":"Actualizar","jma.02":"Aviso de ventisca","jma.03":"Aviso de lluvia intensa","jma.04":"Aviso de inundación","jma.05":"Aviso de vendaval","jma.06":"Aviso de nevada intensa","jma.07":"Aviso de oleaje","jma.08":"Aviso de marejada","jma.10":"Aviso de lluvia","jma.12":"Aviso de nieve","jma.13":"Aviso de nieve y viento","jma.14":"Aviso de tormenta","jma.15":"Aviso de viento fuerte","jma.16":"Aviso de oleaje","jma.17":"Aviso de deshielo","jma.18":"Aviso de inundación","jma.19":"Aviso de marejada","jma.20":"Aviso de niebla densa","jma.21":"Aviso de sequedad","jma.22":"Aviso de aludes","jma.23":"Aviso de bajas temperaturas","jma.24":"Aviso de heladas","jma.25":"Aviso de engelamiento","jma.26":"Aviso de nieve acumulada","jma.32":"Aviso especial de ventisca","jma.33":"Aviso especial de lluvia intensa","jma.35":"Aviso especial de vendaval","jma.36":"Aviso especial de nevada","jma.37":"Aviso especial de oleaje","jma.38":"Aviso especial de marejada","wx.loading":"Cargando…",
     "wcode.clear":"Despejado","wcode.mostlySunny":"Mayormente soleado","wcode.partlyCloudy":"Parcialmente nublado","wcode.cloudy":"Nublado","wcode.fog":"Niebla","wcode.rimeFog":"Niebla helada","wcode.drizzle":"Llovizna","wcode.heavyDrizzle":"Llovizna intensa","wcode.freezingDrizzle":"Llovizna helada","wcode.lightRain":"Lluvia ligera","wcode.rain":"Lluvia","wcode.heavyRain":"Lluvia fuerte","wcode.freezingRain":"Lluvia helada","wcode.lightSnow":"Nieve ligera","wcode.snow":"Nieve","wcode.heavySnow":"Nieve intensa","wcode.snowGrains":"Granos de nieve","wcode.showers":"Chubascos","wcode.heavyShowers":"Chubascos fuertes","wcode.snowShowers":"Chubascos de nieve","wcode.thunder":"Tormenta","wcode.thunderHail":"Tormenta con granizo","walk.adv.heatLabel":"Mejor espera","walk.adv.heatMsg":"Riesgo de golpe de calor y quemaduras en las almohadillas. Sal en las horas frescas.","walk.adv.thunderLabel":"Mejor espera","walk.adv.thunderMsg":"Posible tormenta o lluvia fuerte. Espera a que se calme.","walk.adv.rainLabel":"Cuidado con la lluvia","walk.adv.rainMsg":"El suelo mojado resbala y enfría. Que sea corto y lleva impermeable.","walk.adv.hotLabel":"Ten cuidado","walk.adv.hotMsg":"El suelo está caliente. Corto, a la sombra y con agua.","walk.adv.coldLabel":"Aviso de frío","walk.adv.coldMsg":"Cuidado con el hielo y el frío. Abrígate y que sea corto.","walk.adv.mayRainLabel":"Posible lluvia","walk.adv.mayRainMsg":"Puede empezar a llover. Prepárate para terminar pronto.","walk.adv.okLabel":"Buen día de paseo","walk.adv.okMsg":"Ahora es un momento relativamente bueno para pasear.","walk.f.heat":"Calor","walk.f.cold":"Frío","walk.f.mug":"Bochorno","walk.f.road":"Calor del suelo","walk.f.wind":"Viento","walk.f.uv":"UV","walk.f.dry":"Sequedad","walk.wx.drizzle":"Llovizna","walk.wx.rain":"Lluvia","walk.wx.snow":"Nieve","walk.wx.thunder":"Tormenta","walk.wx.fog":"Niebla","walk.wx.heavyRain":"Lluvia fuerte","walk.wx.rainLikely":"Posible lluvia","walk.wx.rainChance":"Probabilidad de lluvia","walk.lvl.excellent":"Buen día de paseo","walk.lvl.good":"Bastante bien","walk.lvl.fair":"Normal","walk.lvl.poor":"Poco ideal","walk.lvl.bad":"Mejor evitar","wx.errGet":"No se pudo cargar","wx.retry":"Reintentar","wx.jma":"JMA","wx.jmaActive":"{name} activo — cuidado con los paseos","walk.indexShort":"Índice de paseo","walk.advShort.danger":"Paseos suaves hoy","walk.advShort.warn":"Mejor un paseo corto","walk.advShort.ok":"Buen día de paseo","wx.feelsHumid":"Sensación {f}℃ · {h}% humedad","wx.more":"Detalles","wx.less":"Cerrar","wx.feels":"Sensación","wx.road":"Suelo","wx.nowObs":"Ahora (a las {time}) + pronóstico de hoy","walk.indexFull":"Índice de paseo {score}/100","walk.roadApprox":"(suelo ~{t}℃)","walk.breakdown":"Desglose (penalizaciones)","walk.whenTitle":"¿Cuándo pasear?","wx.today":"Hoy","wx.tomorrow":"Mañana","walk.tmrNA":"El pronóstico de mañana aún no está disponible","walk.timeAround":"hacia las {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" parece agradable","walk.stayInToday":"Hoy, tranquilos en casa","walk.stayInTomorrow":"Mañana, tranquilos en casa","walk.axisMorning":"5:00","walk.axis9":"9:00","walk.axisNoon":"13:00","walk.axis17":"17:00","walk.axisNight":"22:00","walk.legGood":"Genial","walk.legMid":"Regular","walk.legAvoid":"Evitar","batch.title":"Registro rápido","batch.meal":"Comida","batch.med":"Medicina","batch.walk":"Paseo","batch.toilet":"Baño","daily.habitToday":"Hábitos de hoy","daily.memories":"Recuerdos","daily.seeMore":"Ver más","daily.recordLayer":"Registros","daily.restockBadge":"Reponer {n}","daily.monthExpense":"Gasto de este mes","daily.vsLastUp":"Más que el mes pasado","daily.noRecYet":"Aún no hay registros","daily.reset":"Borrar ejemplos y empezar",
     "notices.title":"LOALIFE de hoy","a11y.menu":"Menú","notif.bannerText":"Permite notificaciones para recordatorios y cumpleaños","ai.greetMorning":"Buenos días","ai.greetDay":"Hola","ai.greetEve":"Buenas noches","ai.todosN":"Hoy tienes {n} cosas que hacer.","ai.relaxed":"Parece un día tranquilo.","ai.jmaWalk":"{name} activo. Evita los paseos.","ai.walkBest":"Mejor hora de paseo para {name}: {time}.","ai.walkLight":"Hoy, mejor paseos suaves.","ai.overdue":"{who}{title}: {n} día(s) de retraso.","ai.dueToday":"{who}{title} es hoy.","ai.dueIn":"{who}{title} en {n} día(s).",
     "common.save":"Guardar","common.cancel":"Cancelar","common.stop":"Cancelar",
@@ -1523,7 +1524,7 @@ const MESSAGES={
     "theme.aria":"主题","theme.system":"跟随设备","theme.light":"浅色","theme.dark":"深色",
     "set.notifications":"通知","set.notifDesc":"为日程和生日提供温和的提醒。","set.notifOn":"通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
     "set.weather":"天气地点","set.weatherDesc":"家、家人住处、公园的天气 — 最多{n}个地点。","set.weatherMax":"最多{n}个地点。删除一个再添加。","set.addLocation":"添加地点",
-    "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）","wx.currentLoc":"当前位置","wx.locFallback":"地点","wx.maxReached":"最多{n}个地点","wx.geoUnavailable":"此设备无法使用定位","wx.geoFailed":"无法获取当前位置","wx.addDesc":"登记家、家人住处、公园、旅行地等。「当前位置」是你现在所在地。也可以搜索添加。","wx.useCurrent":"使用当前位置","wx.gettingLoc":"正在获取位置…","wx.searchPlaceholder":"按地名搜索","wx.search":"搜索","wx.searching":"搜索中…","wx.noResults":"未找到。请尝试其他地名。","wx.popPrefix":"人口","wx.dupHint":"注意同名地点。名称之后可修改。","wx.setupCta":"添加地点以显示天气与遛狗建议","wx.refresh":"刷新","wx.loading":"加载中…",
+    "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）","wx.currentLoc":"当前位置","wx.locFallback":"地点","wx.maxReached":"最多{n}个地点","wx.geoUnavailable":"此设备无法使用定位","wx.geoFailed":"无法获取当前位置","wx.addDesc":"登记家、家人住处、公园、旅行地等。「当前位置」是你现在所在地。也可以搜索添加。","wx.useCurrent":"使用当前位置","wx.gettingLoc":"正在获取位置…","time.justNow":"刚刚","toast.left":"左","toast.right":"右","toast.backupDoneN":"已导出备份 💾（含{n}张照片）","toast.backupDone":"已导出备份 💾","toast.exportFail":"导出失败","toast.csvDone":"已导出CSV","toast.fileReadFail":"无法读取此文件","toast.restoreDoneN":"已恢复 💾（{n}张照片）","toast.restoreDone":"已恢复 💾","toast.notifOn":"已开启通知 🔔","toast.notifSettings":"可在系统设置中开启通知","toast.notifIosHint":"添加到主屏幕后可使用通知","toast.notifUnavailable":"此设备无法使用通知","toast.confirmMailSent":"已发送确认邮件，请打开其中的链接","toast.signedOut":"已退出登录","toast.joinedFamily":"已加入家庭 👨‍👩‍👧","toast.leftFamily":"已退出家庭空间","toast.loggedNext":"✓ 已记录。下次约 {date} 🗓","toast.copied":"已复制，可粘贴到社交平台 📋","toast.shareUnavailable":"此设备无法分享，请打印或截图","toast.albumSelMax":"一次最多选择{n}张","toast.photosMoved":"已将{n}张移动到「{name}」📸","toast.photosLoading":"正在加载照片…（{n}张）","toast.storagePartial":"存储不足，仅添加了{n}张","toast.photosAdded":"已按日期添加{n}张照片（{days}天）📅","toast.noPhotosAdded":"没有可添加的照片","toast.addedBang":"已添加！","toast.bought":"{emoji} 已购买！下次约{days}天后","toast.mealLoggedG":"已记录用餐（约{g}g）🍚","toast.mealLogged":"已记录用餐 🍚","toast.imgCreateFail":"无法生成图片","toast.imgCreating":"正在生成图片…","toast.imgSaveHint":"点「保存图片」即可存到相册 🖼️","toast.imgSaved":"已保存图片 🖼️","toast.needBwBcs":"请先填写体重、BCS 和 ME","toast.foodSet":"已将「{name}」设为每次{g}g、每天{times}次 🍚","toast.mealLoggedKcal":"已记录（约{kcal}kcal）🍚","toast.mealLogged2":"已记录用餐 🍚","toast.nursingLogged":"已记录哺乳（{side} {dur}）","toast.milkLogged":"已记录奶量（{ml}ml）🍼","toast.walkOngoing":"已经在记录散步了","toast.walkLogged":"散步已记录：{dur}·{dist} 🐾","toast.needAmount":"请输入金额","toast.allowanceLogged":"已记录零花钱","toast.expLogged":"已记录支出 💰","toast.expUpdated":"已更新支出 💰","toast.batchLogged":"已为{n}只记录「{emoji} {title}」✓","toast.addedBday":"已添加 🎂","toast.icsDownloaded":"已下载日历文件 📅","wx.searchPlaceholder":"按地名搜索","wx.search":"搜索","wx.searching":"搜索中…","wx.noResults":"未找到。请尝试其他地名。","wx.popPrefix":"人口","wx.dupHint":"注意同名地点。名称之后可修改。","wx.setupCta":"添加地点以显示天气与遛狗建议","wx.refresh":"刷新","jma.02":"暴风雪警报","jma.03":"大雨警报","jma.04":"洪水警报","jma.05":"暴风警报","jma.06":"大雪警报","jma.07":"波浪警报","jma.08":"高潮警报","jma.10":"大雨注意报","jma.12":"大雪注意报","jma.13":"风雪注意报","jma.14":"雷电注意报","jma.15":"强风注意报","jma.16":"波浪注意报","jma.17":"融雪注意报","jma.18":"洪水注意报","jma.19":"高潮注意报","jma.20":"浓雾注意报","jma.21":"干燥注意报","jma.22":"雪崩注意报","jma.23":"低温注意报","jma.24":"霜冻注意报","jma.25":"结冰注意报","jma.26":"积雪注意报","jma.32":"暴风雪特别警报","jma.33":"大雨特别警报","jma.35":"暴风特别警报","jma.36":"大雪特别警报","jma.37":"波浪特别警报","jma.38":"高潮特别警报","wx.loading":"加载中…",
     "wcode.clear":"晴","wcode.mostlySunny":"晴","wcode.partlyCloudy":"局部多云","wcode.cloudy":"多云","wcode.fog":"雾","wcode.rimeFog":"雾凇","wcode.drizzle":"毛毛雨","wcode.heavyDrizzle":"强毛毛雨","wcode.freezingDrizzle":"冻毛毛雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"大雨","wcode.freezingRain":"冻雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"雪粒","wcode.showers":"阵雨","wcode.heavyShowers":"强阵雨","wcode.snowShowers":"阵雪","wcode.thunder":"雷雨","wcode.thunderHail":"雷雨伴冰雹","walk.adv.heatLabel":"暂时避免","walk.adv.heatMsg":"有中暑和烫伤肉垫的危险。请在清晨或傍晚凉爽时段。","walk.adv.thunderLabel":"暂时避免","walk.adv.thunderMsg":"可能有雷雨或大雨。请等天气平稳后再出门。","walk.adv.rainLabel":"注意下雨","walk.adv.rainMsg":"地面湿滑且易着凉。请缩短时间并带好雨具。","walk.adv.hotLabel":"请注意","walk.adv.hotMsg":"地面偏热。请缩短时间、选阴凉处并带水。","walk.adv.coldLabel":"注意寒冷","walk.adv.coldMsg":"注意路面结冰和着凉。请保暖并缩短时间。","walk.adv.mayRainLabel":"可能下雨","walk.adv.mayRainMsg":"可能快下雨了。请做好尽快结束的准备。","walk.adv.okLabel":"适合散步","walk.adv.okMsg":"现在比较适合散步。","walk.f.heat":"炎热","walk.f.cold":"寒冷","walk.f.mug":"闷热","walk.f.road":"路面高温","walk.f.wind":"风","walk.f.uv":"紫外线","walk.f.dry":"干燥","walk.wx.drizzle":"毛毛雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"雾","walk.wx.heavyRain":"大雨","walk.wx.rainLikely":"可能下雨","walk.wx.rainChance":"有降雨可能","walk.lvl.excellent":"适合散步","walk.lvl.good":"还不错","walk.lvl.fair":"一般","walk.lvl.poor":"不太适合","walk.lvl.bad":"建议少出门","wx.errGet":"加载失败","wx.retry":"重试","wx.jma":"气象厅","wx.jmaActive":"{name}发布中——遛狗请注意","walk.indexShort":"遛狗指数","walk.advShort.danger":"今天少出门散步","walk.advShort.warn":"建议短时间散步","walk.advShort.ok":"适合散步","wx.feelsHumid":"体感 {f}℃ · 湿度 {h}%","wx.more":"查看详情","wx.less":"收起","wx.feels":"体感","wx.road":"路面","wx.nowObs":"当前（{time}）实况 + 当日预报","walk.indexFull":"遛狗指数 {score}/100","walk.roadApprox":"(路面约{t}℃)","walk.breakdown":"分数明细（扣分）","walk.whenTitle":"什么时候适合遛狗？","wx.today":"今天","wx.tomorrow":"明天","walk.tmrNA":"明天的预报暂时还没有","walk.timeAround":"{h}点左右","walk.timeRange":"{from}–{to}点","walk.bestSuffix":"应该很舒服","walk.stayInToday":"今天在家悠闲一下","walk.stayInTomorrow":"明天在家悠闲一下","walk.axisMorning":"早5点","walk.axis9":"9点","walk.axisNoon":"午13点","walk.axis17":"17点","walk.axisNight":"晚22点","walk.legGood":"舒适","walk.legMid":"一般","walk.legAvoid":"避免","batch.title":"一键记录照顾","batch.meal":"吃饭","batch.med":"吃药","batch.walk":"散步","batch.toilet":"如厕","daily.habitToday":"今日习惯","daily.memories":"回忆","daily.seeMore":"查看更多","daily.recordLayer":"记录","daily.restockBadge":"补货 {n}","daily.monthExpense":"本月支出","daily.vsLastUp":"比上月增加","daily.noRecYet":"还没有记录","daily.reset":"清除示例，重新开始",
     "notices.title":"今日的LOALIFE","a11y.menu":"菜单","notif.bannerText":"允许通知以接收提醒和生日","ai.greetMorning":"早上好","ai.greetDay":"你好","ai.greetEve":"晚上好","ai.todosN":"今天有{n}件事要做。","ai.relaxed":"今天似乎可以轻松度过。","ai.jmaWalk":"{name}发布中。请暂缓遛狗。","ai.walkBest":"{name}的散步推荐时间：{time}。","ai.walkLight":"今天最好少出门散步。","ai.overdue":"{who}{title} 已过期{n}天。","ai.dueToday":"{who}{title} 就在今天。","ai.dueIn":"{who}{title} 还有{n}天。",
     "common.save":"保存","common.cancel":"取消","common.stop":"取消",
@@ -2556,8 +2557,8 @@ function App(){
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(()=>URL.revokeObjectURL(url),2000);
       const n=Object.keys(photoMap).length;
-      showFlash(n?`バックアップを書き出しました 💾（写真${n}枚ふくむ）`:"バックアップを書き出しました 💾");
-    }catch(e){showFlash("書き出せませんでした");}
+      showFlash(n?t("toast.backupDoneN",{n}):t("toast.backupDone"));
+    }catch(e){showFlash(t("toast.exportFail"));}
   };
   // 記録を CSV で書き出し（表計算で開ける形式）。体重・トイレ・お世話ログ・ケア/予定・支出・今日のようすを1ファイルに。
   const exportCSV=()=>{
@@ -2577,8 +2578,8 @@ function App(){
       rows.sort((a,b)=>a===rows[0]?-1:b===rows[0]?1:(a[0]<b[0]?1:a[0]>b[0]?-1:0));
       const csv=rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
       downloadTextFile(csv,`loalife-records-${iso(new Date())}.csv`);
-      showFlash("CSVを書き出しました");
-    }catch(e){showFlash("書き出せませんでした");}
+      showFlash(t("toast.csvDone"));
+    }catch(e){showFlash(t("toast.exportFail"));}
   };
   // バックアップの読み込み（復元）。写真同梱の新形式・本体のみの旧形式どちらも受ける。既存データは上書き。
   const importData=async(e)=>{
@@ -2590,7 +2591,7 @@ function App(){
       const rawState=isWrapped?parsed.state:parsed;
       const photoMap=isWrapped&&parsed.photos?parsed.photos:{};
       const st=migrateState(rawState);
-      if(!st||!Array.isArray(st.members)||!Array.isArray(st.items)){showFlash("このファイルは読み込めませんでした");return;}
+      if(!st||!Array.isArray(st.members)||!Array.isArray(st.items)){showFlash(t("toast.fileReadFail"));return;}
       // 写真をIDBへ復元
       const restored={};
       for(const pid of Object.keys(photoMap)){try{const ok=await photoStorage.set(`photo:${pid}`,photoMap[pid]);if(ok)restored[pid]=photoMap[pid];}catch(er){}}
@@ -2600,8 +2601,8 @@ function App(){
       try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar}));}catch(er){}
       setConfirmRestore(false);setOnboarding(false);setTab("home");
       const n=Object.keys(restored).length;
-      showFlash(n?`復元しました 💾（写真${n}枚）`:"復元しました 💾");
-    }catch(err){showFlash("このファイルは読み込めませんでした");}
+      showFlash(n?t("toast.restoreDoneN",{n}):t("toast.restoreDone"));
+    }catch(err){showFlash(t("toast.fileReadFail"));}
   };
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);setOnboarding(false);setTab("home");};
 
@@ -2623,7 +2624,7 @@ function App(){
 
   const resetApp=()=>{try{storage.delete(STORAGE_KEY).catch(()=>{});}catch(e){}setMembers([]);setItems([]);setPhotos({});setConfirmDel(null);setObStep(0);setObKind(null);setObSpecies("dog");setObName("");setObEmoji("🐶");setObAvatar("");setObBirthday("");setMeEmoji("🙂");setMeBirthday("");setMeColor("");setMeName("");setMeAvatar("");setHousehold(null);setFireUser(null);setOnboarding(true);setTab("home");};
 
-  const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted"){showFlash("通知を許可しました 🔔");}else if(p==="denied"){showFlash("端末の設定から通知をオンにできます");}else if(p==="unsupported"){const iOS=/iP(hone|ad|od)/.test(navigator.userAgent);showFlash(iOS?"ホーム画面に追加すると通知を使えます":"この端末では通知を利用できません");}};
+  const handleNotifRequest=async()=>{const p=await requestNotifPermission();setNotifPerm(p);if(p==="granted"){showFlash(t("toast.notifOn"));}else if(p==="denied"){showFlash(t("toast.notifSettings"));}else if(p==="unsupported"){const iOS=/iP(hone|ad|od)/.test(navigator.userAgent);showFlash(iOS?t("toast.notifIosHint"):t("toast.notifUnavailable"));}};
 
   // --- Family sharing functions ---
   const signInWithGoogle=async()=>{
@@ -2659,7 +2660,7 @@ function App(){
       const cred=await createUserWithEmailAndPassword(fbAuth,em,authPw);
       try{await sendEmailVerification(cred.user);}catch(_){}
       setAuthPw("");
-      showFlash("確認メールを送りました。メール内のリンクを開いてください");
+      showFlash(t("toast.confirmMailSent"));
     }catch(e){setShareError(emailAuthError(e));}
     setShareLoading(false);
   };
@@ -2679,7 +2680,7 @@ function App(){
     if(!FB_READY)return;
     await fbSignOut(fbAuth);
     setFireUser(null);setHousehold(null);setShareStep("menu");setShowShareModal(false);
-    showFlash("サインアウトしました");
+    showFlash(t("toast.signedOut"));
   };
 
   const createHousehold=async()=>{
@@ -2730,7 +2731,7 @@ function App(){
       const hhSnap=await getDoc(doc(fbDb,"households",hid));
       setHousehold({id:hid,...hhSnap.data()});
       setShowShareModal(false);
-      showFlash("家族に参加しました 👨‍👩‍👧");
+      showFlash(t("toast.joinedFamily"));
     }catch(e){
       setShareError(e.message||"参加できませんでした");
     }
@@ -2744,7 +2745,7 @@ function App(){
       await updateDoc(doc(fbDb,"households",household.id),{memberUids:arrayUnion()});
       await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:null},{merge:true});
       setHousehold(null);setShowShareModal(false);
-      showFlash("家族スペースを退出しました");
+      showFlash(t("toast.leftFamily"));
     }catch(e){}
     setShareLoading(false);
   };
@@ -2814,7 +2815,7 @@ function App(){
       // 記録＝前回を今日に更新し、次回を周期ぶん先へ自動セット（赤が消えて静かに次へ）
       const today=iso(new Date());const newDue=addInterval(today,cyc);
       next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false,...(typeof x.stock==="number"&&x.stock>0?{stock:x.stock-1}:{})}:x);
-      showFlash(`✓ 記録しました。次は ${fmtDate(newDue)} ごろ 🗓`);
+      showFlash(t("toast.loggedNext",{date:fmtDate(newDue)}));
       track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});
     }
     else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);if(!it.done)track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});}
@@ -2871,8 +2872,8 @@ function App(){
     const text=lines.join("\n");
     try{
       if(navigator.share){await navigator.share({title:`迷子犬を探しています：${m.name}`,text});}
-      else if(navigator.clipboard){await navigator.clipboard.writeText(text);showFlash("内容をコピーしました。SNS等に貼り付けできます 📋");}
-      else{showFlash("この端末では共有できません。印刷・スクショをご利用ください");}
+      else if(navigator.clipboard){await navigator.clipboard.writeText(text);showFlash(t("toast.copied"));}
+      else{showFlash(t("toast.shareUnavailable"));}
     }catch(e){}
   };
 
@@ -2904,7 +2905,7 @@ function App(){
 
   // --- 思い出の一括選択・別の子へ移動 ---
   const ALBUM_SEL_MAX=30; // 一度に選べる上限
-  const toggleAlbumSel=(id)=>{setAlbumSel(sel=>{const cur=sel||[];if(cur.includes(id))return cur.filter(x=>x!==id);if(cur.length>=ALBUM_SEL_MAX){showFlash(`一度に選べるのは${ALBUM_SEL_MAX}枚までです`);return cur;}return[...cur,id];});};
+  const toggleAlbumSel=(id)=>{setAlbumSel(sel=>{const cur=sel||[];if(cur.includes(id))return cur.filter(x=>x!==id);if(cur.length>=ALBUM_SEL_MAX){showFlash(t("toast.albumSelMax",{n:ALBUM_SEL_MAX}));return cur;}return[...cur,id];});};
   const moveMemoriesTo=(targetSpace)=>{
     const ids=albumSel||[];if(ids.length===0||!targetSpace)return;
     const idset=new Set(ids);
@@ -2913,7 +2914,7 @@ function App(){
     next.forEach(x=>{if(idset.has(x.id))saveItemToFs(x).catch(()=>{});});
     const tName=targetSpace==="me"?(meName||"わたし"):(members.find(m=>m.id===targetSpace)?.name||"");
     setAlbumMoveOpen(false);setAlbumSel(null);
-    showFlash(`${ids.length}枚を「${tName}」へ移動しました 📸`);
+    showFlash(t("toast.photosMoved",{n:ids.length,name:tName}));
   };
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
@@ -2941,7 +2942,7 @@ function App(){
     const files=Array.from(e.target.files||[]).filter(f=>f.type&&f.type.startsWith("image/"));e.target.value="";
     if(!files.length||bulkBusy)return;
     const list=files.slice(0,60); // 一度の取り込み上限
-    setBulkBusy(true);showFlash(`写真を読み込み中…（${list.length}枚）`);
+    setBulkBusy(true);showFlash(t("toast.photosLoading",{n:list.length}));
     const space=tab;const newItems=[];const newPhotos={};const dateSet=new Set();let full=false;
     for(const file of list){
       if(file.size>20*1024*1024)continue;
@@ -2962,9 +2963,9 @@ function App(){
       newItems.forEach(it=>saveItemToFs(it).catch(()=>{}));
     }
     setBulkBusy(false);
-    if(full)showFlash(newItems.length?`ストレージ不足のため${newItems.length}枚まで追加しました`:"ストレージ容量が不足しています");
-    else if(newItems.length)showFlash(`${newItems.length}枚を撮影日ごとに追加しました（${dateSet.size}日分）📅`);
-    else showFlash("追加できる写真がありませんでした");
+    if(full)showFlash(newItems.length?t("toast.storagePartial",{n:newItems.length}):t("toast.storageFull"));
+    else if(newItems.length)showFlash(t("toast.photosAdded",{n:newItems.length,days:dateSet.size}));
+    else showFlash(t("toast.noPhotosAdded"));
   };
   const toggleLifeReminder=(mins)=>setLifeDraft(p=>p?{...p,reminders:p.reminders.includes(mins)?p.reminders.filter(m=>m!==mins):[...p.reminders,mins].sort((a,b)=>a-b)}:p);
   const saveLife=async()=>{
@@ -3104,7 +3105,7 @@ function App(){
     persist(members,next);
     saveItemToFs(base).catch(()=>{});
     setQuickAdd(null);setQuickDate("");
-    showFlash("追加しました！");
+    showFlash(t("toast.addedBang"));
   };
 
   // --- ルーティン（1日のタスク）---
@@ -3174,7 +3175,7 @@ function App(){
     persist(members,next);
     const u=next.find(x=>x.id===id);if(u)saveItemToFs(u).catch(()=>{});
     const it=next.find(x=>x.id===id);
-    showFlash(`${it?.emoji||"📦"} 買った！次は約${it?.cycleDays||30}日後の目安です`);
+    showFlash(t("toast.bought",{emoji:it?.emoji||"📦",days:it?.cycleDays||30}));
   };
   const removeSupply=(id)=>{
     deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});
@@ -3244,7 +3245,7 @@ function App(){
     persist(nextMembers,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     const um=nextMembers.find(m=>m.id===tab);if(um)saveMemberToFs(um).catch(()=>{});
     setFeedAmt("");setFeedMult(1);
-    showFlash(grams!=null?`ごはんを記録しました（約${grams}g）🍚`:"ごはんを記録しました 🍚");
+    showFlash(grams!=null?t("toast.mealLoggedG",{g:grams}):t("toast.mealLogged"));
   };
   const removeFeed=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // --- フード・食事：フード登録（fooddef）＋ 今日の食事記録（feed に食事情報を付与） ---
@@ -3256,15 +3257,15 @@ function App(){
   const saveSheetImage=async(selector,filename,opts)=>{
     if(imgSaving)return;
     const node=document.querySelector(selector);
-    if(!node){showFlash("画像を作成できませんでした");return;}
-    setImgSaving(true);showFlash("画像を作成中…");
+    if(!node){showFlash(t("toast.imgCreateFail"));return;}
+    setImgSaving(true);showFlash(t("toast.imgCreating"));
     try{
       const r=await saveNodeAsImage(node,filename,opts);
-      if(r==="shared")showFlash("「画像を保存」でアルバムに保存できます 🖼️");
-      else if(r==="download")showFlash("画像を保存しました 🖼️");
+      if(r==="shared")showFlash(t("toast.imgSaveHint"));
+      else if(r==="download")showFlash(t("toast.imgSaved"));
       else showFlash(""); // キャンセル時は静かに閉じる
     }
-    catch(e){showFlash("画像を保存できませんでした");}
+    catch(e){showFlash(t("toast.imgSaveFail"));}
     finally{setImgSaving(false);}
   };
   const safeName=(s)=>String(s||"").replace(/[\\/:*?"<>|]/g,"").trim()||"loalife";
@@ -3280,13 +3281,13 @@ function App(){
   };
   // 計算結果の1回分（g）を登録フードの「1回の量」へ反映。対象は計算に使ったフード（無ければ新規登録フォームへ）。
   const applyCalcToFood=(grams,times)=>{
-    if(!(grams>0)){showFlash("先に体重・BCS・ME を入れてください");return;}
+    if(!(grams>0)){showFlash(t("toast.needBwBcs"));return;}
     const me=Number(foodCalc.me);
     const food=foodDefs.find(f=>f.kcalBasis==="per100"&&String(f.kcal)===String(foodCalc.me))||foodDefs.find(f=>f.kcalBasis==="per100");
     if(food){
       const rec={...food,amount:grams,unit:"g",timesPerDay:times};
       persist(members,items.map(x=>x.id===food.id?rec:x));saveItemToFs(rec).catch(()=>{});
-      setFoodCalc(null);showFlash(`「${food.name}」を 1回${grams}g・1日${times}回 に設定しました 🍚`);
+      setFoodCalc(null);showFlash(t("toast.foodSet",{name:food.name,g:grams,times}));
     }else{
       setFoodCalc(null);
       setFoodForm({name:"",brand:"",foodType:"dry",amount:String(grams),unit:"g",times:String(times),feedTime:"",kcal:me>0?String(me):"",kcalBasis:"per100"});
@@ -3309,7 +3310,7 @@ function App(){
     if(d.unit==="g"||d.unit==="ml")rec.grams=amt; // 同単位の合計量集計に使用
     if(kcal!=null)rec.kcal=kcal;
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
-    setMealForm(null);showFlash(kcal!=null?`記録しました（約${kcal}kcal）🍚`:"食事を記録しました 🍚");};
+    setMealForm(null);showFlash(kcal!=null?t("toast.mealLoggedKcal",{kcal}):t("toast.mealLogged2"));};
   // 今日の食事サマリー：回数／同単位ごとの合計量／合計kcal（計算可能な分のみ）。異なる単位は合算しない。
   const mealSummary=useMemo(()=>{
     const byUnit={};let kcal=0,hasKcal=false;
@@ -3323,8 +3324,8 @@ function App(){
   const lastNursingTs=nursingRecords.length?nursingRecords[0].ts:null;
   const startNursing=(side)=>{const t={space:tab,side,start:Date.now()};setNursing(t);try{localStorage.setItem("loalife-nursing",JSON.stringify(t));}catch(e){}setNursingNow(Date.now());};
   const cancelNursing=()=>{setNursing(null);try{localStorage.removeItem("loalife-nursing");}catch(e){}};
-  const stopNursing=()=>{if(!nursing)return;const durationSec=Math.max(1,Math.round((Date.now()-nursing.start)/1000));const rec={id:"ns"+Date.now(),space:nursing.space,type:"nursing",ts:nursing.start,date:isoOf(nursing.start),side:nursing.side,durationSec,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});const side=nursing.side;cancelNursing();showFlash(`授乳を記録しました（${side==="left"?"左":"右"} ${fmtDur(durationSec)}）`);};
-  const logMilk=()=>{const n=Number(milkMl);if(!milkMl.trim()||isNaN(n)||n<=0){showFlash(t("toast.milkNeeded"));return;}const rec={id:"ns"+Date.now(),space:tab,type:"nursing",ts:Date.now(),date:todayIso,side:"milk",amountMl:Math.round(n),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMilkMl("");showFlash(`ミルクを記録しました（${Math.round(n)}ml）🍼`);};
+  const stopNursing=()=>{if(!nursing)return;const durationSec=Math.max(1,Math.round((Date.now()-nursing.start)/1000));const rec={id:"ns"+Date.now(),space:nursing.space,type:"nursing",ts:nursing.start,date:isoOf(nursing.start),side:nursing.side,durationSec,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});const side=nursing.side;cancelNursing();showFlash(t("toast.nursingLogged",{side:t(side==="left"?"toast.left":"toast.right"),dur:fmtDur(durationSec)}));};
+  const logMilk=()=>{const n=Number(milkMl);if(!milkMl.trim()||isNaN(n)||n<=0){showFlash(t("toast.milkNeeded"));return;}const rec={id:"ns"+Date.now(),space:tab,type:"nursing",ts:Date.now(),date:todayIso,side:"milk",amountMl:Math.round(n),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMilkMl("");showFlash(t("toast.milkLogged",{ml:Math.round(n)}));};
   const removeNursing=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // --- 散歩記録（開始・終了／時間・距離・GPSルート）---
   const walkRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="walk").sort((a,b)=>(b.start||0)-(a.start||0)),[items,tab]);
@@ -3341,9 +3342,9 @@ function App(){
   const onWalkErr=(e)=>{setWalkGpsErr(e&&e.code===1?"位置情報が許可されていません（時間は記録できます）":"位置情報を取得できませんでした");};
   const startWalkWatch=()=>{if(walkWatchRef.current!=null||!navigator.geolocation)return;try{walkWatchRef.current=navigator.geolocation.watchPosition(onWalkPos,onWalkErr,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});}catch(e){}};
   const stopWalkWatch=()=>{if(walkWatchRef.current!=null&&navigator.geolocation){try{navigator.geolocation.clearWatch(walkWatchRef.current);}catch(e){}}walkWatchRef.current=null;};
-  const startWalk=()=>{if(walk){showFlash("すでに散歩を記録中です");return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());track("walk_start");startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
+  const startWalk=()=>{if(walk){showFlash(t("toast.walkOngoing"));return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());track("walk_start");startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
   const cancelWalk=()=>{stopWalkWatch();setWalk(null);walkPersist(null);setWalkGpsErr("");};
-  const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,Math.round((Date.now()-walk.start)/1000));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(`おさんぽ記録：${fmtDur(durationSec)}・${fmtDist(distanceM)} 🐾`);};
+  const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,Math.round((Date.now()-walk.start)/1000));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(t("toast.walkLogged",{dur:fmtDur(durationSec),dist:fmtDist(distanceM)}));};
   const removeWalk=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 散歩の経過時間を1秒ごとに更新＋アプリ復帰時にGPS監視を再開。
   useEffect(()=>{if(!walk)return;const id=setInterval(()=>setWalkNow(Date.now()),1000);startWalkWatch();return()=>{clearInterval(id);stopWalkWatch();};// eslint-disable-next-line
@@ -3440,11 +3441,11 @@ function App(){
   const removeCard=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setCardEdit(null);};
   // --- 持ち物（曜日ごと）：明日の準備チェックリスト。学校の忘れ物防止 ---
   const belongings=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="belonging"),[items,tab]);
-  const addBelonging=()=>{const t=belongDraft.trim();if(!t){showFlash(t("toast.belongNeeded"));return;}const rec={id:"bl"+Date.now(),space:tab,type:"belonging",title:t,dow:belongDow,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setBelongDraft("");showFlash(t("toast.belongAdded"));};
+  const addBelonging=()=>{const v=belongDraft.trim();if(!v){showFlash(t("toast.belongNeeded"));return;}const rec={id:"bl"+Date.now(),space:tab,type:"belonging",title:v,dow:belongDow,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setBelongDraft("");showFlash(t("toast.belongAdded"));};
   const removeBelonging=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 成長記録（育児日記）：はじめて・できたこと等のマイルストーンを記録。
   const growthRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="milestone").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
-  const addMilestone=(cat,title)=>{const t=(title||"").trim();if(!t)return;const rec={id:"ms"+Date.now(),space:tab,type:"milestone",date:todayIso,category:cat||"first",title:t,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMsDraft("");showFlash(t("toast.growthSaved"));};
+  const addMilestone=(cat,title)=>{const v=(title||"").trim();if(!v)return;const rec={id:"ms"+Date.now(),space:tab,type:"milestone",date:todayIso,category:cat||"first",title:v,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMsDraft("");showFlash(t("toast.growthSaved"));};
   const removeMilestone=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // お手伝いポイント：タスクごとにポイントを付与。合計・今週を集計。
   const pointRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="point").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
@@ -3454,7 +3455,7 @@ function App(){
   // おこづかい帳：もらった/つかった/ちょきん。残高を集計（ちょきんは残高に影響しない記録）。
   const allowanceRecords=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="allowance").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   const allowanceBalance=useMemo(()=>allowanceRecords.reduce((s,x)=>{const d=ALLOWANCE_DIRS.find(o=>o.k===x.dir);return s+(d?d.sign:0)*(Number(x.amount)||0);},0),[allowanceRecords]);
-  const addAllowance=()=>{const amt=Number(allowAmt);if(!allowAmt.trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}const rec={id:"al"+Date.now(),space:tab,type:"allowance",date:todayIso,amount:amt,dir:allowDir,reason:(allowReason||"").trim()||undefined,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setAllowAmt("");setAllowReason("");showFlash("おこづかいを記録しました");};
+  const addAllowance=()=>{const amt=Number(allowAmt);if(!allowAmt.trim()||isNaN(amt)||amt<=0){showFlash(t("toast.needAmount"));return;}const rec={id:"al"+Date.now(),space:tab,type:"allowance",date:todayIso,amount:amt,dir:allowDir,reason:(allowReason||"").trim()||undefined,createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setAllowAmt("");setAllowReason("");showFlash(t("toast.allowanceLogged"));};
   const removeAllowance=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // お薬コース：X日間の服用を1日ずつチェック。残り日数を表示。
   const medCourses=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="medcourse").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
@@ -3463,7 +3464,7 @@ function App(){
   const removeMedCourse=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 家族ノート（メッセージ・感謝・きもち）。端末内で家族が書き込める簡易ボード。
   const familyNotes=useMemo(()=>items.filter(x=>x.type==="familynote").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items]);
-  const addFamilyNote=()=>{const t=(noteText||"").trim();if(!t)return;const author=(meName||"わたし");const rec={id:"fn"+Date.now(),space:"me",type:"familynote",kind:noteKind,text:t,author,date:todayIso,createdAt:Date.now()};persist(members,[...items,rec]);setNoteText("");showFlash(t("toast.noteSaved"));};
+  const addFamilyNote=()=>{const v=(noteText||"").trim();if(!v)return;const author=(meName||"わたし");const rec={id:"fn"+Date.now(),space:"me",type:"familynote",kind:noteKind,text:v,author,date:todayIso,createdAt:Date.now()};persist(members,[...items,rec]);setNoteText("");showFlash(t("toast.noteSaved"));};
   const removeFamilyNote=(id)=>{persist(members,items.filter(x=>x.id!==id));};
   const tomorrowIso=plusDays(1);const tomorrowDow=dowOf(tomorrowIso);
   const tomorrowBelongings=useMemo(()=>belongings.filter(b=>b.dow===tomorrowDow),[belongings,tomorrowDow]);
@@ -3511,22 +3512,22 @@ function App(){
   },[items,expScope,tab,todayIso,members,meName]);
   const saveExpense=()=>{
     const amt=Number(expAmount);
-    if(!expAmount.trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}
+    if(!expAmount.trim()||isNaN(amt)||amt<=0){showFlash(t("toast.needAmount"));return;}
     const cats=expenseCatsFor(curKind);const cat=cats.some(c=>c.key===expCat)?expCat:cats[0].key;
     const rec={id:"ex"+Date.now(),space:tab,type:"expense",date:todayIso,amount:amt,category:cat,note:(expNote||"").trim()||undefined,createdAt:Date.now()};
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     setExpAmount("");setExpNote("");
-    showFlash("支出を記録しました 💰");
+    showFlash(t("toast.expLogged"));
   };
   const removeExpense=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 支出の編集（日付変更はここだけ＝レシート遅延・代理入力などの例外用途）
   const openExpEdit=(r)=>setExpEdit({id:r.id,amount:String(r.amount||""),category:r.category||"other",note:r.note||"",date:r.date||todayIso});
   const saveExpEdit=()=>{
     if(!expEdit)return;const amt=Number(expEdit.amount);
-    if(!String(expEdit.amount).trim()||isNaN(amt)||amt<=0){showFlash("金額を入力してください");return;}
+    if(!String(expEdit.amount).trim()||isNaN(amt)||amt<=0){showFlash(t("toast.needAmount"));return;}
     const next=items.map(x=>x.id===expEdit.id?{...x,amount:amt,category:expEdit.category,note:expEdit.note.trim()||undefined,date:expEdit.date||x.date}:x);
     persist(members,next);const it=next.find(x=>x.id===expEdit.id);if(it)saveItemToFs(it).catch(()=>{});
-    setExpEdit(null);showFlash("支出を更新しました 💰");
+    setExpEdit(null);showFlash(t("toast.expUpdated"));
   };
   // サムネイルの遅延読み込み（複数写真対応。各 photoId を未ロードのみ取得）
   useEffect(()=>{
@@ -3551,7 +3552,7 @@ function App(){
   const petMembers=useMemo(()=>members.filter(m=>m.kind==="pet"),[members]);
   const addChore=(title,emoji)=>{if(chores.some(c=>c.title===title))return;const rec={id:"ch"+Date.now(),space:tab,type:"chore",title,emoji:emoji||"🧹",lastDone:null,history:[],createdAt:Date.now()};persist(members,[...items,rec]);track("task_add",{task_type:"chore"});saveItemToFs(rec).catch(()=>{});};
   // お世話ログの自由追加（テンプレ以外も自分で登録）。絵文字は内容から推定。
-  const addCustomChore=()=>{const t=choreDraft.trim();if(!t)return;if(chores.some(c=>c.title===t)){showFlash(t("toast.dupItem"));setChoreDraft("");return;}addChore(t,guessEmoji(t,"🧹"));setChoreDraft("");showFlash(t("toast.added"));};
+  const addCustomChore=()=>{const v=choreDraft.trim();if(!v)return;if(chores.some(c=>c.title===v)){showFlash(t("toast.dupItem"));setChoreDraft("");return;}addChore(v,guessEmoji(v,"🧹"));setChoreDraft("");showFlash(t("toast.added"));};
   const logChore=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const hist=[todayIso,...(x.history||[]).filter(d=>d!==todayIso)].slice(0,30);return{...x,lastDone:todayIso,history:hist};});persist(members,next);track("task_complete",{task_type:"chore"});const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash(t("toast.saved"));};
   // まとめて記録：選択中の子（複数）に、日課（ご飯/お薬/散歩/トイレ）を一括でお世話ログに記録。
   const batchLog=(action,ids)=>{
@@ -3564,7 +3565,7 @@ function App(){
       else{const rec={id:"ch"+Date.now()+"-"+sp,space:sp,type:"chore",title:action.title,emoji:action.emoji,lastDone:todayIso,history:[todayIso],createdAt:Date.now()};next.push(rec);touched.push(rec);}
     });
     persist(members,next);touched.forEach(it=>saveItemToFs(it).catch(()=>{}));
-    showFlash(`${sel.length}匹に「${action.emoji} ${action.title}」を記録 ✓`);
+    showFlash(t("toast.batchLogged",{n:sel.length,emoji:action.emoji,title:t(action.lkey)}));
   };
   const removeChore=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // トイレ記録：おしっこ/うんちを成功・失敗で記録。うんちはブリストルスコア(1〜7)も残す。
@@ -3754,7 +3755,7 @@ function App(){
     const item={id:"b"+Date.now(),space:"me",type:"bday",title:t,emoji:guessEmoji(t,"🎂"),birthday:friendBdayDate,createdAt:Date.now()};
     persist(members,[...items,item]);
     setFriendBdayName("");setFriendBdayDate("");
-    showFlash("追加しました 🎂");
+    showFlash(t("toast.addedBday"));
   };
   // 「もうすぐ・楽しみ」：自分の誕生日記念日＋予定（日付あり）を近い順に
   const meUpcoming=useMemo(()=>{
@@ -4029,7 +4030,7 @@ function App(){
     lines.push(cnt>0?t("ai.todosN",{n:cnt}):t("ai.relaxed"));
     const jmaSevere=hasWalker&&jmaWarn&&jmaWarn.warnings.length&&jmaWarn.warnings[0].level>=2;
     if(jmaSevere){
-      lines.push(t("ai.jmaWalk",{name:jmaWarn.warnings[0].name}));
+      lines.push(t("ai.jmaWalk",{name:jmaLabel(jmaWarn.warnings[0])}));
     }else if(hasWalker&&weather&&!weather.error&&weather.hours){
       const wt=walkTimeline(weather.hours);
       const pet=petMembers.find(m=>m.species==="dog"&&!m.memorial);
@@ -4077,7 +4078,7 @@ function App(){
   const exportCalendar=()=>{
     const content=generateIcal(items,members,meEmoji);
     downloadIcal(content);
-    showFlash("カレンダーファイルをダウンロードしました 📅");
+    showFlash(t("toast.icsDownloaded"));
   };
 
   const inHousehold=!!(fireUser&&household);
@@ -4475,12 +4476,12 @@ function App(){
                 {weather&&weather.error?(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")}>↻</button></div>
                   <span className="yl-weather-err">{t("wx.errGet")} <button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)}>{t("wx.retry")}</button></span>
-                </>):weather?(()=>{const advShort=(jmaHi>=2)?t("wx.jmaActive",{name:jmaWarn.warnings[0].name}):wi?(wi.level==="danger"?t("walk.advShort.danger"):wi.level==="warn"?t("walk.advShort.warn"):t("walk.advShort.ok")):null;return(<>
+                </>):weather?(()=>{const advShort=(jmaHi>=2)?t("wx.jmaActive",{name:jmaLabel(jmaWarn.warnings[0])}):wi?(wi.level==="danger"?t("walk.advShort.danger"):wi.level==="warn"?t("walk.advShort.warn"):t("walk.advShort.ok")):null;return(<>
                   <div className="yl-wx-top"><span className="yl-wx-loc"><Icon name="pin" size={13}/> {locDisplayName(weatherLoc)}</span><button className="yl-weather-refresh" onClick={()=>fetchWeather(weatherLoc)} aria-label={t("wx.refresh")} disabled={weatherLoading}>↻</button></div>
                   {jmaWarn&&jmaWarn.warnings.length>0&&(
                     <div className="yl-jma">
                       <span className="yl-jma-head"><Icon name="alert" size={12}/> {t("wx.jma")}・{jmaWarn.area}</span>
-                      <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{w.name}</span>)}</span>
+                      <span className="yl-jma-chips">{jmaWarn.warnings.slice(0,5).map(w=><span key={w.code} className={"yl-jma-chip lv"+w.level}>{jmaLabel(w)}</span>)}</span>
                     </div>
                   )}
                   <div className="yl-wx-hero">
