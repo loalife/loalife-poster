@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -6710,4 +6710,41 @@ function App(){
   );
 }
 
-createRoot(document.getElementById("root")).render(<App/>);
+// アプリ全体のエラーバウンダリ。どこかの描画で例外が出ても白画面にせず、
+// 再読み込み／リセットで復帰できる画面を出す（ユーザーデータは消さない）。
+class RootBoundary extends Component {
+  constructor(props){super(props);this.state={err:null};}
+  static getDerivedStateFromError(err){return {err};}
+  componentDidCatch(err,info){try{console.error("LOALIFE render error:",err,info);}catch(e){}}
+  render(){
+    if(!this.state.err)return this.props.children;
+    let lang="ja";try{lang=localStorage.getItem("loalife-lang-v1")||"ja";}catch(e){}
+    const T={
+      ja:{title:"うまく開けませんでした",body:"一時的な不具合の可能性があります。まずは再読み込みをお試しください。データは端末内に保存されているので消えません。",reload:"再読み込み",reset:"リセットして再起動"},
+      en:{title:"Couldn't open properly",body:"This may be a temporary glitch. Try reloading first. Your data is stored on your device and is kept.",reload:"Reload",reset:"Reset & restart"},
+      es:{title:"No se pudo abrir bien",body:"Puede ser un fallo temporal. Primero prueba a recargar. Tus datos se guardan en tu dispositivo y se conservan.",reload:"Recargar",reset:"Reiniciar"},
+      zh:{title:"打开时出现问题",body:"可能是临时故障，请先尝试重新加载。你的数据保存在本设备上，不会丢失。",reload:"重新加载",reset:"重置并重启"},
+    };
+    const m=T[lang]||T.ja;
+    const reload=()=>{try{location.reload();}catch(e){}};
+    const reset=async()=>{
+      try{["loalife-tab","loalife-personseg","loalife-membersel"].forEach(k=>localStorage.removeItem(k));}catch(e){}
+      try{if(navigator.serviceWorker){const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}}catch(e){}
+      try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
+      try{location.reload();}catch(e){}
+    };
+    const btn={display:"block",width:"100%",boxSizing:"border-box",padding:"14px",marginTop:10,borderRadius:14,border:"none",fontSize:16,fontWeight:700,cursor:"pointer"};
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px 16px",background:"#FBF7F2",fontFamily:'"Quicksand",system-ui,-apple-system,sans-serif',color:"#4A3F55"}}>
+        <div style={{maxWidth:340,width:"100%",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:8}}>🐾</div>
+          <h1 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>{m.title}</h1>
+          <p style={{fontSize:14,lineHeight:1.7,margin:"0 0 8px",color:"#7A6E86"}}>{m.body}</p>
+          <button style={{...btn,background:"#E39A5C",color:"#fff"}} onClick={reload}>{m.reload}</button>
+          <button style={{...btn,background:"#EFE7DE",color:"#7A6E86"}} onClick={reset}>{m.reset}</button>
+        </div>
+      </div>
+    );
+  }
+}
+createRoot(document.getElementById("root")).render(<RootBoundary><App/></RootBoundary>);
