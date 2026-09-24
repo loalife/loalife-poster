@@ -328,7 +328,7 @@ function buildDigest(items){
   return urgent.sort((a,b)=>a.sort-b.sort);
 }
 const REMINDER_OPTS=[{key:0,label:"開始時"},{key:5,label:"5分前"},{key:30,label:"30分前"},{key:60,label:"1時間前"},{key:1440,label:"前日"}];
-const reminderLabel=(mins)=>(REMINDER_OPTS.find(o=>o.key===mins)||{}).label||`${mins}分前`;
+const reminderLabel=(mins)=>{const k="remind."+mins;const v=tr(APP_LANG,k);return v!==k?v:tr(APP_LANG,"remind.before",{n:mins});};
 
 // --- Notification helpers ---
 const notifSupported = typeof window !== "undefined" && "Notification" in window;
@@ -968,22 +968,22 @@ function makeSeed(){
   };
 }
 
-function dueStatus(item){if(!item.dueDate)return null;if(item.done)return{label:"完了",tone:"doneChip"};const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:`あと${d}日`,tone:"soon"};if(d===0)return{label:"今日",tone:"today"};if(item.type==="dream")return{label:"また今度でも大丈夫",tone:"gentleOver"};if(isCyclic(item))return{label:"期限切れ",tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
+function dueStatus(item){if(!item.dueDate)return null;if(item.done)return{label:tr(APP_LANG,"status.done"),tone:"doneChip"};const d=daysUntil(item.dueDate);if(d>3)return{label:fmtDate(item.dueDate),tone:"normal"};if(d>0)return{label:tr(APP_LANG,"status.inDays",{d}),tone:"soon"};if(d===0)return{label:tr(APP_LANG,"status.today"),tone:"today"};if(item.type==="dream")return{label:tr(APP_LANG,"status.dreamOver"),tone:"gentleOver"};if(isCyclic(item))return{label:tr(APP_LANG,"status.overdue"),tone:"careOver"};return{label:fmtDate(item.dueDate),tone:"normal"};}
 // ケアの3状態：未対応(赤)／予定済み(黄)／完了(緑)。打ち消し線＋期限切れの読めない状態を1目で。
 function careState(item){
-  if(item.done)return{label:"✅ 完了",tone:"done"};
+  if(item.done)return{label:tr(APP_LANG,"care.done"),tone:"done"};
   const renew=isRenewCare(item);
-  if(isOverdue(item)){const d=-daysUntil(item.dueDate);return{label:renew?`🔴 期限切れ・${d}日超過`:`🔴 未対応・${d}日超過`,tone:"todo"};}
+  if(isOverdue(item)){const d=-daysUntil(item.dueDate);return{label:renew?tr(APP_LANG,"care.overdueRenew",{d}):tr(APP_LANG,"care.overdueTodo",{d}),tone:"todo"};}
   if(item.dueDate){const d=daysUntil(item.dueDate);
-    if(d<0)return{label:`予定日 ${fmtDate(item.dueDate)}`,tone:"planned"};
+    if(d<0)return{label:tr(APP_LANG,"care.plannedDate",{date:fmtDate(item.dueDate)}),tone:"planned"};
     if(renew){
-      if(d===0)return{label:"🟡 今日で期限",tone:"planned"};
-      if(d<=30)return{label:`🟡 あと${d}日で期限`,tone:"planned"};
-      return{label:`🟢 有効・あと${d}日`,tone:"doneChip"};
+      if(d===0)return{label:tr(APP_LANG,"care.dueToday"),tone:"planned"};
+      if(d<=30)return{label:tr(APP_LANG,"care.dueInDays",{d}),tone:"planned"};
+      return{label:tr(APP_LANG,"care.validDays",{d}),tone:"doneChip"};
     }
-    return{label:d===0?"🟡 今日やる":`🟡 予定・あと${d}日`,tone:"planned"};
+    return{label:d===0?tr(APP_LANG,"care.doToday"):tr(APP_LANG,"care.plannedDays",{d}),tone:"planned"};
   }
-  return{label:"🟡 予定済み",tone:"planned"};
+  return{label:tr(APP_LANG,"care.planned"),tone:"planned"};
 }
 // 更新型ケア（狂犬病・ワクチン等）の有効期限までの残り。証明書セルなどの小さな表示用。
 function renewLeft(item){
@@ -1259,7 +1259,7 @@ const MESSAGES={
     "set.about":"アプリについて","about.help":"使い方・機能紹介","about.whatsNew":"変更点・新機能","about.tourAgain":"使い方をもう一度見る","about.aboutApp":"このアプリについて","about.reset":"データを消して最初から",
     "rel.daysAgo":"{n}日前","rel.today2":"今日","rel.overdueDeadline":"期限切れ","rel.todayDeadline":"今日で期限","rel.dueInDaysDeadline":"あと{n}日で期限",
     "common.add":"追加","common.delete":"削除","common.edit":"編集","common.done":"完了","common.clear":"解除","common.me":"わたし","common.optional":"（任意）",
-    "a11y.delete":"削除","a11y.pickColor":"色を選ぶ","a11y.editProfile":"プロフィールを編集","a11y.editPhotoProfile":"写真・プロフィールを編集","a11y.editIconName":"アイコン・名前を変更",
+    "a11y.delete":"削除","a11y.check":"チェック","a11y.done":"完了","remind.before":"{n}分前","status.done":"完了","status.inDays":"あと{d}日","status.today":"今日","status.dreamOver":"また今度でも大丈夫","status.overdue":"期限切れ","care.done":"✅ 完了","care.overdueRenew":"🔴 期限切れ・{d}日超過","care.overdueTodo":"🔴 未対応・{d}日超過","care.plannedDate":"予定日 {date}","care.dueToday":"🟡 今日で期限","care.dueInDays":"🟡 あと{d}日で期限","care.validDays":"🟢 有効・あと{d}日","care.doToday":"🟡 今日やる","care.plannedDays":"🟡 予定・あと{d}日","care.planned":"🟡 予定済み","item.doneOn":"実施 {date}","item.stockLeft":"在庫あと{n}回","item.reminderCount":"{n}件","item.resolveTip":"記録すると次回予定へ自動で進みます","item.resolveBtn":"✓ 完了にして次回へ","item.snooze":"→ 明日へ","item.copyTip":"前回と同じ内容で追加","item.copyBtn":"↩ 前回コピー","item.addToCal":"カレンダーに追加","item.cert":"証明書","item.certAdd":"証明書を追加","item.openMap":"地図で開く","item.openLink":"リンクを開く","item.checklistProg":"持ち物 {done}/{total}","a11y.pickColor":"色を選ぶ","a11y.editProfile":"プロフィールを編集","a11y.editPhotoProfile":"写真・プロフィールを編集","a11y.editIconName":"アイコン・名前を変更",
     "ph.name":"名前","ph.title":"タイトル",
     "gender.boy":"男の子","gender.girl":"女の子","neuter.done":"済み","neuter.not":"まだ",
     "ptype.baby":"赤ちゃん","ptype.child":"子ども","ptype.adult":"大人","ptype.senior":"高齢者",
@@ -1351,7 +1351,7 @@ const MESSAGES={
     "set.about":"About","about.help":"How it works","about.whatsNew":"What's new","about.tourAgain":"Replay the walkthrough","about.aboutApp":"About this app","about.reset":"Erase data & start over",
     "rel.daysAgo":"{n} days ago","rel.today2":"Today","rel.overdueDeadline":"Overdue","rel.todayDeadline":"Due today","rel.dueInDaysDeadline":"Due in {n} days",
     "common.add":"Add","common.delete":"Delete","common.edit":"Edit","common.done":"Done","common.clear":"Clear","common.me":"Me","common.optional":" (optional)",
-    "a11y.delete":"Delete","a11y.pickColor":"Pick a color","a11y.editProfile":"Edit profile","a11y.editPhotoProfile":"Edit photo & profile","a11y.editIconName":"Change icon & name",
+    "a11y.delete":"Delete","a11y.check":"Check","a11y.done":"Done","remind.before":"{n} min before","status.done":"Done","status.inDays":"In {d} days","status.today":"Today","status.dreamOver":"No rush — another time","status.overdue":"Overdue","care.done":"✅ Done","care.overdueRenew":"🔴 Overdue by {d} days","care.overdueTodo":"🔴 Not done — {d} days over","care.plannedDate":"Due {date}","care.dueToday":"🟡 Due today","care.dueInDays":"🟡 Due in {d} days","care.validDays":"🟢 Valid — {d} days left","care.doToday":"🟡 Do today","care.plannedDays":"🟡 Planned — {d} days","care.planned":"🟡 Planned","item.doneOn":"Done {date}","item.stockLeft":"{n} left","item.reminderCount":"{n}","item.resolveTip":"Logging advances to the next due date","item.resolveBtn":"✓ Done — next","item.snooze":"→ Tomorrow","item.copyTip":"Add same as last time","item.copyBtn":"↩ Copy last","item.addToCal":"Add to calendar","item.cert":"Certificate","item.certAdd":"Add certificate","item.openMap":"Open in maps","item.openLink":"Open link","item.checklistProg":"Items {done}/{total}","a11y.pickColor":"Pick a color","a11y.editProfile":"Edit profile","a11y.editPhotoProfile":"Edit photo & profile","a11y.editIconName":"Change icon & name",
     "ph.name":"Name","ph.title":"Title",
     "gender.boy":"Boy","gender.girl":"Girl","neuter.done":"Yes","neuter.not":"Not yet",
     "ptype.baby":"Baby","ptype.child":"Child","ptype.adult":"Adult","ptype.senior":"Senior",
@@ -1443,7 +1443,7 @@ const MESSAGES={
     "set.about":"Acerca de","about.help":"Cómo funciona","about.whatsNew":"Novedades","about.tourAgain":"Repetir el tutorial","about.aboutApp":"Sobre esta app","about.reset":"Borrar datos y empezar de nuevo",
     "rel.daysAgo":"hace {n} días","rel.today2":"Hoy","rel.overdueDeadline":"Vencido","rel.todayDeadline":"Vence hoy","rel.dueInDaysDeadline":"Vence en {n} días",
     "common.add":"Añadir","common.delete":"Eliminar","common.edit":"Editar","common.done":"Hecho","common.clear":"Borrar","common.me":"Yo","common.optional":" (opcional)",
-    "a11y.delete":"Eliminar","a11y.pickColor":"Elegir un color","a11y.editProfile":"Editar perfil","a11y.editPhotoProfile":"Editar foto y perfil","a11y.editIconName":"Cambiar icono y nombre",
+    "a11y.delete":"Eliminar","a11y.check":"Marcar","a11y.done":"Hecho","remind.before":"{n} min antes","status.done":"Hecho","status.inDays":"En {d} días","status.today":"Hoy","status.dreamOver":"Sin prisa, otro día","status.overdue":"Vencido","care.done":"✅ Hecho","care.overdueRenew":"🔴 Vencido {d} días","care.overdueTodo":"🔴 Sin hacer — {d} días","care.plannedDate":"Fecha {date}","care.dueToday":"🟡 Vence hoy","care.dueInDays":"🟡 Vence en {d} días","care.validDays":"🟢 Válido — {d} días","care.doToday":"🟡 Hazlo hoy","care.plannedDays":"🟡 Planeado — {d} días","care.planned":"🟡 Planeado","item.doneOn":"Hecho {date}","item.stockLeft":"Quedan {n}","item.reminderCount":"{n}","item.resolveTip":"Al registrar, avanza a la próxima fecha","item.resolveBtn":"✓ Hecho — siguiente","item.snooze":"→ Mañana","item.copyTip":"Añadir igual que la última vez","item.copyBtn":"↩ Copiar última","item.addToCal":"Añadir al calendario","item.cert":"Certificado","item.certAdd":"Añadir certificado","item.openMap":"Abrir en el mapa","item.openLink":"Abrir enlace","item.checklistProg":"Cosas {done}/{total}","a11y.pickColor":"Elegir un color","a11y.editProfile":"Editar perfil","a11y.editPhotoProfile":"Editar foto y perfil","a11y.editIconName":"Cambiar icono y nombre",
     "ph.name":"Nombre","ph.title":"Título",
     "gender.boy":"Niño","gender.girl":"Niña","neuter.done":"Sí","neuter.not":"Todavía no",
     "ptype.baby":"Bebé","ptype.child":"Niño/a","ptype.adult":"Adulto","ptype.senior":"Mayor",
@@ -1535,7 +1535,7 @@ const MESSAGES={
     "set.about":"关于","about.help":"使用说明","about.whatsNew":"更新内容","about.tourAgain":"重看引导","about.aboutApp":"关于本应用","about.reset":"清除数据并重新开始",
     "rel.daysAgo":"{n}天前","rel.today2":"今天","rel.overdueDeadline":"已逾期","rel.todayDeadline":"今天到期","rel.dueInDaysDeadline":"{n}天后到期",
     "common.add":"添加","common.delete":"删除","common.edit":"编辑","common.done":"完成","common.clear":"清除","common.me":"我","common.optional":"（可选）",
-    "a11y.delete":"删除","a11y.pickColor":"选择颜色","a11y.editProfile":"编辑资料","a11y.editPhotoProfile":"编辑照片和资料","a11y.editIconName":"更改图标和名称",
+    "a11y.delete":"删除","a11y.check":"勾选","a11y.done":"完成","remind.before":"提前{n}分钟","status.done":"完成","status.inDays":"还有{d}天","status.today":"今天","status.dreamOver":"改天也没关系","status.overdue":"已过期","care.done":"✅ 完成","care.overdueRenew":"🔴 已过期{d}天","care.overdueTodo":"🔴 未处理·超{d}天","care.plannedDate":"预定日 {date}","care.dueToday":"🟡 今天到期","care.dueInDays":"🟡 还有{d}天到期","care.validDays":"🟢 有效·还有{d}天","care.doToday":"🟡 今天做","care.plannedDays":"🟡 计划·还有{d}天","care.planned":"🟡 已计划","item.doneOn":"已做 {date}","item.stockLeft":"剩{n}次","item.reminderCount":"{n}项","item.resolveTip":"记录后自动进入下次预定","item.resolveBtn":"✓ 完成并进入下次","item.snooze":"→ 明天","item.copyTip":"按上次内容添加","item.copyBtn":"↩ 复制上次","item.addToCal":"添加到日历","item.cert":"证明","item.certAdd":"添加证明","item.openMap":"在地图中打开","item.openLink":"打开链接","item.checklistProg":"物品 {done}/{total}","a11y.pickColor":"选择颜色","a11y.editProfile":"编辑资料","a11y.editPhotoProfile":"编辑照片和资料","a11y.editIconName":"更改图标和名称",
     "ph.name":"名称","ph.title":"标题",
     "gender.boy":"男孩","gender.girl":"女孩","neuter.done":"是","neuter.not":"还没有",
     "ptype.baby":"婴儿","ptype.child":"儿童","ptype.adult":"成人","ptype.senior":"长者",
@@ -3710,31 +3710,31 @@ function App(){
           <div className="yl-meta">
             {cst?<span className={"yl-cstate "+cst.tone}>{cst.label}</span>:ds&&<span className={"yl-due "+ds.tone}>{ds.label}</span>}
             {it.time&&<span className="yl-time"><Icon name="clock" size={12}/> {it.time}</span>}
-            {isCare&&isRenewCare(it)&&it.lastDone&&<span className="yl-repeat"><Icon name="syringe" size={12}/> 実施 {fmtDate(it.lastDone)}</span>}
-            {isCare&&typeof it.stock==="number"&&<span className={"yl-repeat"+(it.stock<=1?" yl-stock-low":"")}><Icon name="pill" size={12}/> 在庫あと{it.stock}回</span>}
-            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat"><Icon name="repeat" size={12}/> {REPEATS.find(r=>r.key===it.repeat)?.label}</span>}
-            {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge"><Icon name="bell" size={12}/> {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):it.reminders.length+"件"}</span>}
-            {actionable&&<button className="yl-resolve" onClick={e=>{e.stopPropagation();toggle(it.id);}} title="記録すると次回予定へ自動で進みます">✓ 完了にして次回へ</button>}
-            {!isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>→ 明日へ</button>}
-            {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title="前回と同じ内容で追加">↩ 前回コピー</button>}
-            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title="カレンダーに追加"><Icon name="calendar" size={14}/></button>}
-            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}><Icon name="camera" size={14}/> 証明書</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}><Icon name="camera" size={14}/> 証明書を追加<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
+            {isCare&&isRenewCare(it)&&it.lastDone&&<span className="yl-repeat"><Icon name="syringe" size={12}/> {t("item.doneOn",{date:fmtDate(it.lastDone)})}</span>}
+            {isCare&&typeof it.stock==="number"&&<span className={"yl-repeat"+(it.stock<=1?" yl-stock-low":"")}><Icon name="pill" size={12}/> {t("item.stockLeft",{n:it.stock})}</span>}
+            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat"><Icon name="repeat" size={12}/> {t("repeat."+it.repeat)}</span>}
+            {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge"><Icon name="bell" size={12}/> {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):t("item.reminderCount",{n:it.reminders.length})}</span>}
+            {actionable&&<button className="yl-resolve" onClick={e=>{e.stopPropagation();toggle(it.id);}} title={t("item.resolveTip")}>{t("item.resolveBtn")}</button>}
+            {!isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>{t("item.snooze")}</button>}
+            {it.type==="care"&&<button className="yl-prev-copy" onClick={e=>{e.stopPropagation();openQuickCopy(it);}} title={t("item.copyTip")}>{t("item.copyBtn")}</button>}
+            {it.dueDate&&<button className="yl-cal-item" onClick={e=>{e.stopPropagation();setCalPicker({item:it});}} title={t("item.addToCal")}><Icon name="calendar" size={14}/></button>}
+            {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}><Icon name="camera" size={14}/> {t("item.cert")}</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}><Icon name="camera" size={14}/> {t("item.certAdd")}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
           </div>
         )}
         {(it.place||it.url||it.memo)&&(
           <div className="yl-detailrow">
-            {it.place&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openMap(it.place);}} title="地図で開く"><Icon name="pin" size={12}/> {it.place}</button>}
-            {it.url&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openUrl(it.url);}} title={it.url}><Icon name="link" size={12}/> リンクを開く</button>}
+            {it.place&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openMap(it.place);}} title={t("item.openMap")}><Icon name="pin" size={12}/> {it.place}</button>}
+            {it.url&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openUrl(it.url);}} title={it.url}><Icon name="link" size={12}/> {t("item.openLink")}</button>}
             {it.memo&&<span className="yl-detail-memotxt"><Icon name="note" size={12}/> {it.memo}</span>}
           </div>
         )}
         {Array.isArray(it.checklist)&&it.checklist.length>0&&(
           <div className="yl-clist-view" onClick={e=>e.stopPropagation()}>
-            <span className="yl-clist-prog"><Icon name="check" size={12}/> 持ち物 {it.checklist.filter(c=>c.done).length}/{it.checklist.length}</span>
+            <span className="yl-clist-prog"><Icon name="check" size={12}/> {t("item.checklistProg",{done:it.checklist.filter(c=>c.done).length,total:it.checklist.length})}</span>
             <ul className="yl-clist compact">
               {it.checklist.map(c=>(
                 <li key={c.id} className="yl-clist-item">
-                  <button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleChecklistItem(it.id,c.id)} aria-label="チェック"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                  <button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleChecklistItem(it.id,c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
                   <span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span>
                 </li>
               ))}
@@ -3742,8 +3742,8 @@ function App(){
           </div>
         )}
       </div>
-      <button className={"yl-check"+(it.done?" on":"")} onClick={()=>toggle(it.id)} onPointerDown={e=>e.stopPropagation()} aria-label="完了"><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-      <button className="yl-del" onClick={e=>{e.stopPropagation();askDelete(it.title,()=>remove(it.id));}} onPointerDown={e=>e.stopPropagation()} aria-label="削除">×</button>
+      <button className={"yl-check"+(it.done?" on":"")} onClick={()=>toggle(it.id)} onPointerDown={e=>e.stopPropagation()} aria-label={t("a11y.done")}><svg viewBox="0 0 24 24" width="15" height="15"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+      <button className="yl-del" onClick={e=>{e.stopPropagation();askDelete(it.title,()=>remove(it.id));}} onPointerDown={e=>e.stopPropagation()} aria-label={t("a11y.delete")}>×</button>
     </>);
   };
   const meItems=items.filter(x=>x.space==="me"&&x.type!=="bday"); // 誕生日(繰り返し)はメーターに数えない
