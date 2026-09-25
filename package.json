@@ -1,0 +1,28 @@
+{
+  "name": "loalife",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LOALIFE — 家族みんなの状態をひと目で（iOS / Android ネイティブアプリ）",
+  "scripts": {
+    "assemble": "node scripts/assemble-www.js",
+    "cap:sync": "npm run assemble && cap sync",
+    "cap:add:ios": "npm run assemble && cap add ios",
+    "cap:add:android": "npm run assemble && cap add android",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "cap:run:ios": "npm run cap:sync && cap run ios",
+    "cap:run:android": "npm run cap:sync && cap run android",
+    "assets": "npm run assemble && capacitor-assets generate --iconBackgroundColor '#F0EBDF' --iconBackgroundColorDark '#1B1712' --splashBackgroundColor '#F0EBDF' --splashBackgroundColorDark '#1B1712'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/ios": "^6.2.1",
+    "@capacitor/status-bar": "^6.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.1"
+  }
+}
