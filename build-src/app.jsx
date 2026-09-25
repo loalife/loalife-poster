@@ -21,9 +21,9 @@ import {
 } from "./schema";
 const iso = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; };
 const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return iso(d); };
-const daysUntil = (s) => { if(!s)return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
+const daysUntil = (s) => { if(!s||typeof s!=="string")return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
 const addInterval = (s,rep) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); if(rep==="daily")dt.setDate(dt.getDate()+1); else if(rep==="weekly")dt.setDate(dt.getDate()+7); else if(rep==="monthly")dt.setMonth(dt.getMonth()+1); else if(rep==="yearly")dt.setFullYear(dt.getFullYear()+1); return iso(dt); };
-const fmtDate = (s) => { if(!s)return""; const[,m,d]=s.split("-").map(Number); return`${m}/${d}`; };
+const fmtDate = (s) => { if(!s||typeof s!=="string")return""; const[,m,d]=s.split("-").map(Number); return`${m}/${d}`; };
 // 授乳タイマー用のフォーマッタ（ms タイムスタンプ基準）。
 const isoOf = (ms) => iso(new Date(ms));
 const fmtDur = (sec) => {const S=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}秒`:`${n}s`;const M=(n)=>APP_LANG==="ja"||APP_LANG==="zh"?`${n}分`:`${n}m`;return sec<60?S(sec):`${M(Math.floor(sec/60))}${sec%60?S(sec%60):""}`;};
@@ -53,7 +53,7 @@ const walkGoalFor=(m)=>{
 };
 const daysBetween = (a,b) => { const[ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
 const addDays = (s,n) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return iso(dt); };
-const fmtBirthday = (s) => { if(!s)return""; const[,mo,d]=s.split("-").map(Number); if(!mo||!d)return""; if(APP_LANG==="ja")return`${mo}月${d}日`; try{return new Intl.DateTimeFormat((typeof LOCALES!=="undefined"&&LOCALES[APP_LANG])||"en-US",{month:"short",day:"numeric"}).format(new Date(2001,mo-1,d));}catch(e){return`${mo}/${d}`;} };
+const fmtBirthday = (s) => { if(!s||typeof s!=="string")return""; const[,mo,d]=s.split("-").map(Number); if(!mo||!d)return""; if(APP_LANG==="ja")return`${mo}月${d}日`; try{return new Intl.DateTimeFormat((typeof LOCALES!=="undefined"&&LOCALES[APP_LANG])||"en-US",{month:"short",day:"numeric"}).format(new Date(2001,mo-1,d));}catch(e){return`${mo}/${d}`;} };
 
 // dream は選択カテゴリから廃止。既存データ（過去に作成された「夢」項目）の表示互換のため定義のみ残す。
 const TYPE_META={work:{label:"仕事",labelEn:"Work",labelZh:"工作",labelEs:"Trabajo",emoji:"💼",bg:"#E7E9EF",fg:"#5B6B9E"},event:{label:"予定",labelEn:"Plan",labelZh:"计划",labelEs:"Plan",emoji:"📅",bg:"#ECE6F1",fg:"#8A6D9E"},social:{label:"飲み会",labelEn:"Social",labelZh:"聚会",labelEs:"Social",emoji:"🍻",bg:"#F3E7D6",fg:"#C77A2E"},habit:{label:"習慣",labelEn:"Habit",labelZh:"习惯",labelEs:"Hábito",emoji:"💪",bg:"#F5EAD2",fg:"#C99A2E"},health:{label:"通院",labelEn:"Doctor",labelZh:"就诊",labelEs:"Médico",emoji:"🏥",bg:"#E3EFE6",fg:"#557E63"},dream:{label:"夢",labelEn:"Dream",labelZh:"梦想",labelEs:"Sueño",emoji:"🌈",bg:"#F5EAD8",fg:"#B23A48"}};
@@ -478,7 +478,7 @@ function calCategory(it){
 }
 const WEEKDAYS_JA=["日","月","火","水","木","金","土"];
 const MON_EN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const fmtMonthDay=(s)=>{if(!s)return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
+const fmtMonthDay=(s)=>{if(!s||typeof s!=="string")return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
 const mmdd=(s)=>s?s.slice(5):""; // "MM-DD"
 const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d).getDay();};
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
@@ -998,7 +998,7 @@ function renewLeft(item){
 }
 
 function daysUntilBirthday(birthday) {
-  if (!birthday) return null;
+  if (!birthday||typeof birthday!=="string") return null;
   const [,bm,bd] = birthday.split("-").map(Number);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1046,7 +1046,7 @@ function daysTogether(dateStr,endStr){
 }
 // 生後の月齢（西暦がある場合のみ）。子犬・子猫の成長を月単位で。
 function monthsOld(dateStr){
-  if(!dateStr)return null;
+  if(!dateStr||typeof dateStr!=="string")return null;
   const[y,m,d]=dateStr.split("-").map(Number);
   if(!y||y<1900)return null;
   const now=new Date();
@@ -1615,7 +1615,7 @@ function tr(lang,key,vars){
 // 言語判定：navigator の言語を ja/en にマップ（該当なしは ja）。初回のみ利用。
 function detectLang(){try{const ls=navigator.languages||[navigator.language||"ja"];for(const l of ls){const p=(l||"").toLowerCase();if(p.startsWith("en"))return "en";if(p.startsWith("ja"))return "ja";if(p.startsWith("es"))return "es";if(p.startsWith("zh"))return "zh";}}catch(e){}return "ja";}
 // Intl.DateTimeFormat ベースの日付・曜日（絶対日付表示用の基盤。ja出力は既存表記に一致）。
-function fmtDateLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!m||!d)return"";const dt=new Date(y&&y>1900?y:2001,m-1,d);try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",lang==="ja"?{month:"long",day:"numeric"}:{month:"short",day:"numeric"}).format(dt);}catch(e){return`${m}/${d}`;}}
+function fmtDateLoc(isoStr,lang){if(!isoStr||typeof isoStr!=="string")return"";const[y,m,d]=isoStr.split("-").map(Number);if(!m||!d)return"";const dt=new Date(y&&y>1900?y:2001,m-1,d);try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",lang==="ja"?{month:"long",day:"numeric"}:{month:"short",day:"numeric"}).format(dt);}catch(e){return`${m}/${d}`;}}
 function fmtWeekdayLoc(isoStr,lang){if(!isoStr)return"";const[y,m,d]=isoStr.split("-").map(Number);if(!y||!m||!d)return"";try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{weekday:"short"}).format(new Date(y,m-1,d));}catch(e){return"";}}
 
 const HOURS=Array.from({length:24},(_,i)=>i);
@@ -4406,7 +4406,7 @@ function App(){
                       <ul className="yl-todo-list">
                         {g.todos.slice(0,5).map(t=>(
                           <li key={t.key} className="yl-todo-item">
-                            <button className="yl-check" onClick={()=>completeHomeTask(t.key)} aria-label={t("a11y.markDone")}><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                            <button className="yl-check" onClick={()=>completeHomeTask(t.key)} aria-label={tr(APP_LANG,"a11y.markDone")}><svg viewBox="0 0 24 24" width="14" height="14"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
                             <span className="yl-todo-emoji"><Icon name={guessIcon(t.title)} size={16}/></span>
                             <span className="yl-todo-body" onClick={()=>setTab(g.space)}><span className="yl-todo-text">{t.title}{t.time&&<span className="yl-todo-time"> {t.time}</span>}</span></span>
                             <span className={"yl-todo-tag"+(t.pri===0?" over":"")}>{locTag(t.tag)}</span>
@@ -6713,19 +6713,20 @@ function App(){
 // アプリ全体のエラーバウンダリ。どこかの描画で例外が出ても白画面にせず、
 // 再読み込み／リセットで復帰できる画面を出す（ユーザーデータは消さない）。
 class RootBoundary extends Component {
-  constructor(props){super(props);this.state={err:null};}
+  constructor(props){super(props);this.state={err:null,info:null};}
   static getDerivedStateFromError(err){return {err};}
-  componentDidCatch(err,info){try{console.error("LOALIFE render error:",err,info);}catch(e){}}
+  componentDidCatch(err,info){this.setState({info});try{console.error("LOALIFE render error:",err,info);}catch(e){}}
   render(){
     if(!this.state.err)return this.props.children;
     let lang="ja";try{lang=localStorage.getItem("loalife-lang-v1")||"ja";}catch(e){}
     const T={
-      ja:{title:"うまく開けませんでした",body:"一時的な不具合の可能性があります。まずは再読み込みをお試しください。データは端末内に保存されているので消えません。",reload:"再読み込み",reset:"リセットして再起動"},
-      en:{title:"Couldn't open properly",body:"This may be a temporary glitch. Try reloading first. Your data is stored on your device and is kept.",reload:"Reload",reset:"Reset & restart"},
-      es:{title:"No se pudo abrir bien",body:"Puede ser un fallo temporal. Primero prueba a recargar. Tus datos se guardan en tu dispositivo y se conservan.",reload:"Recargar",reset:"Reiniciar"},
-      zh:{title:"打开时出现问题",body:"可能是临时故障，请先尝试重新加载。你的数据保存在本设备上，不会丢失。",reload:"重新加载",reset:"重置并重启"},
+      ja:{title:"うまく開けませんでした",body:"データは端末内に保存されているので消えません。まず「データを書き出す」で控えを保存し、下のエラー内容を開発者にお知らせください。",reload:"再読み込み",reset:"表示をリセットして再起動",backup:"データを書き出す（バックアップ）",copy:"エラー内容をコピー",copied:"コピーしました",details:"エラーの詳細"},
+      en:{title:"Couldn't open properly",body:"Your data is safe on your device. First tap “Back up data” to save a copy, then share the error below with the developer.",reload:"Reload",reset:"Reset view & restart",backup:"Back up data",copy:"Copy error",copied:"Copied",details:"Error details"},
+      es:{title:"No se pudo abrir bien",body:"Tus datos están a salvo en tu dispositivo. Toca «Copia de seguridad» para guardarlos y comparte el error de abajo.",reload:"Recargar",reset:"Reiniciar vista",backup:"Copia de seguridad",copy:"Copiar error",copied:"Copiado",details:"Detalles del error"},
+      zh:{title:"打开时出现问题",body:"你的数据安全保存在本设备。请先点「备份数据」保存副本，并把下面的错误信息告知开发者。",reload:"重新加载",reset:"重置视图并重启",backup:"备份数据",copy:"复制错误",copied:"已复制",details:"错误详情"},
     };
     const m=T[lang]||T.ja;
+    const errText=(()=>{let s="";try{s+=(this.state.err&&(this.state.err.stack||this.state.err.message))||String(this.state.err);}catch(e){s+="(error)";}try{if(this.state.info&&this.state.info.componentStack)s+="\n"+this.state.info.componentStack;}catch(e){}return s.slice(0,4000);})();
     const reload=()=>{try{location.reload();}catch(e){}};
     const reset=async()=>{
       try{["loalife-tab","loalife-personseg","loalife-membersel"].forEach(k=>localStorage.removeItem(k));}catch(e){}
@@ -6733,15 +6734,27 @@ class RootBoundary extends Component {
       try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
       try{location.reload();}catch(e){}
     };
-    const btn={display:"block",width:"100%",boxSizing:"border-box",padding:"14px",marginTop:10,borderRadius:14,border:"none",fontSize:16,fontWeight:700,cursor:"pointer"};
+    const backup=()=>{try{
+      const data={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&(k.indexOf("loalife")===0||k.indexOf("patty")===0))data[k]=localStorage.getItem(k);}
+      const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="loalife-backup-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},1000);
+    }catch(e){alert("backup failed");}};
+    const copy=()=>{try{navigator.clipboard.writeText(errText);}catch(e){}try{const ta=document.createElement("textarea");ta.value=errText;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);}catch(e){}};
+    const btn={display:"block",width:"100%",boxSizing:"border-box",padding:"13px",marginTop:9,borderRadius:14,border:"none",fontSize:15,fontWeight:700,cursor:"pointer"};
     return (
-      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px 16px",background:"#FBF7F2",fontFamily:'"Quicksand",system-ui,-apple-system,sans-serif',color:"#4A3F55"}}>
-        <div style={{maxWidth:340,width:"100%",textAlign:"center"}}>
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 16px",background:"#FBF7F2",fontFamily:'"Quicksand",system-ui,-apple-system,sans-serif',color:"#4A3F55"}}>
+        <div style={{maxWidth:360,width:"100%",textAlign:"center"}}>
           <div style={{fontSize:40,marginBottom:8}}>🐾</div>
           <h1 style={{fontSize:20,fontWeight:800,margin:"0 0 8px"}}>{m.title}</h1>
-          <p style={{fontSize:14,lineHeight:1.7,margin:"0 0 8px",color:"#7A6E86"}}>{m.body}</p>
+          <p style={{fontSize:13.5,lineHeight:1.7,margin:"0 0 10px",color:"#7A6E86",textAlign:"left"}}>{m.body}</p>
+          <button style={{...btn,background:"#7BB582",color:"#fff",marginTop:0}} onClick={backup}>💾 {m.backup}</button>
           <button style={{...btn,background:"#E39A5C",color:"#fff"}} onClick={reload}>{m.reload}</button>
           <button style={{...btn,background:"#EFE7DE",color:"#7A6E86"}} onClick={reset}>{m.reset}</button>
+          <details style={{marginTop:14,textAlign:"left"}}>
+            <summary style={{fontSize:13,fontWeight:700,color:"#7A6E86",cursor:"pointer"}}>{m.details}</summary>
+            <button style={{...btn,background:"#EFE7DE",color:"#7A6E86",fontSize:13,padding:"9px"}} onClick={copy}>{m.copy}</button>
+            <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-word",fontSize:11,lineHeight:1.5,background:"#fff",border:"1px solid #E7DED4",borderRadius:10,padding:"10px",marginTop:8,maxHeight:220,overflow:"auto",color:"#6B5E77"}}>{errText}</pre>
+          </details>
         </div>
       </div>
     );
