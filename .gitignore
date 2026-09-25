@@ -1,1 +1,8 @@
 build-src/node_modules/
+
+# Capacitor / native app build artifacts (generated on your Mac / with the toolchain)
+node_modules/
+www/
+ios/
+android/
+.DS_Store

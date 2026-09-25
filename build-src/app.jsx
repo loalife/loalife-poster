@@ -33,7 +33,10 @@ const sinceLabel = (ms) => { const mins=Math.max(0,Math.floor((Date.now()-ms)/60
 const haversineM = (a,b) => { const R=6371000,rad=Math.PI/180; const dLat=(b.lat-a.lat)*rad,dLng=(b.lng-a.lng)*rad; const s=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(s))); };
 const fmtDist = (m) => m==null?"—":m>=1000?`${(m/1000).toFixed(2)}km`:`${Math.round(m)}m`;
 // 共有画像に入れるアプリのURL（実行時のホスト。取れなければ公開URLにフォールバック）。
-const BRAND_HOST=(()=>{try{return (typeof location!=="undefined"&&location.host)||"loalife-poster.vercel.app";}catch(e){return"loalife-poster.vercel.app";}})();
+const BRAND_HOST=(()=>{try{const h=(typeof location!=="undefined"&&location.host)||"";
+  // ネイティブ（Capacitor）ではホストが localhost 等になるため、ポスター等の表示は正規ドメインに固定。
+  if(!h||/^localhost|^127\.|^10\.|^192\.168\.|capacitor/i.test(h)||(typeof window!=="undefined"&&window.Capacitor))return"loalife-poster.vercel.app";
+  return h;}catch(e){return"loalife-poster.vercel.app";}})();
 const routePath = (route,w,h,pad=6) => { if(!Array.isArray(route)||route.length<2)return""; let minLa=Infinity,maxLa=-Infinity,minLo=Infinity,maxLo=-Infinity; route.forEach(p=>{if(p.lat<minLa)minLa=p.lat;if(p.lat>maxLa)maxLa=p.lat;if(p.lng<minLo)minLo=p.lng;if(p.lng>maxLo)maxLo=p.lng;}); const spanLa=Math.max(1e-6,maxLa-minLa),spanLo=Math.max(1e-6,maxLo-minLo); const iw=w-2*pad,ih=h-2*pad; return route.map(p=>{const x=pad+((p.lng-minLo)/spanLo)*iw; const y=pad+(1-(p.lat-minLa)/spanLa)*ih; return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(" "); };
 // 散歩の月間めやす（犬種サイズ×年齢）。獣医の助言ではなく、あくまでゆるやかな目安。
 const WALK_BREED_SMALL=["チワワ","トイプードル","ダックス","ポメラニアン","シーズー","マルチーズ","ヨークシャー","パピヨン","豆柴","カニンヘン","チン","キャバリア","ペキニーズ","ピンシャー","ビション","パグ","フレンチブル","ボストン"];

@@ -1,0 +1,20 @@
+{
+  "appId": "com.loalife.app",
+  "appName": "LOALIFE",
+  "webDir": "www",
+  "backgroundColor": "#F0EBDF",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#F0EBDF"
+  },
+  "android": {
+    "backgroundColor": "#F0EBDF"
+  },
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "DEFAULT",
+      "backgroundColor": "#F0EBDF"
+    }
+  }
+}
