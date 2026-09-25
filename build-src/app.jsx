@@ -4027,7 +4027,7 @@ function App(){
       const recs=items.filter(x=>x.space===m.id&&(x.type==="health"||x.type==="diary"||x.type==="walk"||x.type==="chore"||x.type==="feed"||x.type==="toilet"));
       if(recs.length>=3){
         let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});
-        if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日ぶり`,body:"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+        if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日空いています`,body:"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}
       }
     });
     // 🟡 気づき：子ども・自分（今回の記録データを活用。断定・診断はしない）
@@ -4040,7 +4040,7 @@ function App(){
       if(sl.length>=6){const r=avgN(sl.slice(0,3)),p=avgN(sl.slice(3,6));if(p>0&&r<p*0.85&&(p-r)>=0.5) out.push({id:`insight:sleep:${m.id}:${todayIso.slice(0,7)}`,cat:"insight",title:"最近、寝る時間の記録が短めです",body:`${m.name}の直近の睡眠が、以前より短くなっているみたい`,actionLabel:"記録を見る",go:()=>{setTab(m.id);setPersonSeg("record");}});}
       // しばらく記録がない（履歴のある対象だけ・7〜30日）
       const recs=items.filter(x=>x.space===m.id&&(x.type==="diary"||x.type==="chore"||x.type==="health"||x.type==="milestone"||x.type==="walk"));
-      if(recs.length>=3){let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日ぶり`,body:"最近どうかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}}
+      if(recs.length>=3){let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日空いています`,body:"最近どうかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}}
       // 未完了のやることがたまっている（3件以上）
       const open=items.filter(x=>x.space===m.id&&(x.type==="care"||x.type==="event")&&x.dueDate&&!x.done).length;
       if(open>=3) out.push({id:`insight:tasks:${m.id}:${todayIso}`,cat:"insight",title:`未完了のやることが${open}件`,body:`${m.name}の予定・提出物がたまっています`,actionLabel:"確認する",go:()=>{setTab(m.id);setPersonSeg("record");}});
