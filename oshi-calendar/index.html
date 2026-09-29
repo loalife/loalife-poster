@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e8488a">
+<meta name="description" content="推しの予定・カウントダウン・推し活費をまとめて管理するカレンダー">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="推しカレ">
+<title>推し活カレンダー</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root {
+  --accent: #e8488a;
+  --accent-ink: #fff;
+  --text: #241c26;
+  --muted: #6d6170;
+  --card: rgba(255, 255, 255, 0.9);
+  --card-solid: #fff;
+  --line: rgba(36, 28, 38, 0.12);
+  --soft: rgba(36, 28, 38, 0.05);
+  --bg: #fbf1f6;
+  --bg-grad: radial-gradient(circle at 15% 0%, #ffd6e8 0, transparent 45%), radial-gradient(circle at 100% 30%, #e3dcff 0, transparent 40%);
+  --scrim-rgb: 255, 247, 251;
+  --sun: #d93a4a;
+  --sat: #2f6fd6;
+  --danger: #c62f45;
+  --shadow: 0 6px 24px rgba(60, 20, 50, 0.1);
+  --scrim: 0.35;
+  --blur: 0px;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ff6aa8;
+    --accent-ink: #1a0e14;
+    --text: #f6eef7;
+    --muted: #bcaebf;
+    --card: rgba(30, 23, 34, 0.88);
+    --card-solid: #1e1722;
+    --line: rgba(255, 255, 255, 0.13);
+    --soft: rgba(255, 255, 255, 0.06);
+    --bg: #150f18;
+    --bg-grad: radial-gradient(circle at 15% 0%, #4a1c36 0, transparent 45%), radial-gradient(circle at 100% 30%, #2a2350 0, transparent 40%);
+    --scrim-rgb: 12, 8, 14;
+    --sun: #ff7b88;
+    --sat: #7fb0ff;
+    --danger: #ff6d82;
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* 背景写真 + 読みやすさのためのフィルター */
+#bg {
+  position: fixed; inset: 0; z-index: -2;
+  background: var(--bg-grad), var(--bg);
+}
+body.has-photo #bg {
+  inset: calc(var(--blur) * -2);
+  background: var(--photo) var(--bg-pos, center) / cover no-repeat, var(--bg);
+  filter: blur(var(--blur));
+}
+#scrim { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+body.has-photo #scrim { background: rgba(var(--scrim-rgb), var(--scrim)); }
+
+.app { max-width: 560px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom)); }
+
+.card {
+  background: var(--card);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.card h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.card h2 .spacer { flex: 1; }
+
+.topbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.topbar h1 { font-size: 17px; margin: 0; flex: 1; letter-spacing: 0.02em; }
+.topbar .logo { font-size: 20px; }
+.topbar .date { font-size: 13px; color: var(--muted); }
+
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.center { text-align: center; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--card-solid);
+  border-radius: 999px; padding: 9px 16px; font-size: 14px; font-weight: 600;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.danger { color: var(--danger); }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: 0.5; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--card-solid); display: inline-flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.link { background: none; border: 0; color: var(--accent); font-weight: 600; font-size: 13px; padding: 4px; }
+
+/* ホーム：カウントダウン */
+.hero { position: relative; overflow: hidden; border-left: 6px solid var(--c); cursor: pointer; }
+.hero::after {
+  content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%;
+  background: var(--c); opacity: 0.14; pointer-events: none;
+}
+.hero-label { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hero-count { font-size: 18px; font-weight: 700; margin: 4px 0 2px; }
+.hero-count b { font-size: 56px; line-height: 1.1; color: var(--c); margin: 0 4px; font-variant-numeric: tabular-nums; }
+.hero-count.today b { font-size: 44px; }
+.hero-title { font-size: 20px; font-weight: 700; word-break: break-word; }
+.hero-meta { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; background: var(--c); color: var(--ci, #fff); white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 予定の行 */
+.list { display: flex; flex-direction: column; }
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 2px;
+}
+.list .row:first-child { border-top: 0; }
+.row-date {
+  flex: none; width: 48px; text-align: center; border-radius: 12px; padding: 4px 0;
+  background: var(--soft); border-bottom: 3px solid var(--c);
+}
+.row-date b { display: block; font-size: 16px; line-height: 1.2; }
+.row-date small { font-size: 11px; color: var(--muted); }
+.row-body { flex: 1; min-width: 0; }
+.row-title { display: block; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-meta { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; margin-top: 2px; }
+.row-end { flex: none; font-size: 12px; font-weight: 700; color: var(--muted); text-align: right; }
+.row-end.amount { font-size: 15px; color: var(--text); }
+
+.empty { text-align: center; padding: 18px 8px; color: var(--muted); }
+.empty .big { font-size: 40px; display: block; margin-bottom: 6px; }
+
+.stat { display: flex; align-items: baseline; gap: 8px; }
+.stat b { font-size: 28px; font-variant-numeric: tabular-nums; }
+
+/* カレンダー */
+.month-nav { display: flex; align-items: center; gap: 8px; }
+.month-nav h2 { flex: 1; margin: 0; font-size: 18px; justify-content: center; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin-top: 12px; }
+.dow { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 2px 0; }
+.dow.sun, .cell.sun .dnum { color: var(--sun); }
+.dow.sat, .cell.sat .dnum { color: var(--sat); }
+.cell {
+  min-height: 66px; border: 0; background: var(--soft); border-radius: 10px; padding: 4px 3px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: left; overflow: hidden;
+}
+.cell.out { opacity: 0.4; }
+.cell.sel { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--card-solid); }
+.dnum { font-size: 12px; font-weight: 700; text-align: center; line-height: 20px; }
+.cell.today .dnum { background: var(--accent); color: var(--accent-ink) !important; border-radius: 999px; width: 22px; height: 20px; margin: 0 auto; }
+.bar {
+  display: block; font-size: 10px; line-height: 14px; height: 14px; border-radius: 4px; padding: 0 3px;
+  background: var(--c); color: var(--ci, #fff); white-space: nowrap; overflow: hidden; text-overflow: clip; font-weight: 600;
+}
+.more { font-size: 10px; color: var(--muted); text-align: center; line-height: 12px; }
+
+/* 出費 */
+.bars { display: flex; flex-direction: column; gap: 10px; }
+.hbar-label { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
+.hbar-label span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar { height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden; margin-top: 3px; }
+.hbar i { display: block; height: 100%; border-radius: 999px; background: var(--c); }
+
+/* 推し一覧 */
+.oshi-row { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 2px; text-align: left; }
+.list .oshi-row:first-child { border-top: 0; }
+.oshi-icon {
+  flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--c); color: var(--ci, #fff);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 背景設定 */
+.bg-preview {
+  position: relative; height: 150px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line);
+  display: flex; align-items: flex-end; padding: 12px; background: var(--bg-grad), var(--bg);
+}
+.bg-preview .pv-img { position: absolute; inset: 0; background-size: cover; background-repeat: no-repeat; }
+.bg-preview .pv-scrim { position: absolute; inset: 0; }
+.bg-preview .pv-card {
+  position: relative; background: var(--card); border-radius: 12px; padding: 8px 12px; font-size: 13px;
+  border: 1px solid var(--line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.bg-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.slider { display: block; margin-top: 14px; font-size: 14px; }
+.slider .lbl { display: flex; justify-content: space-between; }
+.slider input { width: 100%; accent-color: var(--accent); }
+.seg { display: flex; gap: 6px; margin-top: 6px; }
+.seg button { flex: 1; border: 1px solid var(--line); background: var(--card-solid); border-radius: 10px; padding: 7px 0; font-size: 13px; }
+.seg button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+/* 下部タブ */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; justify-content: center;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--card); border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+.tabbar .inner { display: flex; width: 100%; max-width: 560px; }
+.tab {
+  flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 11px; font-weight: 600; color: var(--muted); padding: 4px 0;
+}
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); }
+.fab {
+  position: fixed; z-index: 11; right: max(16px, calc(50% - 264px)); bottom: calc(76px + env(safe-area-inset-bottom));
+  width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink);
+  font-size: 30px; line-height: 1; box-shadow: 0 8px 22px rgba(232, 72, 138, 0.45);
+}
+
+/* シート（モーダル） */
+dialog.sheet {
+  border: 0; padding: 0; width: min(560px, 100%); max-height: 92vh; margin: auto auto 0;
+  border-radius: 22px 22px 0 0; background: var(--card-solid); color: var(--text); box-shadow: var(--shadow);
+}
+@media (min-width: 600px) { dialog.sheet { margin: auto; border-radius: 22px; } }
+dialog.sheet::backdrop { background: rgba(10, 5, 12, 0.5); }
+.sheet form { display: flex; flex-direction: column; max-height: 92vh; }
+.sheet header { display: flex; align-items: center; padding: 14px 16px 8px; }
+.sheet header h2 { flex: 1; font-size: 17px; margin: 0; }
+.sheet-body { padding: 4px 16px 12px; overflow-y: auto; }
+.sheet footer { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.sheet footer .btn.danger { margin-right: auto; }
+.fld { display: block; margin-top: 12px; flex: 1; min-width: 0; }
+.fld > span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.fld input, .fld select, .fld textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--soft); font-size: 16px;
+}
+.fld input[type="color"] { padding: 2px; height: 44px; }
+.fld-row { display: flex; gap: 10px; }
+.check { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.swatches button { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); background: var(--c); }
+.swatches button[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+#toast {
+  position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 50; max-width: calc(100% - 32px);
+}
+#toast.show { opacity: 1; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="scrim"></div>
+<main class="app" id="app" aria-live="polite"></main>
+
+<button class="fab" id="fab" aria-label="追加">＋</button>
+<nav class="tabbar" aria-label="メニュー">
+  <div class="inner">
+    <button class="tab" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-9.3-9A5.3 5.3 0 0 1 12 6.3 5.3 5.3 0 0 1 21.3 12C19 16.6 12 21 12 21z"/></svg>ホーム
+    </button>
+    <button class="tab" data-tab="cal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>カレンダー
+    </button>
+    <button class="tab" data-tab="money">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l6 8 6-8M12 11v10M7 12h10M7 16h10"/></svg>推し活費
+    </button>
+    <button class="tab" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>推し・設定
+    </button>
+  </div>
+</nav>
+<dialog class="sheet" id="sheet"></dialog>
+<input type="file" id="photoInput" accept="image/*" class="visually-hidden">
+<input type="file" id="importInput" accept="application/json,.json" class="visually-hidden">
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* ---------- 定数 ---------- */
+const EVENT_TYPES = [
+  { id: "live", emoji: "🎤", label: "ライブ・公演" },
+  { id: "release", emoji: "💿", label: "発売日" },
+  { id: "stream", emoji: "📺", label: "配信・放送" },
+  { id: "birthday", emoji: "🎂", label: "誕生日", yearly: true },
+  { id: "anniv", emoji: "🎉", label: "記念日", yearly: true },
+  { id: "lottery", emoji: "🎰", label: "当落発表" },
+  { id: "ticket", emoji: "🎫", label: "発券・入金" },
+  { id: "other", emoji: "⭐", label: "その他" },
+];
+const EXPENSE_CATS = [
+  { id: "ticket", emoji: "🎫", label: "チケット" },
+  { id: "goods", emoji: "🛍️", label: "グッズ" },
+  { id: "media", emoji: "💿", label: "CD・円盤・本" },
+  { id: "travel", emoji: "🚄", label: "遠征・交通" },
+  { id: "hotel", emoji: "🏨", label: "宿泊" },
+  { id: "stream", emoji: "📱", label: "配信・サブスク" },
+  { id: "other", emoji: "💝", label: "その他" },
+];
+const MEMBER_COLORS = [
+  "#e53935", "#ec407a", "#ff8a3d", "#fdd835", "#43a047", "#26c6da",
+  "#1e88e5", "#8e24aa", "#b39ddb", "#f5f5f5", "#8d6e63", "#37474f",
+];
+const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+const KEY = "oshical.v1";
+const DEFAULT_DATA = { oshis: [], events: [], expenses: [], settings: { scrim: 0.35, blur: 0, bgPos: "center" } };
+
+/* ---------- ユーティリティ ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = parseDate(s); d.setDate(d.getDate() + n); return ymd(d); };
+const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 864e5);
+const yen = (n) => "¥" + Math.round(n || 0).toLocaleString("ja-JP");
+const fmtDate = (s, withYear) => {
+  const d = parseDate(s);
+  return `${withYear ? d.getFullYear() + "年" : ""}${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`;
+};
+const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+const typeOf = (id) => EVENT_TYPES.find((t) => t.id === id) || EVENT_TYPES[EVENT_TYPES.length - 1];
+const catOf = (id) => EXPENSE_CATS.find((c) => c.id === id) || EXPENSE_CATS[EXPENSE_CATS.length - 1];
+const oshiOf = (id) => data.oshis.find((o) => o.id === id);
+
+// メンカラの上に置く文字色（白 or 黒）を明るさから決める
+function inkFor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return "#fff";
+  const n = parseInt(m[1], 16);
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return L > 0.4 ? "#1a1a1a" : "#fff";
+}
+const colorVars = (c) => (c ? `--c:${esc(c)};--ci:${inkFor(c)}` : "--c:var(--accent);--ci:var(--accent-ink)");
+const oshiChip = (o) => (o ? `<span class="chip" style="${colorVars(o.color)}">${esc(o.emoji || "")} ${esc(o.name)}</span>` : "");
+
+/* ---------- 保存 ---------- */
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && Array.isArray(d.oshis)) {
+      return { ...structuredClone(DEFAULT_DATA), ...d, settings: { ...DEFAULT_DATA.settings, ...d.settings } };
+    }
+  } catch {}
+  return structuredClone(DEFAULT_DATA);
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch { toast("保存できませんでした（端末の容量を確認してください）"); }
+}
+let data = load();
+
+// 背景写真は大きいので IndexedDB に Blob で保存する
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("oshical", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("kv");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbDo(mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const req = fn(db.transaction("kv", mode).objectStore("kv"));
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+const idbGet = (k) => idbDo("readonly", (s) => s.get(k));
+const idbSet = (k, v) => idbDo("readwrite", (s) => s.put(v, k));
+const idbDel = (k) => idbDo("readwrite", (s) => s.delete(k));
+
+/* ---------- 予定の展開（毎年くり返しを含む） ---------- */
+function occurrences(from, to) {
+  const out = [];
+  const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
+  for (const e of data.events) {
+    if (!e.yearly) {
+      if (e.date >= from && e.date <= to) out.push({ ...e, occDate: e.date, years: 0 });
+      continue;
+    }
+    const [oy, om, od] = e.date.split("-").map(Number);
+    for (let y = y0; y <= y1; y++) {
+      const day = om === 2 && od === 29 && !isLeap(y) ? 28 : od;
+      const s = `${y}-${pad(om)}-${pad(day)}`;
+      if (s >= e.date && s >= from && s <= to) out.push({ ...e, occDate: s, years: y - oy });
+    }
+  }
+  return out.sort((a, b) => (a.occDate + (a.time || "99")).localeCompare(b.occDate + (b.time || "99")));
+}
+function displayTitle(o) {
+  const t = typeOf(o.type), osh = oshiOf(o.oshiId);
+  let title = o.title || (o.type === "birthday" && osh ? `${osh.name}の誕生日` : t.label);
+  if (o.type === "anniv" && o.years > 0) title += `（${o.years}周年）`;
+  return title;
+}
+
+/* ---------- 画面の状態 ---------- */
+const ui = {
+  tab: "home",
+  calMonth: today().slice(0, 7),
+  selDate: today(),
+  moneyMonth: today().slice(0, 7),
+};
+const shiftMonth = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+const fmtMonth = (ym) => { const [y, m] = ym.split("-").map(Number); return `${y}年${m}月`; };
+
+/* ---------- 部品 ---------- */
+function eventRow(o, t) {
+  const osh = oshiOf(o.oshiId), ty = typeOf(o.type), d = parseDate(o.occDate);
+  const left = daysBetween(t, o.occDate);
+  const end = left === 0 ? "今日" : left > 0 ? `あと${left}日` : "";
+  return `<button class="row" data-act="edit-event" data-id="${o.id}" style="${colorVars(osh?.color)}">
+    <span class="row-date"><b>${d.getMonth() + 1}/${d.getDate()}</b><small>${WEEK[d.getDay()]}</small></span>
+    <span class="row-body">
+      <span class="row-title">${ty.emoji} ${esc(displayTitle(o))}</span>
+      <span class="row-meta">${o.time ? esc(o.time) : ""}${o.venue ? ` 📍${esc(o.venue)}` : ""} ${oshiChip(osh)}</span>
+    </span>
+    <span class="row-end">${end}</span>
+  </button>`;
+}
+const monthTotal = (ym) => data.expenses.filter((x) => x.date.startsWith(ym)).reduce((s, x) => s + (+x.amount || 0), 0);
+
+/* ---------- ホーム ---------- */
+function renderHome() {
+  const t = today();
+  const occ = occurrences(t, addDays(t, 730));
+  let h = "";
+
+  if (!data.oshis.length && !data.events.length) {
+    h += `<section class="card">
+      <h2>🌸 ようこそ</h2>
+      <p class="small" style="margin:0 0 12px">推しの予定・カウントダウン・推し活費をここにまとめられます。</p>
+      <ol class="small" style="margin:0 0 14px;padding-left:20px">
+        <li>推しを登録してメンカラを決める</li>
+        <li>ライブや発売日を予定に入れる</li>
+        <li>好きな写真を背景に設定する</li>
+      </ol>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" data-act="add-oshi">推しを登録する</button>
+        <button class="btn" data-act="pick-photo">背景写真を選ぶ</button>
+      </div>
+    </section>`;
+  }
+
+  const next = occ[0];
+  if (next) {
+    const osh = oshiOf(next.oshiId), ty = typeOf(next.type), left = daysBetween(t, next.occDate);
+    h += `<section class="card hero" data-act="edit-event" data-id="${next.id}" style="${colorVars(osh?.color)}" role="button" tabindex="0">
+      <div class="hero-label">次の予定まで・${ty.emoji} ${ty.label} ${oshiChip(osh)}</div>
+      <div class="hero-count${left === 0 ? " today" : ""}">${left === 0 ? "<b>今日！</b>" : `あと<b>${left}</b>日`}</div>
+      <div class="hero-title">${esc(displayTitle(next))}</div>
+      <div class="hero-meta">${fmtDate(next.occDate, true)}${next.time ? " " + esc(next.time) : ""}${next.venue ? ` · 📍${esc(next.venue)}` : ""}</div>
+    </section>`;
+  } else if (data.oshis.length || data.events.length) {
+    h += `<section class="card"><div class="empty"><span class="big">📅</span>これからの予定はまだありません<br><br>
+      <button class="btn primary" data-act="add-event">予定を追加</button></div></section>`;
+  }
+
+  const yearAhead = addDays(t, 365);
+  const rest = occ.slice(1).filter((o) => o.occDate <= yearAhead).slice(0, 8);
+  if (rest.length) {
+    h += `<section class="card"><h2>これからの予定<span class="spacer"></span><button class="link" data-tab="cal">カレンダー ›</button></h2>
+      <div class="list">${rest.map((o) => eventRow(o, t)).join("")}</div></section>`;
+  }
+
+  const ym = t.slice(0, 7);
+  h += `<section class="card"><h2>今月の推し活費<span class="spacer"></span><button class="link" data-tab="money">くわしく ›</button></h2>
+    <div class="stat"><b>${yen(monthTotal(ym))}</b><span class="muted small">${data.expenses.filter((x) => x.date.startsWith(ym)).length}件</span></div>
+  </section>`;
+  return h;
+}
+
+/* ---------- カレンダー ---------- */
+function renderCal() {
+  const t = today();
+  const [y, m] = ui.calMonth.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const lead = first.getDay();
+  const dim = new Date(y, m, 0).getDate();
+  const start = addDays(ymd(first), -lead);
+  const cells = Math.ceil((lead + dim) / 7) * 7;
+  const end = addDays(start, cells - 1);
+  const byDate = {};
+  for (const o of occurrences(start, end)) (byDate[o.occDate] ||= []).push(o);
+
+  let g = WEEK.map((w, i) => `<div class="dow${i === 0 ? " sun" : i === 6 ? " sat" : ""}">${w}</div>`).join("");
+  for (let i = 0; i < cells; i++) {
+    const s = addDays(start, i), dow = i % 7, list = byDate[s] || [];
+    const cls = ["cell", s.slice(0, 7) !== ui.calMonth && "out", s === t && "today", s === ui.selDate && "sel", dow === 0 && "sun", dow === 6 && "sat"].filter(Boolean).join(" ");
+    const bars = list.slice(0, 3).map((o) => {
+      const osh = oshiOf(o.oshiId);
+      return `<span class="bar" style="${colorVars(osh?.color)}">${typeOf(o.type).emoji}${esc(displayTitle(o))}</span>`;
+    }).join("");
+    const label = `${fmtDate(s)}${list.length ? `、予定${list.length}件` : ""}`;
+    g += `<button class="${cls}" data-act="sel-date" data-date="${s}" aria-label="${label}"><span class="dnum">${+s.slice(8)}</span>${bars}${list.length > 3 ? `<span class="more">+${list.length - 3}</span>` : ""}</button>`;
+  }
+
+  const dayList = occurrences(ui.selDate, ui.selDate);
+  return `<section class="card">
+      <div class="month-nav">
+        <button class="icon-btn" data-act="cal-prev" aria-label="前の月">‹</button>
+        <h2>${fmtMonth(ui.calMonth)}</h2>
+        <button class="icon-btn" data-act="cal-next" aria-label="次の月">›</button>
+      </div>
+      <div class="grid">${g}</div>
+      ${ui.calMonth !== t.slice(0, 7) ? `<div class="center" style="margin-top:8px"><button class="link" data-act="cal-today">今日に戻る</button></div>` : ""}
+    </section>
+    <section class="card">
+      <h2>${fmtDate(ui.selDate, true)}<span class="spacer"></span><button class="link" data-act="add-event" data-date="${ui.selDate}">＋ 予定を追加</button></h2>
+      ${dayList.length ? `<div class="list">${dayList.map((o) => eventRow(o, t)).join("")}</div>` : `<div class="empty small">この日の予定はありません</div>`}
+    </section>`;
+}
+
+/* ---------- 推し活費 ---------- */
+function renderMoney() {
+  const ym = ui.moneyMonth;
+  const items = data.expenses.filter((x) => x.date.startsWith(ym)).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const total = items.reduce((s, x) => s + (+x.amount || 0), 0);
+  const year = ym.slice(0, 4);
+  const yearTotal = data.expenses.filter((x) => x.date.startsWith(year)).reduce((s, x) => s + (+x.amount || 0), 0);
+  const prev = monthTotal(shiftMonth(ym, -1));
+
+  const group = (keyFn) => {
+    const m = new Map();
+    for (const x of items) m.set(keyFn(x), (m.get(keyFn(x)) || 0) + (+x.amount || 0));
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const hbars = (rows) => `<div class="bars">${rows.map(([label, v, color]) => `
+      <div style="${colorVars(color)}"><div class="hbar-label"><span>${label}</span><span>${yen(v)}</span></div>
+      <div class="hbar"><i style="width:${total ? Math.max(2, (v / total) * 100) : 0}%"></i></div></div>`).join("")}</div>`;
+
+  const byOshi = group((x) => x.oshiId || "").map(([id, v]) => {
+    const o = oshiOf(id);
+    return [o ? `${esc(o.emoji || "")} ${esc(o.name)}` : "推し指定なし", v, o?.color || "#9e9e9e"];
+  });
+  const byCat = group((x) => x.category).map(([id, v]) => { const c = catOf(id); return [`${c.emoji} ${c.label}`, v, null]; });
+
+  let h = `<section class="card">
+    <div class="month-nav">
+      <button class="icon-btn" data-act="money-prev" aria-label="前の月">‹</button>
+      <h2>${fmtMonth(ym)}</h2>
+      <button class="icon-btn" data-act="money-next" aria-label="次の月">›</button>
+    </div>
+    <div class="center" style="margin-top:10px">
+      <div class="stat" style="justify-content:center"><b style="font-size:36px">${yen(total)}</b></div>
+      <div class="small muted">先月 ${yen(prev)} ・ ${year}年の合計 ${yen(yearTotal)}</div>
+    </div>
+  </section>`;
+
+  if (!items.length) {
+    h += `<section class="card"><div class="empty"><span class="big">💝</span>この月の記録はまだありません<br><br>
+      <button class="btn primary" data-act="add-expense">推し活費を記録</button></div></section>`;
+    return h;
+  }
+  h += `<section class="card"><h2>推し別</h2>${hbars(byOshi)}</section>`;
+  h += `<section class="card"><h2>カテゴリ別</h2>${hbars(byCat)}</section>`;
+  h += `<section class="card"><h2>明細</h2><div class="list">${items.map((x) => {
+    const c = catOf(x.category), o = oshiOf(x.oshiId), d = parseDate(x.date);
+    return `<button class="row" data-act="edit-expense" data-id="${x.id}" style="${colorVars(o?.color)}">
+      <span class="row-date"><b>${d.getMonth() + 1}/${d.getDate()}</b><small>${WEEK[d.getDay()]}</small></span>
+      <span class="row-body"><span class="row-title">${c.emoji} ${esc(x.memo || c.label)}</span>
+        <span class="row-meta">${esc(c.label)} ${oshiChip(o)}</span></span>
+      <span class="row-end amount">${yen(x.amount)}</span></button>`;
+  }).join("")}</div></section>`;
+  return h;
+}
+
+/* ---------- 推し・設定 ---------- */
+function renderSettings() {
+  const t = today();
+  const s = data.settings;
+  const upcoming = occurrences(t, addDays(t, 365));
+  let h = `<section class="card"><h2>推し<span class="spacer"></span><button class="link" data-act="add-oshi">＋ 追加</button></h2>`;
+  h += data.oshis.length
+    ? `<div class="list">${data.oshis.map((o) => {
+        const n = upcoming.filter((e) => e.oshiId === o.id).length;
+        return `<button class="oshi-row" data-act="edit-oshi" data-id="${o.id}" style="${colorVars(o.color)}">
+          <span class="oshi-icon">${esc(o.emoji || o.name.slice(0, 1))}</span>
+          <span class="row-body"><span class="row-title">${esc(o.name)}</span><span class="row-meta">${n ? `これからの予定 ${n}件` : "予定なし"}</span></span>
+          <span class="muted">›</span></button>`;
+      }).join("")}</div>`
+    : `<div class="empty small">まだ推しが登録されていません<br><br><button class="btn primary" data-act="add-oshi">推しを登録する</button></div>`;
+  h += `</section>`;
+
+  h += `<section class="card"><h2>背景写真</h2>
+    <div class="bg-preview" id="bgPreview">
+      <div class="pv-img" id="pvImg"></div><div class="pv-scrim" id="pvScrim"></div>
+      <div class="pv-card"><b>あと 12 日</b>　予定の文字はこう見えます</div>
+    </div>
+    <div class="bg-actions">
+      <button class="btn primary" data-act="pick-photo">${hasPhoto ? "写真を変える" : "写真を選ぶ"}</button>
+      ${hasPhoto ? `<button class="btn danger" data-act="clear-photo">写真を外す</button>` : ""}
+    </div>
+    ${hasPhoto ? `
+    <label class="slider"><span class="lbl"><span>文字の読みやすさ（写真にかけるフィルター）</span><output id="scrimOut">${Math.round(s.scrim * 100)}%</output></span>
+      <input type="range" id="scrimRange" min="0" max="85" step="5" value="${Math.round(s.scrim * 100)}"></label>
+    <label class="slider"><span class="lbl"><span>写真のぼかし</span><output id="blurOut">${s.blur}px</output></span>
+      <input type="range" id="blurRange" min="0" max="20" step="1" value="${s.blur}"></label>
+    <div class="slider"><span class="lbl"><span>写真の位置</span></span>
+      <div class="seg">${[["top", "上"], ["center", "中央"], ["bottom", "下"]].map(([v, l]) => `<button data-act="bg-pos" data-pos="${v}" aria-pressed="${s.bgPos === v}">${l}</button>`).join("")}</div></div>
+    <p class="small muted" style="margin:12px 0 0">予定やカードは半透明の板の上に表示されるので、どんな写真でも文字が読めます。写真が明るくて見づらいときはフィルターを強めてください。</p>` : `<p class="small muted" style="margin:12px 0 0">好きな推しの写真を背景にできます。写真はこの端末の中だけに保存されます。</p>`}
+  </section>`;
+
+  h += `<section class="card"><h2>データ</h2>
+    <p class="small muted" style="margin:0 0 10px">予定・推し・出費はこのブラウザの中に保存されます。機種変更の前にバックアップを書き出してください（背景写真は含まれません）。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-act="export">バックアップを書き出す</button>
+      <button class="btn" data-act="import">バックアップから読み込む</button>
+    </div>
+  </section>`;
+  return h;
+}
+
+/* ---------- 描画 ---------- */
+function render() {
+  const t = today();
+  const title = { home: "推し活カレンダー", cal: "カレンダー", money: "推し活費", settings: "推し・設定" }[ui.tab];
+  const header = `<header class="card topbar"><span class="logo" aria-hidden="true">💖</span><h1>${title}</h1><span class="date">${fmtDate(t)}</span></header>`;
+  const body = { home: renderHome, cal: renderCal, money: renderMoney, settings: renderSettings }[ui.tab]();
+  $("#app").innerHTML = header + body;
+  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === ui.tab ? "page" : "false"));
+  $("#fab").hidden = ui.tab === "settings";
+  $("#fab").setAttribute("aria-label", ui.tab === "money" ? "推し活費を記録" : "予定を追加");
+  if (ui.tab === "settings") bindSettings();
+}
+
+/* ---------- 背景写真 ---------- */
+let hasPhoto = false;
+let photoUrl = null;
+function applyBgVars() {
+  const s = data.settings;
+  const root = document.documentElement.style;
+  root.setProperty("--scrim", s.scrim);
+  root.setProperty("--blur", s.blur + "px");
+  root.setProperty("--bg-pos", s.bgPos === "top" ? "center top" : s.bgPos === "bottom" ? "center bottom" : "center");
+  const img = $("#pvImg"), sc = $("#pvScrim");
+  if (img) {
+    img.style.backgroundImage = photoUrl ? `url("${photoUrl}")` : "none";
+    img.style.backgroundPosition = "var(--bg-pos)";
+    img.style.filter = `blur(${s.blur / 3}px)`;
+    sc.style.background = photoUrl ? `rgba(var(--scrim-rgb), ${s.scrim})` : "transparent";
+  }
+}
+function setPhoto(blob) {
+  if (photoUrl) URL.revokeObjectURL(photoUrl);
+  photoUrl = blob ? URL.createObjectURL(blob) : null;
+  hasPhoto = !!blob;
+  document.body.classList.toggle("has-photo", hasPhoto);
+  document.documentElement.style.setProperty("--photo", photoUrl ? `url("${photoUrl}")` : "none");
+  applyBgVars();
+}
+async function importPhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    // 大きすぎる写真は縮小してから保存（表示も軽くなる）
+    const max = 2000, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k);
+    c.height = Math.round(img.naturalHeight * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
+    if (!blob) throw new Error("encode");
+    try { await idbSet("bg", blob); } catch { toast("写真を保存できませんでした。今回だけ表示します"); }
+    setPhoto(blob);
+    render();
+    toast("背景写真を設定しました");
+  } catch {
+    toast("この画像は読み込めませんでした");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+function bindSettings() {
+  applyBgVars();
+  const sr = $("#scrimRange"), br = $("#blurRange");
+  if (sr) {
+    sr.oninput = () => { data.settings.scrim = sr.value / 100; $("#scrimOut").textContent = sr.value + "%"; applyBgVars(); };
+    sr.onchange = save;
+  }
+  if (br) {
+    br.oninput = () => { data.settings.blur = +br.value; $("#blurOut").textContent = br.value + "px"; applyBgVars(); };
+    br.onchange = save;
+  }
+}
+
+/* ---------- シート（入力フォーム） ---------- */
+function openSheet(title, body, { onSubmit, onDelete, onOpen } = {}) {
+  const d = $("#sheet");
+  d.innerHTML = `<form novalidate>
+    <header><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button></header>
+    <div class="sheet-body">${body}</div>
+    <footer>${onDelete ? `<button type="button" class="btn danger" data-del>削除</button>` : ""}<button type="button" class="btn" data-close>キャンセル</button><button type="submit" class="btn primary">保存</button></footer>
+  </form>`;
+  const f = d.querySelector("form");
+  f.onsubmit = (e) => {
+    e.preventDefault();
+    const bad = [...f.elements].find((el) => el.willValidate && !el.checkValidity());
+    if (bad) { bad.focus(); toast(bad.dataset.msg || "入力を確認してください"); return; }
+    const fd = Object.fromEntries(new FormData(f));
+    if (onSubmit(fd, f) === false) return;
+    save(); d.close(); render();
+  };
+  d.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => d.close()));
+  if (onDelete) d.querySelector("[data-del]").onclick = () => {
+    if (!confirm("削除しますか？")) return;
+    onDelete(); save(); d.close(); render();
+  };
+  onOpen?.(f);
+  d.showModal();
+}
+const opt = (v, label, sel) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${label}</option>`;
+const oshiOptions = (sel) => opt("", "指定なし", sel || "") + data.oshis.map((o) => opt(o.id, `${esc(o.emoji || "")} ${esc(o.name)}`, sel)).join("");
+
+function openEventForm(ev, presetDate) {
+  const e = ev || { type: "live", date: presetDate || ui.selDate || today(), oshiId: data.oshis.length === 1 ? data.oshis[0].id : "" };
+  const body = `
+    <label class="fld"><span>タイトル</span><input name="title" maxlength="60" value="${esc(e.title)}" placeholder="例：ドームツアー 東京公演"></label>
+    <div class="fld-row">
+      <label class="fld"><span>種類</span><select name="type">${EVENT_TYPES.map((t) => opt(t.id, `${t.emoji} ${t.label}`, e.type)).join("")}</select></label>
+      <label class="fld"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
+    </div>
+    <div class="fld-row">
+      <label class="fld"><span>日付</span><input type="date" name="date" required data-msg="日付を入れてください" value="${esc(e.date)}"></label>
+      <label class="fld"><span>時間（任意）</span><input type="time" name="time" value="${esc(e.time)}"></label>
+    </div>
+    <label class="fld"><span>場所・会場（任意）</span><input name="venue" maxlength="60" value="${esc(e.venue)}" placeholder="例：東京ドーム"></label>
+    <label class="check"><input type="checkbox" name="yearly"${e.yearly ? " checked" : ""}>毎年くり返す（誕生日・記念日など）</label>
+    <label class="fld"><span>メモ（任意）</span><textarea name="memo" rows="3" maxlength="500" placeholder="座席、持ち物、同行者など">${esc(e.memo)}</textarea></label>`;
+  openSheet(ev ? "予定を編集" : "予定を追加", body, {
+    onOpen: (f) => { f.type.onchange = () => { if (typeOf(f.type.value).yearly) f.yearly.checked = true; }; },
+    onSubmit: (fd) => {
+      const rec = {
+        id: e.id || uid(), title: fd.title.trim(), type: fd.type, oshiId: fd.oshiId, date: fd.date,
+        time: fd.time, venue: fd.venue.trim(), yearly: !!fd.yearly, memo: fd.memo.trim(),
+      };
+      if (ev) data.events[data.events.findIndex((x) => x.id === ev.id)] = rec;
+      else data.events.push(rec);
+      ui.selDate = rec.date;
+      toast(ev ? "予定を更新しました" : "予定を追加しました");
+    },
+    onDelete: ev ? () => { data.events = data.events.filter((x) => x.id !== ev.id); toast("予定を削除しました"); } : null,
+  });
+}
+
+function openExpenseForm(x) {
+  const e = x || { date: ui.moneyMonth === today().slice(0, 7) ? today() : ui.moneyMonth + "-01", category: "goods", oshiId: data.oshis.length === 1 ? data.oshis[0].id : "" };
+  const body = `
+    <label class="fld"><span>金額（円）</span><input type="number" name="amount" inputmode="numeric" min="1" max="99999999" step="1" required data-msg="金額を入れてください" value="${esc(e.amount)}" placeholder="例：8800"></label>
+    <div class="fld-row">
+      <label class="fld"><span>カテゴリ</span><select name="category">${EXPENSE_CATS.map((c) => opt(c.id, `${c.emoji} ${c.label}`, e.category)).join("")}</select></label>
+      <label class="fld"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
+    </div>
+    <label class="fld"><span>日付</span><input type="date" name="date" required data-msg="日付を入れてください" value="${esc(e.date)}"></label>
+    <label class="fld"><span>内容（任意）</span><input name="memo" maxlength="60" value="${esc(e.memo)}" placeholder="例：アクスタ、ランダム缶バッジ×5"></label>`;
+  openSheet(x ? "推し活費を編集" : "推し活費を記録", body, {
+    onSubmit: (fd) => {
+      const rec = { id: e.id || uid(), amount: Math.round(+fd.amount), category: fd.category, oshiId: fd.oshiId, date: fd.date, memo: fd.memo.trim() };
+      if (x) data.expenses[data.expenses.findIndex((y) => y.id === x.id)] = rec;
+      else data.expenses.push(rec);
+      ui.moneyMonth = rec.date.slice(0, 7);
+      toast(x ? "更新しました" : "記録しました");
+    },
+    onDelete: x ? () => { data.expenses = data.expenses.filter((y) => y.id !== x.id); toast("削除しました"); } : null,
+  });
+}
+
+function openOshiForm(o) {
+  const e = o || { color: MEMBER_COLORS[data.oshis.length % MEMBER_COLORS.length], emoji: "" };
+  const body = `
+    <label class="fld"><span>名前</span><input name="name" required maxlength="30" data-msg="名前を入れてください" value="${esc(e.name)}" placeholder="例：推しの名前・グループ名"></label>
+    <label class="fld"><span>アイコン（絵文字1つ・任意）</span><input name="emoji" maxlength="4" value="${esc(e.emoji)}" placeholder="例：🐰 💜 ⭐"></label>
+    <div class="fld"><span>メンバーカラー</span>
+      <div class="swatches">${MEMBER_COLORS.map((c) => `<button type="button" data-color="${c}" style="--c:${c}" aria-label="${c}" aria-pressed="${c === e.color}"></button>`).join("")}</div>
+      <label class="fld" style="margin-top:10px"><span>そのほかの色</span><input type="color" name="color" value="${esc(e.color)}"></label>
+    </div>`;
+  openSheet(o ? "推しを編集" : "推しを登録", body, {
+    onOpen: (f) => {
+      const sync = () => f.querySelectorAll("[data-color]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === f.color.value));
+      f.querySelectorAll("[data-color]").forEach((b) => (b.onclick = () => { f.color.value = b.dataset.color; sync(); }));
+      f.color.oninput = sync;
+    },
+    onSubmit: (fd) => {
+      const rec = { id: e.id || uid(), name: fd.name.trim(), emoji: fd.emoji.trim(), color: fd.color };
+      if (!rec.name) { toast("名前を入れてください"); return false; }
+      if (o) data.oshis[data.oshis.findIndex((y) => y.id === o.id)] = rec;
+      else data.oshis.push(rec);
+      toast(o ? "更新しました" : `${rec.name} を登録しました`);
+    },
+    onDelete: o ? () => {
+      data.oshis = data.oshis.filter((y) => y.id !== o.id);
+      // 予定や出費は残し、推しの指定だけ外す
+      for (const x of [...data.events, ...data.expenses]) if (x.oshiId === o.id) x.oshiId = "";
+      toast("削除しました（予定と出費は残っています）");
+    } : null,
+  });
+}
+
+/* ---------- バックアップ ---------- */
+function exportData() {
+  const blob = new Blob([JSON.stringify({ app: "oshi-calendar", version: 1, exportedAt: new Date().toISOString(), ...data }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `oshi-calendar-backup-${today().replaceAll("-", "")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function importData(file) {
+  try {
+    const d = JSON.parse(await file.text());
+    if (!Array.isArray(d.oshis) || !Array.isArray(d.events) || !Array.isArray(d.expenses)) throw new Error("format");
+    if (!confirm(`推し${d.oshis.length}人・予定${d.events.length}件・出費${d.expenses.length}件を読み込みます。今のデータは置き換わります。よろしいですか？`)) return;
+    data = { oshis: d.oshis, events: d.events, expenses: d.expenses, settings: { ...DEFAULT_DATA.settings, ...d.settings } };
+    save();
+    applyBgVars();
+    render();
+    toast("読み込みました");
+  } catch {
+    toast("バックアップファイルを読み込めませんでした");
+  }
+}
+
+/* ---------- トースト ---------- */
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+/* ---------- 操作 ---------- */
+document.addEventListener("click", (ev) => {
+  const tabBtn = ev.target.closest("[data-tab]");
+  if (tabBtn) { ui.tab = tabBtn.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  const id = el.dataset.id;
+  switch (el.dataset.act) {
+    case "add-event": return openEventForm(null, el.dataset.date);
+    case "edit-event": return openEventForm(data.events.find((x) => x.id === id));
+    case "add-expense": return openExpenseForm();
+    case "edit-expense": return openExpenseForm(data.expenses.find((x) => x.id === id));
+    case "add-oshi": return openOshiForm();
+    case "edit-oshi": return openOshiForm(oshiOf(id));
+    case "sel-date": ui.selDate = el.dataset.date; ui.calMonth = ui.selDate.slice(0, 7); return render();
+    case "cal-prev": ui.calMonth = shiftMonth(ui.calMonth, -1); return render();
+    case "cal-next": ui.calMonth = shiftMonth(ui.calMonth, 1); return render();
+    case "cal-today": ui.calMonth = today().slice(0, 7); ui.selDate = today(); return render();
+    case "money-prev": ui.moneyMonth = shiftMonth(ui.moneyMonth, -1); return render();
+    case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
+    case "pick-photo": return $("#photoInput").click();
+    case "clear-photo":
+      if (!confirm("背景写真を外しますか？")) return;
+      idbDel("bg").catch(() => {});
+      setPhoto(null); render(); return toast("背景写真を外しました");
+    case "bg-pos": data.settings.bgPos = el.dataset.pos; save(); applyBgVars(); return render();
+    case "export": return exportData();
+    case "import": return $("#importInput").click();
+  }
+});
+document.addEventListener("keydown", (ev) => {
+  if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches(".hero[role=button]")) { ev.preventDefault(); ev.target.click(); }
+});
+$("#fab").onclick = () => (ui.tab === "money" ? openExpenseForm() : openEventForm(null, ui.tab === "cal" ? ui.selDate : today()));
+$("#photoInput").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importPhoto(f); };
+$("#importInput").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importData(f); };
+// 日付が変わったら（翌朝アプリを開いたときなど）カウントダウンを更新
+let lastDay = today();
+document.addEventListener("visibilitychange", () => { if (!document.hidden && today() !== lastDay) { lastDay = today(); render(); } });
+
+/* ---------- 起動 ---------- */
+applyBgVars();
+render();
+idbGet("bg").then((b) => { if (b) { setPhoto(b); if (ui.tab === "settings") render(); } }).catch(() => {});
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
