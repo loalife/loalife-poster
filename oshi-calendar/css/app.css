@@ -52,7 +52,8 @@ body {
   font-feature-settings: "palt";
   letter-spacing: 0.01em;
   color: var(--text);
-  background: var(--bg);
+  /* 地の色は html に持たせる。body にも色を塗ると、その下にある背景写真（#bg）が隠れてしまう */
+  background: transparent;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -500,3 +501,5 @@ body.has-photo .of-name { text-shadow: 0 0 2px rgba(var(--scrim-rgb), 0.9), 0 0 
 /* 空の状態の1行目（何ができるかを伝える一文）は少しだけ強く */
 .empty .lead { color: var(--text); font-weight: 500; }
 .field.title input::placeholder { font-weight: 400; }
+/* タップの反応を良くする（ダブルタップのズーム判定で遅れないように） */
+.tab, button { touch-action: manipulation; }
