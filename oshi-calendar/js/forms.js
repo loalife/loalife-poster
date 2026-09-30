@@ -280,21 +280,21 @@ function openPlaceForm(p) {
   const q = [e.name, e.area].filter(Boolean).join(" ");
   const body = `
     ${photoField(1)}
-    <div class="group"><label class="field title"><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="場所の名前" aria-label="場所の名前"></label></div>
+    <div class="group"><label class="field stack-f title"><span>場所の名前</span><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="例：ドッグカフェ○○、○○アリーナ"></label></div>
     <div class="group">
       <label class="field"><span>カテゴリ</span><select name="category">${PLACE_CATS.map((c) => opt(c.id, c.label, e.category)).join("")}</select></label>
-      <label class="field"><span>エリア</span><input name="area" maxlength="80" value="${esc(e.area)}" placeholder="住所・最寄り駅など"></label>
+      <label class="field"><span>エリア</span><input name="area" maxlength="80" value="${esc(e.area)}" placeholder="最寄り駅や住所など"></label>
       <label class="field"><span>URL</span><input type="url" name="url" maxlength="500" value="${esc(e.url)}" placeholder="https://" data-msg="URL は https:// から入力してください"></label>
       <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
       <label class="field"><span class="grow">行った</span><span class="toggle"><input type="checkbox" name="visited"${e.visited ? " checked" : ""} aria-label="行った"><i></i></span></label>
     </div>
-    <div class="group"><label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="1000" placeholder="営業時間、予約の要否、行きたい理由など">${esc(e.memo)}</textarea></label></div>
+    <div class="group"><label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="1000" placeholder="行きたい理由、営業時間、&#10;予約やペット同伴の可否など">${esc(e.memo)}</textarea></label></div>
     ${p ? `<div class="btn-row" style="margin-top:16px">
       <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener">${icon("pin")}地図で見る</a>
       ${e.url ? `<a class="btn" href="${esc(e.url)}" target="_blank" rel="noopener">サイトを開く</a>` : ""}
     </div>` : ""}`;
   let photos;
-  openSheet(p ? "行きたい場所を編集" : "行きたい場所", body, {
+  openSheet(p ? "行きたい場所を編集" : "行きたい場所を追加", body, {
     deleteLabel: "この場所を削除",
     deleteAsk: "この場所を削除しますか？",
     onOpen: (f) => { photos = bindPhotoField(f, e.photos, 1); },
