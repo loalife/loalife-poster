@@ -223,8 +223,19 @@ function openReportForm(r, preset = {}) {
   const e = r || { date: preset.date || t, eventId: preset.eventId || "", oshiId: preset.oshiId ?? defaultOshiId(), title: "", text: "", photos: [] };
   // 紐づけられる予定：この1年の終わった予定（値は「予定ID|日付」）
   const past = occurrences(addDays(t, -365), t).filter((o) => !isTask(o) && !o.virtual).reverse();
+  // 編集中のレポートの予定が1年より前でも、選択肢から消えて紐づけが外れないように
+  if (e.eventId && !past.some((o) => o.id === e.eventId && o.occDate === e.date)) {
+    const ev = data.events.find((x) => x.id === e.eventId);
+    if (ev) past.push({ ...ev, occDate: e.date, years: +e.date.slice(0, 4) - +ev.date.slice(0, 4) });
+  }
+  // ＋から新しく書くときは、直近（2週間以内）に終わった、まだレポートのない予定を最初から選んでおく
+  const auto = !r && !preset.eventId ? past.find((o) => o.occDate >= addDays(t, -14) && !reportFor(o.id, o.occDate)) : null;
+  if (auto) Object.assign(e, { eventId: auto.id, date: auto.occDate, oshiId: auto.oshiId || e.oshiId });
   const cur = e.eventId ? `${e.eventId}|${e.date}` : "";
-  const evOpts = opt("", "紐づけない", cur) + past.map((o) => opt(`${o.id}|${o.occDate}`, `${md(o.occDate)}  ${esc(displayTitle(o))}`, cur)).join("");
+  const evOpts = opt("", "予定を選ばない", cur) + past.map((o) => {
+    const done = reportFor(o.id, o.occDate) && !(r && r.eventId === o.id && r.date === o.occDate);
+    return opt(`${o.id}|${o.occDate}`, `${md(o.occDate)}  ${esc(displayTitle(o))}${done ? "（レポートあり）" : ""}`, cur);
+  }).join("");
   const body = `
     ${photoField(4)}
     <div class="group"><label class="field title"><input name="title" maxlength="60" value="${esc(e.title)}" placeholder="タイトル（空欄なら予定の名前）" aria-label="タイトル"></label></div>
@@ -233,7 +244,8 @@ function openReportForm(r, preset = {}) {
       <label class="field"><span>日付</span><input type="date" name="date" required data-msg="日付を入れてください" value="${esc(e.date)}"></label>
       <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
     </div>
-    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="7" maxlength="4000" placeholder="よかったところ、セットリスト、買ったグッズ、一緒に行った人など">${esc(e.text)}</textarea></label></div>`;
+    ${auto ? `<p class="note" style="margin:8px 4px 0">直近の予定を選んでいます。ほかの予定に変えたり、「予定を選ばない」にしたりもできます。</p>` : ""}
+    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="7" maxlength="4000" placeholder="よかったところ、セットリスト、&#10;買ったグッズ、一緒に行った人など">${esc(e.text)}</textarea></label></div>`;
   let photos;
   openSheet(r ? "レポートを編集" : "推し活レポート", body, {
     deleteLabel: "レポートを削除",

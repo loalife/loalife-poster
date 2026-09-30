@@ -1,5 +1,5 @@
 // 推し活カレンダー service worker：オフラインでも開けるようにアプリ本体をキャッシュする
-const CACHE = "oshical-v10";
+const CACHE = "oshical-v11";
 const ASSETS = [
   "./", "./index.html", "./manifest.json", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png",
   "./css/app.css",
