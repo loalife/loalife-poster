@@ -115,8 +115,8 @@ async function importData(file) {
     if (!Array.isArray(d.oshis) || !Array.isArray(d.events) || !Array.isArray(d.expenses)) throw new Error("format");
     const extra = [d.reports?.length && `レポート${d.reports.length}件`, d.places?.length && `行きたい場所${d.places.length}件`].filter(Boolean).join("・");
     if (!(await ask("バックアップを読み込みますか？", { sub: `推し${d.oshis.length}人・予定${d.events.length}件・推し活費${d.expenses.length}件${extra ? "・" + extra : ""}。今のデータは置き換わります。`, ok: "読み込む", danger: true }))) return;
-    const { oshis, events, expenses, reports, places, settings } = d;
-    data = migrate({ oshis, events, expenses, reports, places, settings });
+    const { oshis, events, expenses, reports, places, savings, settings } = d;
+    data = migrate({ oshis, events, expenses, reports, places, savings, settings });
     save();
     applyBgVars();
     await loadOshiPhotos();
@@ -144,7 +144,8 @@ document.addEventListener("click", (ev) => {
   switch (el.dataset.act) {
     case "add": return addForTab();
     case "add-event": return openEventForm(null, el.dataset.date);
-    case "edit-event": return openEventForm(data.events.find((x) => x.id === id), null, el.dataset.date);
+    // 予定を押したら、まず詳細（地図・ホテル・現場ツール）を開く。編集は詳細の右上から
+    case "edit-event": return openEventView(data.events.find((x) => x.id === id), el.dataset.date);
     case "toggle-done": {
       const e = data.events.find((x) => x.id === id);
       if (!e) return;
@@ -164,6 +165,18 @@ document.addEventListener("click", (ev) => {
     case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
     case "edit-budget": return openBudgetForm(el.dataset.year);
     case "note-tab": ui.noteTab = el.dataset.v; return render();
+    case "tl-filter": ui.timelineOshi = ui.timelineOshi === id ? "" : id; return render();
+    case "add-saving": return openSavingForm();
+    case "edit-saving": return openSavingForm(data.savings.find((x) => x.id === id));
+    case "deposit": { const g = data.savings.find((x) => x.id === id); return g && openDepositForm(g); }
+    case "ics-all": {
+      const t = today(), seen = new Set();
+      // 毎年くり返すもの（誕生日など）は1件だけ入れれば、カレンダー側でくり返される
+      const list = occurrences(t, addDays(t, 365)).filter((o) => !o.done && !seen.has(o.id) && seen.add(o.id)).map((o) => [o, o.occDate]);
+      if (!list.length) return toast("追加できる予定がありません");
+      downloadIcs("oshi-calendar", list);
+      return toast(`${list.length}件をカレンダー用に書き出しました`);
+    }
     case "oshi-filter": {
       // 選択中の推しをもう一度押したら「すべて」に戻す
       ui.oshiFilter = ui.oshiFilter === id ? "" : id;
@@ -199,6 +212,7 @@ document.addEventListener("click", (ev) => {
   }
 });
 document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !$("#penlight").hidden) return closePenlight();
   if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches("section[role=button]")) { ev.preventDefault(); ev.target.click(); }
 });
 $("#photoInput").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importPhoto(f); };

@@ -1,13 +1,14 @@
 "use strict";
 /* ノート：写真つきの推し活レポート（日記）と、行きたい場所リスト */
 
+/* ノート：レポート・行きたい場所・年表 */
 function renderNotes() {
   const tab = ui.noteTab;
   let h = topbar("ノート", `レポート ${data.reports.length}件  ·  行きたい場所 ${data.places.length}件`,
-    addBtn(tab === "reports" ? "レポートを書く" : "行きたい場所を追加"));
-  h += `<div class="seg seg-top" role="tablist" aria-label="ノートの種類">${[["reports", "レポート"], ["places", "行きたい場所"]]
+    tab === "timeline" ? "" : addBtn(tab === "reports" ? "レポートを書く" : "行きたい場所を追加"));
+  h += `<div class="seg seg-top" role="tablist" aria-label="ノートの種類">${[["reports", "レポート"], ["places", "行きたい場所"], ["timeline", "年表"]]
     .map(([v, l]) => `<button role="tab" data-act="note-tab" data-v="${v}" aria-selected="${tab === v}" aria-pressed="${tab === v}">${l}</button>`).join("")}</div>`;
-  return h + (tab === "reports" ? reportsView() : placesView());
+  return h + (tab === "reports" ? reportsView() : tab === "places" ? placesView() : timelineView());
 }
 
 /* ---------- レポート ---------- */
@@ -86,4 +87,74 @@ function placeRow(p) {
     </button>
     <button class="check" data-act="toggle-visited" data-id="${p.id}" aria-pressed="${!!p.visited}" aria-label="${p.visited ? "行ったを取り消す" : "行ったにする"}">${icon("check", 2.2)}</button>
   </div>`;
+}
+
+/* ---------- 年表 ----------
+   これまでに行ったイベント・書いたレポート・行った場所を、年ごと・新しい順にまとめる */
+function timelineView() {
+  const t = today();
+  if (ui.timelineOshi && !oshiOf(ui.timelineOshi)) ui.timelineOshi = "";
+  const f = ui.timelineOshi;
+  const mine = (x) => !f || x.oshiId === f;
+  const items = [];
+  // 予定：終わったもの（毎年くり返す誕生日などは年表では除く）
+  for (const e of data.events) {
+    if (isTask(e) || e.yearly || e.date > t || !mine(e)) continue;
+    items.push({ date: e.date, kind: "event", e, r: reportFor(e.id, e.date) });
+  }
+  // 予定に紐づいていないレポート
+  for (const r of data.reports) {
+    if (r.eventId && data.events.some((e) => e.id === r.eventId && !e.yearly)) continue;
+    if (mine(r)) items.push({ date: r.date, kind: "report", r });
+  }
+  // 行った場所
+  for (const p of data.places) if (p.visited && p.visitedAt && mine(p)) items.push({ date: p.visitedAt.slice(0, 10), kind: "place", p });
+  items.sort((a, b) => b.date.localeCompare(a.date));
+
+  let h = data.oshis.length > 1 ? oshiFilterBar(f, "tl-filter") : "";
+  if (!items.length) {
+    return h + `<section class="panel"><div class="empty"><p>終わったイベントやレポート、行った場所が、ここに年表としてまとまっていきます。</p></div></section>`;
+  }
+  const years = [...new Set(items.map((x) => x.date.slice(0, 4)))];
+  for (const y of years) {
+    const list = items.filter((x) => x.date.startsWith(y));
+    const nEvents = list.filter((x) => x.kind === "event").length;
+    const nReports = list.filter((x) => x.r || x.kind === "report").length;
+    const spent = sum(data.expenses.filter((x) => x.date.startsWith(y) && mine(x)));
+    h += `<section class="panel">
+      <div class="tl-year"><span class="y num">${y}</span><span class="s num">${joinMeta([nEvents && `イベント ${nEvents}回`, nReports && `レポート ${nReports}件`, spent && `推し活費 ¥${yenNum(spent)}`])}</span></div>
+      <ol class="tl">${list.map(timelineItem).join("")}</ol>
+    </section>`;
+  }
+  return h;
+}
+function timelineItem(x) {
+  let osh, title, meta, act, pid;
+  if (x.kind === "event") {
+    const e = x.e;
+    osh = oshiOf(e.oshiId);
+    title = displayTitle({ ...e, occDate: e.date, years: 0 });
+    meta = joinMeta([e.venue ? esc(e.venue) : esc(typeOf(e.type).label), x.r && "レポートあり"]);
+    act = `data-act="edit-event" data-id="${e.id}" data-date="${e.date}"`;
+    pid = x.r?.photos?.[0];
+  } else if (x.kind === "report") {
+    const r = x.r;
+    osh = oshiOf(r.oshiId);
+    title = r.title || "レポート";
+    meta = joinMeta(["レポート", excerpt(r.text)]);
+    act = `data-act="view-report" data-id="${r.id}"`;
+    pid = r.photos?.[0];
+  } else {
+    const p = x.p;
+    osh = oshiOf(p.oshiId);
+    title = p.name;
+    meta = joinMeta(["行った場所", esc(placeCatOf(p.category).label), p.area && esc(p.area)]);
+    act = `data-act="edit-place" data-id="${p.id}"`;
+    pid = p.photos?.[0];
+  }
+  return `<li style="${colorVars(osh?.color)}"><button class="tl-item" ${act}>
+    <span class="tl-d num">${md(x.date, ".")}</span>
+    <span class="body"><span class="t">${esc(title)}</span><span class="m">${joinMeta([meta, tag(osh)])}</span></span>
+    ${pid ? thumb(pid, "image", 44) : ""}
+  </button></li>`;
 }

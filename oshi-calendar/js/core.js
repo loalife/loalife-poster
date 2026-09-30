@@ -44,7 +44,7 @@ const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
 const WEEK_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const KEY = "oshical.v1";
 const DEFAULT_DATA = {
-  oshis: [], events: [], expenses: [], reports: [], places: [],
+  oshis: [], events: [], expenses: [], reports: [], places: [], savings: [],
   settings: { v: 3, scrim: 0.5, blur: 0, bgPos: "center", mainOshiId: "", budgets: {} },
 };
 
@@ -133,6 +133,13 @@ const ICONS = {
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   gift: '<rect x="4" y="9" width="16" height="11.5" rx="1.5"/><path d="M3 9h18M12 9v11.5M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+  route: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/>',
+  bed: '<path d="M3 18.5V7M21 18.5v-5a3 3 0 0 0-3-3h-8v5.5M3 15h18"/><circle cx="6.5" cy="11.5" r="1.8"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+  light: '<path d="M10 3.5h4l-.8 11h-2.4z"/><path d="M9.5 14.5h5v3a2.5 2.5 0 0 1-5 0z"/>',
+  list: '<path d="M9 7h11M9 12h11M9 17h11"/><path d="M4 6.5l1 1 2-2M4 11.5l1 1 2-2M4 16.5l1 1 2-2"/>',
+  piggy: '<path d="M5 11.5a6.5 5.5 0 0 1 11.8-2.6H19v3.3l1.5.8v2.2l-2 .6a6.4 6.4 0 0 1-2.3 2.2V20h-2.5v-1.2a8 8 0 0 1-3.4 0V20H8v-2.1A5.3 5.3 0 0 1 5 11.5z"/><path d="M10 7.5h3"/>',
   user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.3-3.6 4.1-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/>',
 };
 const icon = (n, w = 1.6) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -156,7 +163,7 @@ function migrate(d) {
   settings.v = 3;
   settings.budgets = { ...(settings.budgets || {}) };
   const out = { ...structuredClone(DEFAULT_DATA), ...d, settings };
-  for (const k of ["oshis", "events", "expenses", "reports", "places"]) if (!Array.isArray(out[k])) out[k] = [];
+  for (const k of ["oshis", "events", "expenses", "reports", "places", "savings"]) if (!Array.isArray(out[k])) out[k] = [];
   // v3：「宿泊」は「遠征（交通・宿泊）」にまとめた
   for (const x of out.expenses) if (x.category === "hotel") x.category = "travel";
   return out;
@@ -237,6 +244,8 @@ const ui = {
   // ホームの推しフィルター。"" はすべての推し、推しの ID ならその推しだけ（保存はせず、起動時は「すべて」）
   oshiFilter: "",
   placeFilter: "want",
+  // 年表の推しフィルター（"" はすべて）
+  timelineOshi: "",
 };
 const shiftMonth = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const monthItems = (ym) => data.expenses.filter((x) => x.date.startsWith(ym));
@@ -287,3 +296,55 @@ function deleteMedia(pid) {
 const yearTotal = (y) => sum(data.expenses.filter((x) => x.date.startsWith(String(y))));
 const budgetOf = (y) => +data.settings.budgets?.[String(y)] || 0;
 const reportFor = (eventId, date) => data.reports.find((r) => r.eventId === eventId && r.date === date);
+
+/* ---------- iPhone などのカレンダーに追加する（.ics） ----------
+   アプリを閉じていても、カレンダーの通知で締切や予定を知らせられるように */
+const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/([,;])/g, "\\$1");
+const icsDay = (d) => d.replaceAll("-", "");
+function icsStamp() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+}
+// 1件分の VEVENT。時間があれば前日と1時間前、なければ前日と当日の朝9時に通知
+function icsEvent(e, occ) {
+  const osh = oshiOf(e.oshiId), task = isTask(e), ty = typeOf(e.type);
+  const title = (task ? `【${ty.label}】` : "") + (task && !e.title ? (osh ? osh.name : "チケット") : displayTitle({ ...e, occDate: occ, years: +occ.slice(0, 4) - +e.date.slice(0, 4) }));
+  const alarm = (trigger, text) => ["BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsText(text)}`, `TRIGGER:${trigger}`, "END:VALARM"];
+  const L = ["BEGIN:VEVENT", `UID:${e.id}@oshi-calendar`, `DTSTAMP:${icsStamp()}`];
+  if (e.time) {
+    const [h, mi] = e.time.split(":").map(Number);
+    const end = new Date(+occ.slice(0, 4), +occ.slice(5, 7) - 1, +occ.slice(8, 10), h, mi + (task ? 15 : 60));
+    L.push(`DTSTART:${icsDay(occ)}T${pad(h)}${pad(mi)}00`, `DTEND:${ymd(end).replaceAll("-", "")}T${pad(end.getHours())}${pad(end.getMinutes())}00`);
+    L.push(...alarm("-P1D", `明日：${title}`), ...alarm("-PT1H", `1時間後：${title}`));
+  } else {
+    L.push(`DTSTART;VALUE=DATE:${icsDay(occ)}`, `DTEND;VALUE=DATE:${icsDay(addDays(occ, 1))}`);
+    L.push(...alarm("-PT15H", `明日：${title}`), ...alarm("PT9H", `今日：${title}`));
+  }
+  if (e.yearly) L.push("RRULE:FREQ=YEARLY");
+  L.push(`SUMMARY:${icsText(title)}`);
+  if (e.venue) L.push(`LOCATION:${icsText(e.venue)}`);
+  const desc = [osh && `推し：${osh.name}`, e.memo].filter(Boolean).join("\n");
+  if (desc) L.push(`DESCRIPTION:${icsText(desc)}`);
+  L.push("END:VEVENT");
+  return L;
+}
+// 75文字を超える行は折り返す（カレンダーの決まり）
+function icsCalendar(list) {
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//oshi-calendar//JA", "CALSCALE:GREGORIAN", "X-WR-CALNAME:推し活カレンダー",
+    ...list.flatMap(([e, occ]) => icsEvent(e, occ)), "END:VCALENDAR"];
+  return lines.map((l) => { const out = []; for (let i = 0; i < l.length; i += 60) out.push((i ? " " : "") + l.slice(i, i + 60)); return out.join("\r\n"); }).join("\r\n") + "\r\n";
+}
+function downloadIcs(name, list) {
+  const blob = new Blob([icsCalendar(list)], { type: "text/calendar;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ---------- 推し活貯金 ---------- */
+const savedOf = (g) => (g.deposits || []).reduce((s, d) => s + (+d.amount || 0), 0);
+const monthsUntil = (from, to) => { const a = parseDate(from), b = parseDate(to); return (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() + (b.getDate() >= a.getDate() ? 1 : 0); };

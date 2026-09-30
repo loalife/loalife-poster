@@ -22,6 +22,12 @@ function renderSettings() {
     : `<div class="empty"><p>推しを登録すると、予定と推し活費を推しごとに整理できます。</p><button class="btn primary" data-act="add-oshi">推しを登録</button></div>`;
   h += `</section>`;
 
+  h += `<section class="panel"><div class="eyebrow ja"><span>通知</span></div>
+    <p class="note" style="margin:0 0 16px">予定や締切を iPhone などのカレンダーに追加しておくと、アプリを閉じていても通知が届きます。時間のある予定は前日と1時間前、ない予定は前日と当日の朝にお知らせします。</p>
+    <div class="btn-row"><button class="btn" data-act="ics-all">${icon("bell")}これからの予定をまとめて追加</button></div>
+    <p class="note sub">1年先までの予定・締切（完了したものを除く）と、推しの誕生日・記念日が入ります。同じ予定を何度も追加すると、カレンダーに重複することがあります。</p>
+  </section>`;
+
   h += `<section class="panel"><div class="eyebrow ja"><span>背景</span></div>
     <div class="bg-preview">
       <div class="pv-img" id="pvImg"></div><div class="pv-scrim" id="pvScrim"></div>
@@ -42,7 +48,7 @@ function renderSettings() {
   </section>`;
 
   h += `<section class="panel"><div class="eyebrow ja"><span>データ</span></div>
-    <p class="note" style="margin:0">予定や推し活費、レポートなどのデータは、このブラウザの中に保存されています。機種変更の前に、バックアップを書き出しておくと安心です。</p>
+    <p class="note" style="margin:0">予定や推し活費、レポート、貯金などのデータは、このブラウザの中に保存されています。機種変更の前に、バックアップを書き出しておくと安心です。</p>
     <p class="note sub">写真（背景・推し・レポートなど）はバックアップに含まれないため、新しい端末で設定し直してください。</p>
     <div class="btn-row"><button class="btn" data-act="export">書き出す</button><button class="btn" data-act="import">読み込む</button></div>
   </section>`;

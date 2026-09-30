@@ -47,6 +47,7 @@ function thumb(pid, fallback = "image", size = 56) {
 function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削除", deleteAsk = "削除しますか？", deleteSub = "" } = {}) {
   const d = $("#sheet");
   if (d.open) d.close();
+  d.onclose = null;
   d.innerHTML = `<form novalidate>
     <div class="sheet-head"><button type="button" class="txt-btn" data-close>キャンセル</button><h2 tabindex="-1" autofocus>${esc(title)}</h2><button type="submit" class="txt-btn strong">保存</button></div>
     <div class="sheet-body">${body}${onDelete ? `<button type="button" class="danger-btn" data-del>${esc(deleteLabel)}</button>` : ""}</div>
@@ -71,16 +72,18 @@ function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削
   onOpen?.(f);
   d.showModal();
 }
-// 読むためのシート（右上は「編集」）
-function openView(title, body, onEdit) {
+// 読むためのシート（右上は「編集」）。onOpen でシートの中のボタンに処理をつけられる。閉じたら画面を描き直す
+function openView(title, body, onEdit, onOpen) {
   const d = $("#sheet");
   if (d.open) d.close();
+  d.onclose = () => { d.onclose = null; render(); };
   d.innerHTML = `<form>
     <div class="sheet-head"><button type="button" class="txt-btn" data-close>閉じる</button><h2 tabindex="-1" autofocus>${esc(title)}</h2><button type="button" class="txt-btn strong" data-edit>編集</button></div>
     <div class="sheet-body">${body}</div>
   </form>`;
   d.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => d.close()));
   d.querySelector("[data-edit]").onclick = () => { d.close(); onEdit(); };
+  onOpen?.(d.querySelector("form"));
   d.showModal();
 }
 

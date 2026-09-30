@@ -27,7 +27,7 @@ function openEventForm(ev, presetDate, occDate) {
     </div>
     <div class="group">
       <label class="field"><span>場所</span><input name="venue" maxlength="60" value="${esc(e.venue)}" placeholder="会場・配信先など"></label>
-      <label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="500" placeholder="座席、持ち物、同行者など">${esc(e.memo)}</textarea></label>
+      <label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="500" placeholder="同行者、買いたいグッズなど">${esc(e.memo)}</textarea></label>
     </div>
     ${reportBtn}`;
   openSheet(ev ? "予定を編集" : "新しい予定", body, {
@@ -331,5 +331,88 @@ function openPlaceForm(p) {
       data.places = data.places.filter((x) => x.id !== p.id);
       toast("削除しました");
     } : null,
+  });
+}
+
+/* ---------- 予約したホテル（予定ごと） ---------- */
+function openHotelForm(ev, occ) {
+  const h = ev.hotel || { checkIn: occ, nights: 1 };
+  const back = () => setTimeout(() => openEventView(ev, occ));
+  const body = `
+    <div class="group"><label class="field stack-f title"><span>ホテル名</span><input name="name" required maxlength="60" data-msg="ホテル名を入れてください" value="${esc(h.name)}" placeholder="例：○○ホテル 会場前"></label></div>
+    <div class="group">
+      <label class="field"><span>チェックイン</span><input type="date" name="checkIn" value="${esc(h.checkIn)}"></label>
+      <label class="field"><span>泊数</span><input type="number" name="nights" inputmode="numeric" min="1" max="30" value="${esc(h.nights)}"></label>
+      <label class="field"><span>予約番号</span><input name="confirm" maxlength="40" value="${esc(h.confirm)}" placeholder="確認メールの番号など"></label>
+      <label class="field"><span>予約ページ</span><input type="url" name="url" maxlength="500" value="${esc(h.url)}" placeholder="https://" data-msg="URL は https:// から入力してください"></label>
+    </div>
+    <p class="note" style="margin:8px 4px 0">宿泊費は「推し活費」に「遠征（交通・宿泊）」として記録すると、予算にも反映されます。</p>`;
+  openSheet(ev.hotel ? "ホテルを編集" : "予約したホテル", body, {
+    deleteLabel: "ホテルの記録を削除",
+    deleteAsk: "ホテルの記録を削除しますか？",
+    onSubmit: (fd) => {
+      ev.hotel = { name: fd.name.trim(), checkIn: fd.checkIn, nights: +fd.nights || "", confirm: fd.confirm.trim(), url: fd.url.trim() };
+      toast("ホテルを記録しました");
+      back();
+    },
+    onDelete: ev.hotel ? () => { delete ev.hotel; toast("ホテルの記録を削除しました"); back(); } : null,
+  });
+}
+
+/* ---------- 推し活貯金 ---------- */
+function openSavingForm(g) {
+  const e = g || { oshiId: defaultOshiId(), deposits: [] };
+  const deposits = [...(e.deposits || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const body = `
+    <div class="group"><label class="field stack-f title"><span>目標の名前</span><input name="name" required maxlength="40" data-msg="目標の名前を入れてください" value="${esc(e.name)}" placeholder="例：ドームツアー遠征費"></label></div>
+    <div class="group">
+      <label class="field"><span>目標金額</span><input type="number" name="target" inputmode="numeric" min="1" max="99999999" required data-msg="目標金額を入れてください" value="${esc(e.target)}" placeholder="¥0"></label>
+      <label class="field"><span>いつまでに</span><input type="date" name="deadline" value="${esc(e.deadline)}"></label>
+      <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
+    </div>
+    ${deposits.length ? `<div class="group-label">これまでの記録</div><div class="group" data-deps>${deposits.map((d) => `
+      <div class="ck" data-dep="${d.id}"><span class="dep-d num">${md(d.date)}</span><span class="dep-m">${esc(d.memo || (d.amount < 0 ? "引き出し" : "貯金"))}</span>
+        <span class="dep-a num${d.amount < 0 ? " minus" : ""}">${d.amount < 0 ? "−" : "+"}¥${yenNum(Math.abs(d.amount))}</span>
+        <button type="button" class="rm-anniv" data-rm-dep="${d.id}" aria-label="この記録を削除">${icon("close", 2)}</button></div>`).join("")}</div>` : ""}`;
+  const removed = new Set();
+  openSheet(g ? "貯金の目標を編集" : "貯金の目標", body, {
+    deleteLabel: "目標を削除",
+    deleteAsk: "この貯金の目標を削除しますか？",
+    deleteSub: "これまでの貯金の記録も削除されます。",
+    onOpen: (f) => f.querySelector("[data-deps]")?.addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-rm-dep]");
+      if (!b) return;
+      removed.add(b.dataset.rmDep);
+      b.closest("[data-dep]").remove();
+    }),
+    onSubmit: (fd) => {
+      const rec = {
+        ...(g || { createdAt: new Date().toISOString() }), id: e.id || uid(),
+        name: fd.name.trim(), target: Math.round(+fd.target), deadline: fd.deadline, oshiId: fd.oshiId,
+        deposits: (e.deposits || []).filter((d) => !removed.has(d.id)),
+      };
+      if (g) data.savings[data.savings.findIndex((x) => x.id === g.id)] = rec;
+      else data.savings.push(rec);
+      toast(g ? "更新しました" : "貯金の目標をつくりました");
+    },
+    onDelete: g ? () => { data.savings = data.savings.filter((x) => x.id !== g.id); toast("削除しました"); } : null,
+  });
+}
+function openDepositForm(g) {
+  const body = `
+    <div class="group"><label class="field title"><span>金額</span><input type="number" name="amount" inputmode="numeric" min="1" max="99999999" required data-msg="金額を入れてください" placeholder="¥0"></label></div>
+    <div class="group">
+      <label class="field"><span>日付</span><input type="date" name="date" required value="${today()}"></label>
+      <label class="field"><span>メモ</span><input name="memo" maxlength="40" placeholder="お給料日に、など"></label>
+      <label class="field"><span class="grow">引き出す（使った分）</span><span class="toggle"><input type="checkbox" name="out" aria-label="引き出す"><i></i></span></label>
+    </div>
+    <p class="note" style="margin:8px 4px 0">「${esc(g.name)}」 いま ¥${yenNum(savedOf(g))} ／ 目標 ¥${yenNum(g.target)}</p>`;
+  openSheet("貯金する", body, {
+    onSubmit: (fd) => {
+      const amount = Math.round(+fd.amount) * (fd.out ? -1 : 1);
+      (g.deposits ||= []).push({ id: uid(), date: fd.date, amount, memo: fd.memo.trim() });
+      const saved = savedOf(g);
+      toast(amount > 0 && saved >= g.target ? "目標を達成しました！" : amount > 0 ? `¥${yenNum(amount)} 貯金しました` : "引き出しを記録しました");
+    },
   });
 }

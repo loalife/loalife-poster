@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="stylesheet" href="css/app.css?v=13">
+<link rel="stylesheet" href="css/app.css?v=14">
 </head>
 <body>
 <div id="bg"></div>
@@ -28,16 +28,18 @@
 <input type="file" id="photoInput" accept="image/*" class="visually-hidden">
 <input type="file" id="importInput" accept="application/json,.json" class="visually-hidden">
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="penlight" hidden role="dialog" aria-label="ペンライト"></div>
 
 <!-- ファイルを変更したら、この ?v= と sw.js の VERSION をそろえて上げる -->
-<script src="js/core.js?v=13"></script>
-<script src="js/components.js?v=13"></script>
-<script src="js/views/home.js?v=13"></script>
-<script src="js/views/calendar.js?v=13"></script>
-<script src="js/views/money.js?v=13"></script>
-<script src="js/views/notes.js?v=13"></script>
-<script src="js/views/settings.js?v=13"></script>
-<script src="js/forms.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/core.js?v=14"></script>
+<script src="js/components.js?v=14"></script>
+<script src="js/views/home.js?v=14"></script>
+<script src="js/views/calendar.js?v=14"></script>
+<script src="js/views/money.js?v=14"></script>
+<script src="js/views/notes.js?v=14"></script>
+<script src="js/views/event.js?v=14"></script>
+<script src="js/views/settings.js?v=14"></script>
+<script src="js/forms.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
 </body>
 </html>
