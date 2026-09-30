@@ -139,6 +139,8 @@ body:not(.has-photo) .panel { background: var(--surface-solid); }
   font-size: 11px; font-weight: 600; letter-spacing: 0.16em; color: var(--text3);
   margin-bottom: 16px; min-height: 20px;
 }
+/* 日本語の見出し（設定画面など）：英字の見出しと同じ位置・余白で、字間だけ控えめに */
+.eyebrow.ja { font-size: 12px; letter-spacing: 0.08em; color: var(--text2); }
 .label { font-size: 13px; font-weight: 500; color: var(--text2); }
 .link {
   display: inline-flex; align-items: center; gap: 1px; background: none; border: 0; padding: 0;
@@ -156,7 +158,8 @@ body:not(.has-photo) .panel { background: var(--surface-solid); }
 .next-date .dw { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; color: var(--text2); }
 .next-title { font-size: 21px; font-weight: 600; line-height: 1.4; letter-spacing: -0.005em; margin-top: 18px; word-break: break-word; }
 .next-title .who { color: var(--ot); margin-right: 0.35em; }
-.next-meta { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.next-meta { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--text2); margin-top: 6px; }
+.next-meta svg { width: 15px; height: 15px; flex: none; color: var(--text3); }
 
 /* ---------- リスト ---------- */
 .rows { display: flex; flex-direction: column; }
@@ -254,7 +257,7 @@ body:not(.has-photo) .panel { background: var(--surface-solid); }
 .item .t { display: block; font-weight: 500; }
 .item .m { display: block; font-size: 12px; color: var(--text2); margin-top: 1px; }
 .item .chev { color: var(--text3); width: 16px; height: 16px; }
-.item .main-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; color: var(--text3); }
+.item .main-badge { font-size: 11px; font-weight: 500; color: var(--text2); padding: 2px 8px; border-radius: 6px; background: var(--fill); }
 .bg-preview { position: relative; height: 168px; border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--line); background: var(--bg); }
 .bg-preview .pv-img { position: absolute; inset: 0; background-size: cover; background-repeat: no-repeat; }
 .bg-preview .pv-scrim { position: absolute; inset: 0; }
@@ -302,7 +305,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.32); }
 .txt-btn { justify-self: start; background: none; border: 0; padding: 6px 2px; font-size: 15px; color: var(--text2); }
 .txt-btn.strong { justify-self: end; color: var(--text); font-weight: 600; }
 .sheet-body { padding: 4px 16px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; }
-.group-label { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; color: var(--text3); margin: 22px 4px 8px; }
+.group-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--text2); margin: 22px 4px 8px; }
 .group { background: var(--surface-solid); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 16px; }
 .group-label + .group { margin-top: 0; }
 .field { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; border-top: 1px solid var(--line); }
@@ -472,6 +475,7 @@ const ICONS = {
   home: '<path d="M12 20s-7-4.3-8.6-8.6A4.6 4.6 0 0 1 12 7.2a4.6 4.6 0 0 1 8.6 4.2C19 15.7 12 20 12 20z"/>',
   cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   money: '<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10.5h17M15.5 15h2"/>',
+  pin: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.3-3.6 4.1-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/>',
 };
 const icon = (n, w = 1.6) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -597,7 +601,7 @@ function renderHome() {
       <div class="eyebrow"><span>NEXT EVENT</span><span class="count${n === 0 ? " today" : ""}">${countLabel(t, next.occDate)}</span></div>
       <div class="next-date"><span class="md num">${md(next.occDate, ".")}</span><span class="dw num">${dowEn(next.occDate)}${next.time ? `  ${esc(next.time)}` : ""}</span>${osh && oshiPhotos.has(osh.id) ? oshiAvatar(osh, 44) : ""}</div>
       <div class="next-title">${who}${esc(title)}</div>
-      <div class="next-meta">${esc(next.venue || typeOf(next.type).label)}</div>
+      <div class="next-meta">${next.venue ? `${icon("pin", 1.7)}<span class="visually-hidden">場所：</span>${esc(next.venue)}` : esc(typeOf(next.type).label)}</div>
     </section>`;
   } else {
     const fresh = !data.oshis.length;
@@ -695,12 +699,12 @@ function renderMoney() {
       </div>
       <div class="total">
         <div class="yen-big">${yenHtml(total)}</div>
-        <div class="caption num">先月 ¥${yenNum(prev)}<span class="sep">·</span>${y}年 ¥${yenNum(yearTotal)}</div>
+        <div class="caption num">先月 ¥${yenNum(prev)}<span class="sep">·</span>${y}年累計 ¥${yenNum(yearTotal)}</div>
       </div>
     </section>`;
 
   if (!items.length) {
-    return h + `<section class="panel"><div class="empty"><p>この月の記録はまだありません。</p>
+    return h + `<section class="panel"><div class="empty"><p>${ym === today().slice(0, 7) ? "今月" : `${y}年${m}月`}の記録はまだありません</p>
       <button class="btn primary" data-act="add-expense">記録する</button></div></section>`;
   }
 
@@ -731,23 +735,23 @@ function renderMoney() {
 function renderSettings() {
   const t = today(), s = data.settings, main = mainOshi();
   const upcoming = occurrences(t, addDays(t, 365));
-  let h = topbar("推し・設定", "SETTINGS", addBtn("推しを登録"));
+  let h = topbar("推し・設定", data.oshis.length ? `推し ${data.oshis.length}人` : "推しを登録しましょう", addBtn("推しを登録"));
 
-  h += `<section class="panel"><div class="eyebrow"><span>OSHI</span>${data.oshis.length ? `<button class="link" data-act="add-oshi">追加${icon("plus", 1.8)}</button>` : ""}</div>`;
+  h += `<section class="panel"><div class="eyebrow ja"><span>推し</span>${data.oshis.length ? `<button class="link" data-act="add-oshi">追加${icon("plus", 1.8)}</button>` : ""}</div>`;
   h += data.oshis.length
     ? `<div class="rows">${data.oshis.map((o) => {
         const n = upcoming.filter((e) => e.oshiId === o.id).length;
         return `<button class="item" data-act="edit-oshi" data-id="${o.id}" style="${colorVars(o.color)}">
           ${oshiAvatar(o, 40)}
           <span class="body"><span class="t">${esc(o.name)}</span><span class="m">${n ? `これからの予定 ${n}件` : "予定なし"}</span></span>
-          ${o === main && data.oshis.length > 1 ? `<span class="main-badge">MAIN</span>` : ""}
+          ${o === main && data.oshis.length > 1 ? `<span class="main-badge">メイン</span>` : ""}
           <span class="chev">${icon("right")}</span></button>`;
       }).join("")}</div>
-      ${data.oshis.length > 1 ? `<p class="note">MAIN の推しのカラーが、タブなどのアクセントになります。推しの編集画面で変更できます。</p>` : ""}`
+      ${data.oshis.length > 1 ? `<p class="note">メインの推しのカラーが、タブなどのアクセントになります。推しの編集画面で変更できます。</p>` : ""}`
     : `<div class="empty"><p>推しを登録すると、予定と推し活費を推しごとに整理できます。</p><button class="btn primary" data-act="add-oshi">推しを登録</button></div>`;
   h += `</section>`;
 
-  h += `<section class="panel"><div class="eyebrow"><span>BACKGROUND</span></div>
+  h += `<section class="panel"><div class="eyebrow ja"><span>背景</span></div>
     <div class="bg-preview">
       <div class="pv-img" id="pvImg"></div><div class="pv-scrim" id="pvScrim"></div>
       <div class="pv-card"><div class="e">NEXT EVENT</div><div class="d num">10.11 <span style="font-size:11px;font-weight:600;letter-spacing:.1em">SUN</span></div><div class="t">ドームツアー 東京公演</div></div>
@@ -766,7 +770,7 @@ function renderSettings() {
     <p class="note">写真が派手で文字が読みにくいときは、オーバーレイを強めてください。</p>` : `<p class="note">推しの写真を背景にできます。写真はこの端末の中だけに保存されます。</p>`}
   </section>`;
 
-  h += `<section class="panel"><div class="eyebrow"><span>DATA</span></div>
+  h += `<section class="panel"><div class="eyebrow ja"><span>データ</span></div>
     <p class="note" style="margin:0 0 16px">予定・推し・推し活費はこのブラウザの中に保存されます。機種変更の前にバックアップを書き出してください（背景写真・推しの写真は含まれません）。</p>
     <div class="btn-row"><button class="btn" data-act="export">書き出す</button><button class="btn" data-act="import">読み込む</button></div>
   </section>`;
@@ -950,7 +954,7 @@ function openOshiForm(o) {
       <input type="file" accept="image/*" class="visually-hidden" data-photo-input>
     </div>
     <div class="group"><label class="field title"><input name="name" required maxlength="30" data-msg="名前を入れてください" value="${esc(e.name)}" placeholder="推しの名前" aria-label="名前"></label></div>
-    <div class="group-label">THEME COLOR</div>
+    <div class="group-label">テーマカラー</div>
     <div class="group">
       <div class="swatches">${MEMBER_COLORS.map((c) => `<button type="button" data-color="${c}" style="--oc:${c}" aria-label="${c}" aria-pressed="${c === e.color}"></button>`).join("")}</div>
       <label class="field"><span class="grow">カスタムカラー</span><input type="color" name="color" value="${esc(e.color)}"></label>
