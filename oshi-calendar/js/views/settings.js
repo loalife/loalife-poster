@@ -18,7 +18,7 @@ function renderSettings() {
           ${o === main && data.oshis.length > 1 ? `<span class="main-badge">メイン</span>` : ""}
           <span class="chev">${icon("right")}</span></button>`;
       }).join("")}</div>
-      ${data.oshis.length > 1 ? `<p class="note">メインの推しのカラーが、タブなどのアクセントになります。推しの編集画面で変更できます。</p>` : ""}`
+      ${data.oshis.length > 1 ? `<p class="note">メインの推しのカラーが、アプリのアクセントカラーになります。メインの推しは、推しの編集画面で切り替えられます。</p>` : ""}`
     : `<div class="empty"><p>推しを登録すると、予定と推し活費を推しごとに整理できます。</p><button class="btn primary" data-act="add-oshi">推しを登録</button></div>`;
   h += `</section>`;
 
@@ -38,11 +38,12 @@ function renderSettings() {
       <input type="range" id="blurRange" min="0" max="20" step="1" value="${s.blur}"></label>
     <div class="setting"><span class="head"><span>写真の位置</span></span>
       <div class="seg">${[["top", "上"], ["center", "中央"], ["bottom", "下"]].map(([v, l]) => `<button data-act="bg-pos" data-pos="${v}" aria-pressed="${s.bgPos === v}">${l}</button>`).join("")}</div></div>
-    <p class="note">写真が派手で文字が読みにくいときは、オーバーレイを強めてください。</p>` : `<p class="note">推しの写真を背景にできます。写真はこの端末の中だけに保存されます。</p>`}
+    <p class="note">文字が読みにくいときは、オーバーレイを少し強めてみてください。</p>` : `<p class="note">好きな推しの写真を、アプリの背景に。<br>写真はこの端末の中だけに保存されます。</p>`}
   </section>`;
 
   h += `<section class="panel"><div class="eyebrow ja"><span>データ</span></div>
-    <p class="note" style="margin:0 0 16px">予定・推し・推し活費・レポート・行きたい場所は、このブラウザの中に保存されます。機種変更の前にバックアップを書き出してください（写真は含まれません）。</p>
+    <p class="note" style="margin:0">予定や推し活費、レポートなどのデータは、このブラウザの中に保存されています。機種変更の前に、バックアップを書き出しておくと安心です。</p>
+    <p class="note sub">写真（背景・推し・レポートなど）はバックアップに含まれないため、新しい端末で設定し直してください。</p>
     <div class="btn-row"><button class="btn" data-act="export">書き出す</button><button class="btn" data-act="import">読み込む</button></div>
   </section>`;
   return h;
