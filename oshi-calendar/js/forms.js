@@ -110,7 +110,7 @@ function openOshiForm(o) {
     <div class="group-label">テーマカラー</div>
     <div class="group">
       <div class="swatches">${MEMBER_COLORS.map((c) => `<button type="button" data-color="${c}" style="--oc:${c}" aria-label="${COLOR_NAMES[c] || c}" aria-pressed="${c === e.color}"></button>`).join("")}</div>
-      <label class="field"><span class="grow">カスタムカラー</span><input type="color" name="color" value="${esc(e.color)}"></label>
+      <label class="field"><span class="grow">ほかの色を選ぶ</span><input type="color" name="color" value="${esc(e.color)}" aria-label="ほかの色を選ぶ"></label>
     </div>
     <div class="group-label">誕生日・記念日</div>
     <div class="group" data-annivs>
