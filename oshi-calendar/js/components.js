@@ -48,7 +48,7 @@ function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削
   const d = $("#sheet");
   if (d.open) d.close();
   d.innerHTML = `<form novalidate>
-    <div class="sheet-head"><button type="button" class="txt-btn" data-close>キャンセル</button><h2>${esc(title)}</h2><button type="submit" class="txt-btn strong">保存</button></div>
+    <div class="sheet-head"><button type="button" class="txt-btn" data-close>キャンセル</button><h2 tabindex="-1" autofocus>${esc(title)}</h2><button type="submit" class="txt-btn strong">保存</button></div>
     <div class="sheet-body">${body}${onDelete ? `<button type="button" class="danger-btn" data-del>${esc(deleteLabel)}</button>` : ""}</div>
   </form>`;
   const f = d.querySelector("form");
@@ -76,7 +76,7 @@ function openView(title, body, onEdit) {
   const d = $("#sheet");
   if (d.open) d.close();
   d.innerHTML = `<form>
-    <div class="sheet-head"><button type="button" class="txt-btn" data-close>閉じる</button><h2>${esc(title)}</h2><button type="button" class="txt-btn strong" data-edit>編集</button></div>
+    <div class="sheet-head"><button type="button" class="txt-btn" data-close>閉じる</button><h2 tabindex="-1" autofocus>${esc(title)}</h2><button type="button" class="txt-btn strong" data-edit>編集</button></div>
     <div class="sheet-body">${body}</div>
   </form>`;
   d.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => d.close()));
@@ -93,7 +93,7 @@ function bindPhotoField(f, pids, max) {
   const grid = f.querySelector("[data-photos]"), input = f.querySelector("[data-photo-files]");
   const draw = () => {
     grid.innerHTML = st.items.map((it, i) => `<div class="ph">${it.url ? `<img src="${it.url}" alt="">` : ""}
-        <button type="button" class="rm" data-i="${i}" aria-label="この写真を外す">${icon("close", 2.2)}</button></div>`).join("")
+        <button type="button" class="rm" data-i="${i}" aria-label="この写真を削除">${icon("close", 2.2)}</button></div>`).join("")
       + (st.items.length < max ? `<button type="button" class="add" data-add>${icon("image")}<span>写真を追加</span></button>` : "");
     grid.querySelectorAll(".rm").forEach((b) => (b.onclick = () => {
       const [it] = st.items.splice(+b.dataset.i, 1);
@@ -135,7 +135,8 @@ function bindPhotoField(f, pids, max) {
 
 const opt = (v, label, sel) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${label}</option>`;
 const oshiOptions = (sel) => opt("", "指定なし", sel || "") + data.oshis.map((o) => opt(o.id, esc(o.name), sel)).join("");
-const defaultOshiId = () => (data.oshis.length === 1 ? data.oshis[0].id : "");
+// 新しく記録するときの推し：ホームで絞り込み中ならその推し、推しが1人ならその推し
+const defaultOshiId = () => (ui.tab === "home" && oshiOf(ui.oshiFilter) ? ui.oshiFilter : data.oshis.length === 1 ? data.oshis[0].id : "");
 
 /* ---------- 確認ダイアログ ----------
    ブラウザ標準の confirm() はサイト名（「〜の内容」）が出てしまうので、アプリ内で表示する */

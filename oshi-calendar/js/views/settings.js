@@ -29,7 +29,7 @@ function renderSettings() {
     </div>
     <div class="btn-row" style="margin-top:16px">
       <button class="btn${hasPhoto ? "" : " primary"}" data-act="pick-photo">${hasPhoto ? "写真を変更" : "写真を選ぶ"}</button>
-      ${hasPhoto ? `<button class="btn" data-act="clear-photo" style="color:var(--danger)">写真を外す</button>` : ""}
+      ${hasPhoto ? `<button class="btn" data-act="clear-photo" style="color:var(--danger)">写真を削除</button>` : ""}
     </div>
     ${hasPhoto ? `
     <label class="setting"><span class="head"><span>オーバーレイ</span><output id="scrimOut" class="num">${Math.round(s.scrim * 100)}%</output></span>

@@ -146,6 +146,11 @@ document.addEventListener("click", (ev) => {
     case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
     case "edit-budget": return openBudgetForm(el.dataset.year);
     case "note-tab": ui.noteTab = el.dataset.v; return render();
+    case "oshi-filter": {
+      // 選択中の推しをもう一度押したら「すべて」に戻す
+      ui.oshiFilter = ui.oshiFilter === id ? "" : id;
+      return render();
+    }
     case "add-report": return openReportForm();
     case "view-report": { const r = data.reports.find((x) => x.id === id); return r && openReportView(r); }
     case "write-report": {
@@ -165,10 +170,10 @@ document.addEventListener("click", (ev) => {
     }
     case "pick-photo": return $("#photoInput").click();
     case "clear-photo":
-      return ask("背景写真を外しますか？", { ok: "外す", danger: true }).then((yes) => {
+      return ask("背景写真を削除しますか？", { ok: "削除", danger: true }).then((yes) => {
         if (!yes) return;
         idbDel("bg").catch(() => {});
-        setPhoto(null); render(); toast("背景写真を外しました");
+        setPhoto(null); render(); toast("背景写真を削除しました");
       });
     case "bg-pos": data.settings.bgPos = el.dataset.pos; save(); applyBgVars(); return render();
     case "export": return exportData();

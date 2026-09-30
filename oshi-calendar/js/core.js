@@ -35,6 +35,11 @@ const MEMBER_COLORS = [
   "#d64545", "#e0729a", "#e38a4f", "#e5c24a", "#4f9d6f", "#56b3aa",
   "#5a97d0", "#3b5aa6", "#8a64b6", "#b6a5d8", "#e9e9e9", "#2b2b2e",
 ];
+// 色の丸を読み上げるときの名前
+const COLOR_NAMES = {
+  "#d64545": "赤", "#e0729a": "ピンク", "#e38a4f": "オレンジ", "#e5c24a": "黄色", "#4f9d6f": "緑", "#56b3aa": "ミント",
+  "#5a97d0": "水色", "#3b5aa6": "青", "#8a64b6": "紫", "#b6a5d8": "ラベンダー", "#e9e9e9": "白", "#2b2b2e": "黒",
+};
 const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
 const WEEK_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const KEY = "oshical.v1";
@@ -121,6 +126,7 @@ const ICONS = {
   home: '<path d="M12 20s-7-4.3-8.6-8.6A4.6 4.6 0 0 1 12 7.2a4.6 4.6 0 0 1 8.6 4.2C19 15.7 12 20 12 20z"/>',
   cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   money: '<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10.5h17M15.5 15h2"/>',
+  all: '<circle cx="8" cy="8" r="2.4"/><circle cx="16" cy="8" r="2.4"/><circle cx="8" cy="16" r="2.4"/><circle cx="16" cy="16" r="2.4"/>',
   pin: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
   note: '<path d="M6 3.5h10.5a2 2 0 0 1 2 2V20.5H8a2 2 0 0 1-2-2z"/><path d="M6 18.5a2 2 0 0 1 2-2h10.5M9.5 8h5.5M9.5 11.5h4"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -228,6 +234,8 @@ const ui = {
   selDate: today(),
   moneyMonth: today().slice(0, 7),
   noteTab: "reports",
+  // ホームの推しフィルター。"" はすべての推し、推しの ID ならその推しだけ（保存はせず、起動時は「すべて」）
+  oshiFilter: "",
   placeFilter: "want",
 };
 const shiftMonth = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };

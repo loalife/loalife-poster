@@ -2,14 +2,22 @@
 /* ホーム
    NEXT EVENT → REMINDER（抽選・入金・発券）→ ANNIVERSARY（誕生日・記念日のカウントダウン）→ UPCOMING → 今月の推し活費 */
 
+// 推しフィルターに合う予定か（「すべて」のときは全部）
+const byFilter = (o) => !ui.oshiFilter || o.oshiId === ui.oshiFilter;
+
 function renderHome() {
   const t = today(), td = parseDate(t);
-  const occ = occurrences(t, addDays(t, 730));
+  // 消された推しを選んだままにならないように
+  if (ui.oshiFilter && !oshiOf(ui.oshiFilter)) ui.oshiFilter = "";
+  const occ = occurrences(t, addDays(t, 730)).filter(byFilter);
   const events = occ.filter((o) => !isTask(o) && !isAnniv(o));
   // ふつうの予定がなければ、誕生日・記念日を NEXT EVENT に出す
   const next = events[0] || occ.find((o) => !isTask(o));
+  // 推しが2人以上なら、ヘッダーの下に推しのアイコンを並べて絞り込めるようにする
+  const filterable = data.oshis.length > 1;
   let h = topbar("推し活カレンダー", `${fmtDot(t)}  ${WEEK_EN[td.getDay()]}`,
-    `${addBtn("予定を追加")}${avatarBtn()}`);
+    `${addBtn("予定を追加")}${filterable ? "" : avatarBtn()}`);
+  if (filterable) h += oshiFilterBar();
 
   h += next ? nextEventPanel(next, t) : emptyNextPanel();
   h += reminderPanel(t);
@@ -44,6 +52,14 @@ function nextEventPanel(next, t) {
 
 function emptyNextPanel() {
   const fresh = !data.oshis.length;
+  const osh = oshiOf(ui.oshiFilter);
+  if (osh) {
+    return `<section class="panel">
+      <div class="eyebrow"><span>NEXT EVENT</span></div>
+      <div class="empty"><p>${esc(osh.name)}のこれからの予定はまだありません。</p>
+        <div class="btn-row"><button class="btn primary" data-act="add-event">予定を追加</button><button class="btn" data-act="oshi-filter" data-id="">すべての推しを見る</button></div></div>
+    </section>`;
+  }
   return `<section class="panel">
     <div class="eyebrow"><span>NEXT EVENT</span></div>
     <div class="empty">
@@ -58,6 +74,7 @@ function emptyNextPanel() {
 // 30日以内のリマインダーと、過ぎたのに完了していないもの（2週間前まで）
 function reminderPanel(t) {
   const list = occurrences(addDays(t, -14), addDays(t, 30))
+    .filter(byFilter)
     .filter((o) => isTask(o) && !o.done && (o.occDate >= t || daysBetween(o.occDate, t) <= 14))
     .slice(0, 5);
   if (!list.length) return "";
@@ -69,7 +86,7 @@ function reminderPanel(t) {
 
 // 推しの誕生日・記念日までのカウントダウン（NEXT EVENT に出したものは除く）
 function annivPanel(t, next) {
-  const list = occurrences(t, addDays(t, 365)).filter((o) => isAnniv(o) && !(next && o.id === next.id && o.occDate === next.occDate)).slice(0, 3);
+  const list = occurrences(t, addDays(t, 365)).filter(byFilter).filter((o) => isAnniv(o) && !(next && o.id === next.id && o.occDate === next.occDate)).slice(0, 3);
   if (!list.length) return "";
   return `<section class="panel">
     <div class="eyebrow"><span>ANNIVERSARY</span></div>
@@ -89,16 +106,29 @@ function annivRow(o, t) {
 
 function spendPanel(t) {
   const y = t.slice(0, 4);
-  const items = monthItems(t.slice(0, 7));
-  const budget = budgetOf(y);
+  const osh = oshiOf(ui.oshiFilter);
+  const items = monthItems(t.slice(0, 7)).filter(byFilter);
+  // 予算は推しごとではなく全体のものなので、「すべて」のときだけ出す
+  const budget = osh ? 0 : budgetOf(y);
   const left = budget - yearTotal(y);
   const budgetLine = budget
     ? `<div class="caption-sm num${left < 0 ? " over-text" : ""}">${left < 0 ? `予算オーバー ¥${yenNum(-left)}` : `残り予算 ¥${yenNum(left)}`}</div>`
     : "";
   return `<section class="panel spend" data-tab="money" role="button" tabindex="0">
-    <div><div class="label">今月の推し活費</div>
+    <div><div class="label">今月の推し活費${osh ? `<span class="sep">·</span>${esc(osh.name)}` : ""}</div>
       <div class="yen-big">${yenHtml(sum(items))}</div>
       <div class="caps">${items.length} ${items.length === 1 ? "ITEM" : "ITEMS"}</div>${budgetLine}</div>
     <button class="ghost" data-act="add-expense" aria-label="推し活費を記録">${icon("plus", 1.8)}</button>
   </section>`;
+}
+
+// 推しフィルター：「すべて」＋推しのアイコン。選んでいる推しをもう一度押すと「すべて」に戻る
+function oshiFilterBar() {
+  const cur = ui.oshiFilter;
+  const item = (id, av, name, ring) => `<button class="of${cur === id ? " on" : ""}${cur && cur !== id ? " dim" : ""}" data-act="oshi-filter" data-id="${id}"
+      aria-pressed="${cur === id}" style="--ring:${ring}">${av}<span class="of-name">${name}</span></button>`;
+  return `<div class="oshi-filter" role="group" aria-label="推しで絞り込む">
+    ${item("", `<span class="av all" style="--s:40px">${icon("all", 1.6)}</span>`, "すべて", "var(--text)")}
+    ${data.oshis.map((o) => item(o.id, oshiAvatar(o, 40), esc(o.name), esc(o.color))).join("")}
+  </div>`;
 }

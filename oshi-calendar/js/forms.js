@@ -103,13 +103,13 @@ function openOshiForm(o) {
   const body = `
     <div class="group oshi-photo">
       <span class="pv"></span>
-      <div class="actions"><button type="button" class="txt-btn" data-photo-pick></button><button type="button" class="txt-btn rm" data-photo-rm>写真を外す</button></div>
+      <div class="actions"><button type="button" class="txt-btn" data-photo-pick></button><button type="button" class="txt-btn rm" data-photo-rm>写真を削除</button></div>
       <input type="file" accept="image/*" class="visually-hidden" data-photo-input>
     </div>
-    <div class="group"><label class="field title"><input name="name" required maxlength="30" data-msg="名前を入れてください" value="${esc(e.name)}" placeholder="推しの名前" aria-label="名前"></label></div>
+    <div class="group"><label class="field stack-f title"><span>推しの名前</span><input name="name" required maxlength="30" data-msg="推しの名前を入れてください" value="${esc(e.name)}" placeholder="例：ミナト"></label></div>
     <div class="group-label">テーマカラー</div>
     <div class="group">
-      <div class="swatches">${MEMBER_COLORS.map((c) => `<button type="button" data-color="${c}" style="--oc:${c}" aria-label="${c}" aria-pressed="${c === e.color}"></button>`).join("")}</div>
+      <div class="swatches">${MEMBER_COLORS.map((c) => `<button type="button" data-color="${c}" style="--oc:${c}" aria-label="${COLOR_NAMES[c] || c}" aria-pressed="${c === e.color}"></button>`).join("")}</div>
       <label class="field"><span class="grow">カスタムカラー</span><input type="color" name="color" value="${esc(e.color)}"></label>
     </div>
     <div class="group-label">誕生日・記念日</div>
@@ -121,10 +121,11 @@ function openOshiForm(o) {
       ${(e.annivs || []).map(annivRowHtml).join("")}
       <button type="button" class="add-row" data-add-anniv>${icon("plus", 1.8)}記念日を追加</button>
     </div>
-    <p class="note" style="margin:8px 4px 0">デビュー日・結成日など。ホームとカレンダーで「あと◯日」をお知らせします。</p>
+    <p class="note" style="margin:8px 4px 0">デビュー日や結成日など。ホームとカレンダーに「あと◯日」と表示されます。</p>
     ${data.oshis.length > (o ? 1 : 0) ? `<div class="group">
-      <label class="field"><span class="grow">メインの推しにする</span><span class="toggle"><input type="checkbox" name="main"${isMain ? " checked" : ""} aria-label="メインの推しにする"><i></i></span></label>
-    </div>` : ""}`;
+      <label class="field"><span class="grow">メインの推しにする</span><span class="toggle"><input type="checkbox" name="main"${isMain ? " checked" : ""} aria-label="メインの推しにする" aria-describedby="mainHelp"><i></i></span></label>
+    </div>
+    <p class="note" id="mainHelp" style="margin:8px 4px 0">タブなどのアクセントカラーが、この推しのカラーになります。</p>` : ""}`;
   openSheet(o ? "推しを編集" : "推しを登録", body, {
     deleteLabel: "推しを削除",
     deleteAsk: o ? `「${o.name}」を削除しますか？` : "",
@@ -199,7 +200,7 @@ function openOshiForm(o) {
 const annivRowHtml = (a) => `<div class="ann-row">
   <input name="annLabel" maxlength="20" value="${esc(a.label)}" placeholder="デビュー記念日" aria-label="記念日の名前">
   <input type="date" name="annDate" value="${esc(a.date)}" aria-label="記念日の日付">
-  <button type="button" class="rm-anniv" data-rm-anniv aria-label="この記念日を外す">${icon("close", 2)}</button>
+  <button type="button" class="rm-anniv" data-rm-anniv aria-label="この記念日を削除">${icon("close", 2)}</button>
 </div>`;
 
 /* ---------- 年間予算 ---------- */
