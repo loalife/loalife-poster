@@ -52,7 +52,8 @@ body {
   font-feature-settings: "palt";
   letter-spacing: 0.01em;
   color: var(--text);
-  background: var(--bg);
+  /* 地の色は html に持たせる。body にも色を塗ると、その下にある背景写真（#bg）が隠れてしまう */
+  background: transparent;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
