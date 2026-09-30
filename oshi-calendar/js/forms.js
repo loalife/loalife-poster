@@ -280,7 +280,7 @@ function openPlaceForm(p) {
   const q = [e.name, e.area].filter(Boolean).join(" ");
   const body = `
     ${photoField(1)}
-    <div class="group"><label class="field stack-f title"><span>場所の名前</span><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="例：ドッグカフェ○○、○○アリーナ"></label></div>
+    <div class="group"><label class="field stack-f title"><span>場所の名前</span><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="例：○○コラボカフェ、○○アリーナ"></label></div>
     <div class="group">
       <label class="field"><span>カテゴリ</span><select name="category">${PLACE_CATS.map((c) => opt(c.id, c.label, e.category)).join("")}</select></label>
       <label class="field"><span>エリア</span><input name="area" maxlength="80" value="${esc(e.area)}" placeholder="最寄り駅や住所など"></label>
