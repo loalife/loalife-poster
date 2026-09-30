@@ -62,7 +62,7 @@ function placesView() {
   const want = data.places.filter((p) => !p.visited).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   const went = data.places.filter((p) => p.visited).sort((a, b) => (b.visitedAt || "").localeCompare(a.visitedAt || ""));
   if (!data.places.length) {
-    return `<section class="panel"><div class="empty"><p>行ってみたいカフェやドッグラン、イベント会場などを、写真やメモと一緒に保存しておけます。</p>
+    return `<section class="panel"><div class="empty"><p><span class="lead">推し活で行きたい場所を、ここに。</span><br>コラボカフェやライブの遠征先、ドッグランなど、気になる場所を写真やメモと一緒にストックしておけます。</p>
       <button class="btn primary" data-act="add-place">行きたい場所を追加</button></div></section>`;
   }
   const list = ui.placeFilter === "went" ? went : want;
@@ -70,7 +70,9 @@ function placesView() {
     <div class="seg" style="margin:0 0 14px">${[["want", `行きたい ${want.length}`], ["went", `行った ${went.length}`]]
       .map(([v, l]) => `<button data-act="place-filter" data-v="${v}" aria-pressed="${ui.placeFilter === v}">${l}</button>`).join("")}</div>
     ${list.length ? `<div class="rows">${list.map(placeRow).join("")}</div>`
-      : `<div class="empty">${ui.placeFilter === "went" ? "行った場所はまだありません。行ったらチェックを入れましょう。" : "行きたい場所はすべて行きました。"}</div>`}
+      : `<div class="empty">${ui.placeFilter === "went"
+        ? "<p>行った場所にチェックを入れると、推し活の思い出としてここに残ります。</p>"
+        : `<p>行きたい場所は、ぜんぶ行けました。<br>次のお出かけ先も探してみませんか？</p><button class="btn" data-act="add-place">行きたい場所を追加</button>`}</div>`}
   </section>`;
 }
 function placeRow(p) {

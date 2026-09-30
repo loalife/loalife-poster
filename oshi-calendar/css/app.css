@@ -496,3 +496,7 @@ a.btn { text-decoration: none; color: inherit; }
 .of-name { max-width: 56px; font-size: 10px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .of.on .of-name { color: var(--text); font-weight: 600; }
 body.has-photo .of-name { text-shadow: 0 0 2px rgba(var(--scrim-rgb), 0.9), 0 0 12px rgba(var(--scrim-rgb), 0.9); }
+
+/* 空の状態の1行目（何ができるかを伝える一文）は少しだけ強く */
+.empty .lead { color: var(--text); font-weight: 500; }
+.field.title input::placeholder { font-weight: 400; }

@@ -223,8 +223,19 @@ function openReportForm(r, preset = {}) {
   const e = r || { date: preset.date || t, eventId: preset.eventId || "", oshiId: preset.oshiId ?? defaultOshiId(), title: "", text: "", photos: [] };
   // 紐づけられる予定：この1年の終わった予定（値は「予定ID|日付」）
   const past = occurrences(addDays(t, -365), t).filter((o) => !isTask(o) && !o.virtual).reverse();
+  // 編集中のレポートの予定が1年より前でも、選択肢から消えて紐づけが外れないように
+  if (e.eventId && !past.some((o) => o.id === e.eventId && o.occDate === e.date)) {
+    const ev = data.events.find((x) => x.id === e.eventId);
+    if (ev) past.push({ ...ev, occDate: e.date, years: +e.date.slice(0, 4) - +ev.date.slice(0, 4) });
+  }
+  // ＋から新しく書くときは、直近（2週間以内）に終わった、まだレポートのない予定を最初から選んでおく
+  const auto = !r && !preset.eventId ? past.find((o) => o.occDate >= addDays(t, -14) && !reportFor(o.id, o.occDate)) : null;
+  if (auto) Object.assign(e, { eventId: auto.id, date: auto.occDate, oshiId: auto.oshiId || e.oshiId });
   const cur = e.eventId ? `${e.eventId}|${e.date}` : "";
-  const evOpts = opt("", "紐づけない", cur) + past.map((o) => opt(`${o.id}|${o.occDate}`, `${md(o.occDate)}  ${esc(displayTitle(o))}`, cur)).join("");
+  const evOpts = opt("", "予定を選ばない", cur) + past.map((o) => {
+    const done = reportFor(o.id, o.occDate) && !(r && r.eventId === o.id && r.date === o.occDate);
+    return opt(`${o.id}|${o.occDate}`, `${md(o.occDate)}  ${esc(displayTitle(o))}${done ? "（レポートあり）" : ""}`, cur);
+  }).join("");
   const body = `
     ${photoField(4)}
     <div class="group"><label class="field title"><input name="title" maxlength="60" value="${esc(e.title)}" placeholder="タイトル（空欄なら予定の名前）" aria-label="タイトル"></label></div>
@@ -233,7 +244,8 @@ function openReportForm(r, preset = {}) {
       <label class="field"><span>日付</span><input type="date" name="date" required data-msg="日付を入れてください" value="${esc(e.date)}"></label>
       <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
     </div>
-    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="7" maxlength="4000" placeholder="よかったところ、セットリスト、買ったグッズ、一緒に行った人など">${esc(e.text)}</textarea></label></div>`;
+    ${auto ? `<p class="note" style="margin:8px 4px 0">直近の予定を選んでいます。ほかの予定に変えたり、「予定を選ばない」にしたりもできます。</p>` : ""}
+    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="7" maxlength="4000" placeholder="よかったところ、セットリスト、&#10;買ったグッズ、一緒に行った人など">${esc(e.text)}</textarea></label></div>`;
   let photos;
   openSheet(r ? "レポートを編集" : "推し活レポート", body, {
     deleteLabel: "レポートを削除",
@@ -280,21 +292,21 @@ function openPlaceForm(p) {
   const q = [e.name, e.area].filter(Boolean).join(" ");
   const body = `
     ${photoField(1)}
-    <div class="group"><label class="field title"><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="場所の名前" aria-label="場所の名前"></label></div>
+    <div class="group"><label class="field stack-f title"><span>場所の名前</span><input name="name" required maxlength="60" data-msg="場所の名前を入れてください" value="${esc(e.name)}" placeholder="例：○○コラボカフェ、○○アリーナ"></label></div>
     <div class="group">
       <label class="field"><span>カテゴリ</span><select name="category">${PLACE_CATS.map((c) => opt(c.id, c.label, e.category)).join("")}</select></label>
-      <label class="field"><span>エリア</span><input name="area" maxlength="80" value="${esc(e.area)}" placeholder="住所・最寄り駅など"></label>
+      <label class="field"><span>エリア</span><input name="area" maxlength="80" value="${esc(e.area)}" placeholder="最寄り駅や住所など"></label>
       <label class="field"><span>URL</span><input type="url" name="url" maxlength="500" value="${esc(e.url)}" placeholder="https://" data-msg="URL は https:// から入力してください"></label>
       <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
       <label class="field"><span class="grow">行った</span><span class="toggle"><input type="checkbox" name="visited"${e.visited ? " checked" : ""} aria-label="行った"><i></i></span></label>
     </div>
-    <div class="group"><label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="1000" placeholder="営業時間、予約の要否、行きたい理由など">${esc(e.memo)}</textarea></label></div>
+    <div class="group"><label class="field stack-f"><span>メモ</span><textarea name="memo" rows="3" maxlength="1000" placeholder="行きたい理由、営業時間、&#10;予約やペット同伴の可否など">${esc(e.memo)}</textarea></label></div>
     ${p ? `<div class="btn-row" style="margin-top:16px">
       <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener">${icon("pin")}地図で見る</a>
       ${e.url ? `<a class="btn" href="${esc(e.url)}" target="_blank" rel="noopener">サイトを開く</a>` : ""}
     </div>` : ""}`;
   let photos;
-  openSheet(p ? "行きたい場所を編集" : "行きたい場所", body, {
+  openSheet(p ? "行きたい場所を編集" : "行きたい場所を追加", body, {
     deleteLabel: "この場所を削除",
     deleteAsk: "この場所を削除しますか？",
     onOpen: (f) => { photos = bindPhotoField(f, e.photos, 1); },
