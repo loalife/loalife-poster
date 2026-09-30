@@ -320,6 +320,19 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.32); }
   opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 50; max-width: calc(100% - 40px);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
+.confirm {
+  border: 0; padding: 0; width: min(300px, calc(100% - 48px)); border-radius: 14px;
+  background: var(--surface-solid); color: var(--text); text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+.confirm::backdrop { background: rgba(0, 0, 0, 0.32); }
+.confirm .cf-body { padding: 22px 20px 18px; word-break: auto-phrase; }
+.confirm .cf-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.confirm .cf-sub { margin: 6px 0 0; font-size: 13px; color: var(--text2); line-height: 1.6; }
+.cf-btns { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.cf-btns button { border: 0; background: none; height: 48px; font-size: 15px; color: var(--text2); }
+.cf-btns button + button { border-left: 1px solid var(--line); }
+.cf-btns .strong { color: var(--text); font-weight: 600; }
+.cf-btns .danger { color: var(--danger); font-weight: 600; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
@@ -332,6 +345,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.32); }
   <div class="inner" id="tabs"></div>
 </nav>
 <dialog class="sheet" id="sheet"></dialog>
+<dialog class="confirm" id="confirm"></dialog>
 <input type="file" id="photoInput" accept="image/*" class="visually-hidden">
 <input type="file" id="importInput" accept="application/json,.json" class="visually-hidden">
 <div id="toast" role="status" aria-live="polite"></div>
@@ -795,7 +809,7 @@ function bindSettings() {
 }
 
 /* ---------- シート（入力フォーム） ---------- */
-function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削除" } = {}) {
+function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削除", deleteAsk = "削除しますか？", deleteSub = "" } = {}) {
   const d = $("#sheet");
   d.innerHTML = `<form novalidate>
     <div class="sheet-head"><button type="button" class="txt-btn" data-close>キャンセル</button><h2>${esc(title)}</h2><button type="submit" class="txt-btn strong">保存</button></div>
@@ -811,8 +825,8 @@ function openSheet(title, body, { onSubmit, onDelete, onOpen, deleteLabel = "削
     save(); d.close(); render();
   };
   d.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => d.close()));
-  if (onDelete) d.querySelector("[data-del]").onclick = () => {
-    if (!confirm("削除しますか？")) return;
+  if (onDelete) d.querySelector("[data-del]").onclick = async () => {
+    if (!(await ask(deleteAsk, { sub: deleteSub, ok: "削除", danger: true }))) return;
     onDelete(); save(); d.close(); render();
   };
   onOpen?.(f);
@@ -841,6 +855,7 @@ function openEventForm(ev, presetDate) {
     </div>`;
   openSheet(ev ? "予定を編集" : "新しい予定", body, {
     deleteLabel: "予定を削除",
+    deleteAsk: "この予定を削除しますか？",
     onOpen: (f) => { f.type.onchange = () => { if (typeOf(f.type.value).yearly) f.yearly.checked = true; }; },
     onSubmit: (fd) => {
       const rec = {
@@ -868,6 +883,7 @@ function openExpenseForm(x) {
     </div>`;
   openSheet(x ? "推し活費を編集" : "推し活費を記録", body, {
     deleteLabel: "記録を削除",
+    deleteAsk: "この記録を削除しますか？",
     onSubmit: (fd) => {
       const rec = { id: e.id || uid(), amount: Math.round(+fd.amount), category: fd.category, oshiId: fd.oshiId, date: fd.date, memo: fd.memo.trim() };
       if (x) data.expenses[data.expenses.findIndex((y) => y.id === x.id)] = rec;
@@ -894,6 +910,8 @@ function openOshiForm(o) {
     </div>` : ""}`;
   openSheet(o ? "推しを編集" : "推しを登録", body, {
     deleteLabel: "推しを削除",
+    deleteAsk: o ? `「${o.name}」を削除しますか？` : "",
+    deleteSub: "登録済みの予定と推し活費は残ります。",
     onOpen: (f) => {
       const sync = () => f.querySelectorAll("[data-color]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === f.color.value));
       f.querySelectorAll("[data-color]").forEach((b) => (b.onclick = () => { f.color.value = b.dataset.color; sync(); }));
@@ -933,7 +951,7 @@ async function importData(file) {
   try {
     const d = JSON.parse(await file.text());
     if (!Array.isArray(d.oshis) || !Array.isArray(d.events) || !Array.isArray(d.expenses)) throw new Error("format");
-    if (!confirm(`推し${d.oshis.length}人・予定${d.events.length}件・推し活費${d.expenses.length}件を読み込みます。今のデータは置き換わります。よろしいですか？`)) return;
+    if (!(await ask("バックアップを読み込みますか？", { sub: `推し${d.oshis.length}人・予定${d.events.length}件・推し活費${d.expenses.length}件。今のデータは置き換わります。`, ok: "読み込む", danger: true }))) return;
     data = { oshis: d.oshis, events: d.events, expenses: d.expenses, settings: { ...DEFAULT_DATA.settings, ...d.settings, v: 2 } };
     save();
     applyBgVars();
@@ -942,6 +960,20 @@ async function importData(file) {
   } catch {
     toast("バックアップファイルを読み込めませんでした");
   }
+}
+
+/* ---------- 確認ダイアログ ----------
+   ブラウザ標準の confirm() はサイト名（「〜の内容」）が出てしまうので、アプリ内で表示する */
+function ask(title, { sub = "", ok = "OK", danger = false } = {}) {
+  return new Promise((resolve) => {
+    const d = $("#confirm");
+    d.innerHTML = `<div class="cf-body"><p class="cf-title">${esc(title)}</p>${sub ? `<p class="cf-sub">${esc(sub)}</p>` : ""}</div>
+      <div class="cf-btns"><button type="button" data-v="0">キャンセル</button><button type="button" data-v="1" class="${danger ? "danger" : "strong"}">${esc(ok)}</button></div>`;
+    d.querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => { d.close(); resolve(b.dataset.v === "1"); }));
+    d.oncancel = () => resolve(false);
+    d.showModal();
+    d.querySelector("[data-v='0']").focus();
+  });
 }
 
 /* ---------- トースト ---------- */
@@ -982,9 +1014,11 @@ document.addEventListener("click", (ev) => {
     case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
     case "pick-photo": return $("#photoInput").click();
     case "clear-photo":
-      if (!confirm("背景写真を外しますか？")) return;
-      idbDel("bg").catch(() => {});
-      setPhoto(null); render(); return toast("背景写真を外しました");
+      return ask("背景写真を外しますか？", { ok: "外す", danger: true }).then((yes) => {
+        if (!yes) return;
+        idbDel("bg").catch(() => {});
+        setPhoto(null); render(); toast("背景写真を外しました");
+      });
     case "bg-pos": data.settings.bgPos = el.dataset.pos; save(); applyBgVars(); return render();
     case "export": return exportData();
     case "import": return $("#importInput").click();
