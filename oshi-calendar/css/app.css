@@ -503,3 +503,162 @@ body.has-photo .of-name { text-shadow: 0 0 2px rgba(var(--scrim-rgb), 0.9), 0 0 
 .field.title input::placeholder { font-weight: 400; }
 /* タップの反応を良くする（ダブルタップのズーム判定で遅れないように） */
 .tab, button { touch-action: manipulation; }
+
+/* ============================================================
+   予定の詳細・現場ツール
+   ============================================================ */
+.ev-head { padding: 8px 4px 4px; }
+.ev-head .eyebrow { margin-bottom: 12px; }
+.ev-head .next-title { margin-top: 14px; }
+.ev-memo { font-size: 14px; color: var(--text2); margin: 12px 0 0; white-space: pre-wrap; word-break: break-word; }
+.btn-row.pad { padding: 0 14px 14px; }
+.hotel { margin-top: 8px; }
+.hotel-in { display: flex; gap: 12px; align-items: flex-start; padding: 14px; }
+.hotel-in > svg { width: 22px; height: 22px; flex: none; color: var(--text2); margin-top: 2px; }
+.hotel-in .t { font-size: 15px; font-weight: 600; }
+.hotel-in .m { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.pack-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.pack-head span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.pack-head svg { width: 16px; height: 16px; }
+.ck { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 6px 0 14px; border-top: 1px solid var(--line); }
+.ck label { flex: 1; display: flex; align-items: center; gap: 12px; font-size: 15px; min-height: 46px; cursor: pointer; }
+.ck input[type="checkbox"] { width: 20px; height: 20px; margin: 0; accent-color: var(--text); flex: none; }
+.ck.done label span { color: var(--text3); text-decoration: line-through; }
+.ck.add input { flex: 1; border: 0; background: none; outline: none; font-size: 16px; padding: 12px 0; min-width: 0; }
+.ck.add .link { padding: 8px; font-size: 14px; color: var(--text); }
+.next-tools { display: flex; align-items: center; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 500; color: var(--text2); }
+.next-tools svg { width: 16px; height: 16px; }
+.next-tools svg:last-child { margin-left: auto; }
+
+/* ペンライト：画面いっぱいの推しカラー */
+#penlight { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: calc(24px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom)); transition: background 0.25s; }
+#penlight[hidden] { display: none; }
+.pl-hint { font-size: 12px; color: #fff; padding: 6px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.pl-colors { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; padding: 10px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.pl-colors button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.85); background: var(--oc); padding: 0; }
+.pl-colors button[aria-pressed="true"] { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); }
+
+/* ============================================================
+   締切・お祝い
+   ============================================================ */
+.panel.urgent { box-shadow: inset 3px 0 0 var(--danger); }
+.panel.urgent .eyebrow > span:first-child { color: var(--danger); }
+.celebrate {
+  display: flex; align-items: center; gap: 18px; cursor: pointer;
+  background: color-mix(in srgb, var(--oc) 12%, var(--surface-solid)) !important;
+}
+.celebrate .eyebrow { margin-bottom: 6px; color: var(--ot); }
+.celebrate .body { flex: 1; min-width: 0; }
+.cel-title { font-size: 22px; font-weight: 700; line-height: 1.3; word-break: break-word; }
+.cel-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* ============================================================
+   カレンダー：その日の推し活費・レポート、月のまとめ
+   ============================================================ */
+.cal-sum { font-size: 12px; color: var(--text2); margin: -8px 0 16px; }
+.dots i.rec { background: none; box-shadow: inset 0 0 0 1.2px var(--text3); }
+.legend { flex-wrap: wrap; row-gap: 6px; }
+.legend i.rec { border-radius: 50%; box-shadow: inset 0 0 0 1.2px var(--text3); }
+.day-sub { display: flex; justify-content: space-between; margin: 18px 0 4px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--text3); }
+.row-d svg { width: 18px; height: 18px; color: var(--text3); }
+
+/* ============================================================
+   推し活貯金
+   ============================================================ */
+.saving { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.rows .saving:first-child { border-top: 0; }
+.sv-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; text-align: left; }
+.sv-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sv-top .t { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-main .m { font-size: 12px; color: var(--text2); }
+.sv-amt { font-size: 13px; color: var(--text2); }
+.sv-amt b { font-size: 18px; font-weight: 600; color: var(--text); }
+.sv-amt .pct { color: var(--text3); }
+.saving .bar { margin: 4px 0; }
+.bar.oshi i { background: var(--oc); }
+.goal-done { color: var(--ot); font-weight: 600; }
+.btn.sm { height: 34px; padding: 0 12px; font-size: 13px; flex: none; }
+.dep-d { font-size: 13px; color: var(--text2); width: 44px; flex: none; }
+.dep-m { flex: 1; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dep-a { font-size: 14px; font-weight: 500; }
+.dep-a.minus { color: var(--danger); }
+
+/* ============================================================
+   年表
+   ============================================================ */
+.tl-year { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.tl-year .y { font-size: 28px; font-weight: 300; letter-spacing: -0.01em; line-height: 1; }
+.tl-year .s { font-size: 12px; color: var(--text2); }
+.tl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 1px solid var(--line); }
+.tl li { position: relative; }
+.tl li::before { content: ""; position: absolute; left: -18.5px; top: 20px; width: 8px; height: 8px; border-radius: 50%; background: var(--oc); box-shadow: 0 0 0 3px var(--surface-solid); }
+.tl-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 0; border: 0; background: none; text-align: left; }
+.tl-d { flex: none; width: 42px; font-size: 13px; font-weight: 500; color: var(--text2); }
+.tl-item .body { flex: 1; min-width: 0; }
+.tl-item .t { display: block; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-item .m { display: block; font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg-top button { font-size: 13px; }
+
+/* 持ち物・貯金の記録の削除ボタン */
+.ck .rm-anniv { flex: none; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--text3); display: inline-flex; align-items: center; justify-content: center; }
+.ck .rm-anniv svg { width: 14px; height: 14px; }
+
+/* ============================================================
+   締切の色分け：申込系は黄、入金系は赤、そのほかは黒
+   ============================================================ */
+:root { --apply: #e2a200; --apply-ink: #1c1c1e; --pay: #d64545; }
+@media (prefers-color-scheme: dark) { :root { --apply: #f0bd2e; --pay: #ff6b6b; } }
+.badge.apply { background: var(--apply); color: var(--apply-ink); }
+.badge.pay { background: var(--pay); color: #fff; }
+.dots i.task.apply, .legend i.task.apply { background: var(--apply); }
+.dots i.task.pay, .legend i.task.pay { background: var(--pay); }
+.apply-t { color: var(--apply); font-weight: 600; }
+.pay-t { color: var(--pay); font-weight: 600; }
+.field .dt, .field.dt { gap: 8px; }
+.field.dt > span { width: 70px; }
+.field.dt > span.apply { color: var(--apply); font-weight: 600; }
+.field.dt > span.pay { color: var(--pay); font-weight: 600; }
+.field.dt input[type="date"] { flex: 1; }
+.field.dt input[type="time"] { flex: none; width: 108px; }
+
+/* ============================================================
+   チケットの申し込み
+   ============================================================ */
+.st {
+  flex: none; display: inline-block; padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap;
+  background: var(--fill); color: var(--text2);
+}
+.st-applied { background: none; color: var(--text); box-shadow: inset 0 0 0 1px var(--text3); }
+.st-won { background: var(--text); color: var(--bg); }
+.st-lost { background: none; color: var(--text3); text-decoration: line-through; }
+.st-paid { background: none; color: var(--text2); box-shadow: inset 0 0 0 1px var(--line); }
+.app-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; }
+.app-row .body { flex: 1; min-width: 0; }
+.app-row .t { display: block; font-size: 15px; font-weight: 500; }
+.app-row .m { display: block; font-size: 12px; color: var(--text2); margin-top: 2px; }
+.app-row + .add-row, .group > .add-row:first-child { border-top: 0; }
+.status-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.status-seg label { cursor: pointer; }
+.status-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.status-seg .st { font-size: 13px; padding: 8px 12px; border-radius: 9px; }
+.status-seg input:not(:checked) + .st { background: var(--surface-solid); color: var(--text2); box-shadow: inset 0 0 0 1px var(--line); text-decoration: none; }
+.status-seg input:focus-visible + .st { outline: 2px solid var(--text); outline-offset: 2px; }
+.result-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.result-pick .btn { height: 48px; font-size: 15px; }
+
+/* ============================================================
+   参戦記録・アルバム
+   ============================================================ */
+.facts { margin: 18px 0 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-solid); border: 1px solid var(--line); }
+.facts div { display: flex; gap: 12px; padding: 4px 0; font-size: 14px; }
+.facts dt { width: 96px; flex: none; color: var(--text2); }
+.facts dd { margin: 0; min-width: 0; word-break: break-word; }
+.setlist ol { margin: 0; padding: 12px 14px 12px 36px; border-radius: var(--r-sm); background: var(--surface-solid); border: 1px solid var(--line); font-size: 14px; line-height: 1.9; }
+.setlist .group-label { margin-left: 0; }
+.eyebrow .mode { display: inline-flex; gap: 12px; }
+.eyebrow .mode .link { font-size: 12px; letter-spacing: 0.02em; color: var(--text3); }
+.eyebrow .mode .link.on { color: var(--text); font-weight: 600; }
+.album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.al { padding: 0; border: 0; background: none; aspect-ratio: 1; border-radius: 6px; overflow: hidden; }
+.al .thumb { width: 100%; height: 100%; border-radius: 0; }
+.bar.mb { margin: 14px auto 8px; max-width: 260px; }
