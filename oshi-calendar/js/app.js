@@ -4,12 +4,30 @@
 /* ---------- 描画 ---------- */
 const TABS = [["home", "ホーム", "home"], ["cal", "カレンダー", "cal"], ["money", "推し活費", "money"], ["notes", "ノート", "note"], ["settings", "推し・設定", "user"]];
 function render() {
-  applyAccent();
-  $("#app").innerHTML = { home: renderHome, cal: renderCal, money: renderMoney, notes: renderNotes, settings: renderSettings }[ui.tab]();
+  // タブバーは先に描く（画面の描画でエラーが起きても、ほかのタブへ移動できるように）
   $("#tabs").innerHTML = TABS.map(([id, label, ic]) =>
-    `<button class="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ""}>${icon(ic, ui.tab === id ? 1.9 : 1.5)}${label}</button>`).join("");
-  if (ui.tab === "settings") bindSettings();
+    `<button type="button" class="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ""}>${icon(ic, ui.tab === id ? 1.9 : 1.5)}${label}</button>`).join("");
+  try {
+    applyAccent();
+    $("#app").innerHTML = { home: renderHome, cal: renderCal, money: renderMoney, notes: renderNotes, settings: renderSettings }[ui.tab]();
+    if (ui.tab === "settings") bindSettings();
+  } catch (err) {
+    // 何も起きないように見えるのを防ぐため、理由と再読み込みボタンを出す
+    console.error(err);
+    $("#app").innerHTML = errorPanel(err);
+  }
 }
+function errorPanel(err) {
+  return `<header class="top"><div class="top-text"><div class="sub">ERROR</div><h1>表示できませんでした</h1></div></header>
+    <section class="panel"><div class="empty">
+      <p>この画面を表示中に問題が起きました。再読み込みで直ることがあります。<br>続くときは、この画面のスクリーンショットを送ってください。</p>
+      <p class="note sub" style="word-break:break-all">${esc(ui.tab)} / ${esc(err && (err.stack || err.message) || err)}</p>
+      <button type="button" class="btn primary" onclick="location.reload()">再読み込み</button>
+    </div></section>`;
+}
+// 画面の外（ボタン操作など）で起きたエラーも知らせる
+window.addEventListener("error", (e) => toast(`エラー：${e.message}`));
+window.addEventListener("unhandledrejection", (e) => toast(`エラー：${e.reason?.message || e.reason}`));
 
 /* ---------- 背景写真 ---------- */
 let hasPhoto = false;

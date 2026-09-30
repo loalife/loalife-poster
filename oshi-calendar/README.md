@@ -33,7 +33,7 @@ oshi-calendar/
 │   │   └── settings.js   推し・設定
 │   ├── forms.js          入力フォーム（予定・推し活費・推し・予算・レポート・行きたい場所）
 │   └── app.js            描画・背景写真・バックアップ・操作の受け付け・起動
-├── sw.js                 オフライン用のキャッシュ（ファイルを追加したら ASSETS にも追加）
+├── sw.js                 オフライン用のキャッシュ（ファイルを追加したら ASSETS にも追加。ファイルを変更したら VERSION と index.html の ?v= をそろえて上げる）
 └── manifest.json, icon*  PWA 用
 ```
 
