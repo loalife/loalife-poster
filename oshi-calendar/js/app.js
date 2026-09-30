@@ -2,10 +2,10 @@
 /* 描画・背景写真・バックアップ・操作・起動 */
 
 /* ---------- 描画 ---------- */
-const TABS = [["home", "ホーム", "home"], ["cal", "カレンダー", "cal"], ["money", "推し活費", "money"], ["settings", "推し・設定", "user"]];
+const TABS = [["home", "ホーム", "home"], ["cal", "カレンダー", "cal"], ["money", "推し活費", "money"], ["notes", "ノート", "note"], ["settings", "推し・設定", "user"]];
 function render() {
   applyAccent();
-  $("#app").innerHTML = { home: renderHome, cal: renderCal, money: renderMoney, settings: renderSettings }[ui.tab]();
+  $("#app").innerHTML = { home: renderHome, cal: renderCal, money: renderMoney, notes: renderNotes, settings: renderSettings }[ui.tab]();
   $("#tabs").innerHTML = TABS.map(([id, label, ic]) =>
     `<button class="tab" data-tab="${id}"${ui.tab === id ? ' aria-current="page"' : ""}>${icon(ic, ui.tab === id ? 1.9 : 1.5)}${label}</button>`).join("");
   if (ui.tab === "settings") bindSettings();
@@ -95,8 +95,10 @@ async function importData(file) {
   try {
     const d = JSON.parse(await file.text());
     if (!Array.isArray(d.oshis) || !Array.isArray(d.events) || !Array.isArray(d.expenses)) throw new Error("format");
-    if (!(await ask("バックアップを読み込みますか？", { sub: `推し${d.oshis.length}人・予定${d.events.length}件・推し活費${d.expenses.length}件。今のデータは置き換わります。`, ok: "読み込む", danger: true }))) return;
-    data = { oshis: d.oshis, events: d.events, expenses: d.expenses, settings: { ...DEFAULT_DATA.settings, ...d.settings, v: 2 } };
+    const extra = [d.reports?.length && `レポート${d.reports.length}件`, d.places?.length && `行きたい場所${d.places.length}件`].filter(Boolean).join("・");
+    if (!(await ask("バックアップを読み込みますか？", { sub: `推し${d.oshis.length}人・予定${d.events.length}件・推し活費${d.expenses.length}件${extra ? "・" + extra : ""}。今のデータは置き換わります。`, ok: "読み込む", danger: true }))) return;
+    const { oshis, events, expenses, reports, places, settings } = d;
+    data = migrate({ oshis, events, expenses, reports, places, settings });
     save();
     applyBgVars();
     await loadOshiPhotos();
@@ -112,6 +114,7 @@ async function importData(file) {
 function addForTab() {
   if (ui.tab === "money") return openExpenseForm();
   if (ui.tab === "settings") return openOshiForm();
+  if (ui.tab === "notes") return ui.noteTab === "places" ? openPlaceForm() : openReportForm();
   return openEventForm(null, ui.tab === "cal" ? ui.selDate : today());
 }
 document.addEventListener("click", (ev) => {
@@ -123,7 +126,14 @@ document.addEventListener("click", (ev) => {
   switch (el.dataset.act) {
     case "add": return addForTab();
     case "add-event": return openEventForm(null, el.dataset.date);
-    case "edit-event": return openEventForm(data.events.find((x) => x.id === id));
+    case "edit-event": return openEventForm(data.events.find((x) => x.id === id), null, el.dataset.date);
+    case "toggle-done": {
+      const e = data.events.find((x) => x.id === id);
+      if (!e) return;
+      e.done = !e.done;
+      save(); render();
+      return toast(e.done ? "完了にしました" : "未完了に戻しました");
+    }
     case "add-expense": return openExpenseForm();
     case "edit-expense": return openExpenseForm(data.expenses.find((x) => x.id === id));
     case "add-oshi": return openOshiForm();
@@ -134,6 +144,25 @@ document.addEventListener("click", (ev) => {
     case "cal-today": ui.calMonth = today().slice(0, 7); ui.selDate = today(); return render();
     case "money-prev": ui.moneyMonth = shiftMonth(ui.moneyMonth, -1); return render();
     case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
+    case "edit-budget": return openBudgetForm(el.dataset.year);
+    case "note-tab": ui.noteTab = el.dataset.v; return render();
+    case "add-report": return openReportForm();
+    case "view-report": { const r = data.reports.find((x) => x.id === id); return r && openReportView(r); }
+    case "write-report": {
+      const e = data.events.find((x) => x.id === id);
+      return e && openReportForm(null, { eventId: e.id, date: el.dataset.date, oshiId: e.oshiId });
+    }
+    case "add-place": return openPlaceForm();
+    case "edit-place": return openPlaceForm(data.places.find((x) => x.id === id));
+    case "place-filter": ui.placeFilter = el.dataset.v; return render();
+    case "toggle-visited": {
+      const p = data.places.find((x) => x.id === id);
+      if (!p) return;
+      p.visited = !p.visited;
+      p.visitedAt = p.visited ? new Date().toISOString() : "";
+      save(); render();
+      return toast(p.visited ? "「行った」に移しました" : "「行きたい」に戻しました");
+    }
     case "pick-photo": return $("#photoInput").click();
     case "clear-photo":
       return ask("背景写真を外しますか？", { ok: "外す", danger: true }).then((yes) => {

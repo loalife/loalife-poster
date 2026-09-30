@@ -1,10 +1,10 @@
 // 推し活カレンダー service worker：オフラインでも開けるようにアプリ本体をキャッシュする
-const CACHE = "oshical-v4";
+const CACHE = "oshical-v5";
 const ASSETS = [
   "./", "./index.html", "./manifest.json", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png",
   "./css/app.css",
   "./js/core.js", "./js/components.js", "./js/forms.js", "./js/app.js",
-  "./js/views/home.js", "./js/views/calendar.js", "./js/views/money.js", "./js/views/settings.js",
+  "./js/views/home.js", "./js/views/calendar.js", "./js/views/money.js", "./js/views/notes.js", "./js/views/settings.js",
 ];
 
 self.addEventListener("install", (e) => {

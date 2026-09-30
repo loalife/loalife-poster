@@ -8,17 +8,27 @@ const EVENT_TYPES = [
   { id: "stream", label: "配信・放送" },
   { id: "birthday", label: "誕生日", yearly: true },
   { id: "anniv", label: "記念日", yearly: true },
-  { id: "lottery", label: "当落発表" },
-  { id: "ticket", label: "発券・入金" },
   { id: "other", label: "その他" },
+  // リマインダー（チケットまわりの「やること」）。締切として扱い、完了チェックができる
+  { id: "lottery", label: "チケット抽選", task: true },
+  { id: "payment", label: "入金", task: true },
+  { id: "ticket", label: "発券", task: true },
 ];
 const EXPENSE_CATS = [
-  { id: "ticket", label: "チケット" },
   { id: "goods", label: "グッズ" },
+  { id: "ticket", label: "チケット" },
+  { id: "travel", label: "遠征（交通・宿泊）" },
+  { id: "cafe", label: "カフェ・お出かけ" },
   { id: "media", label: "CD・円盤・本" },
-  { id: "travel", label: "遠征・交通" },
-  { id: "hotel", label: "宿泊" },
   { id: "stream", label: "配信・サブスク" },
+  { id: "other", label: "その他" },
+];
+const PLACE_CATS = [
+  { id: "cafe", label: "カフェ" },
+  { id: "dogrun", label: "ドッグラン" },
+  { id: "venue", label: "イベント会場" },
+  { id: "seichi", label: "聖地巡礼" },
+  { id: "shop", label: "ショップ" },
   { id: "other", label: "その他" },
 ];
 const MEMBER_COLORS = [
@@ -28,7 +38,10 @@ const MEMBER_COLORS = [
 const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
 const WEEK_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const KEY = "oshical.v1";
-const DEFAULT_DATA = { oshis: [], events: [], expenses: [], settings: { v: 2, scrim: 0.5, blur: 0, bgPos: "center", mainOshiId: "" } };
+const DEFAULT_DATA = {
+  oshis: [], events: [], expenses: [], reports: [], places: [],
+  settings: { v: 3, scrim: 0.5, blur: 0, bgPos: "center", mainOshiId: "", budgets: {} },
+};
 
 /* ---------- ユーティリティ ---------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -45,8 +58,12 @@ const yenHtml = (n) => `<span class="cur">¥</span>${yenNum(n)}`;
 const md = (s, sep = "/") => `${s.slice(5, 7)}${sep}${s.slice(8, 10)}`;
 const dowEn = (s) => WEEK_EN[parseDate(s).getDay()];
 const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-const typeOf = (id) => EVENT_TYPES.find((t) => t.id === id) || EVENT_TYPES[EVENT_TYPES.length - 1];
+const typeOf = (id) => EVENT_TYPES.find((t) => t.id === id) || EVENT_TYPES.find((t) => t.id === "other");
+const isTask = (e) => !!typeOf(e.type).task;
+const isAnniv = (e) => e.type === "birthday" || e.type === "anniv";
 const catOf = (id) => EXPENSE_CATS.find((c) => c.id === id) || EXPENSE_CATS[EXPENSE_CATS.length - 1];
+const placeCatOf = (id) => PLACE_CATS.find((c) => c.id === id) || PLACE_CATS[PLACE_CATS.length - 1];
+const fmtDot = (s) => s.replaceAll("-", ".");
 const oshiOf = (id) => data.oshis.find((o) => o.id === id);
 const mainOshi = () => oshiOf(data.settings.mainOshiId) || data.oshis[0];
 
@@ -105,6 +122,11 @@ const ICONS = {
   cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   money: '<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10.5h17M15.5 15h2"/>',
   pin: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  note: '<path d="M6 3.5h10.5a2 2 0 0 1 2 2V20.5H8a2 2 0 0 1-2-2z"/><path d="M6 18.5a2 2 0 0 1 2-2h10.5M9.5 8h5.5M9.5 11.5h4"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  gift: '<rect x="4" y="9" width="16" height="11.5" rx="1.5"/><path d="M3 9h18M12 9v11.5M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z"/>',
   user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.3-3.6 4.1-5.4 7.5-5.4s6.2 1.8 7.5 5.4"/>',
 };
 const icon = (n, w = 1.6) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -114,13 +136,24 @@ function load() {
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
     if (d && Array.isArray(d.oshis)) {
-      const settings = { ...DEFAULT_DATA.settings, ...d.settings };
-      // v1 はフィルターが弱めだったので、読みやすさ優先の値に引き上げる
-      if (!d.settings || d.settings.v !== 2) { settings.v = 2; settings.scrim = Math.max(0.5, +settings.scrim || 0); }
-      return { ...structuredClone(DEFAULT_DATA), ...d, settings };
+      return migrate(d);
     }
   } catch {}
   return structuredClone(DEFAULT_DATA);
+}
+// 古い形式のデータを今の形にそろえる（バックアップの読み込みでも使う）
+function migrate(d) {
+  const settings = { ...DEFAULT_DATA.settings, ...d.settings };
+  const v = d.settings?.v || 1;
+  // v1 はフィルターが弱めだったので、読みやすさ優先の値に引き上げる
+  if (v < 2) settings.scrim = Math.max(0.5, +settings.scrim || 0);
+  settings.v = 3;
+  settings.budgets = { ...(settings.budgets || {}) };
+  const out = { ...structuredClone(DEFAULT_DATA), ...d, settings };
+  for (const k of ["oshis", "events", "expenses", "reports", "places"]) if (!Array.isArray(out[k])) out[k] = [];
+  // v3：「宿泊」は「遠征（交通・宿泊）」にまとめた
+  for (const x of out.expenses) if (x.category === "hotel") x.category = "travel";
+  return out;
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); }
@@ -150,10 +183,19 @@ const idbSet = (k, v) => idbDo("readwrite", (s) => s.put(v, k));
 const idbDel = (k) => idbDo("readwrite", (s) => s.delete(k));
 
 /* ---------- 予定の展開（毎年くり返しを含む） ---------- */
+// 推しに登録した誕生日・記念日を、毎年くり返す予定として扱う（virtual：予定一覧には保存しない）
+function oshiAnnivs() {
+  const out = [];
+  for (const o of data.oshis) {
+    if (o.birthday) out.push({ id: `bd:${o.id}`, virtual: true, type: "birthday", title: `${o.name}の誕生日`, oshiId: o.id, date: `0000-${o.birthday}`, yearly: true, noYears: true });
+    (o.annivs || []).forEach((a, i) => a.date && out.push({ id: `an:${o.id}:${i}`, virtual: true, type: "anniv", title: a.label || "記念日", oshiId: o.id, date: a.date, yearly: true }));
+  }
+  return out;
+}
 function occurrences(from, to) {
   const out = [];
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
-  for (const e of data.events) {
+  for (const e of [...data.events, ...oshiAnnivs()]) {
     if (!e.yearly) {
       if (e.date >= from && e.date <= to) out.push({ ...e, occDate: e.date, years: 0 });
       continue;
@@ -170,7 +212,7 @@ function occurrences(from, to) {
 function displayTitle(o) {
   const t = typeOf(o.type), osh = oshiOf(o.oshiId);
   let title = o.title || (o.type === "birthday" && osh ? `${osh.name}の誕生日` : t.label);
-  if (o.type === "anniv" && o.years > 0) title += `（${o.years}周年）`;
+  if (o.type === "anniv" && o.years > 0 && !o.noYears) title += `（${o.years}周年）`;
   return title;
 }
 const joinMeta = (parts) => parts.filter(Boolean).join('<span class="sep">·</span>');
@@ -185,7 +227,55 @@ const ui = {
   calMonth: today().slice(0, 7),
   selDate: today(),
   moneyMonth: today().slice(0, 7),
+  noteTab: "reports",
+  placeFilter: "want",
 };
 const shiftMonth = (ym, n) => { const [y, m] = ym.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const monthItems = (ym) => data.expenses.filter((x) => x.date.startsWith(ym));
 const sum = (xs) => xs.reduce((s, x) => s + (+x.amount || 0), 0);
+
+/* ---------- レポート・行きたい場所の写真 ----------
+   IndexedDB に「ph:<id>」で保存。一覧で必要になったものから順に読み込み、URL をキャッシュする */
+const mediaUrls = new Map();
+const mediaLoading = new Set();
+let mediaRenderTimer;
+function mediaUrl(pid) {
+  if (!pid) return null;
+  if (mediaUrls.has(pid)) return mediaUrls.get(pid);
+  if (!mediaLoading.has(pid)) {
+    mediaLoading.add(pid);
+    idbGet("ph:" + pid).then((b) => {
+      if (!b) return;
+      mediaUrls.set(pid, URL.createObjectURL(b));
+      clearTimeout(mediaRenderTimer);
+      mediaRenderTimer = setTimeout(() => { if (!$("#sheet").open) render(); }, 30);
+    }).catch(() => {}).finally(() => mediaLoading.delete(pid));
+  }
+  return null;
+}
+// すぐに URL が必要なとき（レポートを開くときなど）は読み込み終わるまで待つ
+async function ensureMedia(pid) {
+  if (mediaUrls.has(pid)) return mediaUrls.get(pid);
+  try {
+    const b = await idbGet("ph:" + pid);
+    if (!b) return null;
+    const url = URL.createObjectURL(b);
+    mediaUrls.set(pid, url);
+    return url;
+  } catch { return null; }
+}
+async function saveMedia(blob) {
+  const pid = uid();
+  await idbSet("ph:" + pid, blob);
+  mediaUrls.set(pid, URL.createObjectURL(blob));
+  return pid;
+}
+function deleteMedia(pid) {
+  if (mediaUrls.has(pid)) { URL.revokeObjectURL(mediaUrls.get(pid)); mediaUrls.delete(pid); }
+  return idbDel("ph:" + pid).catch(() => {});
+}
+
+/* ---------- 予算 ---------- */
+const yearTotal = (y) => sum(data.expenses.filter((x) => x.date.startsWith(String(y))));
+const budgetOf = (y) => +data.settings.budgets?.[String(y)] || 0;
+const reportFor = (eventId, date) => data.reports.find((r) => r.eventId === eventId && r.date === date);

@@ -10,10 +10,11 @@ function renderSettings() {
   h += `<section class="panel"><div class="eyebrow ja"><span>推し</span>${data.oshis.length ? `<button class="link" data-act="add-oshi">追加${icon("plus", 1.8)}</button>` : ""}</div>`;
   h += data.oshis.length
     ? `<div class="rows">${data.oshis.map((o) => {
-        const n = upcoming.filter((e) => e.oshiId === o.id).length;
+        const n = upcoming.filter((e) => e.oshiId === o.id && !e.virtual).length;
+        const bd = o.birthday ? `誕生日 ${+o.birthday.slice(0, 2)}月${+o.birthday.slice(3)}日` : "";
         return `<button class="item" data-act="edit-oshi" data-id="${o.id}" style="${colorVars(o.color)}">
           ${oshiAvatar(o, 40)}
-          <span class="body"><span class="t">${esc(o.name)}</span><span class="m">${n ? `これからの予定 ${n}件` : "予定なし"}</span></span>
+          <span class="body"><span class="t">${esc(o.name)}</span><span class="m">${joinMeta([bd, n ? `これからの予定 ${n}件` : "予定なし"])}</span></span>
           ${o === main && data.oshis.length > 1 ? `<span class="main-badge">メイン</span>` : ""}
           <span class="chev">${icon("right")}</span></button>`;
       }).join("")}</div>
@@ -41,7 +42,7 @@ function renderSettings() {
   </section>`;
 
   h += `<section class="panel"><div class="eyebrow ja"><span>データ</span></div>
-    <p class="note" style="margin:0 0 16px">予定・推し・推し活費はこのブラウザの中に保存されます。機種変更の前にバックアップを書き出してください（背景写真・推しの写真は含まれません）。</p>
+    <p class="note" style="margin:0 0 16px">予定・推し・推し活費・レポート・行きたい場所は、このブラウザの中に保存されます。機種変更の前にバックアップを書き出してください（写真は含まれません）。</p>
     <div class="btn-row"><button class="btn" data-act="export">書き出す</button><button class="btn" data-act="import">読み込む</button></div>
   </section>`;
   return h;
