@@ -32,11 +32,21 @@ function openEventView(ev, occDate) {
     body += `<div class="group"><label class="field"><span class="grow">完了した</span><span class="toggle"><input type="checkbox" data-done${ev.done ? " checked" : ""} aria-label="完了した"><i></i></span></label></div>`;
   }
 
-  // 通知：これからの予定だけ
-  if (occ >= t) {
+  // チケットの申し込み（FC先行・一般など、いくつでも）
+  const apps = task ? [] : data.apps.filter((a) => a.eventId === ev.id);
+  if (!task) {
+    body += `<div class="group-label">チケットの申し込み</div>
+      <div class="group">${apps.map(appRow).join("")}
+        <button type="button" class="add-row" data-add-app>${icon("plus", 1.8)}申し込みを追加</button></div>
+      ${apps.length ? "" : `<p class="note" style="margin:8px 4px 0">FC先行・一般などの受付ごとに、申込締切・当落発表・入金期限と状態をまとめて管理できます。</p>`}`;
+  }
+
+  // 通知：これからの予定と、申し込みの締切
+  const appDl = appDeadlines().filter((d) => apps.some((a) => a.id === d.appId) && d.date >= t);
+  if (occ >= t || appDl.length) {
     body += `<div class="group-label">通知</div>
-      <div class="group"><button type="button" class="add-row" data-ics>${icon("bell")}iPhone などのカレンダーに追加</button></div>
-      <p class="note" style="margin:8px 4px 0">カレンダーに入れておくと、アプリを閉じていても${ev.time ? "前日と1時間前" : "前日と当日の朝"}に通知が届きます。</p>`;
+      <div class="group"><button type="button" class="add-row" data-ics>${icon("bell")}iPhone などのカレンダーに追加${appDl.length ? `（締切${appDl.length}件も）` : ""}</button></div>
+      <p class="note" style="margin:8px 4px 0">カレンダーに入れておくと、アプリを閉じていても前日と当日の朝に通知が届きます。時間を入れた予定や締切は、その3時間前にもお知らせします。</p>`;
   }
 
   // 会場とホテル
@@ -68,7 +78,10 @@ function openEventView(ev, occDate) {
 
   openView("予定", body, () => openEventForm(ev, null, occ), (f) => {
     f.querySelector("[data-done]")?.addEventListener("change", (e) => { ev.done = e.target.checked; save(); toast(ev.done ? "完了にしました" : "未完了に戻しました"); });
-    f.querySelector("[data-ics]")?.addEventListener("click", () => downloadIcs(`oshi-${occ}`, [[ev, occ]]));
+    f.querySelector("[data-ics]")?.addEventListener("click", () =>
+      downloadIcs(`oshi-${occ}`, [...(occ >= t ? [[ev, occ]] : []), ...appDl.map((d) => [d, d.date])]));
+    f.querySelector("[data-add-app]")?.addEventListener("click", () => openAppForm(ev));
+    f.querySelectorAll("[data-app]").forEach((b) => b.addEventListener("click", () => openAppForm(ev, apps.find((a) => a.id === b.dataset.app))));
     f.querySelector("[data-hotel]")?.addEventListener("click", () => openHotelForm(ev, occ));
     f.querySelector("[data-report]")?.addEventListener("click", () => {
       if (report) openReportView(report);
@@ -145,4 +158,17 @@ function closePenlight() {
   $("#penlight").hidden = true;
   wakeLock?.release().catch(() => {});
   wakeLock = null;
+}
+
+// 申し込み1件：受付の名前・状態・次の締切
+function appRow(a) {
+  const t = today();
+  const next = appDeadlines().filter((d) => d.appId === a.id).sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time))[0];
+  const n = next ? daysBetween(t, next.date) : null;
+  const when = next ? `<span class="${toneOf(next)}-t">${typeOf(next.type).label}</span> ${md(next.date)}${next.time ? " " + esc(next.time) : ""}${n < 0 ? "（過ぎています）" : n === 0 ? "（今日）" : `（あと${n}日）`}` : "";
+  return `<button type="button" class="app-row" data-app="${a.id}">
+    <span class="body"><span class="t">${esc(a.name || "申し込み")}</span>
+      <span class="m">${joinMeta([when, a.count && `${a.count}枚`, a.price && `¥${yenNum(a.price)}`])}</span></span>
+    <span class="st st-${a.status}">${appStatusOf(a.status).label}</span>
+  </button>`;
 }

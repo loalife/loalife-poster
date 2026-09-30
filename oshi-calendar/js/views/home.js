@@ -133,10 +133,12 @@ function spendPanel(t) {
   const osh = oshiOf(ui.oshiFilter);
   const items = monthItems(t.slice(0, 7)).filter(byFilter);
   // 予算は推しごとではなく全体のものなので、「すべて」のときだけ出す
+  // 月の予算があればその月の残り、なければ年間の残りを出す
+  const mb = osh ? 0 : +data.settings.monthBudget || 0;
   const budget = osh ? 0 : budgetOf(y);
-  const left = budget - yearTotal(y);
-  const budgetLine = budget
-    ? `<div class="caption-sm num${left < 0 ? " over-text" : ""}">${left < 0 ? `予算オーバー ¥${yenNum(-left)}` : `残り予算 ¥${yenNum(left)}`}</div>`
+  const left = mb ? mb - sum(items) : budget - yearTotal(y);
+  const budgetLine = mb || budget
+    ? `<div class="caption-sm num${left < 0 ? " over-text" : ""}">${left < 0 ? `${mb ? "今月の" : ""}予算オーバー ¥${yenNum(-left)}` : `${mb ? "今月の残り" : "残り予算"} ¥${yenNum(left)}`}</div>`
     : "";
   return `<section class="panel spend" data-tab="money" role="button" tabindex="0">
     <div><div class="label">今月の推し活費${osh ? `<span class="sep">·</span>${esc(osh.name)}` : ""}</div>

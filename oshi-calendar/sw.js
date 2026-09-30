@@ -1,6 +1,6 @@
 // 推し活カレンダー service worker：オフラインでも開けるようにアプリ本体をキャッシュする
 // ファイルを変更したら VERSION を上げ、index.html の ?v= もそろえる（古い版と新しい版のファイルが混ざらないように）
-const VERSION = "14";
+const VERSION = "15";
 const CACHE = `oshical-v${VERSION}`;
 const ASSETS = [
   "./", "./index.html", "./manifest.json", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png",

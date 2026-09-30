@@ -10,9 +10,14 @@ const EVENT_TYPES = [
   { id: "anniv", label: "記念日", yearly: true },
   { id: "other", label: "その他" },
   // リマインダー（チケットまわりの「やること」）。締切として扱い、完了チェックができる
-  { id: "lottery", label: "チケット抽選", task: true },
-  { id: "payment", label: "入金", task: true },
+  // tone：締切の色分け（apply＝申込系は黄、pay＝入金系は赤、なし＝黒）
+  { id: "lottery", label: "チケット抽選", task: true, tone: "apply" },
+  { id: "payment", label: "入金", task: true, tone: "pay" },
   { id: "ticket", label: "発券", task: true },
+  // チケットの申し込みから自動で作られる締切（予定のフォームでは選ばない）
+  { id: "apply", label: "申込締切", task: true, tone: "apply", app: true },
+  { id: "result", label: "当落発表", task: true, app: true },
+  { id: "pay", label: "入金期限", task: true, tone: "pay", app: true },
 ];
 const EXPENSE_CATS = [
   { id: "goods", label: "グッズ" },
@@ -22,6 +27,14 @@ const EXPENSE_CATS = [
   { id: "media", label: "CD・円盤・本" },
   { id: "stream", label: "配信・サブスク" },
   { id: "other", label: "その他" },
+];
+// チケットの申し込みの状態（申込前 → 申込中 → 当選／落選 → 入金済み）
+const APP_STATUS = [
+  { id: "planned", label: "申込前" },
+  { id: "applied", label: "申込中" },
+  { id: "won", label: "当選" },
+  { id: "lost", label: "落選" },
+  { id: "paid", label: "入金済み" },
 ];
 const PLACE_CATS = [
   { id: "cafe", label: "カフェ" },
@@ -44,7 +57,7 @@ const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
 const WEEK_EN = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const KEY = "oshical.v1";
 const DEFAULT_DATA = {
-  oshis: [], events: [], expenses: [], reports: [], places: [], savings: [],
+  oshis: [], events: [], expenses: [], reports: [], places: [], savings: [], apps: [],
   settings: { v: 3, scrim: 0.5, blur: 0, bgPos: "center", mainOshiId: "", budgets: {} },
 };
 
@@ -65,6 +78,8 @@ const dowEn = (s) => WEEK_EN[parseDate(s).getDay()];
 const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 const typeOf = (id) => EVENT_TYPES.find((t) => t.id === id) || EVENT_TYPES.find((t) => t.id === "other");
 const isTask = (e) => !!typeOf(e.type).task;
+const toneOf = (e) => typeOf(e.type).tone || "";
+const appStatusOf = (id) => APP_STATUS.find((s) => s.id === id) || APP_STATUS[0];
 const isAnniv = (e) => e.type === "birthday" || e.type === "anniv";
 const catOf = (id) => EXPENSE_CATS.find((c) => c.id === id) || EXPENSE_CATS[EXPENSE_CATS.length - 1];
 const placeCatOf = (id) => PLACE_CATS.find((c) => c.id === id) || PLACE_CATS[PLACE_CATS.length - 1];
@@ -163,7 +178,7 @@ function migrate(d) {
   settings.v = 3;
   settings.budgets = { ...(settings.budgets || {}) };
   const out = { ...structuredClone(DEFAULT_DATA), ...d, settings };
-  for (const k of ["oshis", "events", "expenses", "reports", "places", "savings"]) if (!Array.isArray(out[k])) out[k] = [];
+  for (const k of ["oshis", "events", "expenses", "reports", "places", "savings", "apps"]) if (!Array.isArray(out[k])) out[k] = [];
   // v3：「宿泊」は「遠征（交通・宿泊）」にまとめた
   for (const x of out.expenses) if (x.category === "hotel") x.category = "travel";
   return out;
@@ -205,10 +220,26 @@ function oshiAnnivs() {
   }
   return out;
 }
+// チケットの申し込みの締切。状態に合わせて、もう動く必要のない締切は出さない
+//   申込締切：申込前のときだけ ／ 当落発表：申込前・申込中 ／ 入金期限：当選したときだけ
+function appDeadlines() {
+  const out = [];
+  for (const a of data.apps) {
+    const ev = data.events.find((e) => e.id === a.eventId);
+    if (!ev) continue;
+    const evTitle = ev.title || typeOf(ev.type).label;
+    const base = { virtual: "app", appId: a.id, appName: a.name || "", evTitle, oshiId: ev.oshiId, venue: "", yearly: false, title: `${evTitle} ${a.name || ""}`.trim() };
+    const add = (type, date, time, active) => { if (date && active) out.push({ ...base, id: `ap:${a.id}:${type}`, type, date, time: time || "" }); };
+    add("apply", a.applyBy, a.applyTime, a.status === "planned");
+    add("result", a.resultAt, a.resultTime, a.status === "planned" || a.status === "applied");
+    add("pay", a.payBy, a.payTime, a.status === "won");
+  }
+  return out;
+}
 function occurrences(from, to) {
   const out = [];
   const y0 = +from.slice(0, 4), y1 = +to.slice(0, 4);
-  for (const e of [...data.events, ...oshiAnnivs()]) {
+  for (const e of [...data.events, ...oshiAnnivs(), ...appDeadlines()]) {
     if (!e.yearly) {
       if (e.date >= from && e.date <= to) out.push({ ...e, occDate: e.date, years: 0 });
       continue;
@@ -313,9 +344,19 @@ function icsEvent(e, occ) {
   const L = ["BEGIN:VEVENT", `UID:${e.id}@oshi-calendar`, `DTSTAMP:${icsStamp()}`];
   if (e.time) {
     const [h, mi] = e.time.split(":").map(Number);
-    const end = new Date(+occ.slice(0, 4), +occ.slice(5, 7) - 1, +occ.slice(8, 10), h, mi + (task ? 15 : 60));
+    const start = new Date(+occ.slice(0, 4), +occ.slice(5, 7) - 1, +occ.slice(8, 10), h, mi);
+    const end = new Date(start.getTime() + (task ? 15 : 60) * 60000);
     L.push(`DTSTART:${icsDay(occ)}T${pad(h)}${pad(mi)}00`, `DTEND:${ymd(end).replaceAll("-", "")}T${pad(end.getHours())}${pad(end.getMinutes())}00`);
-    L.push(...alarm("-P1D", `明日：${title}`), ...alarm("-PT1H", `1時間後：${title}`));
+    if (e.yearly) {
+      L.push(...alarm("-P1D", `明日：${title}`), ...alarm("-PT3H", `3時間後：${title}`));
+    } else {
+      // 前日の朝9時・当日の朝9時（予定がそれより後なら）・3時間前
+      const at9 = (s) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), 9, 0);
+      const abs = (d) => `;VALUE=DATE-TIME:${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+      L.push(...alarm(abs(at9(addDays(occ, -1))), `明日 ${e.time}：${title}`).map((l) => l.replace("TRIGGER:;", "TRIGGER;")));
+      if (start - at9(occ) > 3 * 3600000) L.push(...alarm(abs(at9(occ)), `今日 ${e.time}：${title}`).map((l) => l.replace("TRIGGER:;", "TRIGGER;")));
+      L.push(...alarm("-PT3H", `3時間後（${e.time}）：${title}`));
+    }
   } else {
     L.push(`DTSTART;VALUE=DATE:${icsDay(occ)}`, `DTEND;VALUE=DATE:${icsDay(addDays(occ, 1))}`);
     L.push(...alarm("-PT15H", `明日：${title}`), ...alarm("PT9H", `今日：${title}`));

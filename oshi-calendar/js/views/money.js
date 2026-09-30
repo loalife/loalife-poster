@@ -24,6 +24,7 @@ function renderMoney() {
       </div>
       <div class="total">
         <div class="yen-big">${yenHtml(total)}</div>
+        ${monthBudgetLine(total)}
         <div class="caption num">先月 ¥${yenNum(prev)}<span class="sep">·</span>${y}年累計 ¥${yenNum(yTotal)}</div>
       </div>
     </section>` + budgetPanel(y, yTotal) + savingsPanel();
@@ -59,12 +60,20 @@ function renderMoney() {
 
 
 // 年間予算：今年の予算・年間累計・残り予算
+// 月の予算：その月の合計の下に、残りと使った割合のバー
+function monthBudgetLine(total) {
+  const mb = +data.settings.monthBudget || 0;
+  if (!mb) return "";
+  const left = mb - total, rate = total / mb;
+  return `<div class="bar mb${left < 0 ? " over" : ""}" role="img" aria-label="月の予算の${Math.round(rate * 100)}%を使用"><i style="width:${Math.min(100, rate * 100)}%"></i></div>
+    <div class="caption num${left < 0 ? " over-text" : ""}">月の予算 ¥${yenNum(mb)}<span class="sep">·</span>${left < 0 ? `¥${yenNum(-left)} オーバー` : `残り ¥${yenNum(left)}`}</div>`;
+}
 function budgetPanel(y, spent) {
-  const budget = budgetOf(y);
+  const budget = budgetOf(y), mb = +data.settings.monthBudget || 0;
   if (!budget) {
-    return `<section class="panel"><div class="eyebrow"><span>BUDGET ${y}</span></div>
-      <div class="empty"><p>年間の予算を決めると、残りの予算がひと目でわかります。</p>
-      <button class="btn" data-act="edit-budget" data-year="${y}">${y}年の予算を設定</button></div></section>`;
+    return `<section class="panel"><div class="eyebrow"><span>BUDGET ${y}</span>${mb ? `<button class="link" data-act="edit-budget" data-year="${y}">変更</button>` : ""}</div>
+      <div class="empty"><p>${mb ? `月の予算：¥${yenNum(mb)}<br>年間の予算も決めると、1年の残りがひと目でわかります。` : "月や年間の予算を決めると、使いすぎや残りの予算がひと目でわかります。"}</p>
+      <button class="btn" data-act="edit-budget" data-year="${y}">予算を設定</button></div></section>`;
   }
   const left = budget - spent, rate = spent / budget;
   return `<section class="panel">
@@ -76,6 +85,7 @@ function budgetPanel(y, spent) {
       <div><small>今年の予算</small><b class="num">¥${yenNum(budget)}</b></div>
       <div><small>年間累計</small><b class="num">¥${yenNum(spent)}</b><span class="pct num"> ${Math.round(rate * 100)}%</span></div>
     </div>
+    ${mb ? `<p class="note" style="margin:14px 0 0">月の予算：¥${yenNum(mb)}</p>` : ""}
   </section>`;
 }
 

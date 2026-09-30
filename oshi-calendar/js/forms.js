@@ -5,7 +5,7 @@
 function openEventForm(ev, presetDate, occDate) {
   const e = ev || { type: "live", date: presetDate || today(), oshiId: defaultOshiId() };
   const occ = occDate || e.date;
-  const typeOpts = (task) => EVENT_TYPES.filter((t) => !!t.task === task).map((t) => opt(t.id, t.label, e.type)).join("");
+  const typeOpts = (task) => EVENT_TYPES.filter((t) => !!t.task === task && !t.app).map((t) => opt(t.id, t.label, e.type)).join("");
   // 終わった予定（今日を含む）には、レポートへの入口を出す
   const report = ev && !isTask(e) && occ <= today() ? reportFor(e.id, occ) : undefined;
   const reportBtn = ev && !isTask(e) && occ <= today()
@@ -204,23 +204,30 @@ const annivRowHtml = (a) => `<div class="ann-row">
 </div>`;
 
 /* ---------- 年間予算 ---------- */
+// 年間の予算と、毎月の予算（どちらか片方だけでもよい）
 function openBudgetForm(y) {
-  const cur = budgetOf(y);
+  const cur = budgetOf(y), month = +data.settings.monthBudget || 0;
   const body = `
-    <div class="group"><label class="field title"><span>${y}年</span><input type="number" name="budget" inputmode="numeric" min="1" max="999999999" step="1" required data-msg="予算を入れてください" value="${cur || ""}" placeholder="¥0"></label></div>
-    <p class="note" style="margin:10px 4px 0">推し活費画面に「今年の予算」「年間累計」「残り予算」が表示されます。</p>`;
-  openSheet(`${y}年の予算`, body, {
-    deleteLabel: "予算を削除",
-    deleteAsk: `${y}年の予算を削除しますか？`,
-    onSubmit: (fd) => { data.settings.budgets[String(y)] = Math.round(+fd.budget); toast("予算を設定しました"); },
-    onDelete: cur ? () => { delete data.settings.budgets[String(y)]; toast("予算を削除しました"); } : null,
+    <div class="group">
+      <label class="field"><span>毎月</span><input type="number" name="month" inputmode="numeric" min="0" max="99999999" step="1" value="${month || ""}" placeholder="¥0"></label>
+      <label class="field"><span>${y}年</span><input type="number" name="budget" inputmode="numeric" min="0" max="999999999" step="1" value="${cur || ""}" placeholder="¥0"></label>
+    </div>
+    <p class="note" style="margin:10px 4px 0">毎月の予算を決めると、その月の残りと使いすぎがひと目でわかります。空欄にすると、その予算は使いません。</p>`;
+  openSheet("予算", body, {
+    onSubmit: (fd) => {
+      const m = Math.round(+fd.month || 0), b = Math.round(+fd.budget || 0);
+      if (m) data.settings.monthBudget = m; else delete data.settings.monthBudget;
+      if (b) data.settings.budgets[String(y)] = b; else delete data.settings.budgets[String(y)];
+      toast("予算を保存しました");
+    },
   });
 }
 
 /* ---------- 推し活レポート ---------- */
 function openReportForm(r, preset = {}) {
   const t = today();
-  const e = r || { date: preset.date || t, eventId: preset.eventId || "", oshiId: preset.oshiId ?? defaultOshiId(), title: "", text: "", photos: [] };
+  const presetEv = data.events.find((x) => x.id === preset.eventId);
+  const e = r || { date: preset.date || t, eventId: preset.eventId || "", oshiId: preset.oshiId ?? defaultOshiId(), title: "", text: "", photos: [], seat: presetEv?.seat || "" };
   // 紐づけられる予定：この1年の終わった予定（値は「予定ID|日付」）
   const past = occurrences(addDays(t, -365), t).filter((o) => !isTask(o) && !o.virtual).reverse();
   // 編集中のレポートの予定が1年より前でも、選択肢から消えて紐づけが外れないように
@@ -230,7 +237,7 @@ function openReportForm(r, preset = {}) {
   }
   // ＋から新しく書くときは、直近（2週間以内）に終わった、まだレポートのない予定を最初から選んでおく
   const auto = !r && !preset.eventId ? past.find((o) => o.occDate >= addDays(t, -14) && !reportFor(o.id, o.occDate)) : null;
-  if (auto) Object.assign(e, { eventId: auto.id, date: auto.occDate, oshiId: auto.oshiId || e.oshiId });
+  if (auto) Object.assign(e, { eventId: auto.id, date: auto.occDate, oshiId: auto.oshiId || e.oshiId, seat: e.seat || data.events.find((x) => x.id === auto.id)?.seat || "" });
   const cur = e.eventId ? `${e.eventId}|${e.date}` : "";
   const evOpts = opt("", "予定を選ばない", cur) + past.map((o) => {
     const done = reportFor(o.id, o.occDate) && !(r && r.eventId === o.id && r.date === o.occDate);
@@ -245,7 +252,14 @@ function openReportForm(r, preset = {}) {
       <label class="field"><span>推し</span><select name="oshiId">${oshiOptions(e.oshiId)}</select></label>
     </div>
     ${auto ? `<p class="note" style="margin:8px 4px 0">直近の予定を選んでいます。ほかの予定に変えたり、「予定を選ばない」にしたりもできます。</p>` : ""}
-    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="7" maxlength="4000" placeholder="よかったところ、セットリスト、&#10;買ったグッズ、一緒に行った人など">${esc(e.text)}</textarea></label></div>`;
+    <div class="group-label">参戦記録</div>
+    <div class="group">
+      <label class="field"><span>座席</span><input name="seat" maxlength="60" value="${esc(e.seat)}" placeholder="アリーナA7 12列 など"></label>
+      <label class="field"><span>一緒に</span><input name="companions" maxlength="60" value="${esc(e.companions)}" placeholder="一緒に行った人"></label>
+      <label class="field stack-f"><span>セットリスト</span><textarea name="setlist" rows="4" maxlength="3000" placeholder="1曲ずつ改行して入力">${esc(e.setlist)}</textarea></label>
+    </div>
+    <p class="note" style="margin:8px 4px 0">かかった費用は、この日の「推し活費」から自動で集計して表示します。</p>
+    <div class="group"><label class="field stack-f"><span>感想・メモ</span><textarea name="text" rows="6" maxlength="4000" placeholder="よかったところ、MC、&#10;買ったグッズなど">${esc(e.text)}</textarea></label></div>`;
   let photos;
   openSheet(r ? "レポートを編集" : "推し活レポート", body, {
     deleteLabel: "レポートを削除",
@@ -260,6 +274,7 @@ function openReportForm(r, preset = {}) {
         if (!ev) return;
         f.date.value = date;
         if (ev.oshiId) f.oshiId.value = ev.oshiId;
+        if (ev.seat && !f.seat.value) f.seat.value = ev.seat;
       };
     },
     onSubmit: async (fd) => {
@@ -269,6 +284,7 @@ function openReportForm(r, preset = {}) {
         ...(r || { createdAt: new Date().toISOString() }),
         id: e.id || uid(), eventId: ev ? eventId : "", date: ev && linkDate ? linkDate : fd.date,
         oshiId: fd.oshiId, text: fd.text.trim(),
+        seat: fd.seat.trim(), companions: fd.companions.trim(), setlist: fd.setlist.trim(),
         title: fd.title.trim() || (ev ? displayTitle({ ...ev, occDate: linkDate, years: +linkDate.slice(0, 4) - +ev.date.slice(0, 4) }) : ""),
         photos: await photos.commit(),
       };
@@ -414,5 +430,75 @@ function openDepositForm(g) {
       const saved = savedOf(g);
       toast(amount > 0 && saved >= g.target ? "目標を達成しました！" : amount > 0 ? `¥${yenNum(amount)} 貯金しました` : "引き出しを記録しました");
     },
+  });
+}
+
+/* ---------- チケットの申し込み ----------
+   同じ公演に、FC先行・一般などいくつも申し込めるように、予定ごとに複数持つ */
+// 状態を変える。入金済みになったら、金額を推し活費（チケット）にも記録する
+function setAppStatus(a, status) {
+  a.status = status;
+  const ev = data.events.find((e) => e.id === a.eventId);
+  if (status === "paid" && +a.price > 0 && !data.expenses.some((x) => x.id === a.expenseId)) {
+    a.expenseId = uid();
+    data.expenses.push({ id: a.expenseId, amount: Math.round(+a.price), category: "ticket", oshiId: ev?.oshiId || "", date: today(), memo: `${ev?.title || "チケット"} ${a.name || ""}`.trim() });
+    return "入金済みにして、推し活費にも記録しました";
+  }
+  return `「${appStatusOf(status).label}」にしました`;
+}
+function openAppForm(ev, a) {
+  const e = a || { eventId: ev.id, status: "planned", count: 1 };
+  const back = () => setTimeout(() => openEventView(ev));
+  const dt = (label, d, tm, tone) => `<div class="field dt"><span class="${tone}">${label}</span>
+    <input type="date" name="${d}" value="${esc(e[d])}" aria-label="${label}の日付"><input type="time" name="${tm}" value="${esc(e[tm])}" aria-label="${label}の時間"></div>`;
+  const body = `
+    <div class="group"><label class="field stack-f title"><span>受付の名前</span><input name="name" required maxlength="40" data-msg="受付の名前を入れてください" value="${esc(e.name)}" placeholder="例：FC 1次先行、一般発売"></label></div>
+    <div class="group-label">状態</div>
+    <div class="status-seg" role="radiogroup" aria-label="状態">${APP_STATUS.map((s) => `<label><input type="radio" name="status" value="${s.id}"${e.status === s.id ? " checked" : ""}><span class="st st-${s.id}">${s.label}</span></label>`).join("")}</div>
+    <div class="group-label">締切</div>
+    <div class="group">
+      ${dt("申込締切", "applyBy", "applyTime", "apply")}
+      ${dt("当落発表", "resultAt", "resultTime", "")}
+      ${dt("入金期限", "payBy", "payTime", "pay")}
+    </div>
+    <p class="note" style="margin:8px 4px 0">状態に合わせて、必要な締切だけがホームとカレンダーに出ます（申込締切は申込前、当落発表は結果が出るまで、入金期限は当選したとき）。</p>
+    <div class="group">
+      <label class="field"><span>枚数</span><input type="number" name="count" inputmode="numeric" min="1" max="20" value="${esc(e.count)}"></label>
+      <label class="field"><span>金額</span><input type="number" name="price" inputmode="numeric" min="0" max="9999999" value="${esc(e.price)}" placeholder="合計 ¥0"></label>
+      <label class="field stack-f"><span>メモ</span><textarea name="memo" rows="2" maxlength="500" placeholder="申込ページ、同行者の名義など">${esc(e.memo)}</textarea></label>
+    </div>
+    <p class="note" style="margin:8px 4px 0">入金済みにすると、金額を推し活費（チケット）にも記録します。</p>`;
+  openSheet(a ? "申し込みを編集" : "申し込みを追加", body, {
+    deleteLabel: "申し込みを削除",
+    deleteAsk: "この申し込みを削除しますか？",
+    onSubmit: (fd) => {
+      const rec = {
+        ...(a || { createdAt: new Date().toISOString() }), id: e.id || uid(), eventId: ev.id, name: fd.name.trim(),
+        applyBy: fd.applyBy, applyTime: fd.applyTime, resultAt: fd.resultAt, resultTime: fd.resultTime, payBy: fd.payBy, payTime: fd.payTime,
+        count: +fd.count || "", price: fd.price === "" ? "" : Math.round(+fd.price), memo: fd.memo.trim(), status: e.status,
+      };
+      const msg = rec.status !== fd.status || (fd.status === "paid" && !a) ? setAppStatus(rec, fd.status) : "";
+      if (a) data.apps[data.apps.findIndex((x) => x.id === a.id)] = rec;
+      else data.apps.push(rec);
+      toast(msg || (a ? "申し込みを更新しました" : "申し込みを追加しました"));
+      back();
+    },
+    onDelete: a ? () => { data.apps = data.apps.filter((x) => x.id !== a.id); toast("申し込みを削除しました"); back(); } : null,
+  });
+}
+// 当落発表のチェック：当選か落選かを選ぶ
+function openResultPicker(a) {
+  const ev = data.events.find((e) => e.id === a.eventId);
+  const body = `<p class="note" style="margin:8px 4px 16px">${esc(ev?.title || "")} ${esc(a.name || "")} の結果を選んでください。</p>
+    <div class="result-pick"><button type="button" class="btn primary" data-r="won">当選</button><button type="button" class="btn" data-r="lost">落選</button></div>
+    ${a.payBy ? "" : `<p class="note" style="margin:16px 4px 0">当選の場合は、申し込みの画面で入金期限も入れておくと、締切をお知らせできます。</p>`}`;
+  openView("当落の結果", body, () => ev && openAppForm(ev, a), (f) => {
+    f.querySelectorAll("[data-r]").forEach((b) => (b.onclick = () => {
+      const msg = setAppStatus(a, b.dataset.r);
+      save();
+      $("#sheet").close();
+      toast(msg);
+      if (b.dataset.r === "won" && !a.payBy && ev) setTimeout(() => openAppForm(ev, a), 200);
+    }));
   });
 }

@@ -23,18 +23,22 @@ function eventRow(o, t) {
   else if (isAnniv(o) && n > 0) end = `<span class="row-e">あと${n}日</span>`;
   else if (n === 1) end = `<span class="row-e">明日</span>`;
   else if (n < 0 && reportFor(o.id, o.occDate)) end = `<span class="row-e ic" title="レポートあり">${icon("note")}</span>`;
-  // 推しに登録した誕生日・記念日は、推しの編集画面で直す
-  const act = o.virtual ? `data-act="edit-oshi" data-id="${o.oshiId}"` : `data-act="edit-event" data-id="${o.id}" data-date="${o.occDate}"`;
-  const title = task && !o.title ? (osh ? osh.name : "チケット") : displayTitle(o);
-  const badge = task ? `<span class="badge${o.done ? " done" : ""}">${typeOf(o.type).label}</span>` : "";
+  // 推しに登録した誕生日・記念日は推しの編集画面、申し込みの締切は申し込みの画面で直す
+  const act = o.virtual === "app" ? `data-act="edit-app" data-id="${o.appId}"`
+    : o.virtual ? `data-act="edit-oshi" data-id="${o.oshiId}"` : `data-act="edit-event" data-id="${o.id}" data-date="${o.occDate}"`;
+  // 申し込みの締切は、公演名を上に、受付の名前（FC 1次先行など）をバッジの横に
+  const title = o.virtual === "app" ? o.evTitle : task && !o.title ? (osh ? osh.name : "チケット") : displayTitle(o);
+  const badge = task ? `<span class="badge ${toneOf(o)}${o.done ? " done" : ""}">${typeOf(o.type).label}</span>` : "";
   const row = `<button class="row${task && o.done ? " done" : ""}" ${act}>
     <span class="row-d">${md(o.occDate)}<small>${dowEn(o.occDate)}</small></span>
     <span><span class="row-t">${esc(title)}</span>
-      <span class="row-m">${badge}${joinMeta([o.time && `<span class="num">${esc(o.time)}</span>`, o.venue && esc(o.venue), tag(osh)]) || (task ? "" : esc(typeOf(o.type).label))}</span></span>
+      <span class="row-m">${badge}${joinMeta([o.appName && esc(o.appName), o.time && `<span class="num">${esc(o.time)}</span>`, o.venue && esc(o.venue), !o.appName && tag(osh)]) || (task ? "" : esc(typeOf(o.type).label))}</span></span>
     ${end}
   </button>`;
   if (!task) return row;
-  return `<div class="row-wrap">${row}<button class="check" data-act="toggle-done" data-id="${o.id}" aria-pressed="${!!o.done}" aria-label="${o.done ? "未完了に戻す" : "完了にする"}">${icon("check", 2.2)}</button></div>`;
+  // 申し込みの締切は、チェックで次の状態へ（申込締切→申込中、入金期限→入金済み。当落発表は結果を選ぶ）
+  const doneLabel = o.virtual === "app" ? { apply: "申し込んだ", result: "結果を記録", pay: "入金した" }[o.type] : o.done ? "未完了に戻す" : "完了にする";
+  return `<div class="row-wrap">${row}<button class="check" data-act="${o.virtual === "app" ? "app-step" : "toggle-done"}" data-id="${o.id}" aria-pressed="${!!o.done}" aria-label="${doneLabel}">${icon("check", 2.2)}</button></div>`;
 }
 // 写真の小さなサムネイル（写真がなければアイコン）
 function thumb(pid, fallback = "image", size = 56) {

@@ -153,6 +153,20 @@ document.addEventListener("click", (ev) => {
       save(); render();
       return toast(e.done ? "完了にしました" : "未完了に戻しました");
     }
+    case "edit-app": {
+      const a = data.apps.find((x) => x.id === id), ev = a && data.events.find((e) => e.id === a.eventId);
+      return ev && openAppForm(ev, a);
+    }
+    // 申し込みの締切のチェック：申込締切→申込中、入金期限→入金済み、当落発表→結果を選ぶ
+    case "app-step": {
+      const [, appId, kind] = id.split(":");
+      const a = data.apps.find((x) => x.id === appId);
+      if (!a) return;
+      if (kind === "result") return openResultPicker(a);
+      const msg = setAppStatus(a, kind === "apply" ? "applied" : "paid");
+      save(); render();
+      return toast(msg);
+    }
     case "add-expense": return openExpenseForm();
     case "edit-expense": return openExpenseForm(data.expenses.find((x) => x.id === id));
     case "add-oshi": return openOshiForm();
@@ -165,6 +179,7 @@ document.addEventListener("click", (ev) => {
     case "money-next": ui.moneyMonth = shiftMonth(ui.moneyMonth, 1); return render();
     case "edit-budget": return openBudgetForm(el.dataset.year);
     case "note-tab": ui.noteTab = el.dataset.v; return render();
+    case "report-mode": ui.reportMode = el.dataset.v; return render();
     case "tl-filter": ui.timelineOshi = ui.timelineOshi === id ? "" : id; return render();
     case "add-saving": return openSavingForm();
     case "edit-saving": return openSavingForm(data.savings.find((x) => x.id === id));

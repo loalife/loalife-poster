@@ -602,3 +602,63 @@ body.has-photo .of-name { text-shadow: 0 0 2px rgba(var(--scrim-rgb), 0.9), 0 0 
 /* 持ち物・貯金の記録の削除ボタン */
 .ck .rm-anniv { flex: none; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--text3); display: inline-flex; align-items: center; justify-content: center; }
 .ck .rm-anniv svg { width: 14px; height: 14px; }
+
+/* ============================================================
+   締切の色分け：申込系は黄、入金系は赤、そのほかは黒
+   ============================================================ */
+:root { --apply: #e2a200; --apply-ink: #1c1c1e; --pay: #d64545; }
+@media (prefers-color-scheme: dark) { :root { --apply: #f0bd2e; --pay: #ff6b6b; } }
+.badge.apply { background: var(--apply); color: var(--apply-ink); }
+.badge.pay { background: var(--pay); color: #fff; }
+.dots i.task.apply, .legend i.task.apply { background: var(--apply); }
+.dots i.task.pay, .legend i.task.pay { background: var(--pay); }
+.apply-t { color: var(--apply); font-weight: 600; }
+.pay-t { color: var(--pay); font-weight: 600; }
+.field .dt, .field.dt { gap: 8px; }
+.field.dt > span { width: 70px; }
+.field.dt > span.apply { color: var(--apply); font-weight: 600; }
+.field.dt > span.pay { color: var(--pay); font-weight: 600; }
+.field.dt input[type="date"] { flex: 1; }
+.field.dt input[type="time"] { flex: none; width: 108px; }
+
+/* ============================================================
+   チケットの申し込み
+   ============================================================ */
+.st {
+  flex: none; display: inline-block; padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap;
+  background: var(--fill); color: var(--text2);
+}
+.st-applied { background: none; color: var(--text); box-shadow: inset 0 0 0 1px var(--text3); }
+.st-won { background: var(--text); color: var(--bg); }
+.st-lost { background: none; color: var(--text3); text-decoration: line-through; }
+.st-paid { background: none; color: var(--text2); box-shadow: inset 0 0 0 1px var(--line); }
+.app-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; }
+.app-row .body { flex: 1; min-width: 0; }
+.app-row .t { display: block; font-size: 15px; font-weight: 500; }
+.app-row .m { display: block; font-size: 12px; color: var(--text2); margin-top: 2px; }
+.app-row + .add-row, .group > .add-row:first-child { border-top: 0; }
+.status-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.status-seg label { cursor: pointer; }
+.status-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.status-seg .st { font-size: 13px; padding: 8px 12px; border-radius: 9px; }
+.status-seg input:not(:checked) + .st { background: var(--surface-solid); color: var(--text2); box-shadow: inset 0 0 0 1px var(--line); text-decoration: none; }
+.status-seg input:focus-visible + .st { outline: 2px solid var(--text); outline-offset: 2px; }
+.result-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.result-pick .btn { height: 48px; font-size: 15px; }
+
+/* ============================================================
+   参戦記録・アルバム
+   ============================================================ */
+.facts { margin: 18px 0 0; padding: 12px 14px; border-radius: var(--r-sm); background: var(--surface-solid); border: 1px solid var(--line); }
+.facts div { display: flex; gap: 12px; padding: 4px 0; font-size: 14px; }
+.facts dt { width: 96px; flex: none; color: var(--text2); }
+.facts dd { margin: 0; min-width: 0; word-break: break-word; }
+.setlist ol { margin: 0; padding: 12px 14px 12px 36px; border-radius: var(--r-sm); background: var(--surface-solid); border: 1px solid var(--line); font-size: 14px; line-height: 1.9; }
+.setlist .group-label { margin-left: 0; }
+.eyebrow .mode { display: inline-flex; gap: 12px; }
+.eyebrow .mode .link { font-size: 12px; letter-spacing: 0.02em; color: var(--text3); }
+.eyebrow .mode .link.on { color: var(--text); font-weight: 600; }
+.album { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.al { padding: 0; border: 0; background: none; aspect-ratio: 1; border-radius: 6px; overflow: hidden; }
+.al .thumb { width: 100%; height: 100%; border-radius: 0; }
+.bar.mb { margin: 14px auto 8px; max-width: 260px; }

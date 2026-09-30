@@ -21,7 +21,7 @@ function renderCal() {
     const cls = ["cell", s.slice(0, 7) !== ui.calMonth && "out", s === t && "today", s === ui.selDate && "sel", (dow === 0 || dow === 6) && "wk"].filter(Boolean).join(" ");
     // ふつうの予定は推しカラーの点、リマインダーは黒い小さなひし形
     const dots = list.slice(0, 3).map((o) => isTask(o)
-      ? `<i class="task${o.done ? " done" : ""}"></i>`
+      ? `<i class="task ${toneOf(o)}${o.done ? " done" : ""}"></i>`
       : `<i style="${colorVars(oshiOf(o.oshiId)?.color)}"></i>`).join("") + (recDays.has(s) && list.length < 3 ? `<i class="rec"></i>` : "");
     const label = `${+s.slice(5, 7)}月${+s.slice(8)}日(${WEEK[dow]})${list.length ? `、予定${list.length}件` : ""}`;
     g += `<button class="${cls}" data-act="sel-date" data-date="${s}" aria-label="${label}"${s === ui.selDate ? ' aria-pressed="true"' : ""}><span class="n">${+s.slice(8)}</span><span class="dots">${dots}</span></button>`;
@@ -49,7 +49,7 @@ function renderCal() {
       </div>
       <div class="cal-sum num">${joinMeta([`予定 ${monthEvents}件`, `推し活費 ¥${yenNum(monthSpend)}`, monthReports && `レポート ${monthReports}件`])}</div>
       <div class="grid">${g}</div>
-      <div class="legend"><span><i class="dot"></i>予定</span><span><i class="task"></i>リマインダー</span><span><i class="rec"></i>推し活費・レポート</span></div>
+      <div class="legend"><span><i class="dot"></i>予定</span><span><i class="task apply"></i>申込締切</span><span><i class="task pay"></i>入金</span><span><i class="task"></i>当落・発券など</span><span><i class="rec"></i>推し活費・レポート</span></div>
     </section>
     <section class="panel">
       <div class="eyebrow"><span class="num">${sd.replaceAll("-", ".")}  ${dowEn(sd)}</span><button class="link" data-act="add-event" data-date="${sd}">追加${icon("plus", 1.8)}</button></div>

@@ -36,7 +36,16 @@ function reportsView() {
     return h + `<section class="panel"><div class="empty"><p>イベントの思い出を、写真と感想で残しておけます。</p>
       <button class="btn primary" data-act="add-report">レポートを書く</button></div></section>`;
   }
-  h += `<section class="panel"><div class="eyebrow ja"><span>これまでのレポート</span></div><div class="rows">${list.map((r) =>
+  // アルバム：レポートの写真を新しい順に並べる
+  const album = ui.reportMode === "album";
+  const toggle = `<span class="mode">${[["list", "リスト"], ["album", "アルバム"]].map(([v, l]) => `<button class="link${(ui.reportMode || "list") === v ? " on" : ""}" data-act="report-mode" data-v="${v}">${l}</button>`).join("")}</span>`;
+  if (album) {
+    const photos = list.flatMap((r) => (r.photos || []).map((pid) => [r, pid]));
+    return h + `<section class="panel"><div class="eyebrow ja"><span>アルバム</span>${toggle}</div>
+      ${photos.length ? `<div class="album">${photos.map(([r, pid]) => `<button class="al" data-act="view-report" data-id="${r.id}" aria-label="${esc(r.title || "レポート")}">${thumb(pid, "image", 0)}</button>`).join("")}</div>`
+        : `<div class="empty">写真つきのレポートを書くと、ここにアルバムとして並びます。</div>`}</section>`;
+  }
+  h += `<section class="panel"><div class="eyebrow ja"><span>これまでのレポート</span>${toggle}</div><div class="rows">${list.map((r) =>
     `<button class="note-row" data-act="view-report" data-id="${r.id}">
       ${thumb(r.photos?.[0], "note")}
       <span class="body"><span class="d num">${reportDate(r)}</span><span class="t">${esc(r.title || "レポート")}</span>
@@ -53,7 +62,9 @@ async function openReportView(r) {
     <div class="meta num">${joinMeta([reportDate(r), tag(oshiOf(r.oshiId))])}</div>
     <h3>${esc(r.title || "レポート")}</h3>
     ${ev?.venue ? `<div class="next-meta">${icon("pin", 1.7)}<span class="visually-hidden">場所：</span>${esc(ev.venue)}</div>` : ""}
+    ${reportFacts(r)}
     <div class="text">${r.text ? esc(r.text) : `<span class="muted">感想はまだありません</span>`}</div>
+    ${r.setlist ? `<div class="setlist"><div class="group-label">セットリスト</div><ol>${r.setlist.split("\n").filter((l) => l.trim()).map((l) => `<li>${esc(l.trim())}</li>`).join("")}</ol></div>` : ""}
   </div>`;
   openView("レポート", body, () => openReportForm(r));
 }
@@ -157,4 +168,11 @@ function timelineItem(x) {
     <span class="body"><span class="t">${esc(title)}</span><span class="m">${joinMeta([meta, tag(osh)])}</span></span>
     ${pid ? thumb(pid, "image", 44) : ""}
   </button></li>`;
+}
+
+// 参戦記録の項目（座席・一緒に行った人・この日の推し活費）
+function reportFacts(r) {
+  const spent = sum(data.expenses.filter((x) => x.date === r.date && (!r.oshiId || !x.oshiId || x.oshiId === r.oshiId)));
+  const rows = [["座席", r.seat], ["一緒に", r.companions], ["かかった費用", spent && `¥${yenNum(spent)}`]].filter(([, v]) => v);
+  return rows.length ? `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : "";
 }

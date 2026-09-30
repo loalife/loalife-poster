@@ -23,9 +23,9 @@ function renderSettings() {
   h += `</section>`;
 
   h += `<section class="panel"><div class="eyebrow ja"><span>通知</span></div>
-    <p class="note" style="margin:0 0 16px">予定や締切を iPhone などのカレンダーに追加しておくと、アプリを閉じていても通知が届きます。時間のある予定は前日と1時間前、ない予定は前日と当日の朝にお知らせします。</p>
+    <p class="note" style="margin:0 0 16px">予定や締切を iPhone などのカレンダーに追加しておくと、アプリを閉じていても通知が届きます。前日と当日の朝にお知らせし、時間を入れた予定や締切は、その3時間前にもお知らせします。</p>
     <div class="btn-row"><button class="btn" data-act="ics-all">${icon("bell")}これからの予定をまとめて追加</button></div>
-    <p class="note sub">1年先までの予定・締切（完了したものを除く）と、推しの誕生日・記念日が入ります。同じ予定を何度も追加すると、カレンダーに重複することがあります。</p>
+    <p class="note sub">1年先までの予定と、チケットの申込締切・当落発表・入金期限（済んだものを除く）、推しの誕生日・記念日が入ります。同じ予定を何度も追加すると、カレンダーに重複することがあります。</p>
   </section>`;
 
   h += `<section class="panel"><div class="eyebrow ja"><span>背景</span></div>
