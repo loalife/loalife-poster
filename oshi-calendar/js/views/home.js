@@ -1,6 +1,6 @@
 "use strict";
 /* ホーム
-   NEXT EVENT → REMINDER（抽選・入金・発券）→ ANNIVERSARY（誕生日・記念日のカウントダウン）→ UPCOMING → 今月の推し活費 */
+   （当日なら HAPPY BIRTHDAY）→（締切が今日・明日なら DEADLINE）→ NEXT EVENT → REMINDER → ANNIVERSARY → UPCOMING → 今月の推し活費 */
 
 // 推しフィルターに合う予定か（「すべて」のときは全部）
 const byFilter = (o) => !ui.oshiFilter || o.oshiId === ui.oshiFilter;
@@ -12,16 +12,22 @@ function renderHome() {
   const occ = occurrences(t, addDays(t, 730)).filter(byFilter);
   const events = occ.filter((o) => !isTask(o) && !isAnniv(o));
   // ふつうの予定がなければ、誕生日・記念日を NEXT EVENT に出す
-  const next = events[0] || occ.find((o) => !isTask(o));
+  const next = events[0] || occ.find((o) => !isTask(o) && o.occDate !== t);
   // 推しが2人以上なら、ヘッダーの下に推しのアイコンを並べて絞り込めるようにする
   const filterable = data.oshis.length > 1;
   let h = topbar("推し活カレンダー", `${fmtDot(t)}  ${WEEK_EN[td.getDay()]}`,
     `${addBtn("予定を追加")}${filterable ? "" : avatarBtn()}`);
   if (filterable) h += oshiFilterBar();
 
+  // 今日が誕生日・記念日なら、いちばん上でお祝い
+  const todays = occ.filter((o) => isAnniv(o) && o.occDate === t);
+  h += todays.slice(0, 2).map(celebrationPanel).join("");
+  // 締切が今日・明日（または過ぎている）なら、リマインダーを NEXT EVENT より上に出す
+  const rem = reminderPanel(t);
+  if (rem.urgent) h += rem.html;
   h += next ? nextEventPanel(next, t) : emptyNextPanel();
-  h += reminderPanel(t);
-  h += annivPanel(t, next);
+  if (!rem.urgent) h += rem.html;
+  h += annivPanel(t, next, new Set(todays.map((o) => o.id)));
 
   const yearAhead = addDays(t, 365);
   const rest = events.filter((o) => o !== next && o.occDate <= yearAhead).slice(0, 6);
@@ -47,6 +53,7 @@ function nextEventPanel(next, t) {
     <div class="next-date"><span class="md num">${md(next.occDate, ".")}</span><span class="dw num">${dowEn(next.occDate)}${next.time ? `  ${esc(next.time)}` : ""}</span>${osh && oshiPhotos.has(osh.id) ? oshiAvatar(osh, 44) : ""}</div>
     <div class="next-title">${who}${esc(title)}</div>
     <div class="next-meta">${next.venue ? `${icon("pin", 1.7)}<span class="visually-hidden">場所：</span>${esc(next.venue)}` : esc(typeOf(next.type).label)}</div>
+    ${n <= 1 && isOnSite(next) && !next.virtual ? `<div class="next-tools">${icon("light")}持ち物チェック・座席メモ・ペンライト${icon("right", 1.8)}</div>` : ""}
   </section>`;
 }
 
@@ -77,16 +84,33 @@ function reminderPanel(t) {
     .filter(byFilter)
     .filter((o) => isTask(o) && !o.done && (o.occDate >= t || daysBetween(o.occDate, t) <= 14))
     .slice(0, 5);
-  if (!list.length) return "";
-  return `<section class="panel">
-    <div class="eyebrow"><span>REMINDER</span><span class="count">${list.length}件</span></div>
+  if (!list.length) return { html: "", urgent: false };
+  const urgent = list.some((o) => o.occDate <= addDays(t, 1));
+  return { urgent, html: `<section class="panel${urgent ? " urgent" : ""}">
+    <div class="eyebrow"><span>${urgent ? "DEADLINE" : "REMINDER"}</span><span class="count">${urgent ? "締切が近いものがあります" : `${list.length}件`}</span></div>
     <div class="rows">${list.map((o) => eventRow(o, t)).join("")}</div>
+  </section>` };
+}
+
+// 誕生日・記念日の当日
+function celebrationPanel(o) {
+  const osh = oshiOf(o.oshiId), bday = o.type === "birthday";
+  const act = o.virtual ? `data-act="edit-oshi" data-id="${o.oshiId}"` : `data-act="edit-event" data-id="${o.id}" data-date="${o.occDate}"`;
+  return `<section class="panel celebrate" ${act} role="button" tabindex="0" style="${colorVars(osh?.color)}">
+    ${osh ? oshiAvatar(osh, 60) : `<span class="av" style="--s:60px;--oc:var(--fill);--oi:var(--text2)">${icon("gift")}</span>`}
+    <div class="body">
+      <div class="eyebrow"><span>${bday ? "HAPPY BIRTHDAY" : "HAPPY ANNIVERSARY"}</span></div>
+      <div class="cel-title">${esc(bday && osh ? osh.name : displayTitle(o))}</div>
+      <div class="cel-sub">${bday ? "今日は誕生日です。おめでとう！" : "今日は記念日です。"}</div>
+    </div>
   </section>`;
 }
 
 // 推しの誕生日・記念日までのカウントダウン（NEXT EVENT に出したものは除く）
-function annivPanel(t, next) {
-  const list = occurrences(t, addDays(t, 365)).filter(byFilter).filter((o) => isAnniv(o) && !(next && o.id === next.id && o.occDate === next.occDate)).slice(0, 3);
+function annivPanel(t, next, skipIds = new Set()) {
+  // 今日の分はお祝いのカードに出しているので除く
+  const list = occurrences(addDays(t, 1), addDays(t, 365)).filter(byFilter)
+    .filter((o) => isAnniv(o) && !skipIds.has(o.id) && !(next && o.id === next.id && o.occDate === next.occDate)).slice(0, 3);
   if (!list.length) return "";
   return `<section class="panel">
     <div class="eyebrow"><span>ANNIVERSARY</span></div>
@@ -109,10 +133,12 @@ function spendPanel(t) {
   const osh = oshiOf(ui.oshiFilter);
   const items = monthItems(t.slice(0, 7)).filter(byFilter);
   // 予算は推しごとではなく全体のものなので、「すべて」のときだけ出す
+  // 月の予算があればその月の残り、なければ年間の残りを出す
+  const mb = osh ? 0 : +data.settings.monthBudget || 0;
   const budget = osh ? 0 : budgetOf(y);
-  const left = budget - yearTotal(y);
-  const budgetLine = budget
-    ? `<div class="caption-sm num${left < 0 ? " over-text" : ""}">${left < 0 ? `予算オーバー ¥${yenNum(-left)}` : `残り予算 ¥${yenNum(left)}`}</div>`
+  const left = mb ? mb - sum(items) : budget - yearTotal(y);
+  const budgetLine = mb || budget
+    ? `<div class="caption-sm num${left < 0 ? " over-text" : ""}">${left < 0 ? `${mb ? "今月の" : ""}予算オーバー ¥${yenNum(-left)}` : `${mb ? "今月の残り" : "残り予算"} ¥${yenNum(left)}`}</div>`
     : "";
   return `<section class="panel spend" data-tab="money" role="button" tabindex="0">
     <div><div class="label">今月の推し活費${osh ? `<span class="sep">·</span>${esc(osh.name)}` : ""}</div>
@@ -123,9 +149,9 @@ function spendPanel(t) {
 }
 
 // 推しフィルター：「すべて」＋推しのアイコン。選んでいる推しをもう一度押すと「すべて」に戻る
-function oshiFilterBar() {
-  const cur = ui.oshiFilter;
-  const item = (id, av, name, ring) => `<button class="of${cur === id ? " on" : ""}${cur && cur !== id ? " dim" : ""}" data-act="oshi-filter" data-id="${id}"
+// cur：選んでいる推しの ID（"" はすべて）、act：押したときの操作（ホームと年表で使い分ける）
+function oshiFilterBar(cur = ui.oshiFilter, act = "oshi-filter") {
+  const item = (id, av, name, ring) => `<button class="of${cur === id ? " on" : ""}${cur && cur !== id ? " dim" : ""}" data-act="${act}" data-id="${id}"
       aria-pressed="${cur === id}" style="--ring:${ring}">${av}<span class="of-name">${name}</span></button>`;
   return `<div class="oshi-filter" role="group" aria-label="推しで絞り込む">
     ${item("", `<span class="av all" style="--s:40px">${icon("all", 1.6)}</span>`, "すべて", "var(--text)")}

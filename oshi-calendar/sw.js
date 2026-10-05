@@ -1,12 +1,12 @@
 // 推し活カレンダー service worker：オフラインでも開けるようにアプリ本体をキャッシュする
 // ファイルを変更したら VERSION を上げ、index.html の ?v= もそろえる（古い版と新しい版のファイルが混ざらないように）
-const VERSION = "13";
+const VERSION = "15";
 const CACHE = `oshical-v${VERSION}`;
 const ASSETS = [
   "./", "./index.html", "./manifest.json", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png",
   "./css/app.css",
   "./js/core.js", "./js/components.js", "./js/forms.js", "./js/app.js",
-  "./js/views/home.js", "./js/views/calendar.js", "./js/views/money.js", "./js/views/notes.js", "./js/views/settings.js",
+  "./js/views/home.js", "./js/views/calendar.js", "./js/views/money.js", "./js/views/notes.js", "./js/views/event.js", "./js/views/settings.js",
 ].map((u) => (/\.(css|js)$/.test(u) ? `${u}?v=${VERSION}` : u));
 
 self.addEventListener("install", (e) => {

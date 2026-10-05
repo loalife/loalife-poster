@@ -1,13 +1,14 @@
 "use strict";
 /* ノート：写真つきの推し活レポート（日記）と、行きたい場所リスト */
 
+/* ノート：レポート・行きたい場所・年表 */
 function renderNotes() {
   const tab = ui.noteTab;
   let h = topbar("ノート", `レポート ${data.reports.length}件  ·  行きたい場所 ${data.places.length}件`,
-    addBtn(tab === "reports" ? "レポートを書く" : "行きたい場所を追加"));
-  h += `<div class="seg seg-top" role="tablist" aria-label="ノートの種類">${[["reports", "レポート"], ["places", "行きたい場所"]]
+    tab === "timeline" ? "" : addBtn(tab === "reports" ? "レポートを書く" : "行きたい場所を追加"));
+  h += `<div class="seg seg-top" role="tablist" aria-label="ノートの種類">${[["reports", "レポート"], ["places", "行きたい場所"], ["timeline", "年表"]]
     .map(([v, l]) => `<button role="tab" data-act="note-tab" data-v="${v}" aria-selected="${tab === v}" aria-pressed="${tab === v}">${l}</button>`).join("")}</div>`;
-  return h + (tab === "reports" ? reportsView() : placesView());
+  return h + (tab === "reports" ? reportsView() : tab === "places" ? placesView() : timelineView());
 }
 
 /* ---------- レポート ---------- */
@@ -35,7 +36,16 @@ function reportsView() {
     return h + `<section class="panel"><div class="empty"><p>イベントの思い出を、写真と感想で残しておけます。</p>
       <button class="btn primary" data-act="add-report">レポートを書く</button></div></section>`;
   }
-  h += `<section class="panel"><div class="eyebrow ja"><span>これまでのレポート</span></div><div class="rows">${list.map((r) =>
+  // アルバム：レポートの写真を新しい順に並べる
+  const album = ui.reportMode === "album";
+  const toggle = `<span class="mode">${[["list", "リスト"], ["album", "アルバム"]].map(([v, l]) => `<button class="link${(ui.reportMode || "list") === v ? " on" : ""}" data-act="report-mode" data-v="${v}">${l}</button>`).join("")}</span>`;
+  if (album) {
+    const photos = list.flatMap((r) => (r.photos || []).map((pid) => [r, pid]));
+    return h + `<section class="panel"><div class="eyebrow ja"><span>アルバム</span>${toggle}</div>
+      ${photos.length ? `<div class="album">${photos.map(([r, pid]) => `<button class="al" data-act="view-report" data-id="${r.id}" aria-label="${esc(r.title || "レポート")}">${thumb(pid, "image", 0)}</button>`).join("")}</div>`
+        : `<div class="empty">写真つきのレポートを書くと、ここにアルバムとして並びます。</div>`}</section>`;
+  }
+  h += `<section class="panel"><div class="eyebrow ja"><span>これまでのレポート</span>${toggle}</div><div class="rows">${list.map((r) =>
     `<button class="note-row" data-act="view-report" data-id="${r.id}">
       ${thumb(r.photos?.[0], "note")}
       <span class="body"><span class="d num">${reportDate(r)}</span><span class="t">${esc(r.title || "レポート")}</span>
@@ -52,7 +62,9 @@ async function openReportView(r) {
     <div class="meta num">${joinMeta([reportDate(r), tag(oshiOf(r.oshiId))])}</div>
     <h3>${esc(r.title || "レポート")}</h3>
     ${ev?.venue ? `<div class="next-meta">${icon("pin", 1.7)}<span class="visually-hidden">場所：</span>${esc(ev.venue)}</div>` : ""}
+    ${reportFacts(r)}
     <div class="text">${r.text ? esc(r.text) : `<span class="muted">感想はまだありません</span>`}</div>
+    ${r.setlist ? `<div class="setlist"><div class="group-label">セットリスト</div><ol>${r.setlist.split("\n").filter((l) => l.trim()).map((l) => `<li>${esc(l.trim())}</li>`).join("")}</ol></div>` : ""}
   </div>`;
   openView("レポート", body, () => openReportForm(r));
 }
@@ -86,4 +98,81 @@ function placeRow(p) {
     </button>
     <button class="check" data-act="toggle-visited" data-id="${p.id}" aria-pressed="${!!p.visited}" aria-label="${p.visited ? "行ったを取り消す" : "行ったにする"}">${icon("check", 2.2)}</button>
   </div>`;
+}
+
+/* ---------- 年表 ----------
+   これまでに行ったイベント・書いたレポート・行った場所を、年ごと・新しい順にまとめる */
+function timelineView() {
+  const t = today();
+  if (ui.timelineOshi && !oshiOf(ui.timelineOshi)) ui.timelineOshi = "";
+  const f = ui.timelineOshi;
+  const mine = (x) => !f || x.oshiId === f;
+  const items = [];
+  // 予定：終わったもの（毎年くり返す誕生日などは年表では除く）
+  for (const e of data.events) {
+    if (isTask(e) || e.yearly || e.date > t || !mine(e)) continue;
+    items.push({ date: e.date, kind: "event", e, r: reportFor(e.id, e.date) });
+  }
+  // 予定に紐づいていないレポート
+  for (const r of data.reports) {
+    if (r.eventId && data.events.some((e) => e.id === r.eventId && !e.yearly)) continue;
+    if (mine(r)) items.push({ date: r.date, kind: "report", r });
+  }
+  // 行った場所
+  for (const p of data.places) if (p.visited && p.visitedAt && mine(p)) items.push({ date: p.visitedAt.slice(0, 10), kind: "place", p });
+  items.sort((a, b) => b.date.localeCompare(a.date));
+
+  let h = data.oshis.length > 1 ? oshiFilterBar(f, "tl-filter") : "";
+  if (!items.length) {
+    return h + `<section class="panel"><div class="empty"><p>終わったイベントやレポート、行った場所が、ここに年表としてまとまっていきます。</p></div></section>`;
+  }
+  const years = [...new Set(items.map((x) => x.date.slice(0, 4)))];
+  for (const y of years) {
+    const list = items.filter((x) => x.date.startsWith(y));
+    const nEvents = list.filter((x) => x.kind === "event").length;
+    const nReports = list.filter((x) => x.r || x.kind === "report").length;
+    const spent = sum(data.expenses.filter((x) => x.date.startsWith(y) && mine(x)));
+    h += `<section class="panel">
+      <div class="tl-year"><span class="y num">${y}</span><span class="s num">${joinMeta([nEvents && `イベント ${nEvents}回`, nReports && `レポート ${nReports}件`, spent && `推し活費 ¥${yenNum(spent)}`])}</span></div>
+      <ol class="tl">${list.map(timelineItem).join("")}</ol>
+    </section>`;
+  }
+  return h;
+}
+function timelineItem(x) {
+  let osh, title, meta, act, pid;
+  if (x.kind === "event") {
+    const e = x.e;
+    osh = oshiOf(e.oshiId);
+    title = displayTitle({ ...e, occDate: e.date, years: 0 });
+    meta = joinMeta([e.venue ? esc(e.venue) : esc(typeOf(e.type).label), x.r && "レポートあり"]);
+    act = `data-act="edit-event" data-id="${e.id}" data-date="${e.date}"`;
+    pid = x.r?.photos?.[0];
+  } else if (x.kind === "report") {
+    const r = x.r;
+    osh = oshiOf(r.oshiId);
+    title = r.title || "レポート";
+    meta = joinMeta(["レポート", excerpt(r.text)]);
+    act = `data-act="view-report" data-id="${r.id}"`;
+    pid = r.photos?.[0];
+  } else {
+    const p = x.p;
+    osh = oshiOf(p.oshiId);
+    title = p.name;
+    meta = joinMeta(["行った場所", esc(placeCatOf(p.category).label), p.area && esc(p.area)]);
+    act = `data-act="edit-place" data-id="${p.id}"`;
+    pid = p.photos?.[0];
+  }
+  return `<li style="${colorVars(osh?.color)}"><button class="tl-item" ${act}>
+    <span class="tl-d num">${md(x.date, ".")}</span>
+    <span class="body"><span class="t">${esc(title)}</span><span class="m">${joinMeta([meta, tag(osh)])}</span></span>
+    ${pid ? thumb(pid, "image", 44) : ""}
+  </button></li>`;
+}
+
+// 参戦記録の項目（座席・一緒に行った人・この日の推し活費）
+function reportFacts(r) {
+  const spent = sum(data.expenses.filter((x) => x.date === r.date && (!r.oshiId || !x.oshiId || x.oshiId === r.oshiId)));
+  const rows = [["座席", r.seat], ["一緒に", r.companions], ["かかった費用", spent && `¥${yenNum(spent)}`]].filter(([, v]) => v);
+  return rows.length ? `<dl class="facts">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : "";
 }
