@@ -31,7 +31,6 @@ const FILES = [
   "favicon.ico",
   "favicon-16.png",
   "favicon-32.png",
-  "vendor/jsqr.js",
 ];
 
 let copied = 0;
@@ -45,6 +44,13 @@ for (const f of FILES) {
   fs.mkdirSync(path.dirname(dest), { recursive: true }); // サブディレクトリ(vendor/ 等)に対応
   fs.copyFileSync(src, dest);
   copied++;
+}
+
+// vendor/（自己ホストの jsQR・tesseract など）をまるごと同梱。
+const vendorSrc = path.join(ROOT, "vendor");
+if (fs.existsSync(vendorSrc)) {
+  fs.cpSync(vendorSrc, path.join(WWW, "vendor"), { recursive: true });
+  console.log("  copied vendor/ (jsQR / tesseract 等)");
 }
 
 // Capacitor はエントリに index.html を要求する
