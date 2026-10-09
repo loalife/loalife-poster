@@ -12,7 +12,7 @@ import {
 import {
   doc, setDoc, getDoc, updateDoc, deleteDoc,
   collection, onSnapshot, serverTimestamp,
-  arrayUnion, writeBatch, getDocs, query, where
+  arrayUnion, arrayRemove, writeBatch, getDocs, query, where
 } from "firebase/firestore";
 // データ永続性・スキーマ移行レイヤー（生活インフラの安全装置）。詳細は schema.js のヘッダ参照。
 import {
@@ -1083,8 +1083,21 @@ function ageAtLabel(birthStr,atStr){
   return`${yrs}歳`;
 }
 
+// 招待コード：暗号学的乱数・紛らわしい文字を除外（I/O/0/1 等）。列挙はルールで禁止（get のみ）。
 function genCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  const CS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // 31 chars, no I/O/0/1/L
+  const n = 8, a = new Uint8Array(n);
+  try { (crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.floor(Math.random() * 256); }); }
+  catch (e) { for (let i = 0; i < n; i++) a[i] = Math.floor(Math.random() * 256); }
+  let s = ""; for (let i = 0; i < n; i++) s += CS[a[i] % CS.length];
+  return s; // 31^8 ≈ 8.5e11
+}
+// 推測困難な household ID（タイムスタンプは列挙可能なため廃止）。
+function genId() {
+  const a = new Uint8Array(16);
+  try { (crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.floor(Math.random() * 256); }); }
+  catch (e) { for (let i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256); }
+  return Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
 }
 
 // --- Calendar helpers ---
@@ -2695,29 +2708,43 @@ function App(){
     showFlash(t("toast.signedOut"));
   };
 
+  // 共有系の書き込み（家族作成・参加・招待コード作成）はメール確認済み（または Google）必須。
+  // 最新状態を得るため reload してから判定する。未確認ならメッセージを出して中断。
+  const ensureShareVerified=async()=>{
+    try{ if(fbAuth&&fbAuth.currentUser) await fbAuth.currentUser.reload(); }catch(e){}
+    const u=(fbAuth&&fbAuth.currentUser)||fireUser;
+    const ok=!!u&&(u.emailVerified||((u.providerData||[]).some(p=>p&&p.providerId&&p.providerId.indexOf("google")>=0)));
+    if(!ok)setShareError("メールのご確認が必要です。確認メール内のリンクを開いてから、もう一度お試しください。");
+    return ok;
+  };
+  const INVITE_TTL_MS=14*24*60*60*1000; // 招待コードの有効期限（14日）
+
   const createHousehold=async()=>{
     if(!fireUser)return;
     setShareLoading(true);setShareError("");
     try{
+      if(!(await ensureShareVerified())){setShareLoading(false);return;}
       const code=genCode();
-      const hid="hh_"+Date.now();
-      const batch=writeBatch(fbDb);
-      // Create household doc
-      batch.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp(),version:SCHEMA_VERSION});
-      // Create invite code lookup
-      batch.set(doc(fbDb,"inviteCodes",code),{householdId:hid});
-      // Update user profile
-      batch.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
-      // Migrate existing members to Firestore
+      const hid="hh_"+genId(); // 推測困難なID
+      // フェーズ1：household 本体・招待コード・ユーザープロフィール。
+      //  （members/items の作成ルールは isMember（＝household の get）を見るため、
+      //    同一バッチでは household 未コミットで false になる。先に household を確定させる。）
+      const b1=writeBatch(fbDb);
+      b1.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp(),version:SCHEMA_VERSION});
+      b1.set(doc(fbDb,"inviteCodes",code),{householdId:hid,createdAt:serverTimestamp(),expiresAt:Date.now()+INVITE_TTL_MS});
+      b1.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
+      await b1.commit();
+      // フェーズ2：既存メンバー・記録を移行（household 確定後なので isMember が通る）。
+      const b2=writeBatch(fbDb);
       members.forEach(m=>{
         const{id,...rest}=m;
-        batch.set(doc(fbDb,"households",hid,"members",id),{...rest,visibility:m.visibility||"household",ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+        b2.set(doc(fbDb,"households",hid,"members",id),{...rest,visibility:m.visibility||"household",ownerUid:fireUser.uid,createdAt:serverTimestamp()});
         items.filter(it=>it.space===id).forEach(it=>{
           const{id:iid,space,...irest}=it;
-          batch.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...irest,ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+          b2.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...irest,ownerUid:fireUser.uid,createdAt:serverTimestamp()});
         });
       });
-      await batch.commit();
+      await b2.commit();
       const newHH={id:hid,ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid]};
       setHousehold(newHH);
       setShareStep("created");
@@ -2731,13 +2758,16 @@ function App(){
     if(!fireUser||!joinCodeInput.trim())return;
     setShareLoading(true);setShareError("");
     try{
+      if(!(await ensureShareVerified())){setShareLoading(false);return;}
       const code=joinCodeInput.trim().toUpperCase();
       const codeSnap=await getDoc(doc(fbDb,"inviteCodes",code));
       if(!codeSnap.exists())throw new Error("招待コードが見つかりません");
-      const hid=codeSnap.data().householdId;
+      const cd=codeSnap.data();
+      if(cd.expiresAt&&Date.now()>cd.expiresAt)throw new Error("この招待コードは有効期限が切れています");
+      const hid=cd.householdId;
       if(household&&household.id===hid)throw new Error("すでにこの家族に参加しています");
-      // Add user to household
-      await updateDoc(doc(fbDb,"households",hid),{memberUids:arrayUnion(fireUser.uid)});
+      // 自分を追加（コードの知識を joinProof で証明。ルールが inviteCode と一致を検証）
+      await updateDoc(doc(fbDb,"households",hid),{memberUids:arrayUnion(fireUser.uid),joinProof:code});
       // Update user profile
       await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
       const hhSnap=await getDoc(doc(fbDb,"households",hid));
@@ -2754,7 +2784,8 @@ function App(){
     if(!fireUser||!household)return;
     setShareLoading(true);
     try{
-      await updateDoc(doc(fbDb,"households",household.id),{memberUids:arrayUnion()});
+      // 自分の uid を実際に取り除く（以前は arrayUnion() の no-op でアクセスが残っていた）
+      await updateDoc(doc(fbDb,"households",household.id),{memberUids:arrayRemove(fireUser.uid)});
       await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:null},{merge:true});
       setHousehold(null);setShowShareModal(false);
       showFlash(t("toast.leftFamily"));
