@@ -31,6 +31,7 @@ const FILES = [
   "favicon.ico",
   "favicon-16.png",
   "favicon-32.png",
+  "vendor/jsqr.js",
 ];
 
 let copied = 0;
@@ -40,7 +41,9 @@ for (const f of FILES) {
     console.warn(`  skip (not found): ${f}`);
     continue;
   }
-  fs.copyFileSync(src, path.join(WWW, f));
+  const dest = path.join(WWW, f);
+  fs.mkdirSync(path.dirname(dest), { recursive: true }); // サブディレクトリ(vendor/ 等)に対応
+  fs.copyFileSync(src, dest);
   copied++;
 }
 
