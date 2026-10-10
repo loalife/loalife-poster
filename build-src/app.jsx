@@ -6378,7 +6378,7 @@ function App(){
               <div className="yl-df-imgbox">
                 {dfDraft._cardImage?<img className="yl-df-cardimg" src={dfDraft._cardImage} alt=""/>:<span className="yl-df-imgph"><Icon name="camera" size={22}/></span>}
                 <div className="yl-df-imgacts yl-noprint">
-                  <label className="yl-addbtn sm"><Icon name="camera" size={14}/> {t("df.pickImage")}<input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={dfPickImage}/></label>
+                  <label className="yl-addbtn sm"><Icon name="camera" size={14}/> {t("df.pickImage")}<input type="file" accept="image/*" style={{display:"none"}} onChange={dfPickImage}/></label>
                   {dfDraft._cardImage&&<button className="yl-addbtn sm ghost" disabled={dfBusy} onClick={()=>dfScanQr()}><Icon name="link" size={14}/> {t("df.scanQr")}</button>}
                   {dfDraft._cardImage&&OCR&&<button className="yl-addbtn sm ghost" disabled={dfOcrStage==="running"} onClick={dfRunOcr}><Icon name="filetext" size={14}/> {t("df.ocrScan")}</button>}
                 </div>
