@@ -118,6 +118,25 @@ service cloud.firestore {
         request.auth.uid == resource.data.ownerUid;
     }
 
+    // ─── Public health summaries （期限つき共有リンク） ─────────────
+    // 病院サマリーを獣医・病院・預け先へ渡すための表示専用ドキュメント。
+    // 名刺と違い医療寄りの情報のため、有効期限（expiresAt）を必須とし、
+    // get は期限内のものだけ許可する（期限切れはサーバー側でも読めない）。
+    // 作成は確認済みユーザーが自分の ownerUid のものだけ。内容の更新は不可
+    // （直す場合は取り消して作り直す＝新規発行）。削除（取り消し）は所有者のみ。
+    // 列挙は禁止（ID は推測困難な24文字ランダム）。
+    match /publicSummaries/{sumId} {
+      allow get: if resource.data.expiresAt is timestamp &&
+        resource.data.expiresAt > request.time;
+      allow list: if false;
+      allow create: if verified() &&
+        request.auth.uid == request.resource.data.ownerUid &&
+        request.resource.data.expiresAt is timestamp;
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
+    }
+
     // ─── Households ───────────────────────────────────────────────
     match /households/{hid} {
       // Any member can read the household doc
