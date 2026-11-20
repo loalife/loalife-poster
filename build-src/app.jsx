@@ -2797,14 +2797,15 @@ function RouteSvg({route,w=300,h=120,strokeWidth=3,dotR,endColor="#2F7FE0",class
     </svg>
   );
 }
-// 本物の地図。live=記録中（現在地追従あり）、detail=履歴詳細（全体フィット）。
-function WalkMap({route,live=false,detail=false,height=240}){
+// 本物の地図。live=記録中（現在地追従あり）、detail=履歴詳細（全体フィット）、mini=履歴リストのサムネイル（操作なし・全体フィット）。
+function WalkMap({route,live=false,detail=false,mini=false,height=240}){
   const L=useLeafletLib();
   const boxRef=useRef(null);
   const mapRef=useRef(null);
   const layersRef=useRef([]);
   const followRef=useRef(true);
   const viewInitRef=useRef(false);
+  const refitDoneRef=useRef(false);
   const[showLocate,setShowLocate]=useState(false);
   const segs=useMemo(()=>routeSegments(route),[route]);
   const allPts=useMemo(()=>segs.flat(),[segs]);
@@ -2815,13 +2816,15 @@ function WalkMap({route,live=false,detail=false,height=240}){
     if(!L||!boxRef.current||mapRef.current)return;
     let map=null;
     try{
-      map=L.map(boxRef.current,{zoomControl:true,attributionControl:true});
+      map=L.map(boxRef.current,mini?{zoomControl:false,attributionControl:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false}:{zoomControl:true,attributionControl:true});
+      if(mini&&map.attributionControl){try{map.attributionControl.setPrefix(false);}catch(e){}}
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
       map.setView([35.68,139.69],6); // GPS未取得時の仮の視点（日本全体）
       map.on("dragstart",()=>{ if(followRef.current){followRef.current=false;setShowLocate(true);} });
       mapRef.current=map;
       const tm=setTimeout(()=>{try{map.invalidateSize();}catch(e){}},90);
-      return()=>clearTimeout(tm);
+      const tm2=setTimeout(()=>{try{map.invalidateSize();}catch(e){}},450);
+      return()=>{clearTimeout(tm);clearTimeout(tm2);};
     }catch(e){ mapRef.current=null; }
   },[L]);
   // アンマウント時に地図を破棄
@@ -2837,26 +2840,42 @@ function WalkMap({route,live=false,detail=false,height=240}){
     if(allPts.length>1)layers.push(L.circleMarker([lastPt.lat,lastPt.lng],{radius:7,color:"#fff",weight:2.5,fillColor:live?"#2F7FE0":"#D9534F",fillOpacity:1}).addTo(map));
     layersRef.current=layers;
     try{
-      if(detail){
-        if(allPts.length>=2)map.fitBounds(L.latLngBounds(allPts.map(p=>[p.lat,p.lng])),{padding:[26,26]});
+      if(detail||mini){
+        const pad=mini?[8,8]:[26,26];
+        if(allPts.length>=2)map.fitBounds(L.latLngBounds(allPts.map(p=>[p.lat,p.lng])),{padding:pad});
         else if(allPts.length===1)map.setView([allPts[0].lat,allPts[0].lng],17);
       }else if(live&&lastPt){
         if(!viewInitRef.current){ map.setView([lastPt.lat,lastPt.lng],17); viewInitRef.current=true; }
         else if(followRef.current)map.panTo([lastPt.lat,lastPt.lng],{animate:false});
       }
     }catch(e){}
-  },[L,segs,allPts,lastPt,live,detail]);
+    // detail/mini はモーダル・リストのレイアウト確定が地図生成に遅れることがあるため、
+    // 一度だけ遅延してサイズ再計測＋全体フィットをやり直す（live の追従には触らない）。
+    if((detail||mini)&&!refitDoneRef.current){
+      refitDoneRef.current=true;
+      const tm=setTimeout(()=>{
+        const m=mapRef.current; if(!m)return;
+        try{
+          m.invalidateSize();
+          const pad=mini?[8,8]:[26,26];
+          if(allPts.length>=2)m.fitBounds(L.latLngBounds(allPts.map(p=>[p.lat,p.lng])),{padding:pad});
+          else if(allPts.length===1)m.setView([allPts[0].lat,allPts[0].lng],17);
+        }catch(e){}
+      },380);
+      return()=>clearTimeout(tm);
+    }
+  },[L,segs,allPts,lastPt,live,detail,mini]);
   const goLocate=()=>{ const map=mapRef.current; if(!map||!lastPt)return; followRef.current=true; setShowLocate(false); try{ map.setView([lastPt.lat,lastPt.lng],Math.max(map.getZoom()||0,16),{animate:false}); }catch(e){} };
   if(!L){
     return(
-      <div className="yl-walkmap-wrap" style={{height}}>
-        <RouteSvg route={route} w={300} h={height} strokeWidth={3} endColor={live?"#2F7FE0":"#D9534F"} style={{height}}/>
+      <div className={"yl-walkmap-wrap"+(mini?" yl-walkmap-mini":"")} style={{height}}>
+        <RouteSvg route={route} w={mini?Math.round(height*1.5):300} h={height} strokeWidth={3} endColor={live?"#2F7FE0":"#D9534F"} style={{height}}/>
         {searching&&<div className="yl-walkmap-searching">{tr(APP_LANG,"walk.gpsSearching")}</div>}
       </div>
     );
   }
   return(
-    <div className="yl-walkmap-wrap" style={{height}}>
+    <div className={"yl-walkmap-wrap"+(mini?" yl-walkmap-mini":"")} style={{height}}>
       <div ref={boxRef} className="yl-walkmap" style={{height}}/>
       {searching&&<div className="yl-walkmap-searching">{tr(APP_LANG,"walk.gpsSearching")}</div>}
       {live&&showLocate&&lastPt&&<button type="button" className="yl-walkmap-locate" onClick={goLocate} aria-label={tr(APP_LANG,"walk.locate")}><Icon name="target" size={19}/></button>}
@@ -7656,7 +7675,7 @@ function App(){
                     <ul className="yl-walkrec-list">
                       {walkRecords.slice(0,6).map(w=>{const hasRoute=routeSegments(w.route).flat().length>=2;return(
                         <li key={w.id} className="yl-walkrec-item">
-                          <span className="yl-walkrec-thumb clk" onClick={()=>setWalkDetail(w)}>{hasRoute?<RouteSvg route={w.route} w={72} h={48} strokeWidth={2.5} dotR={3} endColor="#D9534F" className="yl-walkrec-thumbsvg"/>:<Icon name="paw" size={16}/>}</span>
+                          <span className="yl-walkrec-thumb clk" onClick={()=>setWalkDetail(w)}>{hasRoute?<WalkMap route={w.route} mini height={64}/>:<Icon name="paw" size={16}/>}</span>
                           <span className="yl-walkrec-body clk" onClick={()=>setWalkDetail(w)}><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
                           <button className="yl-walkrec-del" onClick={()=>askDelete(t("walk.delLabel"),()=>removeWalk(w.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
