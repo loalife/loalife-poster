@@ -106,8 +106,24 @@ export function normalizeMember(m) {
 
 export function normalizeItem(it) {
   if (!it || typeof it !== "object") return null;
+  // メモの一本化（2026-11-20）: 予定のメモは2フィールドに分裂していた。
+  //   作成フォーム（lifeDraft）は note、編集モーダルは memo に保存し、表示側も割れていた。
+  // 正規フィールドは note（消費側：カレンダー日一覧・思い出表示・お知らせ・CSV・共有キャプション）。
+  // 読み取り時に memo を note へ非破壊で取り込む（データ消失厳禁・冪等）:
+  //   - note が空で memo がある → note = memo
+  //   - 両方あり内容が違う → note の末尾に memo を改行で連結（二重取り込みは includes で防止）
+  // memo 自体は温存する（schema ルール5）。保存時はフォーム側が note に寄せ memo を外すため、
+  // 編集を経たアイテムから memo は自然に消えていく。Firestore 経由のアイテムにも同じ移行が効く。
+  let note = it.note;
+  const memoText = typeof it.memo === "string" ? it.memo : "";
+  if (memoText.trim()) {
+    const noteText = typeof note === "string" ? note : "";
+    if (!noteText.trim()) note = it.memo;
+    else if (noteText.trim() !== memoText.trim() && !noteText.includes(memoText.trim())) note = noteText + "\n" + it.memo;
+  }
   return {
     ...it, // 未知・新フィールドを温存
+    ...(note !== it.note ? { note } : {}),
     id: it.id,
     space: it.space ?? "me",
     type: it.type ?? (it.careKind ? "care" : "dream"),
