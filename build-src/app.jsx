@@ -1882,7 +1882,7 @@ const MESSAGES={
     "prof.breedCat":"猫種","prof.breedDog":"犬種","prof.breedOther":"種類","ph.breedDog":"犬種を検索・入力（一覧にない種類も登録OK）","ph.breedCat":"猫種を検索・入力（一覧にない種類も登録OK）","ph.breedOther":"種類を入力（自由入力）","prof.breedDescDog":"散歩のめやすに。","prof.breedDescOther":"体格に合わせた記録に。",
     "prof.coat":"毛の色（任意）","ph.coat":"入力して検索（自由入力も可）","prof.gender":"性別（任意）","prof.genderDesc":"迷子ポスターにも自動で反映されます。","prof.neuter":"避妊・去勢","prof.microchip":"マイクロチップ番号（任意）","ph.microchip":"15桁の番号（例：392...）","prof.microchipDesc":"迷子・防災時の備えに。",
     "prof.personType":"種別（記録項目の出し分け）","prof.blood":"血液型（任意）","blood.suffix":"型","prof.rainbow":"虹の橋（お別れの記録・任意）","prof.rainbowSet":"お別れを記録して追悼モードにする","prof.rainbowDesc":"お知らせを止め、そっと思い出を振り返る表示に。",
-    "prof.visShared":"この子のプロフィールと記録（写真を除く）を、招待した家族と共有します。","prof.visPrivate":"この子は家族には共有されません。","prof.visNote":"アレルギー・生理・医療メモなど見せたくない情報は「自分のみ」に。","prof.saveMember":"保存する","prof.deleteMember":"このメンバーを削除",
+    "prof.visShared":"この子のプロフィールと記録（写真を除く）を、招待した家族と共有します。","prof.visPrivate":"この子は家族には共有されません。","prof.visNote":"アレルギー・生理・医療メモなど見せたくない情報は「自分のみ」に。","prof.saveMember":"保存する","prof.deleteMember":"このメンバーを削除","prof.dangerZone":"危険ゾーン","member.deleteConfirm":"{name} を削除しますか？","member.deleteConfirmRecords":"記録 {n}件も一緒に削除されます。この操作は取り消せません。","member.deleteConfirmBody":"この操作は取り消せません。","member.deleteDo":"削除する","toast.memberFsDeleteFail":"共有データの削除に失敗しました（この端末では削除済みです）",
     "fun.gotchaToday":"迎えて{y}年！","fun.gotchaTodayNoYear":"うちの子記念日！","fun.gotchaAnniv":"記念日 {date}","fun.gotchaAnnivY":"記念日 {date}（{y}周年）","fun.together":"お迎えから{n}日","fun.neuter":"避妊・去勢{s}","member.addFamily":"家族・ペットを追加",
     "word.pet":"ケア","word.person":"予定","rec.memberTitle":"{name} の{word}","rec.tapEditDate":"タップで日付を修正",
     "rel.stillNone":"まだ記録なし","rel.weeksAgo":"{n}週間前","rel.monthsAgo":"約{n}か月前",
@@ -1974,7 +1974,7 @@ const MESSAGES={
     "prof.breedCat":"Breed","prof.breedDog":"Breed","prof.breedOther":"Type","ph.breedDog":"Search or type a breed (any breed is OK)","ph.breedCat":"Search or type a breed (any breed is OK)","ph.breedOther":"Type (free text)","prof.breedDescDog":"Helps gauge walk length.","prof.breedDescOther":"For records that fit their size.",
     "prof.coat":"Coat color (optional)","ph.coat":"Type to search (free text OK)","prof.gender":"Sex (optional)","prof.genderDesc":"Also shown on the lost-pet poster.","prof.neuter":"Spay / neuter","prof.microchip":"Microchip number (optional)","ph.microchip":"15-digit number (e.g. 392...)","prof.microchipDesc":"Handy for lost-pet or disaster prep.",
     "prof.personType":"Type (which fields to show)","prof.blood":"Blood type (optional)","blood.suffix":"","prof.rainbow":"Rainbow Bridge (memorial, optional)","prof.rainbowSet":"Record a goodbye and switch to memorial mode","prof.rainbowDesc":"Pauses reminders and gently shows memories.",
-    "prof.visShared":"Shares this one's profile and records (excluding photos) with your invited family.","prof.visPrivate":"This one is not shared with family.","prof.visNote":"Set anything private — allergies, cycle, medical notes — to \"Only me\".","prof.saveMember":"Save","prof.deleteMember":"Delete this member",
+    "prof.visShared":"Shares this one's profile and records (excluding photos) with your invited family.","prof.visPrivate":"This one is not shared with family.","prof.visNote":"Set anything private — allergies, cycle, medical notes — to \"Only me\".","prof.saveMember":"Save","prof.deleteMember":"Delete this member","prof.dangerZone":"Danger zone","member.deleteConfirm":"Delete {name}?","member.deleteConfirmRecords":"{n} records will also be deleted. This can't be undone.","member.deleteConfirmBody":"This can't be undone.","member.deleteDo":"Delete","toast.memberFsDeleteFail":"Couldn't delete the shared copy (removed on this device)",
     "fun.gotchaToday":"{y} years together!","fun.gotchaTodayNoYear":"Gotcha day!","fun.gotchaAnniv":"Gotcha day {date}","fun.gotchaAnnivY":"Gotcha day {date} ({y} yr)","fun.together":"{n} days together","fun.neuter":"Spay/neuter: {s}","member.addFamily":"Add family or pet",
     "word.pet":"care","word.person":"plan","rec.memberTitle":"{name}'s {word}","rec.tapEditDate":"Tap to edit the date",
     "rel.stillNone":"Not recorded yet","rel.weeksAgo":"{n} wk ago","rel.monthsAgo":"~{n} mo ago",
@@ -2066,7 +2066,7 @@ const MESSAGES={
     "prof.breedCat":"Raza","prof.breedDog":"Raza","prof.breedOther":"Tipo","ph.breedDog":"Busca o escribe una raza (cualquiera vale)","ph.breedCat":"Busca o escribe una raza (cualquiera vale)","ph.breedOther":"Tipo (texto libre)","prof.breedDescDog":"Ayuda a estimar la duración del paseo.","prof.breedDescOther":"Para registros acordes a su tamaño.",
     "prof.coat":"Color del pelaje (opcional)","ph.coat":"Escribe para buscar (texto libre)","prof.gender":"Sexo (opcional)","prof.genderDesc":"También aparece en el cartel de mascota perdida.","prof.neuter":"Esterilización","prof.microchip":"Número de microchip (opcional)","ph.microchip":"Número de 15 dígitos (p. ej. 392...)","prof.microchipDesc":"Útil para mascota perdida o desastres.",
     "prof.personType":"Tipo (qué campos mostrar)","prof.blood":"Grupo sanguíneo (opcional)","blood.suffix":"","prof.rainbow":"Puente del arcoíris (memorial, opcional)","prof.rainbowSet":"Registrar una despedida y pasar a modo memorial","prof.rainbowDesc":"Pausa los recordatorios y muestra los recuerdos con suavidad.",
-    "prof.visShared":"Comparte el perfil y los registros (sin las fotos) de este miembro con la familia invitada.","prof.visPrivate":"Este miembro no se comparte con la familia.","prof.visNote":"Marca como «Solo yo» lo que sea privado: alergias, ciclo, notas médicas.","prof.saveMember":"Guardar","prof.deleteMember":"Eliminar este miembro",
+    "prof.visShared":"Comparte el perfil y los registros (sin las fotos) de este miembro con la familia invitada.","prof.visPrivate":"Este miembro no se comparte con la familia.","prof.visNote":"Marca como «Solo yo» lo que sea privado: alergias, ciclo, notas médicas.","prof.saveMember":"Guardar","prof.deleteMember":"Eliminar este miembro","prof.dangerZone":"Zona de peligro","member.deleteConfirm":"¿Eliminar a {name}?","member.deleteConfirmRecords":"También se eliminarán {n} registros. Esta acción no se puede deshacer.","member.deleteConfirmBody":"Esta acción no se puede deshacer.","member.deleteDo":"Eliminar","toast.memberFsDeleteFail":"No se pudo eliminar la copia compartida (eliminado en este dispositivo)",
     "fun.gotchaToday":"¡{y} años juntos!","fun.gotchaTodayNoYear":"¡Día de adopción!","fun.gotchaAnniv":"Día de adopción {date}","fun.gotchaAnnivY":"Día de adopción {date} ({y} a)","fun.together":"{n} días juntos","fun.neuter":"Esterilización: {s}","member.addFamily":"Añadir familia o mascota",
     "word.pet":"cuidados","word.person":"plan","rec.memberTitle":"{word} de {name}","rec.tapEditDate":"Toca para editar la fecha",
     "rel.stillNone":"Aún sin registrar","rel.weeksAgo":"hace {n} sem","rel.monthsAgo":"hace ~{n} mes(es)",
@@ -2158,7 +2158,7 @@ const MESSAGES={
     "prof.breedCat":"品种","prof.breedDog":"品种","prof.breedOther":"类型","ph.breedDog":"搜索或输入品种（任何品种都可以）","ph.breedCat":"搜索或输入品种（任何品种都可以）","ph.breedOther":"类型（自由输入）","prof.breedDescDog":"有助于估算散步时长。","prof.breedDescOther":"便于按体型记录。",
     "prof.coat":"毛色（可选）","ph.coat":"输入以搜索（可自由输入）","prof.gender":"性别（可选）","prof.genderDesc":"也会显示在寻宠海报上。","prof.neuter":"绝育","prof.microchip":"芯片号码（可选）","ph.microchip":"15位数字（如 392...）","prof.microchipDesc":"在走失或防灾时很有用。",
     "prof.personType":"类型（显示哪些项目）","prof.blood":"血型（可选）","blood.suffix":"型","prof.rainbow":"彩虹桥（纪念，可选）","prof.rainbowSet":"记录告别并切换到纪念模式","prof.rainbowDesc":"暂停提醒，静静地回顾回忆。",
-    "prof.visShared":"与你邀请的家人共享该成员的资料和记录（不含照片）。","prof.visPrivate":"该成员不会与家人共享。","prof.visNote":"把私密内容（过敏、生理周期、医疗备注）设为「仅自己」。","prof.saveMember":"保存","prof.deleteMember":"删除该成员",
+    "prof.visShared":"与你邀请的家人共享该成员的资料和记录（不含照片）。","prof.visPrivate":"该成员不会与家人共享。","prof.visNote":"把私密内容（过敏、生理周期、医疗备注）设为「仅自己」。","prof.saveMember":"保存","prof.deleteMember":"删除该成员","prof.dangerZone":"危险区域","member.deleteConfirm":"要删除{name}吗？","member.deleteConfirmRecords":"{n}条记录也会被一起删除。此操作无法撤销。","member.deleteConfirmBody":"此操作无法撤销。","member.deleteDo":"删除","toast.memberFsDeleteFail":"共享副本删除失败（已在本设备删除）",
     "fun.gotchaToday":"相伴{y}年了！","fun.gotchaTodayNoYear":"领养日！","fun.gotchaAnniv":"领养日 {date}","fun.gotchaAnnivY":"领养日 {date}（{y}年）","fun.together":"相伴{n}天","fun.neuter":"绝育：{s}","member.addFamily":"添加家人或宠物",
     "word.pet":"照护","word.person":"计划","rec.memberTitle":"{name}的{word}","rec.tapEditDate":"点按编辑日期",
     "rel.stillNone":"尚未记录","rel.weeksAgo":"{n}周前","rel.monthsAgo":"约{n}个月前",
@@ -3224,9 +3224,9 @@ function App(){
     try{await deleteDoc(doc(fbDb,"households",hid,"members",item.space,"items",item.id));}catch(e){}
   };
 
-  // Firestore: delete member + items
+  // Firestore: delete member + items（成否を返す。共有していない場合は true＝何もしないで成功扱い）
   const deleteMemberFromFs=async(memberId)=>{
-    if(!household||!fireUser)return;
+    if(!household||!fireUser)return true;
     const hid=household.id;
     try{
       const iSnap=await getDocs(collection(fbDb,"households",hid,"members",memberId,"items"));
@@ -3234,7 +3234,8 @@ function App(){
       iSnap.docs.forEach(d=>batch.delete(d.ref));
       batch.delete(doc(fbDb,"households",hid,"members",memberId));
       await batch.commit();
-    }catch(e){}
+      return true;
+    }catch(e){return false;}
   };
 
   const persistMeEmoji=(emo)=>{
@@ -3866,10 +3867,22 @@ function App(){
   useEffect(()=>{if(inputSheet!=="schedule"){setDraftPhoto(null);setSelfCare(false);}},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真・自分ケアフラグをクリア
 
   const removeMember=(id)=>{
+    if(id==="me")return; // 「わたし」は削除対象外（アプリの前提が崩れるため）
     const m=members.find(x=>x.id===id);
+    const removedItems=items.filter(x=>x.space===id);
+    // 写真も一緒に消す：アバター・ポスター写真・削除される記録の写真（IndexedDB の photo: キー）
+    const pids=new Set();
+    if(m){if(m.avatar)pids.add(m.avatar);(m.posterPhotos||[]).forEach(p=>pids.add(p));}
+    removedItems.forEach(it=>photoIdsOf(it).forEach(p=>pids.add(p)));
+    pids.forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});
+    if(pids.size)setPhotos(p=>{const n={...p};pids.forEach(pid=>delete n[pid]);return n;});
+    // そのメンバーのお散歩が進行中なら破棄する（GPS監視も止める）
+    if(walk&&walk.space===id)cancelWalk();
     persist(members.filter(x=>x.id!==id),items.filter(x=>x.space!==id));
-    deleteMemberFromFs(id).catch(()=>{});
-    setTab("me");setMemberSel("me");setConfirmDel(null);
+    clearSampleMode();
+    // Firestore 側の削除は失敗してもローカル削除は完了させる。失敗は静かにトーストで伝える。
+    deleteMemberFromFs(id).then(ok=>{if(!ok)showFlash(t("toast.memberFsDeleteFail"));}).catch(()=>{});
+    setTab("me");setMemberSel("me");setConfirmDel(null);setEditingId(null);setProfileOpen(false);
     if(m)showFlash(t("toast.memberDeleted",{name:m.name}));
   };
 
@@ -5815,7 +5828,7 @@ function App(){
                       </div>}
                       {inHousehold&&<div style={{marginTop:8}}><VisibilityToggle value={editVisibility} onChange={setEditVisibility}/><span className="yl-set-desc" style={{marginTop:4,display:"block"}}>{editVisibility==="household"?t("prof.visShared"):t("prof.visPrivate")}{t("prof.visNote")}</span></div>}
                       <button className="yl-member-save" onClick={()=>saveRename(activeMember.id)}><Icon name="check" size={16}/> {t("prof.saveMember")}</button>
-                      <button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>{t("prof.deleteMember")}</button>
+                      <div className="yl-dangerzone"><span className="yl-dangerzone-label">{t("prof.dangerZone")}</span><button className="yl-member-del" onClick={()=>setConfirmDel(activeMember)}>{t("prof.deleteMember")}</button></div>
                     </div>
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
@@ -6871,6 +6884,7 @@ function App(){
               <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
                 {[
+                  ["🗑️","メンバーを削除できるように","間違えて追加した家族・ペットを、プロフィール編集から削除できます"],
                   ["🗺️","お散歩が本物の地図に","歩いた道が道路の上に表示されます。一時停止も追加"],
                   ["🩹","救急・防災の情報を充実","飲んでいる薬やアレルギーを救急画面に自動表示。「食べていい？」検索も追加"],
                   ["🧹","サンプル表示の修正と、はじめ方の文言を整理","サンプルバナーの表示条件と、消去確認の文言を見直しました"],
@@ -7179,7 +7193,7 @@ function App(){
         {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ</p><div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);}}>{e}</button>)}</div></>}
         <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色</p><div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>persistMeColor(col)} aria-label={t("a11y.pickColor")}/>)}</div>
         <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
-      {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{confirmDel.name} を削除しますか？</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?`${confirmDel.name}のケア（${n}件）も一緒に消えます。この操作は元に戻せません。`:"この操作は元に戻せません。";})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>キャンセル</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>削除する</button></div></div></div>}
+      {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{t("member.deleteConfirm",{name:confirmDel.name})}</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?t("member.deleteConfirmRecords",{n}):t("member.deleteConfirmBody");})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>{t("member.deleteDo")}</button></div></div></div>}
       {lifeDraft&&(
         <div className="yl-overlay" onClick={()=>setLifeDraft(null)}>
           <div className="yl-modal edit life" onClick={e=>e.stopPropagation()}>
