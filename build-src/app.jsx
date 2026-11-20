@@ -197,6 +197,11 @@ const DailyPoemCard=({items,members,lang,resolveName,todayIso})=>{
 const petCardIdFromSearch=()=>{try{const q=new URLSearchParams(location.search);const id=q.get("card");return id&&/^[A-Za-z0-9_-]{6,40}$/.test(id)?id:null;}catch(e){return null;}};
 // 招待リンク（?join=CODE）：コードは genCode の8文字（紛らわしい文字なし）。多少の前後は許容して大文字化する。
 const joinCodeFromSearch=()=>{try{const q=new URLSearchParams(location.search);const c=q.get("join");if(!c)return null;const up=c.trim().toUpperCase();return /^[A-Z0-9]{6,10}$/.test(up)?up:null;}catch(e){return null;}};
+// 公開リンク（?card= / ?pet= / ?join=）で開かれたか。初回の言語選択ゲートを素通りさせる判定に使う。
+const hasPublicEntryParam=()=>{try{const q=new URLSearchParams(location.search);return !!(q.get("card")||q.get("pet")||q.get("join"));}catch(e){return false;}};
+// 端末の言語から対応言語（ja/en/es/zh）を推定する。合わなければ日本語。
+// 公開ビューの表示専用で、アプリ本体の言語選択として保存はしない。
+const inferDeviceLang=()=>{try{const nav=((typeof navigator!=="undefined"&&navigator.language)||"").toLowerCase();if(nav.indexOf("ja")===0)return"ja";if(nav.indexOf("en")===0)return"en";if(nav.indexOf("es")===0)return"es";if(nav.indexOf("zh")===0)return"zh";}catch(e){}return"ja";};
 const INVITE_LINK_BASE="https://loalife-poster.vercel.app/";
 const inviteLinkFor=(code)=>INVITE_LINK_BASE+"?join="+encodeURIComponent(code||"");
 // 公開名刺の訪問者リンクと、SNS入力（@ID でも URL でも可）のハンドル正規化。
@@ -233,6 +238,31 @@ const removeCardFriend=(list,cardId)=>{
   if(!arr.some(f=>f&&f.source==="publicCard"&&f.cardId===cardId))return list;
   return arr.filter(f=>!(f&&f.source==="publicCard"&&f.cardId===cardId));
 };
+// ============================================================================
+// クラウドバックアップ（自分のデータの控え・オプトイン）
+//  - 保存先は Firestore の users/{uid}/backup/main（本人のみ読み書き可のルール）。
+//  - 対象は serializeState の範囲（テキストデータ）。写真は IndexedDB 管理で対象外。
+//  - 競合はマージしない：updatedAt の新しい方を正とし、復元は必ずユーザー確認を挟む。
+// ============================================================================
+const CB_KEY="loalife-cloudbackup-v1";
+const CB_SIZE_LIMIT=900000; // Firestore の1ドキュメント上限（約1MB）への安全マージン
+const utf8Bytes=(s)=>{try{return new Blob([s]).size;}catch(e){return (s||"").length*2;}};
+// アップロード用ドキュメントを組み立てる純粋関数。容量超過なら null（無言で失敗させないため呼び出し側で状態表示する）。
+const buildBackupDoc=(stateJson,now)=>{
+  if(typeof stateJson!=="string"||!stateJson)return null;
+  const bytes=utf8Bytes(stateJson);
+  if(bytes>CB_SIZE_LIMIT)return null;
+  return {stateJson,updatedAt:now,schemaVersion:SCHEMA_VERSION,bytes};
+};
+// Firestore から読んだバックアップ文書を検証する純粋関数。不正なら null。
+const parseBackupDoc=(data)=>{
+  if(!data||typeof data.stateJson!=="string"||!data.stateJson)return null;
+  return {stateJson:data.stateJson,updatedAt:Number(data.updatedAt)||0,schemaVersion:Number(data.schemaVersion)||0};
+};
+// ローカルが「空またはサンプルのみ」か（自動で復元を提案してよい状態か）の判定（純粋関数）。
+const localLooksEmpty=(sampleMode,memberCount,itemCount)=>!!sampleMode||((memberCount|0)===0&&(itemCount|0)===0);
+// バックアップ日時の表示（YYYY/M/D HH:MM）。
+const fmtBackupDate=(ts)=>{if(!ts)return"";const d=new Date(ts);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
 const snsHandle=(v,kind)=>{
   let s=(v||"").trim();if(!s)return "";
   const host=kind==="tiktok"?"tiktok.com":"instagram.com";
@@ -2057,9 +2087,9 @@ const MESSAGES={
     "common.save":"保存","common.cancel":"キャンセル","common.stop":"やめる",
     "set.colorTime":"色が変わる時間（お世話・やることログ）","set.colorWarn":"黄色になるまで","set.colorAlert":"赤になるまで","set.colorNow":"現在：","set.colorDaySuffix":"日で","unit.dShort":"日",
     "set.petSafety":"ペットの安全","safety.toxic":"誤食・中毒の危険物リスト","safety.emergency":"夜間・救急の備え","safety.disaster":"防災・避難の備え",
-    "set.backup":"バックアップ","set.backupDesc":"基本はこの端末内に保存されます。家族共有中は、「共有」に設定したメンバーの記録がサーバーにも同期されます。","set.backupDesc2":"大切なデータは書き出して保管してください。","backup.export":"データを書き出す（写真ふくむ）","backup.exportCsv":"記録をCSVで書き出す","backup.restoreWarn":"読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？","backup.chooseFile":"ファイルを選んで復元","backup.restore":"バックアップから復元する",
+    "set.backup":"バックアップ","set.backupDesc":"基本はこの端末内に保存されます。家族共有中は、「共有」に設定したメンバーの記録がサーバーにも同期されます。","set.backupDesc2":"大切なデータは書き出して保管してください。","cb.title":"クラウドバックアップ","cb.desc":"オンにすると、サインイン中のアカウントに、あなたの全データ（写真を除く）の控えを自動で保存します。別の端末やブラウザで開いたときも、サインインすれば復元できます。家族共有とは別のもので、家族には見えません。写真はこの端末にだけ保存されます。","cb.needSignIn":"使うにはサインインが必要です。","cb.signIn":"サインインする","cb.autoLabel":"自動バックアップ","cb.on":"オン","cb.off":"オフ","cb.statusOff":"オフになっています","cb.statusNone":"まだバックアップがありません","cb.statusLast":"最終バックアップ：{date}","cb.statusBusy":"バックアップ中…","cb.statusError":"バックアップできませんでした。通信環境を確認してください","cb.statusTooBig":"データが大きくてバックアップできませんでした","cb.now":"今すぐバックアップ","cb.restoreBtn":"バックアップから復元","cb.none":"クラウドにバックアップがありません","cb.backedUp":"バックアップしました","cb.foundTitle":"バックアップが見つかりました","cb.foundBody":"{date} のバックアップがあります。この端末に復元しますか？写真はバックアップに含まれないため、復元されません。復元すると、この端末でも自動バックアップがオンになります。","cb.restoreTitle":"バックアップから復元しますか？","cb.restoreBody":"{date} のバックアップで、この端末のデータを上書きします。写真はバックアップに含まれないため、復元されません。","cb.doRestore":"復元する","cb.restored":"復元しました","cb.restoreFail":"復元できませんでした","backup.export":"データを書き出す（写真ふくむ）","backup.exportCsv":"記録をCSVで書き出す","backup.restoreWarn":"読み込むと、いまのデータはバックアップの内容で上書きされます。よろしいですか？","backup.chooseFile":"ファイルを選んで復元","backup.restore":"バックアップから復元する",
     "set.familyShare":"家族で共有","share.settings":"共有の設定",
-    "set.about":"アプリについて","about.help":"使い方・機能紹介","about.whatsNew":"変更点・新機能","about.tourAgain":"使い方をもう一度見る","about.aboutApp":"このアプリについて","about.reset":"データを消して最初から","about.privacyBody":"記録・写真は、基本的にこの端末内に保存されます。家族共有を使う場合のみ、「共有」に設定したメンバーのプロフィールと記録（写真を除く）が Google Firebase（東京）に保存され、家族間で同期されます。写真、「わたし」の記録、「自分のみ」のメンバーは共有されません。公開リンクやバックアップファイルを自分で渡した場合は、その内容が相手に表示されます。バックアップは設定から書き出せます。","about.analyticsBody":"利用状況の把握のため、画面表示や機能の利用を計測しています（記録の本文や写真は送りません）。天気表示では登録地点の位置情報を天気APIに送ります。","about.shareBody":"設定またはメニューの「家族で共有」から、家族スペースを作るか、招待コードで参加できます。共有されるのは「共有」に設定したメンバーのプロフィールと記録（写真を除く）です。各メンバーのプロフィールで「共有／自分のみ」を選べます。",
+    "set.about":"アプリについて","about.help":"使い方・機能紹介","about.whatsNew":"変更点・新機能","about.tourAgain":"使い方をもう一度見る","about.aboutApp":"このアプリについて","about.reset":"データを消して最初から","about.privacyBody":"記録・写真は、基本的にこの端末内に保存されます。家族共有を使う場合のみ、「共有」に設定したメンバーのプロフィールと記録（写真を除く）が Google Firebase（東京）に保存され、家族間で同期されます。クラウドバックアップをオンにした場合のみ、あなたの全データ（写真を除く）があなたのアカウントに紐づいて Firebase（東京）に保存され、あなただけが復元できます。写真、「わたし」の記録、「自分のみ」のメンバーは共有されません。公開リンクやバックアップファイルを自分で渡した場合は、その内容が相手に表示されます。バックアップは設定から書き出せます。","about.analyticsBody":"利用状況の把握のため、画面表示や機能の利用を計測しています（記録の本文や写真は送りません）。天気表示では登録地点の位置情報を天気APIに送ります。","about.shareBody":"設定またはメニューの「家族で共有」から、家族スペースを作るか、招待コードで参加できます。共有されるのは「共有」に設定したメンバーのプロフィールと記録（写真を除く）です。各メンバーのプロフィールで「共有／自分のみ」を選べます。",
     "rel.daysAgo":"{n}日前","rel.today2":"今日","rel.overdueDeadline":"期限切れ","rel.todayDeadline":"今日で期限","rel.dueInDaysDeadline":"あと{n}日で期限",
     "common.add":"追加","common.delete":"削除","common.edit":"編集","edit.due":"期限","edit.endTime":"終了時刻","edit.place":"場所","edit.placePh":"例：〇〇病院 3F・△△公園","edit.urlPh":"予約ページ等のリンク","edit.memo":"メモ","edit.memoPh":"持ち物・注意点など自由に","edit.stock":"在庫（回分・任意）","edit.stockPh":"例：3（フィラリア等の買い足しめやすに）","edit.checklist":"チェックリスト（持ち物など）","edit.checkAddPh":"項目を追加（例：保険証）","common.done":"完了","common.clear":"解除","common.me":"わたし","common.optional":"（任意）",
     "a11y.delete":"削除","a11y.check":"チェック","a11y.done":"完了","remind.before":"{n}分前","status.done":"完了","status.inDays":"あと{d}日","status.today":"今日","status.dreamOver":"また今度でも大丈夫","status.overdue":"期限切れ","care.done":"✅ 完了","care.overdueRenew":"🔴 期限切れ・{d}日超過","care.overdueTodo":"🔴 未対応・{d}日超過","care.plannedDate":"予定日 {date}","care.dueToday":"🟡 今日で期限","care.dueInDays":"🟡 あと{d}日で期限","care.validDays":"🟢 有効・あと{d}日","care.doToday":"🟡 今日やる","care.plannedDays":"🟡 予定・あと{d}日","care.planned":"🟡 予定済み","item.doneOn":"実施 {date}","item.stockLeft":"在庫あと{n}回","item.reminderCount":"{n}件","item.resolveTip":"記録すると次回予定へ自動で進みます","item.resolveBtn":"✓ 完了にして次回へ","item.snooze":"→ 明日へ","item.copyTip":"前回と同じ内容で追加","item.copyBtn":"↩ 前回コピー","item.addToCal":"カレンダーに追加","item.cert":"証明書","item.certAdd":"証明書を追加","item.openMap":"地図で開く","item.openLink":"リンクを開く","item.checklistProg":"持ち物 {done}/{total}","a11y.pickColor":"色を選ぶ","a11y.editProfile":"プロフィールを編集","a11y.editPhotoProfile":"写真・プロフィールを編集","a11y.editIconName":"アイコン・名前を変更",
@@ -2149,9 +2179,9 @@ const MESSAGES={
     "common.save":"Save","common.cancel":"Cancel","common.stop":"Cancel",
     "set.colorTime":"When colors change (care & task log)","set.colorWarn":"Turns yellow after","set.colorAlert":"Turns red after","set.colorNow":"Now: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Pet safety","safety.toxic":"Toxic foods & hazards","safety.emergency":"Night & emergency prep","safety.disaster":"Disaster & evacuation prep",
-    "set.backup":"Backup","set.backupDesc":"Basically stored on this device. While family sharing is on, records of members set to “Shared” also sync to the server. ","set.backupDesc2":"Export important data to keep it safe.","backup.export":"Export data (with photos)","backup.exportCsv":"Export records as CSV","backup.restoreWarn":"Restoring overwrites your current data with the backup. Continue?","backup.chooseFile":"Choose a file to restore","backup.restore":"Restore from backup",
+    "set.backup":"Backup","set.backupDesc":"Basically stored on this device. While family sharing is on, records of members set to “Shared” also sync to the server. ","set.backupDesc2":"Export important data to keep it safe.","cb.title":"Cloud backup","cb.desc":"When on, a copy of all your data (except photos) is automatically saved to your signed-in account. If you open the app on another device or in another browser, you can restore it just by signing in. This is separate from family sharing — your family cannot see it. Photos are stored only on this device.","cb.needSignIn":"You need to sign in to use this.","cb.signIn":"Sign in","cb.autoLabel":"Automatic backup","cb.on":"On","cb.off":"Off","cb.statusOff":"Turned off","cb.statusNone":"No backup yet","cb.statusLast":"Last backup: {date}","cb.statusBusy":"Backing up…","cb.statusError":"Backup failed. Please check your connection.","cb.statusTooBig":"Your data is too large to back up","cb.now":"Back up now","cb.restoreBtn":"Restore from backup","cb.none":"No backup found in the cloud","cb.backedUp":"Backed up","cb.foundTitle":"Backup found","cb.foundBody":"You have a backup from {date}. Restore it on this device? Photos are not included in backups, so they won't be restored. Restoring also turns on automatic backup on this device.","cb.restoreTitle":"Restore from backup?","cb.restoreBody":"The data on this device will be overwritten with the backup from {date}. Photos are not included in backups, so they won't be restored.","cb.doRestore":"Restore","cb.restored":"Restored","cb.restoreFail":"Could not restore","backup.export":"Export data (with photos)","backup.exportCsv":"Export records as CSV","backup.restoreWarn":"Restoring overwrites your current data with the backup. Continue?","backup.chooseFile":"Choose a file to restore","backup.restore":"Restore from backup",
     "set.familyShare":"Family sharing","share.settings":"Sharing settings",
-    "set.about":"About","about.help":"How it works","about.whatsNew":"What's new","about.tourAgain":"Replay the walkthrough","about.aboutApp":"About this app","about.reset":"Erase data & start over","about.privacyBody":"Your records and photos are basically stored on this device. Only when you use family sharing, the profiles and records (excluding photos) of members set to “Shared” are stored on Google Firebase (Tokyo) and synced with your family. Photos, your own “Me” records, and members set to “Only me” are never shared. If you hand someone a public link or a backup file yourself, its contents will be visible to them. You can export a backup from Settings.","about.analyticsBody":"To understand how the app is used, we measure screen views and feature use (we never send the contents of your records or photos). For weather, your saved locations are sent to a weather API.","about.shareBody":"From “Family sharing” in Settings or the menu, you can create a family space or join with an invite code. Only the profiles and records (excluding photos) of members set to “Shared” are shared. You can choose “Shared / Only me” in each member's profile.",
+    "set.about":"About","about.help":"How it works","about.whatsNew":"What's new","about.tourAgain":"Replay the walkthrough","about.aboutApp":"About this app","about.reset":"Erase data & start over","about.privacyBody":"Your records and photos are basically stored on this device. Only when you use family sharing, the profiles and records (excluding photos) of members set to “Shared” are stored on Google Firebase (Tokyo) and synced with your family. Only when you turn on cloud backup, all of your data (excluding photos) is stored on Firebase (Tokyo) linked to your account, and only you can restore it. Photos, your own “Me” records, and members set to “Only me” are never shared. If you hand someone a public link or a backup file yourself, its contents will be visible to them. You can export a backup from Settings.","about.analyticsBody":"To understand how the app is used, we measure screen views and feature use (we never send the contents of your records or photos). For weather, your saved locations are sent to a weather API.","about.shareBody":"From “Family sharing” in Settings or the menu, you can create a family space or join with an invite code. Only the profiles and records (excluding photos) of members set to “Shared” are shared. You can choose “Shared / Only me” in each member's profile.",
     "rel.daysAgo":"{n} days ago","rel.today2":"Today","rel.overdueDeadline":"Overdue","rel.todayDeadline":"Due today","rel.dueInDaysDeadline":"Due in {n} days",
     "common.add":"Add","common.delete":"Delete","common.edit":"Edit","edit.due":"Due date","edit.endTime":"End time","edit.place":"Place","edit.placePh":"e.g. Clinic 3F / the park","edit.urlPh":"Booking page or link","edit.memo":"Memo","edit.memoPh":"Things to bring, notes, anything","edit.stock":"Stock (doses, optional)","edit.stockPh":"e.g. 3 (restock guide for meds)","edit.checklist":"Checklist (things to bring)","edit.checkAddPh":"Add an item (e.g. insurance card)","common.done":"Done","common.clear":"Clear","common.me":"Me","common.optional":" (optional)",
     "a11y.delete":"Delete","a11y.check":"Check","a11y.done":"Done","remind.before":"{n} min before","status.done":"Done","status.inDays":"In {d} days","status.today":"Today","status.dreamOver":"No rush — another time","status.overdue":"Overdue","care.done":"✅ Done","care.overdueRenew":"🔴 Overdue by {d} days","care.overdueTodo":"🔴 Not done — {d} days over","care.plannedDate":"Due {date}","care.dueToday":"🟡 Due today","care.dueInDays":"🟡 Due in {d} days","care.validDays":"🟢 Valid — {d} days left","care.doToday":"🟡 Do today","care.plannedDays":"🟡 Planned — {d} days","care.planned":"🟡 Planned","item.doneOn":"Done {date}","item.stockLeft":"{n} left","item.reminderCount":"{n}","item.resolveTip":"Logging advances to the next due date","item.resolveBtn":"✓ Done — next","item.snooze":"→ Tomorrow","item.copyTip":"Add same as last time","item.copyBtn":"↩ Copy last","item.addToCal":"Add to calendar","item.cert":"Certificate","item.certAdd":"Add certificate","item.openMap":"Open in maps","item.openLink":"Open link","item.checklistProg":"Items {done}/{total}","a11y.pickColor":"Pick a color","a11y.editProfile":"Edit profile","a11y.editPhotoProfile":"Edit photo & profile","a11y.editIconName":"Change icon & name",
@@ -2241,9 +2271,9 @@ const MESSAGES={
     "common.save":"Guardar","common.cancel":"Cancelar","common.stop":"Cancelar",
     "set.colorTime":"Cuándo cambian los colores (cuidados y registro de tareas)","set.colorWarn":"Se vuelve amarillo tras","set.colorAlert":"Se vuelve rojo tras","set.colorNow":"Ahora: ","set.colorDaySuffix":"d → ","unit.dShort":"d",
     "set.petSafety":"Seguridad de la mascota","safety.toxic":"Alimentos tóxicos y peligros","safety.emergency":"Preparación para urgencias nocturnas","safety.disaster":"Preparación ante desastres y evacuación",
-    "set.backup":"Copia de seguridad","set.backupDesc":"Básicamente se guarda en este dispositivo. Con el uso compartido en familia activo, los registros de los miembros marcados como «Compartido» también se sincronizan con el servidor. ","set.backupDesc2":"Exporta tus datos importantes para conservarlos.","backup.export":"Exportar datos (con fotos)","backup.exportCsv":"Exportar registros como CSV","backup.restoreWarn":"Restaurar sobrescribe tus datos actuales con la copia. ¿Continuar?","backup.chooseFile":"Elige un archivo para restaurar","backup.restore":"Restaurar desde copia",
+    "set.backup":"Copia de seguridad","set.backupDesc":"Básicamente se guarda en este dispositivo. Con el uso compartido en familia activo, los registros de los miembros marcados como «Compartido» también se sincronizan con el servidor. ","set.backupDesc2":"Exporta tus datos importantes para conservarlos.","cb.title":"Copia en la nube","cb.desc":"Al activarlo, se guarda automáticamente una copia de todos tus datos (sin las fotos) en tu cuenta. Si abres la app en otro dispositivo o navegador, podrás restaurarla solo iniciando sesión. Es independiente del uso compartido en familia: tu familia no puede verla. Las fotos se guardan solo en este dispositivo.","cb.needSignIn":"Necesitas iniciar sesión para usarlo.","cb.signIn":"Iniciar sesión","cb.autoLabel":"Copia automática","cb.on":"Activado","cb.off":"Desactivado","cb.statusOff":"Está desactivado","cb.statusNone":"Aún no hay copias","cb.statusLast":"Última copia: {date}","cb.statusBusy":"Guardando copia…","cb.statusError":"No se pudo guardar la copia. Revisa tu conexión.","cb.statusTooBig":"Tus datos son demasiado grandes para guardar una copia","cb.now":"Guardar copia ahora","cb.restoreBtn":"Restaurar desde la copia","cb.none":"No hay copias en la nube","cb.backedUp":"Copia guardada","cb.foundTitle":"Se encontró una copia","cb.foundBody":"Tienes una copia del {date}. ¿Restaurarla en este dispositivo? Las fotos no se incluyen en las copias, así que no se restaurarán. Al restaurar, también se activará la copia automática en este dispositivo.","cb.restoreTitle":"¿Restaurar desde la copia?","cb.restoreBody":"Los datos de este dispositivo se reemplazarán con la copia del {date}. Las fotos no se incluyen en las copias, así que no se restaurarán.","cb.doRestore":"Restaurar","cb.restored":"Restaurado","cb.restoreFail":"No se pudo restaurar","backup.export":"Exportar datos (con fotos)","backup.exportCsv":"Exportar registros como CSV","backup.restoreWarn":"Restaurar sobrescribe tus datos actuales con la copia. ¿Continuar?","backup.chooseFile":"Elige un archivo para restaurar","backup.restore":"Restaurar desde copia",
     "set.familyShare":"Compartir con la familia","share.settings":"Ajustes de uso compartido",
-    "set.about":"Acerca de","about.help":"Cómo funciona","about.whatsNew":"Novedades","about.tourAgain":"Repetir el tutorial","about.aboutApp":"Sobre esta app","about.reset":"Borrar datos y empezar de nuevo","about.privacyBody":"Tus registros y fotos se guardan básicamente en este dispositivo. Solo si usas el uso compartido en familia, los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido» se guardan en Google Firebase (Tokio) y se sincronizan con tu familia. Las fotos, tus registros («Yo») y los miembros marcados como «Solo yo» nunca se comparten. Si entregas tú un enlace público o un archivo de copia de seguridad, su contenido será visible para esa persona. Puedes exportar una copia desde Ajustes.","about.analyticsBody":"Para conocer el uso de la app, medimos las pantallas vistas y el uso de funciones (nunca enviamos el contenido de tus registros ni tus fotos). Para el clima, tus lugares guardados se envían a una API meteorológica.","about.shareBody":"Desde «Compartir en familia» en Ajustes o en el menú, puedes crear un espacio familiar o unirte con un código de invitación. Solo se comparten los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido». Puedes elegir «Compartido / Solo yo» en el perfil de cada miembro.",
+    "set.about":"Acerca de","about.help":"Cómo funciona","about.whatsNew":"Novedades","about.tourAgain":"Repetir el tutorial","about.aboutApp":"Sobre esta app","about.reset":"Borrar datos y empezar de nuevo","about.privacyBody":"Tus registros y fotos se guardan básicamente en este dispositivo. Solo si usas el uso compartido en familia, los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido» se guardan en Google Firebase (Tokio) y se sincronizan con tu familia. Solo si activas la copia en la nube, todos tus datos (sin las fotos) se guardan en Firebase (Tokio) vinculados a tu cuenta, y solo tú puedes restaurarlos. Las fotos, tus registros («Yo») y los miembros marcados como «Solo yo» nunca se comparten. Si entregas tú un enlace público o un archivo de copia de seguridad, su contenido será visible para esa persona. Puedes exportar una copia desde Ajustes.","about.analyticsBody":"Para conocer el uso de la app, medimos las pantallas vistas y el uso de funciones (nunca enviamos el contenido de tus registros ni tus fotos). Para el clima, tus lugares guardados se envían a una API meteorológica.","about.shareBody":"Desde «Compartir en familia» en Ajustes o en el menú, puedes crear un espacio familiar o unirte con un código de invitación. Solo se comparten los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido». Puedes elegir «Compartido / Solo yo» en el perfil de cada miembro.",
     "rel.daysAgo":"hace {n} días","rel.today2":"Hoy","rel.overdueDeadline":"Vencido","rel.todayDeadline":"Vence hoy","rel.dueInDaysDeadline":"Vence en {n} días",
     "common.add":"Añadir","common.delete":"Eliminar","common.edit":"Editar","edit.due":"Fecha límite","edit.endTime":"Hora de fin","edit.place":"Lugar","edit.placePh":"p. ej. Clínica 3F / el parque","edit.urlPh":"Página de reserva o enlace","edit.memo":"Nota","edit.memoPh":"Qué llevar, notas, lo que sea","edit.stock":"Stock (dosis, opcional)","edit.stockPh":"p. ej. 3 (guía de reposición)","edit.checklist":"Lista (qué llevar)","edit.checkAddPh":"Añadir (p. ej. tarjeta del seguro)","common.done":"Hecho","common.clear":"Borrar","common.me":"Yo","common.optional":" (opcional)",
     "a11y.delete":"Eliminar","a11y.check":"Marcar","a11y.done":"Hecho","remind.before":"{n} min antes","status.done":"Hecho","status.inDays":"En {d} días","status.today":"Hoy","status.dreamOver":"Sin prisa, otro día","status.overdue":"Vencido","care.done":"✅ Hecho","care.overdueRenew":"🔴 Vencido {d} días","care.overdueTodo":"🔴 Sin hacer — {d} días","care.plannedDate":"Fecha {date}","care.dueToday":"🟡 Vence hoy","care.dueInDays":"🟡 Vence en {d} días","care.validDays":"🟢 Válido — {d} días","care.doToday":"🟡 Hazlo hoy","care.plannedDays":"🟡 Planeado — {d} días","care.planned":"🟡 Planeado","item.doneOn":"Hecho {date}","item.stockLeft":"Quedan {n}","item.reminderCount":"{n}","item.resolveTip":"Al registrar, avanza a la próxima fecha","item.resolveBtn":"✓ Hecho — siguiente","item.snooze":"→ Mañana","item.copyTip":"Añadir igual que la última vez","item.copyBtn":"↩ Copiar última","item.addToCal":"Añadir al calendario","item.cert":"Certificado","item.certAdd":"Añadir certificado","item.openMap":"Abrir en el mapa","item.openLink":"Abrir enlace","item.checklistProg":"Cosas {done}/{total}","a11y.pickColor":"Elegir un color","a11y.editProfile":"Editar perfil","a11y.editPhotoProfile":"Editar foto y perfil","a11y.editIconName":"Cambiar icono y nombre",
@@ -2333,9 +2363,9 @@ const MESSAGES={
     "common.save":"保存","common.cancel":"取消","common.stop":"取消",
     "set.colorTime":"颜色变化的时机（照护与任务记录）","set.colorWarn":"变黄的天数","set.colorAlert":"变红的天数","set.colorNow":"当前：","set.colorDaySuffix":"天 → ","unit.dShort":"天",
     "set.petSafety":"宠物安全","safety.toxic":"有毒食物与危险","safety.emergency":"夜间与急救准备","safety.disaster":"防灾与疏散准备",
-    "set.backup":"备份","set.backupDesc":"原则上保存在本设备内。使用家庭共享时，设为「共享」的成员的记录也会同步到服务器。","set.backupDesc2":"重要数据请导出保存。","backup.export":"导出数据（含照片）","backup.exportCsv":"将记录导出为CSV","backup.restoreWarn":"恢复会用备份覆盖当前数据。是否继续？","backup.chooseFile":"选择要恢复的文件","backup.restore":"从备份恢复",
+    "set.backup":"备份","set.backupDesc":"原则上保存在本设备内。使用家庭共享时，设为「共享」的成员的记录也会同步到服务器。","set.backupDesc2":"重要数据请导出保存。","cb.title":"云端备份","cb.desc":"开启后，会把你的全部数据（不含照片）自动保存一份到已登录的账号。在其他设备或浏览器打开时，登录即可恢复。这与家庭共享是两回事，家人看不到。照片只保存在本设备。","cb.needSignIn":"使用前需要登录。","cb.signIn":"登录","cb.autoLabel":"自动备份","cb.on":"开","cb.off":"关","cb.statusOff":"已关闭","cb.statusNone":"尚无备份","cb.statusLast":"上次备份：{date}","cb.statusBusy":"正在备份…","cb.statusError":"备份失败，请检查网络连接","cb.statusTooBig":"数据太大，无法备份","cb.now":"立即备份","cb.restoreBtn":"从备份恢复","cb.none":"云端没有备份","cb.backedUp":"已备份","cb.foundTitle":"找到备份","cb.foundBody":"你有一份 {date} 的备份。要恢复到本设备吗？照片不包含在备份中，因此不会恢复。恢复后，本设备也会开启自动备份。","cb.restoreTitle":"从备份恢复吗？","cb.restoreBody":"本设备的数据将被 {date} 的备份覆盖。照片不包含在备份中，因此不会恢复。","cb.doRestore":"恢复","cb.restored":"已恢复","cb.restoreFail":"恢复失败","backup.export":"导出数据（含照片）","backup.exportCsv":"将记录导出为CSV","backup.restoreWarn":"恢复会用备份覆盖当前数据。是否继续？","backup.chooseFile":"选择要恢复的文件","backup.restore":"从备份恢复",
     "set.familyShare":"家庭共享","share.settings":"共享设置",
-    "set.about":"关于","about.help":"使用说明","about.whatsNew":"更新内容","about.tourAgain":"重看引导","about.aboutApp":"关于本应用","about.reset":"清除数据并重新开始","about.privacyBody":"记录和照片原则上保存在本设备内。仅在使用家庭共享时，设为「共享」的成员的资料和记录（不含照片）会保存到 Google Firebase（东京）并与家人同步。照片、「我」的记录以及设为「仅自己」的成员不会被共享。如果你亲自把公开链接或备份文件交给他人，对方就能看到其中的内容。可在设置中导出备份。","about.analyticsBody":"为了解使用情况，我们会统计画面浏览和功能使用（不会发送记录正文或照片）。天气功能会把已保存地点的位置信息发送给天气 API。","about.shareBody":"在设置或菜单的「家庭共享」中，可以创建家庭空间或用邀请码加入。仅共享设为「共享」的成员的资料和记录（不含照片）。可在每位成员的资料中选择「共享／仅自己」。",
+    "set.about":"关于","about.help":"使用说明","about.whatsNew":"更新内容","about.tourAgain":"重看引导","about.aboutApp":"关于本应用","about.reset":"清除数据并重新开始","about.privacyBody":"记录和照片原则上保存在本设备内。仅在使用家庭共享时，设为「共享」的成员的资料和记录（不含照片）会保存到 Google Firebase（东京）并与家人同步。仅当你开启云端备份时，你的全部数据（不含照片）会与你的账号绑定保存到 Firebase（东京），只有你本人可以恢复。照片、「我」的记录以及设为「仅自己」的成员不会被共享。如果你亲自把公开链接或备份文件交给他人，对方就能看到其中的内容。可在设置中导出备份。","about.analyticsBody":"为了解使用情况，我们会统计画面浏览和功能使用（不会发送记录正文或照片）。天气功能会把已保存地点的位置信息发送给天气 API。","about.shareBody":"在设置或菜单的「家庭共享」中，可以创建家庭空间或用邀请码加入。仅共享设为「共享」的成员的资料和记录（不含照片）。可在每位成员的资料中选择「共享／仅自己」。",
     "rel.daysAgo":"{n}天前","rel.today2":"今天","rel.overdueDeadline":"已逾期","rel.todayDeadline":"今天到期","rel.dueInDaysDeadline":"{n}天后到期",
     "common.add":"添加","common.delete":"删除","common.edit":"编辑","edit.due":"截止日","edit.endTime":"结束时间","edit.place":"地点","edit.placePh":"如 医院3F / 公园","edit.urlPh":"预约页面等链接","edit.memo":"备注","edit.memoPh":"携带物品、注意事项等","edit.stock":"库存（次数，可选）","edit.stockPh":"如 3（补货参考）","edit.checklist":"清单（携带物品等）","edit.checkAddPh":"添加项目（如 保险卡）","common.done":"完成","common.clear":"清除","common.me":"我","common.optional":"（可选）",
     "a11y.delete":"删除","a11y.check":"勾选","a11y.done":"完成","remind.before":"提前{n}分钟","status.done":"完成","status.inDays":"还有{d}天","status.today":"今天","status.dreamOver":"改天也没关系","status.overdue":"已过期","care.done":"✅ 完成","care.overdueRenew":"🔴 已过期{d}天","care.overdueTodo":"🔴 未处理·超{d}天","care.plannedDate":"预定日 {date}","care.dueToday":"🟡 今天到期","care.dueInDays":"🟡 还有{d}天到期","care.validDays":"🟢 有效·还有{d}天","care.doToday":"🟡 今天做","care.plannedDays":"🟡 计划·还有{d}天","care.planned":"🟡 已计划","item.doneOn":"已做 {date}","item.stockLeft":"剩{n}次","item.reminderCount":"{n}项","item.resolveTip":"记录后自动进入下次预定","item.resolveBtn":"✓ 完成并进入下次","item.snooze":"→ 明天","item.copyTip":"按上次内容添加","item.copyBtn":"↩ 复制上次","item.addToCal":"添加到日历","item.cert":"证明","item.certAdd":"添加证明","item.openMap":"在地图中打开","item.openLink":"打开链接","item.checklistProg":"物品 {done}/{total}","a11y.pickColor":"选择颜色","a11y.editProfile":"编辑资料","a11y.editPhotoProfile":"编辑照片和资料","a11y.editIconName":"更改图标和名称",
@@ -2987,7 +3017,9 @@ function App(){
   const[aboutOpen,setAboutOpen]=useState(false); // 「このアプリについて」（バージョン・データ保存・共有方針・注意事項・お問い合わせ）
   const[whatsNewOpen,setWhatsNewOpen]=useState(false); // 「変更点・新機能」（What's New）
   // 表示言語（ja/en）。UI設定なのでローカル保存。既存ユーザー保護のため初回は日本語がデフォルト。
-  const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en"||s==="es"||s==="zh")return s;}catch(e){}return "ja";});
+  // ただし公開リンク（名刺・旧ページ・招待）で開かれた初回は、受け取った人に言語選択を強いないよう
+  // 端末の言語から推定して表示する。この推定値は本体の言語選択として保存しない（本体で改めて選べる）。
+  const[lang,setLang]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");if(s==="ja"||s==="en"||s==="es"||s==="zh")return s;}catch(e){}if(hasPublicEntryParam())return inferDeviceLang();return "ja";});
   // loalife-lang-v1 が未設定なら初回言語選択を表示（既存ユーザー＝設定済みには出さない）。
   const[langChosen,setLangChosen]=useState(()=>{try{const s=localStorage.getItem("loalife-lang-v1");return s==="ja"||s==="en"||s==="es"||s==="zh";}catch(e){return true;}});
   APP_LANG=lang; // モジュールレベルのコンポーネント用（レンダー時に同期）
@@ -3131,6 +3163,17 @@ function App(){
   const[shareLoading,setShareLoading]=useState(false);
   const[copiedCode,setCopiedCode]=useState(false);
   const householdUnsub=useRef(null);
+
+  // クラウドバックアップ（自分のデータの控え・オプトイン初期オフ）state。
+  // 有効フラグと最終バックアップ日時は端末ローカル（CB_KEY）に持つ（文脈ごとに独立）。
+  const[cbEnabled,setCbEnabled]=useState(()=>{try{return JSON.parse(localStorage.getItem(CB_KEY)||"{}").enabled===true;}catch(e){return false;}});
+  const[cbStatus,setCbStatus]=useState("off"); // off | busy | ok | error | toobig
+  const[cbLastAt,setCbLastAt]=useState(()=>{try{return Number(JSON.parse(localStorage.getItem(CB_KEY)||"{}").lastAt)||0;}catch(e){return 0;}});
+  const[cbCloudAt,setCbCloudAt]=useState(0); // クラウド側の最終バックアップ日時（取得できた時だけ）
+  const[cbOffer,setCbOffer]=useState(null); // {stateJson,updatedAt,auto} 復元確認モーダルの対象
+  const cbHashRef=useRef(""); // 最後にアップロードした内容の指紋（無変更時の再送防止）
+  const cbPromptRef=useRef(false); // サインイン時の復元提案は1セッション1回まで
+  const saveCbMeta=(patch)=>{try{const cur=JSON.parse(localStorage.getItem(CB_KEY)||"{}");localStorage.setItem(CB_KEY,JSON.stringify({...cur,...patch}));}catch(e){}};
 
   // Quick-add state
   const[quickAdd,setQuickAdd]=useState(null); // {kind,emoji,title,space,lastDate,repeat}
@@ -3345,6 +3388,34 @@ function App(){
       try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current}));}catch(e){}
     }
   };
+
+  // クラウドバックアップ：オプトインON＋サインイン済みのとき、状態が変わったら
+  // 少し待ってから1回だけアップロードする（スロットル）。内容が同じなら uploadBackup 側で再送を省く。
+  useEffect(()=>{
+    if(!cbEnabled||!fireUser||!loaded||!FB_READY)return;
+    const id=setTimeout(()=>{uploadBackup(false);},8000);
+    return()=>clearTimeout(id);
+  },[cbEnabled,fireUser,loaded,members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep,dogFriends]);
+
+  // サインイン時：クラウドにバックアップがあれば日時を控え、ローカルが空（またはサンプルのみ）の
+  // 文脈でのみ「復元しますか？」を提案する。ローカルに実データがある場合は勝手に上書きしない。
+  // オプトインは端末ローカルの設定なので、別文脈（Safari等）では未設定でも提案するのが本機能の肝。
+  useEffect(()=>{
+    if(!FB_READY||!fireUser||!loaded||cbPromptRef.current)return;
+    cbPromptRef.current=true;
+    (async()=>{
+      try{
+        const snap=await getDoc(doc(fbDb,"users",fireUser.uid,"backup","main"));
+        if(!snap.exists())return;
+        const parsed=parseBackupDoc(snap.data());
+        if(!parsed)return;
+        setCbCloudAt(parsed.updatedAt);
+        if(localLooksEmpty(sampleMode,members.length,items.length)){
+          setCbOffer({stateJson:parsed.stateJson,updatedAt:parsed.updatedAt,auto:true});
+        }
+      }catch(e){}
+    })();
+  },[fireUser,loaded]);
 
   // 天気の取得（Open-Meteo・APIキー不要・CORS対応）。現在の実況＋当日の予報（最高/最低・天気）を取得。
   const fetchWeather=useCallback(async(loc)=>{
@@ -3682,6 +3753,67 @@ function App(){
       const n=Object.keys(restored).length;
       showFlash(n?t("toast.restoreDoneN",{n}):t("toast.restoreDone"));
     }catch(err){showFlash(t("toast.fileReadFail"));}
+  };
+  // ===== クラウドバックアップ（自分のデータの控え） =====
+  // ローカル全状態（テキストのみ・写真は対象外）を serializeState で1本化する。ファイル書き出しと同じ範囲。
+  const buildLocalStateJson=()=>serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current,dogFriends});
+  const backupFingerprint=(json,bytes)=>bytes+":"+json.slice(0,64)+":"+json.slice(-64);
+  // クラウドへアップロード。manual=true は設定画面の「今すぐ」用（結果をフラッシュ表示）。
+  // 容量超過・通信失敗は無言で終わらせず、必ず状態（cbStatus）に残す。
+  const uploadBackup=async(manual)=>{
+    if(!FB_READY||!fireUser||!fbDb)return false;
+    const json=buildLocalStateJson();
+    const docData=buildBackupDoc(json,Date.now());
+    if(!docData){setCbStatus("toobig");if(manual)showFlash(t("cb.statusTooBig"));return false;}
+    const fp=backupFingerprint(json,docData.bytes);
+    if(!manual&&cbHashRef.current===fp)return true; // 変更なし：再送しない
+    setCbStatus("busy");
+    try{
+      await setDoc(doc(fbDb,"users",fireUser.uid,"backup","main"),docData);
+      cbHashRef.current=fp;
+      setCbLastAt(docData.updatedAt);setCbCloudAt(docData.updatedAt);saveCbMeta({lastAt:docData.updatedAt});
+      setCbStatus("ok");
+      if(manual)showFlash(t("cb.backedUp"));
+      return true;
+    }catch(e){setCbStatus("error");if(manual)showFlash(t("cb.statusError"));return false;}
+  };
+  const toggleCloudBackup=(on)=>{
+    setCbEnabled(on);saveCbMeta({enabled:on});
+    if(on){setCbStatus("ok");uploadBackup(false);}else{setCbStatus("off");}
+  };
+  // 設定画面の「バックアップから復元」：クラウドを読んで確認モーダルを出す（即時上書きはしない）。
+  const fetchCloudBackup=async()=>{
+    if(!FB_READY||!fireUser||!fbDb)return;
+    setCbStatus("busy");
+    try{
+      const snap=await getDoc(doc(fbDb,"users",fireUser.uid,"backup","main"));
+      const parsed=snap.exists()?parseBackupDoc(snap.data()):null;
+      setCbStatus(cbEnabled?"ok":"off");
+      if(!parsed){showFlash(t("cb.none"));return;}
+      setCbCloudAt(parsed.updatedAt);
+      setCbOffer({stateJson:parsed.stateJson,updatedAt:parsed.updatedAt,auto:false});
+    }catch(e){setCbStatus("error");showFlash(t("cb.statusError"));}
+  };
+  // 復元の適用（確認モーダルで「復元する」を押した時だけ呼ばれる）。importData と同じ適用手順＋ migrateState 経由。
+  // 写真はバックアップ対象外のため復元されない（モーダル文言と設定の説明で明示済み）。
+  const applyCloudRestore=async()=>{
+    const offer=cbOffer;setCbOffer(null);
+    if(!offer)return;
+    try{
+      const st=migrateState(JSON.parse(offer.stateJson));
+      if(!st||!Array.isArray(st.members)||!Array.isArray(st.items))throw new Error("bad");
+      setMembers(st.members);setItems(st.items);setUsage(st.usage||{});setPrep(st.prep||null);prepRef.current=st.prep||null;
+      setMeEmoji(st.meEmoji||"🙂");setMeBirthday(st.meBirthday||"");setMeColor(st.meColor||"");setMeName(st.meName||"");setMeAvatar(st.meAvatar||"");
+      if(Array.isArray(st.dogFriends))persistDF(st.dogFriends);
+      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar,prep:st.prep}));}catch(e){}
+      clearSampleMode();setOnboarding(false);setTab("home");
+      // 復元した内容をそのまま再アップロードしないよう指紋を合わせておく。
+      const docData=buildBackupDoc(offer.stateJson,offer.updatedAt);
+      if(docData)cbHashRef.current=backupFingerprint(offer.stateJson,docData.bytes);
+      // 自動提案からの復元では、この端末でも自動バックアップをオンにする（モーダル文言で予告済み）。
+      if(offer.auto){setCbEnabled(true);saveCbMeta({enabled:true});setCbStatus("ok");}
+      showFlash(t("cb.restored"));
+    }catch(e){showFlash(t("cb.restoreFail"));}
   };
   const loadSample=()=>{const seed=makeSeed();persist(seed.members,seed.items);try{localStorage.setItem("loalife-sample-mode","1");}catch(e){}setSampleMode(true);setOnboarding(false);setTab("home");};
 
@@ -5549,7 +5681,11 @@ function App(){
 
   // 初回言語選択：loalife-lang-v1 未設定のときだけ、通常UI（オンボーディング含む）より前に表示。
   // 言語未確定なので日本語・英語を併記（t() に依存しない）。
-  if(!langChosen){
+  // ただし公開ビュー（名刺・旧公開ページ・招待導線）が開いている間はゲートでブロックしない：
+  // リンクを受け取った人に言語選択を強いると、その時点で離脱してしまうため。
+  // 公開ビューを閉じて本体に入った時点で、改めてこの選択が出る（確定保存もその時）。
+  const publicViewOpen=!!petPage||(petCardId&&!petCardClosed)||!!pendingJoin;
+  if(!langChosen&&!publicViewOpen){
     return(
       <div className="yl-ob yl-langfirst">
         <div className="yl-ob-inner">
@@ -6166,6 +6302,30 @@ function App(){
                 )}
               </div>
             </section>
+            {FB_READY&&(
+              <section className="yl-set-sec">
+                <h3 className="yl-set-title"><Icon name="shield" size={16}/> {t("cb.title")}</h3>
+                <p className="yl-set-desc">{t("cb.desc")}</p>
+                {!fireUser?(
+                  <>
+                    <p className="yl-set-desc" style={{marginTop:6}}>{t("cb.needSignIn")}</p>
+                    <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>{t("cb.signIn")}</button></div>
+                  </>
+                ):(
+                  <>
+                    <div className="yl-set-actions" style={{alignItems:"center",gap:10}}>
+                      <span style={{fontSize:13,fontWeight:800}}>{t("cb.autoLabel")}</span>
+                      <button className={"yl-theme-opt"+(cbEnabled?" on":"")} onClick={()=>toggleCloudBackup(!cbEnabled)} aria-pressed={cbEnabled}>{cbEnabled?t("cb.on"):t("cb.off")}</button>
+                    </div>
+                    <p className="yl-set-desc" style={{marginTop:6}}>{cbStatus==="busy"?t("cb.statusBusy"):cbStatus==="toobig"?t("cb.statusTooBig"):cbStatus==="error"?t("cb.statusError"):(cbLastAt||cbCloudAt)?t("cb.statusLast",{date:fmtBackupDate(cbLastAt||cbCloudAt)}):cbEnabled?t("cb.statusNone"):t("cb.statusOff")}</p>
+                    <div className="yl-set-actions">
+                      <button className="yl-addbtn sm" onClick={()=>uploadBackup(true)}>{t("cb.now")}</button>
+                      <button className="yl-addbtn sm" onClick={fetchCloudBackup}>{t("cb.restoreBtn")}</button>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
             {FB_READY&&(
               <section className="yl-set-sec">
                 <h3 className="yl-set-title"><Icon name="users" size={16}/> {t("set.familyShare")}</h3>
@@ -7401,6 +7561,7 @@ function App(){
               <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
                 {[
+                  ["☁️","クラウドバックアップ","設定でオンにすると、自分のデータの控えをアカウントに自動保存。別の端末やブラウザでも、サインインすれば復元できます（写真は対象外）"],
                   ["🎨","名刺のデザインと犬友だち保存","名刺ページのデザインを4つのテーマから選べるように。開いてもらった名刺は、見る側の犬友だちに自動で保存されます"],
                   ["💳","名刺ページができました","写真と性格、InstagramやTikTokのリンクを載せたページを公開できます"],
                   ["🚑","救急・防災が家族みんなに対応","子どもや家族だけの世帯でも、内容が合うように出し分けました。子どもの体温も記録できます"],
@@ -8337,6 +8498,7 @@ function App(){
           <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>あとで</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>プロフィールを設定</button></div>
         </div></div>
       );})()}
+      {cbOffer&&<div className="yl-overlay" onClick={()=>setCbOffer(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">☁️</div><h3 className="yl-modal-title">{t(cbOffer.auto?"cb.foundTitle":"cb.restoreTitle")}</h3><p className="yl-modal-body">{t(cbOffer.auto?"cb.foundBody":"cb.restoreBody",{date:fmtBackupDate(cbOffer.updatedAt)})}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCbOffer(null)}>{t("common.cancel")}</button><button className="yl-btn-primary" onClick={applyCloudRestore}>{t("cb.doRestore")}</button></div></div></div>}
       {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="alert" size={30}/></div><h3 className="yl-modal-title">{t(sampleMode?"reset.sampleTitle":"reset.title")}</h3><p className="yl-modal-body">{t(sampleMode?"reset.sampleBody":"reset.body")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>{setConfirmReset(false);resetApp(sampleMode?1:0);}}>{t(sampleMode?"reset.sampleBtn":"reset.btn")}</button></div></div></div>}
       {calPicker&&(()=>{
         const it=calPicker.item;
