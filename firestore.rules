@@ -137,6 +137,25 @@ service cloud.firestore {
         request.auth.uid == resource.data.ownerUid;
     }
 
+    // ─── Public lost-pet posters （迷子ポスター公開ページ） ──────────
+    // 紙のポスターと同じ内容を表示専用で公開するドキュメント。連絡先を含むため
+    // ID は推測困難な24文字ランダムにし、列挙は禁止する。
+    // 作成・更新は確認済みユーザーが自分の ownerUid のものだけ（更新は既存
+    // ドキュメントの所有者一致も必須＝乗っ取り防止、publicCards と同じ形）。
+    // 削除（公開停止）は所有者のみ。内容は所有者がポスターを編集すると
+    // アプリ側から自動で書き直される（捜索中の情報更新のため update を許可）。
+    match /publicPosters/{posterId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if verified() &&
+        request.auth.uid == request.resource.data.ownerUid;
+      allow update: if verified() &&
+        request.auth.uid == resource.data.ownerUid &&
+        request.auth.uid == request.resource.data.ownerUid;
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
+    }
+
     // ─── Households ───────────────────────────────────────────────
     match /households/{hid} {
       // Any member can read the household doc
