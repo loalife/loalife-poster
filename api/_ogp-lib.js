@@ -129,15 +129,29 @@ async function fetchPublicCard(cardId, fetchImpl, timeoutMs) {
 //   常時: name / breed / birthday / gender / species / emoji / theme / show*
 //   条件付き（値があり表示ONのときだけドキュメントに存在）:
 //     personality / skills / favSnack / caution / instagram / tiktok / youtube / photo(data URI)
+//     video（YouTube動画へのリンク） / photos（追加写真の data URI 配列）
+//     lost / lostContact / lostNote（迷子モードONのときだけ存在）
 // og:description には breed / personality / skills / favSnack を使う。
 // caution（気をつけてほしいこと）はプレビュー文には含めない（ページ本体で見せる情報のため）。
 function buildCardTitle(card) {
   const name = card && typeof card.name === "string" ? card.name.trim() : "";
+  // 迷子モード中は、シェアされたプレビュー自体が呼びかけになるよう「探しています」を先頭に出す。
+  if (card && card.lost === true) return name ? "【探しています】" + name + " | " + SITE_NAME : "【探しています】" + SITE_NAME;
   return name ? name + "の名刺 | " + SITE_NAME : SITE_NAME;
 }
 
 function buildCardDescription(card) {
   if (!card) return SITE_DESCRIPTION;
+  // 迷子モード中は、飼い主が公開を承知で載せた連絡先・ひとことをプレビューにも出す
+  // （通常時に caution を出さない方針とは別。迷子モードの文言は「見つけた人への連絡」のためにある）。
+  if (card.lost === true) {
+    const lparts = [];
+    const note = typeof card.lostNote === "string" ? card.lostNote.trim() : "";
+    if (note) lparts.push(note);
+    const contact = typeof card.lostContact === "string" ? card.lostContact.trim() : "";
+    if (contact) lparts.push("連絡先：" + contact);
+    if (lparts.length) return truncate(lparts.join("｜"), 160);
+  }
   const parts = [];
   const push = (label, val) => {
     const v = typeof val === "string" ? val.trim() : "";
