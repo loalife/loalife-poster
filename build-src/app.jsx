@@ -37,7 +37,11 @@ const BRAND_HOST=(()=>{try{const h=(typeof location!=="undefined"&&location.host
   // ネイティブ（Capacitor）ではホストが localhost 等になるため、ポスター等の表示は正規ドメインに固定。
   if(!h||/^localhost|^127\.|^10\.|^192\.168\.|capacitor/i.test(h)||(typeof window!=="undefined"&&window.Capacitor))return"loalife-poster.vercel.app";
   return h;}catch(e){return"loalife-poster.vercel.app";}})();
-const routePath = (route,w,h,pad=6) => { if(!Array.isArray(route)||route.length<2)return""; let minLa=Infinity,maxLa=-Infinity,minLo=Infinity,maxLo=-Infinity; route.forEach(p=>{if(p.lat<minLa)minLa=p.lat;if(p.lat>maxLa)maxLa=p.lat;if(p.lng<minLo)minLo=p.lng;if(p.lng>maxLo)maxLo=p.lng;}); const spanLa=Math.max(1e-6,maxLa-minLa),spanLo=Math.max(1e-6,maxLo-minLo); const iw=w-2*pad,ih=h-2*pad; return route.map(p=>{const x=pad+((p.lng-minLo)/spanLo)*iw; const y=pad+(1-(p.lat-minLa)/spanLa)*ih; return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(" "); };
+// 散歩ルートを一時停止の区切り（{brk:true}）でセグメントに分ける。座標を持たない要素は無視する。
+const routeSegments = (route) => { if(!Array.isArray(route))return[]; const segs=[]; let cur=[]; route.forEach(p=>{ if(!p)return; if(p.brk){ if(cur.length)segs.push(cur); cur=[]; return; } if(typeof p.lat!=="number"||typeof p.lng!=="number")return; cur.push(p); }); if(cur.length)segs.push(cur); return segs; };
+// ルートをSVG座標へ投影する。経度に cos(緯度) 補正を入れ、等倍フィット（引き伸ばして歪ませない）で配置する。
+const routeXY = (route,w,h,pad=6) => { const segs=routeSegments(route); const all=segs.flat(); if(!all.length)return{segs:[],first:null,last:null}; const midLa=all.reduce((s,p)=>s+p.lat,0)/all.length*Math.PI/180; const kx=Math.cos(midLa)||1; let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity; all.forEach(p=>{const x=p.lng*kx,y=p.lat; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;}); const spanX=Math.max(1e-9,maxX-minX),spanY=Math.max(1e-9,maxY-minY); const iw=w-2*pad,ih=h-2*pad; const sc=Math.min(iw/spanX,ih/spanY); const ox=pad+(iw-spanX*sc)/2,oy=pad+(ih-spanY*sc)/2; const proj=(p)=>({x:+(ox+(p.lng*kx-minX)*sc).toFixed(1),y:+(oy+(maxY-p.lat)*sc).toFixed(1)}); return{segs:segs.map(s=>s.map(proj)),first:proj(all[0]),last:proj(all[all.length-1])}; };
+const routePath = (route,w,h,pad=6) => { const{segs}=routeXY(route,w,h,pad); const s=segs.find(g=>g.length>=2); return s?s.map(p=>`${p.x},${p.y}`).join(" "):""; };
 // 散歩の月間めやす（犬種サイズ×年齢）。獣医の助言ではなく、あくまでゆるやかな目安。
 const WALK_BREED_SMALL=["チワワ","トイプードル","ダックス","ポメラニアン","シーズー","マルチーズ","ヨークシャー","パピヨン","豆柴","カニンヘン","チン","キャバリア","ペキニーズ","ピンシャー","ビション","パグ","フレンチブル","ボストン"];
 const WALK_BREED_LARGE=["ゴールデン","ラブラドール","レトリバー","シェパード","ハスキー","ボーダーコリー","バーニーズ","ピレニーズ","ドーベルマン","ダルメシアン","秋田","ワイマラナー","ロットワイラー","スタンダードプードル","フラットコーテッド","コリー","ボクサー","グレート"];
@@ -491,9 +495,9 @@ const TOX_SOURCE="参照：ASPCA中毒管理センター／Pet Poison Helpline�
 const TOX_REVIEWED="2026-09-18";
 const TOXIC_ITEMS=[
   {id:"choco",name:"チョコレート・ココア",aliases:["チョコ","ちょこ","ココア","カカオ","チョコレート"],category:"food",species:"both",risk:"high",toxic:"カカオのテオブロミン（ビター・製菓用ほど濃い）",symptoms:["嘔吐","下痢","落ち着かない","心拍が速い","ふるえ","重症でけいれん・不整脈"],onset:"6〜12時間以内に出ることが多い",urgency:"量が多い／ビター・製菓用／小型犬／症状があるときは早めに",variesBy:["量","体重","製品の濃さ"]},
-  {id:"grape",name:"ぶどう・レーズン",aliases:["ぶどう","ブドウ","レーズン","干しぶどう","グレープ"],category:"food",species:"both",risk:"emergency",toxic:"原因物質は特定されていないが、少量でも急性腎障害の報告",symptoms:["嘔吐","下痢","元気消失","食欲不振","尿量の変化"],onset:"数時間〜24〜72時間で腎症状が出ることも（遅れて出る）",urgency:"量に関わらず早めに（少量でも報告あり）",variesBy:["個体差"]},
-  {id:"allium",name:"ねぎ類（玉ねぎ・長ねぎ・にら・にんにく）",aliases:["玉ねぎ","たまねぎ","ねぎ","長ねぎ","にら","ニラ","にんにく","ニンニク"],category:"food",species:"both",risk:"high",toxic:"有機硫黄化合物が赤血球を壊す（加熱・スープでも）",symptoms:["元気消失","食欲不振","貧血","赤〜茶色の尿"],onset:"数時間〜数日後に貧血が出ることも（遅発に注意）",urgency:"量が多い／元気消失や尿の色の変化があるとき",variesBy:["量","体重"]},
-  {id:"xylitol",name:"キシリトール（無糖ガム・お菓子）",aliases:["キシリトール","xylitol","無糖ガム","シュガーレス","ガム"],category:"food",species:"dog",risk:"emergency",toxic:"犬でごく少量でも急激な低血糖・肝障害の恐れ",symptoms:["ふらつき","ぐったり","けいれん","嘔吐"],onset:"30〜60分で低血糖のことも／肝障害は1〜2日後のことも",urgency:"少量でも早めに",variesBy:["量","体重"]},
+  {id:"grape",name:"ぶどう・レーズン",aliases:["ぶどう","ブドウ","レーズン","干しぶどう","グレープ"],category:"food",species:"both",risk:"emergency",toxic:"原因物質は特定されていないが、少量でも急性腎障害の報告",symptoms:["嘔吐","下痢","元気消失","食欲不振","尿量の変化"],onset:"数時間〜72時間で腎症状が出ることがあります（遅れて出ることがあります）",urgency:"量に関わらず早めに（少量でも報告あり）",variesBy:["個体差"]},
+  {id:"allium",name:"ねぎ類（玉ねぎ・長ねぎ・にら・にんにく）",aliases:["玉ねぎ","たまねぎ","ねぎ","長ねぎ","にら","ニラ","にんにく","ニンニク"],category:"food",species:"both",risk:"high",toxic:"有機硫黄化合物が赤血球を壊す（加熱・スープでも）",symptoms:["元気消失","食欲不振","貧血","赤〜茶色の尿"],onset:"数時間〜数日後に貧血が出ることがあります（遅れて出ることがあります）",urgency:"量が多い／元気消失や尿の色の変化があるとき",variesBy:["量","体重"]},
+  {id:"xylitol",name:"キシリトール（無糖ガム・お菓子）",aliases:["キシリトール","xylitol","無糖ガム","シュガーレス","ガム"],category:"food",species:"dog",risk:"emergency",toxic:"犬でごく少量でも急激な低血糖・肝障害の恐れ",symptoms:["ふらつき","ぐったり","けいれん","嘔吐"],onset:"低血糖は30〜60分で、肝障害は1〜2日後に現れることがあります",urgency:"少量でも早めに",variesBy:["量","体重"]},
   {id:"alcohol",name:"アルコール",aliases:["アルコール","お酒","酒","ビール","エタノール"],category:"food",species:"both",risk:"high",toxic:"飲料のほか、パン生地・消毒液・発酵物にも含まれる",symptoms:["ふらつき","嘔吐","呼吸が浅い","低体温","重症で昏睡"],onset:"30分〜数時間",urgency:"ぐったり／呼吸の変化があるとき",variesBy:["量","体重"]},
   {id:"caffeine",name:"カフェイン（コーヒー・お茶・エナジー飲料）",aliases:["カフェイン","コーヒー","珈琲","お茶","紅茶","エナジードリンク","茶葉"],category:"food",species:"both",risk:"high",toxic:"コーヒー・茶葉・エナジー飲料・コーヒーかす",symptoms:["落ち着かない","心拍が速い","ふるえ","重症でけいれん"],onset:"1〜2時間",urgency:"量が多い／落ち着かない・心拍が速いとき",variesBy:["量","体重"]},
   {id:"macadamia",name:"マカダミアナッツ",aliases:["マカダミア","ナッツ"],category:"food",species:"dog",risk:"high",toxic:"少量でも一過性の神経症状が出ることがある",symptoms:["後ろ足の脱力","ふるえ","発熱","元気消失","嘔吐"],onset:"12時間以内が多い",urgency:"歩きにくそう／ふるえがあるとき",variesBy:["量","体重"]},
@@ -505,7 +509,7 @@ const TOXIC_ITEMS=[
   {id:"nsaid",name:"人用の鎮痛薬（イブプロフェン・アセトアミノフェン等）",aliases:["痛み止め","鎮痛薬","イブプロフェン","ロキソニン","ロキソプロフェン","バファリン","アセトアミノフェン","カロナール","NSAIDs"],category:"medicine",species:"both",risk:"emergency",toxic:"人用鎮痛薬は犬に少量でも中毒（消化管・腎・肝）",symptoms:["嘔吐","黒い便","元気消失","ふらつき"],onset:"数時間〜1日",urgency:"1錠でも相談（自己判断で犬に与えない）",variesBy:["量","体重"]},
   {id:"cold",name:"風邪薬・鼻炎薬（人用）",aliases:["風邪薬","感冒薬","鼻炎薬","咳止め","プソイドエフェドリン"],category:"medicine",species:"both",risk:"emergency",toxic:"人用の風邪薬・鼻炎薬の成分が中毒を起こすことがある",symptoms:["落ち着かない","心拍が速い","ふるえ","けいれん"],onset:"数時間",urgency:"誤飲したら早めに（成分がわかるものを持参）",variesBy:["成分","量","体重"]},
   {id:"psych",name:"睡眠薬・向精神薬など（人の処方薬）",aliases:["睡眠薬","抗うつ薬","精神安定剤","処方薬","安定剤"],category:"medicine",species:"both",risk:"high",toxic:"人の処方薬は犬に影響が出ることがある",symptoms:["強い眠気または逆に興奮","ふらつき","ふるえ"],onset:"数時間",urgency:"種類・量が不明でも相談",variesBy:["成分","量","体重"]},
-  {id:"supp",name:"人用サプリ（鉄・ビタミンD等）",aliases:["サプリ","サプリメント","鉄剤","ビタミンD"],category:"medicine",species:"both",risk:"high",toxic:"鉄・ビタミンD等は過剰摂取で中毒のことがある",symptoms:["嘔吐","下痢","元気消失"],onset:"数時間〜1日",urgency:"量が多い／成分が不明なとき",variesBy:["成分","量","体重"]},
+  {id:"supp",name:"人用サプリ（鉄・ビタミンD等）",aliases:["サプリ","サプリメント","鉄剤","ビタミンD"],category:"medicine",species:"both",risk:"high",toxic:"鉄・ビタミンD等は過剰摂取で中毒を起こすことがある",symptoms:["嘔吐","下痢","元気消失"],onset:"数時間〜1日",urgency:"量が多い／成分が不明なとき",variesBy:["成分","量","体重"]},
   {id:"lily",name:"ユリ科の植物（花・葉・花粉・生けた水）",aliases:["ユリ","ゆり","百合"],category:"plant",species:"cat",risk:"emergency",toxic:"猫はごく微量で急性腎障害（切り花・花粉・花瓶の水にも）",symptoms:["嘔吐","元気消失","尿が出ない"],onset:"数時間〜1〜2日で腎症状",urgency:"猫は少量でもすぐ相談",variesBy:["個体差"]},
   {id:"houseplant",name:"観葉植物（ポトス・アイビー・サゴヤシ等）",aliases:["ポトス","アイビー","サゴヤシ","観葉植物"],category:"plant",species:"both",risk:"caution",toxic:"口内を刺激する種類が多い。サゴヤシは特に危険",symptoms:["よだれ","口を気にする","嘔吐"],onset:"直後〜数時間",urgency:"サゴヤシ／大量／ぐったり",variesBy:["種類","量"]},
   {id:"bulb",name:"球根植物（チューリップ・スイセン等）",aliases:["チューリップ","スイセン","水仙","球根"],category:"plant",species:"both",risk:"caution",toxic:"球根に刺激・有害成分（特に球根部分）",symptoms:["よだれ","嘔吐","下痢"],onset:"直後〜数時間",urgency:"球根を食べた／繰り返す嘔吐",variesBy:["部位","量"]},
@@ -513,7 +517,7 @@ const TOXIC_ITEMS=[
   {id:"pesticide",name:"殺鼠剤・殺虫剤・農薬",aliases:["殺鼠剤","ネズミ","殺虫剤","農薬","駆除剤"],category:"household",species:"both",risk:"emergency",toxic:"種類により出血・けいれん等。製品で作用が違う",symptoms:["出血が止まりにくい","ふるえ","けいれん","元気消失"],onset:"種類による（数時間〜数日）",urgency:"製品（パッケージ）を持ってすぐ相談",variesBy:["製品","量","体重"]},
   {id:"detergent",name:"洗剤・漂白剤",aliases:["洗剤","漂白剤","ハイター","カビ取り","トイレ洗剤"],category:"household",species:"both",risk:"high",toxic:"口・食道・胃の粘膜を傷めることがある",symptoms:["よだれ","口を気にする","嘔吐","元気消失"],onset:"直後〜数時間",urgency:"強い製品／口を痛がる／飲んだ量が多い",dont:["吐かせない（逆流で食道をさらに傷める恐れ）"],variesBy:["製品","量"]},
   {id:"nicotine",name:"たばこ・ニコチン",aliases:["たばこ","タバコ","ニコチン","加熱式","吸い殻","電子タバコ","リキッド"],category:"household",species:"both",risk:"high",toxic:"ニコチンで中毒。吸い殻・リキッドも",symptoms:["よだれ","嘔吐","落ち着かない","ふるえ","心拍が速い"],onset:"15分〜1時間",urgency:"量が多い／けいれん・ふるえ",variesBy:["量","体重"]},
-  {id:"battery",name:"電池・ボタン電池",aliases:["電池","ボタン電池","バッテリー","コイン電池"],category:"household",species:"both",risk:"emergency",toxic:"飲み込むと化学やけど・穴があくことも（特にボタン電池）",symptoms:["よだれ","口を痛がる","嘔吐","元気消失"],onset:"数時間以内に損傷が進むことも",urgency:"飲み込んだ疑いだけでもすぐ（時間が勝負）",dont:["吐かせない（逆流でさらに傷める恐れ）"],variesBy:["種類","大きさ","経過時間"]},
+  {id:"battery",name:"電池・ボタン電池",aliases:["電池","ボタン電池","バッテリー","コイン電池"],category:"household",species:"both",risk:"emergency",toxic:"飲み込むと化学やけど・穴があくことも（特にボタン電池）",symptoms:["よだれ","口を痛がる","嘔吐","元気消失"],onset:"数時間以内に損傷が進むことがあります",urgency:"飲み込んだ疑いだけでもすぐ（時間が勝負）",dont:["吐かせない（逆流でさらに傷める恐れ）"],variesBy:["種類","大きさ","経過時間"]},
   {id:"mold",name:"カビの生えた食品・生ゴミ",aliases:["カビ","かび","カビた","生ゴミ","腐った"],category:"food",species:"both",risk:"high",toxic:"カビ毒（マイコトキシン）でふるえ・けいれんを起こすことがある",symptoms:["ふるえ","落ち着かない","嘔吐","重症でけいれん"],onset:"数分〜数時間",urgency:"ふるえ・けいれんがあればすぐ",variesBy:["量","体重"]},
   {id:"essentialoil",name:"アロマ・精油（ティーツリー等）",aliases:["アロマ","精油","エッセンシャルオイル","ティーツリー","ディフューザー"],category:"household",species:"both",risk:"high",toxic:"精油は皮膚や経口で中毒を起こすことがある（原液は特に）",symptoms:["よだれ","ふらつき","ふるえ","元気消失"],onset:"数時間",urgency:"原液をなめた／皮膚に大量／ふらつきがあるとき",variesBy:["種類","量","体重"]},
   {id:"wildmushroom",name:"野生のキノコ",aliases:["キノコ","きのこ","茸","野生のキノコ"],category:"plant",species:"both",risk:"high",toxic:"種類の判別が難しく、有毒種は重篤な中毒（肝・神経）の恐れ",symptoms:["嘔吐","下痢","よだれ","ふらつき","重症で肝障害"],onset:"種類による（数十分〜数日）",urgency:"食べた可能性があれば早めに（できれば現物を保存）",variesBy:["種類","量"]},
@@ -1895,7 +1899,7 @@ const MESSAGES={
     "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記（長文・任意）","life.tag":"タグ","life.firstTag":"はじめて","ph.tag":"例：発表会 / お弁当 / 自転車","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","life.notify":"通知（任意）","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
     "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間","card.hoursPh":"受付・診療時間（任意 例：24時間／夜間 20:00〜翌8:00）","card.addrPh":"住所（任意）","card.nightToggle":"夜間・救急でまず電話する病院にする",
     "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など",
-    "rec.walkTitle":"お散歩記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。必要量は体調・個体差で変わります。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中（{n}点）","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"お散歩スタート","walk.delLabel":"お散歩の記録",
+    "rec.walkTitle":"お散歩記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。必要量は体調・個体差で変わります。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"お散歩スタート","walk.delLabel":"お散歩の記録","walk.gpsSearching":"GPSを探しています…","walk.gpsDenied":"位置情報が許可されていません（時間は記録できます）","walk.gpsError":"位置情報を取得できませんでした","walk.gpsNoSupport":"この端末では位置情報が使えません（時間は記録できます）","walk.pause":"一時停止","walk.resume":"再開","walk.paused":"一時停止中です","walk.locate":"現在地","walk.noRoute":"この散歩はルートが記録されていません",
     "growth.title":"成長の記録","growth.desc":"はじめてできた瞬間を、写真とともに。","growth.custom":"自分で追加（例：逆上がりができた）","growth.camTitle":"作品・写真を追加","growth.photoSaved":"作品・写真を保存しました","common.plusRecord":"＋ 記録","common.plusAdd":"＋ 追加","rec.choreCustomPh":"自分で追加（例：水そうじ）","rec.routinePh":"やること（例：夜の散歩）","supply.namePh":"品名（例：フード）","common.amount":"金額","common.foot":"大切な家族の毎日を、ひとつの場所で。","a11y.edit":"編集",
     "review.title":"今月のふりかえり","review.daysLabel":"体調の記録（日）","review.sleepLabel":"平均睡眠(h)","review.movesLabel":"運動の記録","review.logsLabel":"やること記録","review.vsPrev":"先月とくらべて：{parts}","review.openTasks":"未完了のやること：{n}件","review.note":"※記録した事実をならべたものです。良し悪しの判定はしません。","review.pDays":"記録 {v}日","review.pSleep":"睡眠 {v}h","review.pLogs":"やること {v}回",
     "album.title":"思い出","album.cancelSel":"選択をやめる","album.select":"選択","album.loading":"読み込み中…","album.bulkAdd":"写真をまとめて追加（撮影日で自動振り分け）","album.selHint":"写真をタップして選択（最大{n}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。","album.empty":"写真とひとことで残せます","album.selCount":"{n}枚を選択中","album.moveBtn":"別の子へ移動","album.moveDesc":"選択した {n}枚 の思い出を、まとめて移動します。",
@@ -1987,7 +1991,7 @@ const MESSAGES={
     "life.editTitle":"Edit record","life.newTitle":"Log this day","cat.memory":"Memory / diary","cat.event":"Event","ph.eventTitle":"Event title (e.g. Vet)","ph.memoTitle":"A note (optional, e.g. First beach trip)","common.photo":"Photo","ph.diary":"Diary (optional)","life.tag":"Tag","life.firstTag":"First","ph.tag":"e.g. Recital / Bento / Bike","life.date":"Date","life.time":"Time","life.repeat":"Repeat","repeat.none":"None","repeat.daily":"Daily","repeat.weekly":"Weekly","repeat.monthly":"Monthly","repeat.yearly":"Yearly","life.notify":"Notifications (optional)","notif.allowShort":"Allow","remind.0":"At start","remind.5":"5 min before","remind.30":"30 min before","remind.60":"1 hr before","remind.1440":"Day before","life.notifyHint":"Too many 🔔 are easy to miss — keep just what you need.",
     "rec.trayTitle":"Important info","rec.trayCount":" ({n})","rec.trayHint":"Save contacts, allergies, and vet info as cards.","card.nightTag":"Night","card.hoursPh":"Hours (optional, e.g. 24h / night 8pm–8am)","card.addrPh":"Address (optional)","card.nightToggle":"Make this the clinic to call first at night / in emergencies",
     "card.editTitle":"Edit card","card.newTitle":"Add card","cardkind.emergency":"Emergency contact","cardkind.allergy":"Allergies & no-gos","cardkind.hospital":"Vet & clinic notes","cardkind.shelter":"Shelter & disaster notes","cardkind.insurance":"Insurance info","cardkind.other":"Note","ph.cardTitle":"Title (e.g. Regular vet)","ph.cardBody":"Contacts, allergies, notes, meds remaining, etc.",
-    "rec.walkTitle":"Walk log","walk.goalTitle":"This month's guide (reference)","walk.distance":"Distance","walk.count":"Walks","walk.timesUnit":"","walk.dcPre":"Based on breed","walk.dcMid":" and age","walk.dcPost1":", a ","walk.dcBold":"general guideline (reference)","walk.dcPost2":". Needs vary with health and each dog.","walk.dcBreedUnset":" (not set → medium)","walk.dcAgeUnset":" (not set → adult)","walk.reviewTitle":"Walk review","walk.vsLast":"vs last month ","walk.summaryThisMonth":"This month ","walk.walksUnit":" walks","walk.summaryMin":" · {m} min","walk.summarySep":" / 6-mo total ","walk.time":"Time","walk.gpsRecording":"Recording route by GPS ({n} pts)","walk.gpsStart":"Recording route by GPS… start walking and the distance grows","walk.stopSave":"Finish & save","walk.otherRunning":"A walk for another one is being tracked","walk.startBtn":"Start walk","walk.delLabel":"walk record",
+    "rec.walkTitle":"Walk log","walk.goalTitle":"This month's guide (reference)","walk.distance":"Distance","walk.count":"Walks","walk.timesUnit":"","walk.dcPre":"Based on breed","walk.dcMid":" and age","walk.dcPost1":", a ","walk.dcBold":"general guideline (reference)","walk.dcPost2":". Needs vary with health and each dog.","walk.dcBreedUnset":" (not set → medium)","walk.dcAgeUnset":" (not set → adult)","walk.reviewTitle":"Walk review","walk.vsLast":"vs last month ","walk.summaryThisMonth":"This month ","walk.walksUnit":" walks","walk.summaryMin":" · {m} min","walk.summarySep":" / 6-mo total ","walk.time":"Time","walk.gpsRecording":"Recording route by GPS","walk.gpsStart":"Recording route by GPS… start walking and the distance grows","walk.stopSave":"Finish & save","walk.otherRunning":"A walk for another one is being tracked","walk.startBtn":"Start walk","walk.delLabel":"walk record","walk.gpsSearching":"Looking for GPS…","walk.gpsDenied":"Location isn't allowed (time is still recorded)","walk.gpsError":"Couldn't get your location","walk.gpsNoSupport":"Location isn't available on this device (time is still recorded)","walk.pause":"Pause","walk.resume":"Resume","walk.paused":"Paused","walk.locate":"My location","walk.noRoute":"No route was recorded for this walk",
     "growth.title":"Growth log","growth.desc":"Capture each first, with a photo.","growth.custom":"Add your own (e.g. did a pull-up)","growth.camTitle":"Add work/photo","growth.photoSaved":"Saved the work/photo","common.plusRecord":"＋ Log","common.plusAdd":"＋ Add","rec.choreCustomPh":"Add your own (e.g. Water plants)","rec.routinePh":"Task (e.g. Evening walk)","supply.namePh":"Item name (e.g. Food)","common.amount":"Amount","common.foot":"Every day with your family, in one place.","a11y.edit":"Edit",
     "review.title":"This month's review","review.daysLabel":"Health logs (days)","review.sleepLabel":"Avg sleep (h)","review.movesLabel":"Exercise logs","review.logsLabel":"Task logs","review.vsPrev":"vs last month: {parts}","review.openTasks":"Open tasks: {n}","review.note":"※ Just the facts you logged, listed — no good/bad judgment.","review.pDays":"records {v}d","review.pSleep":"sleep {v}h","review.pLogs":"tasks {v}",
     "album.title":"Memories","album.cancelSel":"Cancel","album.select":"Select","album.loading":"Loading…","album.bulkAdd":"Add photos in bulk (auto-sorted by date taken)","album.selHint":"Tap photos to select (up to {n}) → use “Move to another” below to move them together to another family member.","album.empty":"Keep them with a photo and a note","album.selCount":"{n} selected","album.moveBtn":"Move to another","album.moveDesc":"Move the {n} selected memories together.",
@@ -2079,7 +2083,7 @@ const MESSAGES={
     "life.editTitle":"Editar registro","life.newTitle":"Registrar este día","cat.memory":"Recuerdo / diario","cat.event":"Evento","ph.eventTitle":"Título del evento (p. ej. Veterinario)","ph.memoTitle":"Una nota (opcional, p. ej. Primera vez en la playa)","common.photo":"Foto","ph.diary":"Diario (opcional)","life.tag":"Etiqueta","life.firstTag":"Primera vez","ph.tag":"p. ej. Recital / Almuerzo / Bici","life.date":"Fecha","life.time":"Hora","life.repeat":"Repetir","repeat.none":"No","repeat.daily":"Cada día","repeat.weekly":"Cada semana","repeat.monthly":"Cada mes","repeat.yearly":"Cada año","life.notify":"Notificaciones (opcional)","notif.allowShort":"Permitir","remind.0":"Al empezar","remind.5":"5 min antes","remind.30":"30 min antes","remind.60":"1 h antes","remind.1440":"El día antes","life.notifyHint":"Demasiados 🔔 se pasan por alto — deja solo los necesarios.",
     "rec.trayTitle":"Información importante","rec.trayCount":" ({n})","rec.trayHint":"Guarda contactos, alergias e info del veterinario como tarjetas.","card.nightTag":"Noche","card.hoursPh":"Horario (opcional, p. ej. 24 h / noche 20:00–8:00)","card.addrPh":"Dirección (opcional)","card.nightToggle":"Marcar como la clínica a la que llamar primero de noche o en urgencias",
     "card.editTitle":"Editar tarjeta","card.newTitle":"Añadir tarjeta","cardkind.emergency":"Contacto de emergencia","cardkind.allergy":"Alergias y prohibiciones","cardkind.hospital":"Notas del veterinario","cardkind.shelter":"Refugio y desastres","cardkind.insurance":"Datos del seguro","cardkind.other":"Nota","ph.cardTitle":"Título (p. ej. Veterinario habitual)","ph.cardBody":"Contactos, alergias, notas, medicación restante, etc.",
-    "rec.walkTitle":"Registro de paseos","walk.goalTitle":"Guía de este mes (referencia)","walk.distance":"Distancia","walk.count":"Paseos","walk.timesUnit":"","walk.dcPre":"Según la raza","walk.dcMid":" y la edad","walk.dcPost1":", una ","walk.dcBold":"guía general (referencia)","walk.dcPost2":". La cantidad varía según la salud y cada perro.","walk.dcBreedUnset":" (sin definir → mediano)","walk.dcAgeUnset":" (sin definir → adulto)","walk.reviewTitle":"Resumen de paseos","walk.vsLast":"vs el mes pasado ","walk.summaryThisMonth":"Este mes ","walk.walksUnit":" paseos","walk.summaryMin":" · {m} min","walk.summarySep":" / total 6 meses ","walk.time":"Tiempo","walk.gpsRecording":"Grabando ruta por GPS ({n} pts)","walk.gpsStart":"Grabando ruta por GPS… empieza a caminar y la distancia aumenta","walk.stopSave":"Terminar y guardar","walk.otherRunning":"Se está registrando el paseo de otro","walk.startBtn":"Empezar paseo","walk.delLabel":"registro de paseo",
+    "rec.walkTitle":"Registro de paseos","walk.goalTitle":"Guía de este mes (referencia)","walk.distance":"Distancia","walk.count":"Paseos","walk.timesUnit":"","walk.dcPre":"Según la raza","walk.dcMid":" y la edad","walk.dcPost1":", una ","walk.dcBold":"guía general (referencia)","walk.dcPost2":". La cantidad varía según la salud y cada perro.","walk.dcBreedUnset":" (sin definir → mediano)","walk.dcAgeUnset":" (sin definir → adulto)","walk.reviewTitle":"Resumen de paseos","walk.vsLast":"vs el mes pasado ","walk.summaryThisMonth":"Este mes ","walk.walksUnit":" paseos","walk.summaryMin":" · {m} min","walk.summarySep":" / total 6 meses ","walk.time":"Tiempo","walk.gpsRecording":"Grabando ruta por GPS","walk.gpsStart":"Grabando ruta por GPS… empieza a caminar y la distancia aumenta","walk.stopSave":"Terminar y guardar","walk.otherRunning":"Se está registrando el paseo de otro","walk.startBtn":"Empezar paseo","walk.delLabel":"registro de paseo","walk.gpsSearching":"Buscando GPS…","walk.gpsDenied":"La ubicación no está permitida (el tiempo sí se registra)","walk.gpsError":"No se pudo obtener la ubicación","walk.gpsNoSupport":"Este dispositivo no puede usar la ubicación (el tiempo sí se registra)","walk.pause":"Pausar","walk.resume":"Reanudar","walk.paused":"En pausa","walk.locate":"Mi ubicación","walk.noRoute":"No se registró la ruta de este paseo",
     "growth.title":"Registro de crecimiento","growth.desc":"Captura cada primera vez, con una foto.","growth.custom":"Añade el tuyo (p. ej. hizo una dominada)","growth.camTitle":"Añadir trabajo/foto","growth.photoSaved":"Trabajo/foto guardado","common.plusRecord":"＋ Registrar","common.plusAdd":"＋ Añadir","rec.choreCustomPh":"Añade el tuyo (p. ej. Regar)","rec.routinePh":"Tarea (p. ej. Paseo nocturno)","supply.namePh":"Nombre (p. ej. Comida)","common.amount":"Cantidad","common.foot":"Cada día con tu familia, en un solo lugar.","a11y.edit":"Editar",
     "review.title":"Resumen de este mes","review.daysLabel":"Registros de salud (días)","review.sleepLabel":"Sueño medio (h)","review.movesLabel":"Registros de ejercicio","review.logsLabel":"Registros de tareas","review.vsPrev":"vs el mes pasado: {parts}","review.openTasks":"Tareas pendientes: {n}","review.note":"※ Solo los hechos que registraste — sin juicios de bueno/malo.","review.pDays":"registros {v} d","review.pSleep":"sueño {v} h","review.pLogs":"tareas {v}",
     "album.title":"Recuerdos","album.cancelSel":"Cancelar","album.select":"Seleccionar","album.loading":"Cargando…","album.bulkAdd":"Añadir fotos en lote (ordenadas por fecha de captura)","album.selHint":"Toca fotos para seleccionar (hasta {n}) → usa «Mover a otro» abajo para moverlas juntas a otro miembro de la familia.","album.empty":"Guárdalos con una foto y una nota","album.selCount":"{n} seleccionadas","album.moveBtn":"Mover a otro","album.moveDesc":"Mover juntos los {n} recuerdos seleccionados.",
@@ -2171,7 +2175,7 @@ const MESSAGES={
     "life.editTitle":"编辑记录","life.newTitle":"记录这一天","cat.memory":"回忆/日记","cat.event":"事件","ph.eventTitle":"事件标题（如 兽医）","ph.memoTitle":"备注（可选，如 第一次去海边）","common.photo":"照片","ph.diary":"日记（可选）","life.tag":"标签","life.firstTag":"第一次","ph.tag":"如 演出 / 便当 / 骑车","life.date":"日期","life.time":"时间","life.repeat":"重复","repeat.none":"不重复","repeat.daily":"每天","repeat.weekly":"每周","repeat.monthly":"每月","repeat.yearly":"每年","life.notify":"通知（可选）","notif.allowShort":"允许","remind.0":"开始时","remind.5":"提前5分钟","remind.30":"提前30分钟","remind.60":"提前1小时","remind.1440":"前一天","life.notifyHint":"🔔太多容易忽略 — 只留需要的。",
     "rec.trayTitle":"重要信息","rec.trayCount":" （{n}）","rec.trayHint":"把联系人、过敏和兽医信息保存为卡片。","card.nightTag":"夜间","card.hoursPh":"接诊时间（可选，如 24小时／夜间 20:00〜次日8:00）","card.addrPh":"地址（可选）","card.nightToggle":"设为夜间/急救时首先拨打的医院",
     "card.editTitle":"编辑卡片","card.newTitle":"添加卡片","cardkind.emergency":"紧急联系人","cardkind.allergy":"过敏与禁忌","cardkind.hospital":"兽医备注","cardkind.shelter":"避难与防灾备注","cardkind.insurance":"保险信息","cardkind.other":"备注","ph.cardTitle":"标题（如 常去的兽医）","ph.cardBody":"联系人、过敏、备注、剩余药量等。",
-    "rec.walkTitle":"散步记录","walk.goalTitle":"本月参考量","walk.distance":"距离","walk.count":"次数","walk.timesUnit":"次","walk.dcPre":"根据品种","walk.dcMid":"和年龄","walk.dcPost1":"的","walk.dcBold":"一般参考值","walk.dcPost2":"。实际需求因健康和个体而异。","walk.dcBreedUnset":"（未设置→按中型计算）","walk.dcAgeUnset":"（未设置→按成犬计算）","walk.reviewTitle":"散步回顾","walk.vsLast":"较上月 ","walk.summaryThisMonth":"本月 ","walk.walksUnit":"次","walk.summaryMin":" · {m}分钟","walk.summarySep":" / 6个月合计 ","walk.time":"时间","walk.gpsRecording":"正在用GPS记录路线（{n}点）","walk.gpsStart":"正在用GPS记录路线…开始走动距离就会增加","walk.stopSave":"结束并保存","walk.otherRunning":"正在记录另一位的散步","walk.startBtn":"开始散步","walk.delLabel":"散步记录",
+    "rec.walkTitle":"散步记录","walk.goalTitle":"本月参考量","walk.distance":"距离","walk.count":"次数","walk.timesUnit":"次","walk.dcPre":"根据品种","walk.dcMid":"和年龄","walk.dcPost1":"的","walk.dcBold":"一般参考值","walk.dcPost2":"。实际需求因健康和个体而异。","walk.dcBreedUnset":"（未设置→按中型计算）","walk.dcAgeUnset":"（未设置→按成犬计算）","walk.reviewTitle":"散步回顾","walk.vsLast":"较上月 ","walk.summaryThisMonth":"本月 ","walk.walksUnit":"次","walk.summaryMin":" · {m}分钟","walk.summarySep":" / 6个月合计 ","walk.time":"时间","walk.gpsRecording":"正在用GPS记录路线","walk.gpsStart":"正在用GPS记录路线…开始走动距离就会增加","walk.stopSave":"结束并保存","walk.otherRunning":"正在记录另一位的散步","walk.startBtn":"开始散步","walk.delLabel":"散步记录","walk.gpsSearching":"正在搜索GPS…","walk.gpsDenied":"未允许定位（仍可记录时间）","walk.gpsError":"无法获取位置信息","walk.gpsNoSupport":"此设备无法使用定位（仍可记录时间）","walk.pause":"暂停","walk.resume":"继续","walk.paused":"已暂停","walk.locate":"当前位置","walk.noRoute":"这次散步没有记录路线",
     "growth.title":"成长记录","growth.desc":"用照片记录每一个第一次。","growth.custom":"自定义添加（如 会翻单杠了）","growth.camTitle":"添加作品/照片","growth.photoSaved":"作品/照片已保存","common.plusRecord":"＋ 记录","common.plusAdd":"＋ 添加","rec.choreCustomPh":"自行添加（如 擦洗）","rec.routinePh":"事项（如 晚间散步）","supply.namePh":"品名（如 食物）","common.amount":"数量","common.foot":"和家人的每一天，都在同一个地方。","a11y.edit":"编辑",
     "review.title":"本月回顾","review.daysLabel":"健康记录（天）","review.sleepLabel":"平均睡眠（h）","review.movesLabel":"运动记录","review.logsLabel":"任务记录","review.vsPrev":"较上月：{parts}","review.openTasks":"未完成任务：{n}","review.note":"※ 只是把记录的事实罗列出来，不做好坏判断。","review.pDays":"记录 {v}天","review.pSleep":"睡眠 {v}h","review.pLogs":"任务 {v}",
     "album.title":"回忆","album.cancelSel":"取消","album.select":"选择","album.loading":"加载中…","album.bulkAdd":"批量添加照片（按拍摄日期自动归类）","album.selHint":"点按照片进行选择（最多{n}张）→ 用下方的「移到其他」把它们一起移到其他家庭成员。","album.empty":"用一张照片和一句话留住它","album.selCount":"已选{n}张","album.moveBtn":"移到其他","album.moveDesc":"把选中的{n}个回忆一起移动。",
@@ -2227,6 +2231,8 @@ const ICONS={
   folder:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  pause:'<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
+  play:'<path d="M8 5.5v13l11-6.5z"/>',
   paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5 3 3 0 0 1-6 2 3 3 0 0 1-4-4 5 5 0 0 1 5-3z"/>',
   camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
   pencil:'<path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L8 18.6l-4 1 1-4z"/>',
@@ -2290,6 +2296,97 @@ const TYPE_ICON={work:"briefcase",event:"calendar",social:"users",habit:"repeat"
 const ENERGY_ICON={great:"smileplus",genki:"smile",normal:"meh",low:"frown",bad:"angry"};
 const POOP_DIARY_ICON={good:"check",loose:"droplet",none:"ban"};
 function Icon({name,size=22,stroke=1.9,className}){const d=ICONS[name];if(!d)return null;return(<svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
+// ===== お散歩マップ（Leaflet + OpenStreetMap。読み込めない環境ではSVGにフォールバック） =====
+// Leaflet は index.html の head で defer 読み込みされるため、初回描画時点では未定義のことがある。少し待って拾う。
+const useLeafletLib=()=>{
+  const[lib,setLib]=useState(()=>typeof window!=="undefined"?(window.L||null):null);
+  useEffect(()=>{
+    if(lib)return;
+    let n=0;
+    const id=setInterval(()=>{ if(typeof window!=="undefined"&&window.L){setLib(window.L);clearInterval(id);} else if(++n>=24)clearInterval(id); },300);
+    return()=>clearInterval(id);
+  },[lib]);
+  return lib;
+};
+// ルートのSVG描画（Leaflet不可時のフォールバック＆履歴サムネイル用）。スタート=緑、終端= endColor。
+function RouteSvg({route,w=300,h=120,strokeWidth=3,dotR,endColor="#2F7FE0",className="yl-walkrec-map",style}){
+  const{segs,first,last}=routeXY(route,w,h,Math.max(4,Math.round(w*0.04)));
+  const r=dotR!=null?dotR:Math.max(2.5,strokeWidth+1.5);
+  const total=segs.reduce((s,g)=>s+g.length,0);
+  return(
+    <svg className={className} viewBox={`0 0 ${w} ${h}`} style={style} role="img" aria-label="walk route">
+      {segs.map((g,i)=>g.length>=2?<polyline key={i} points={g.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#E39A5C" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>:null)}
+      {first&&<circle cx={first.x} cy={first.y} r={r} fill="#2E9E5B" stroke="#fff" strokeWidth="1.5"/>}
+      {last&&total>1&&<circle cx={last.x} cy={last.y} r={r} fill={endColor} stroke="#fff" strokeWidth="1.5"/>}
+    </svg>
+  );
+}
+// 本物の地図。live=記録中（現在地追従あり）、detail=履歴詳細（全体フィット）。
+function WalkMap({route,live=false,detail=false,height=240}){
+  const L=useLeafletLib();
+  const boxRef=useRef(null);
+  const mapRef=useRef(null);
+  const layersRef=useRef([]);
+  const followRef=useRef(true);
+  const viewInitRef=useRef(false);
+  const[showLocate,setShowLocate]=useState(false);
+  const segs=useMemo(()=>routeSegments(route),[route]);
+  const allPts=useMemo(()=>segs.flat(),[segs]);
+  const lastPt=allPts.length?allPts[allPts.length-1]:null;
+  const searching=live&&allPts.length<2;
+  // 地図の生成（Leaflet が来たら一度だけ）
+  useEffect(()=>{
+    if(!L||!boxRef.current||mapRef.current)return;
+    let map=null;
+    try{
+      map=L.map(boxRef.current,{zoomControl:true,attributionControl:true});
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+      map.setView([35.68,139.69],6); // GPS未取得時の仮の視点（日本全体）
+      map.on("dragstart",()=>{ if(followRef.current){followRef.current=false;setShowLocate(true);} });
+      mapRef.current=map;
+      const tm=setTimeout(()=>{try{map.invalidateSize();}catch(e){}},90);
+      return()=>clearTimeout(tm);
+    }catch(e){ mapRef.current=null; }
+  },[L]);
+  // アンマウント時に地図を破棄
+  useEffect(()=>()=>{ if(mapRef.current){try{mapRef.current.remove();}catch(e){} mapRef.current=null; layersRef.current=[]; } },[]);
+  // ルートの同期（ポリライン＋マーカー＋視点）
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!L||!map)return;
+    layersRef.current.forEach(l=>{try{map.removeLayer(l);}catch(e){}});
+    const layers=[];
+    segs.forEach(seg=>{ if(seg.length>=2)layers.push(L.polyline(seg.map(p=>[p.lat,p.lng]),{color:"#E39A5C",weight:5,opacity:.95,lineCap:"round",lineJoin:"round"}).addTo(map)); });
+    if(allPts.length)layers.push(L.circleMarker([allPts[0].lat,allPts[0].lng],{radius:7,color:"#fff",weight:2.5,fillColor:"#2E9E5B",fillOpacity:1}).addTo(map));
+    if(allPts.length>1)layers.push(L.circleMarker([lastPt.lat,lastPt.lng],{radius:7,color:"#fff",weight:2.5,fillColor:live?"#2F7FE0":"#D9534F",fillOpacity:1}).addTo(map));
+    layersRef.current=layers;
+    try{
+      if(detail){
+        if(allPts.length>=2)map.fitBounds(L.latLngBounds(allPts.map(p=>[p.lat,p.lng])),{padding:[26,26]});
+        else if(allPts.length===1)map.setView([allPts[0].lat,allPts[0].lng],17);
+      }else if(live&&lastPt){
+        if(!viewInitRef.current){ map.setView([lastPt.lat,lastPt.lng],17); viewInitRef.current=true; }
+        else if(followRef.current)map.panTo([lastPt.lat,lastPt.lng],{animate:false});
+      }
+    }catch(e){}
+  },[L,segs,allPts,lastPt,live,detail]);
+  const goLocate=()=>{ const map=mapRef.current; if(!map||!lastPt)return; followRef.current=true; setShowLocate(false); try{ map.setView([lastPt.lat,lastPt.lng],Math.max(map.getZoom()||0,16),{animate:false}); }catch(e){} };
+  if(!L){
+    return(
+      <div className="yl-walkmap-wrap" style={{height}}>
+        <RouteSvg route={route} w={300} h={height} strokeWidth={3} endColor={live?"#2F7FE0":"#D9534F"} style={{height}}/>
+        {searching&&<div className="yl-walkmap-searching">{tr(APP_LANG,"walk.gpsSearching")}</div>}
+      </div>
+    );
+  }
+  return(
+    <div className="yl-walkmap-wrap" style={{height}}>
+      <div ref={boxRef} className="yl-walkmap" style={{height}}/>
+      {searching&&<div className="yl-walkmap-searching">{tr(APP_LANG,"walk.gpsSearching")}</div>}
+      {live&&showLocate&&lastPt&&<button type="button" className="yl-walkmap-locate" onClick={goLocate} aria-label={tr(APP_LANG,"walk.locate")}><Icon name="target" size={19}/></button>}
+    </div>
+  );
+}
 // うんちの硬さイラスト（塗り）。POOP_SHAPE のパスを tone 色で描画。
 function PoopShape({n,size=30}){const d=POOP_SHAPE[n];if(!d)return null;const bm=bristolMeta(n);const col=(bm&&POOP_TONE_COLOR[bm.tone])||"#A9803F";return(<svg width={size} height={size} viewBox="0 0 24 24" fill={col} aria-hidden="true" dangerouslySetInnerHTML={{__html:d}}/>);}
 
@@ -2556,6 +2653,7 @@ function App(){
   const[walk,setWalk]=useState(()=>{try{return JSON.parse(localStorage.getItem("loalife-walk")||"null");}catch(e){return null;}}); // {space,start,route:[{lat,lng,t}],distanceM}
   const[walkNow,setWalkNow]=useState(Date.now());
   const[walkGpsErr,setWalkGpsErr]=useState("");
+  const[walkDetail,setWalkDetail]=useState(null); // 履歴タップで開く散歩のルート詳細（対象の walk レコード）
   const walkWatchRef=useRef(null);
   const[nursingNow,setNursingNow]=useState(Date.now());
   const[milkMl,setMilkMl]=useState("");
@@ -4051,14 +4149,22 @@ function App(){
     return arr;
   },[walkRecords]);
   const walkPersist=(w)=>{try{w?localStorage.setItem("loalife-walk",JSON.stringify(w)):localStorage.removeItem("loalife-walk");}catch(e){}};
-  const onWalkPos=(pos)=>{const p={lat:pos.coords.latitude,lng:pos.coords.longitude,t:Date.now()};setWalk(prev=>{if(!prev)return prev;const route=prev.route||[];const last=route[route.length-1];let add=0;if(last){const d=haversineM(last,p);if(d<3)return prev;add=d;} // 3m未満のブレは無視
+  const onWalkPos=(pos)=>{const acc=pos&&pos.coords?pos.coords.accuracy:null;if(acc!=null&&acc>50)return; // 精度が悪すぎる点は距離・ルートに使わない
+    const p={lat:pos.coords.latitude,lng:pos.coords.longitude,t:Date.now()};setWalkGpsErr(""); // 点が再び取れたらエラー表示は自動で消す
+    setWalk(prev=>{if(!prev||prev.paused)return prev; // 一時停止中は点を記録しない
+    const route=prev.route||[];const lastEl=route[route.length-1];let add=0;if(lastEl&&!lastEl.brk){const d=haversineM(lastEl,p);if(d<3)return prev;add=d;} // 3m未満のブレは無視。再開直後（区切りの直後）は距離を加算しない
     const next={...prev,route:[...route,p],distanceM:(prev.distanceM||0)+add};walkPersist(next);return next;});};
-  const onWalkErr=(e)=>{setWalkGpsErr(e&&e.code===1?"位置情報が許可されていません（時間は記録できます）":"位置情報を取得できませんでした");};
+  const onWalkErr=(e)=>{setWalkGpsErr(e&&e.code===1?t("walk.gpsDenied"):t("walk.gpsError"));};
   const startWalkWatch=()=>{if(walkWatchRef.current!=null||!navigator.geolocation)return;try{walkWatchRef.current=navigator.geolocation.watchPosition(onWalkPos,onWalkErr,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});}catch(e){}};
   const stopWalkWatch=()=>{if(walkWatchRef.current!=null&&navigator.geolocation){try{navigator.geolocation.clearWatch(walkWatchRef.current);}catch(e){}}walkWatchRef.current=null;};
-  const startWalk=()=>{if(walk){showFlash(t("toast.walkOngoing"));return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());track("walk_start");startWalkWatch();if(!navigator.geolocation)setWalkGpsErr("この端末では位置情報が使えません（時間は記録できます）");};
+  const startWalk=()=>{if(walk){showFlash(t("toast.walkOngoing"));return;}setWalkGpsErr("");const w={space:tab,start:Date.now(),route:[],distanceM:0,paused:false,pausedAt:null,pausedTotal:0};setWalk(w);walkPersist(w);setWalkNow(Date.now());track("walk_start");startWalkWatch();if(!navigator.geolocation)setWalkGpsErr(t("walk.gpsNoSupport"));};
+  // 一時停止の時間を除いた経過秒数（表示・保存の両方で使う）。
+  const walkElapsedSec=(w,now)=>{if(!w)return 0;let ms=now-w.start-(w.pausedTotal||0);if(w.paused&&w.pausedAt)ms-=now-w.pausedAt;return Math.max(0,Math.round(ms/1000));};
+  const pauseWalk=()=>{setWalk(prev=>{if(!prev||prev.paused)return prev;const next={...prev,paused:true,pausedAt:Date.now()};walkPersist(next);return next;});track("walk_pause");};
+  const resumeWalk=()=>{setWalk(prev=>{if(!prev||!prev.paused)return prev;const now=Date.now();const route=[...(prev.route||[])];if(route.length)route.push({brk:true,t:now}); // 再開位置から新しい線として描く（不自然な直線で結ばない）
+    const next={...prev,paused:false,pausedAt:null,pausedTotal:(prev.pausedTotal||0)+(prev.pausedAt?now-prev.pausedAt:0),route};walkPersist(next);return next;});track("walk_resume");};
   const cancelWalk=()=>{stopWalkWatch();setWalk(null);walkPersist(null);setWalkGpsErr("");};
-  const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,Math.round((Date.now()-walk.start)/1000));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(t("toast.walkLogged",{dur:fmtDur(durationSec),dist:fmtDist(distanceM)}));};
+  const stopWalk=()=>{if(!walk)return;stopWalkWatch();const durationSec=Math.max(1,walkElapsedSec(walk,Date.now()));const distanceM=Math.round(walk.distanceM||0);const rec={id:"wk"+Date.now(),space:walk.space,type:"walk",start:walk.start,end:Date.now(),durationSec,distanceM,route:walk.route||[],date:isoOf(walk.start),createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setWalk(null);walkPersist(null);setWalkGpsErr("");showFlash(t("toast.walkLogged",{dur:fmtDur(durationSec),dist:fmtDist(distanceM)}));};
   const removeWalk=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 散歩の経過時間を1秒ごとに更新＋アプリ復帰時にGPS監視を再開。
   useEffect(()=>{if(!walk)return;const id=setInterval(()=>setWalkNow(Date.now()),1000);startWalkWatch();return()=>{clearInterval(id);stopWalkWatch();};// eslint-disable-next-line
@@ -6112,11 +6218,12 @@ function App(){
                   {walk&&walk.space===tab?(
                     <div className="yl-walkrec-live">
                       <div className="yl-walkrec-stats">
-                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(Math.max(0,Math.round((walkNow-walk.start)/1000)))}</span><span className="yl-walkrec-statl">{t("walk.time")}</span></div>
+                        <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(walkElapsedSec(walk,walkNow))}</span><span className="yl-walkrec-statl">{t("walk.time")}</span></div>
                         <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDist(walk.distanceM||0)}</span><span className="yl-walkrec-statl">{t("walk.distance")}</span></div>
                       </div>
-                      {walk.route&&walk.route.length>=2&&<svg className="yl-walkrec-map live" viewBox="0 0 300 120" preserveAspectRatio="none"><polyline points={routePath(walk.route,300,120)} fill="none" stroke="#E39A5C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      <p className="yl-walkrec-hint">{walkGpsErr?walkGpsErr:(walk.route&&walk.route.length?t("walk.gpsRecording",{n:walk.route.length}):t("walk.gpsStart"))}</p>
+                      <WalkMap route={walk.route||[]} live height={240}/>
+                      <p className="yl-walkrec-hint">{walkGpsErr?walkGpsErr:walk.paused?t("walk.paused"):(walk.route&&walk.route.length?t("walk.gpsRecording"):t("walk.gpsStart"))}</p>
+                      <button className="yl-walkrec-pausebtn" onClick={walk.paused?resumeWalk:pauseWalk}><Icon name={walk.paused?"play":"pause"} size={15}/> {walk.paused?t("walk.resume"):t("walk.pause")}</button>
                       <div className="yl-walkrec-livebtns"><button className="yl-walkrec-stop" onClick={stopWalk}><Icon name="check" size={16}/> {t("walk.stopSave")}</button><button className="yl-walkrec-cancel" onClick={cancelWalk}>{t("common.stop")}</button></div>
                     </div>
                   ):walk?(
@@ -6126,10 +6233,10 @@ function App(){
                   )}
                   {walkRecords.length>0&&(
                     <ul className="yl-walkrec-list">
-                      {walkRecords.slice(0,6).map(w=>{const rp=routePath(w.route,72,48);return(
+                      {walkRecords.slice(0,6).map(w=>{const hasRoute=routeSegments(w.route).flat().length>=2;return(
                         <li key={w.id} className="yl-walkrec-item">
-                          <span className="yl-walkrec-thumb">{rp?<svg viewBox="0 0 72 48" preserveAspectRatio="none"><polyline points={rp} fill="none" stroke="#E39A5C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>:<Icon name="paw" size={16}/>}</span>
-                          <span className="yl-walkrec-body"><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
+                          <span className="yl-walkrec-thumb clk" onClick={()=>setWalkDetail(w)}>{hasRoute?<RouteSvg route={w.route} w={72} h={48} strokeWidth={2.5} dotR={3} endColor="#D9534F" className="yl-walkrec-thumbsvg"/>:<Icon name="paw" size={16}/>}</span>
+                          <span className="yl-walkrec-body clk" onClick={()=>setWalkDetail(w)}><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
                           <button className="yl-walkrec-del" onClick={()=>askDelete(t("walk.delLabel"),()=>removeWalk(w.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       );})}
@@ -6639,7 +6746,7 @@ function App(){
               <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
             </div>
             <button className="yl-tox-emg" onClick={()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];let w="";if(m){const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();if(wl)w=`${wl.weight}${wl.wunit||"kg"}`;}setToxicEmgForm({what:"",amount:"",when:"",weight:w,symptom:""});setToxicEmgOpen(true);}}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても後から出ることが。家庭で吐かせないで。</p>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子が変わったら、すぐ病院に連絡を。家庭で吐かせないで。</p>
             <div className="yl-tox-controls">
               <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="例：もやし ／ チョコ ／ 玉ねぎ ／ ぶどう"/>
               <div className="yl-tox-cats">{TOX_CATS.map(c=><button key={c.k} className={"yl-tox-cat"+(toxicCat===c.k?" on":"")} onClick={()=>setToxicCat(c.k)}>{c.l}</button>)}</div>
@@ -6682,7 +6789,7 @@ function App(){
               );})}
               {toxicCat==="safe"?(safeList.length===0&&(q?<li className="yl-tox-empty">『{toxicQ.trim()}』はリストにありませんでした。リストにない食品は、安全とは限りません。食べてしまった場合は、量と様子を記録して動物病院に相談を。</li>:<li className="yl-tox-empty">該当が見つかりませんでした。</li>)):(list.length===0&&!safeCard&&(q?<li className="yl-tox-empty">『{toxicQ.trim()}』はリストにありませんでした。リストにない食品は、安全とは限りません。食べてしまった場合は、量と様子を記録して動物病院に相談を。</li>:<li className="yl-tox-empty">該当が見つかりませんでした。心当たりが無くても、食べた可能性があれば動物病院にご相談ください。</li>))}
             </ul>
-            <p className="yl-toxic-foot">※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急へ。</p>
+            <p className="yl-toxic-foot">※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急に相談してください。</p>
             <div className="yl-tox-srcbox">
               <button className="yl-tox-srchead" onClick={()=>setToxicSrcOpen(o=>!o)} aria-expanded={toxicSrcOpen}><Icon name="shield" size={13}/> 情報源について<Icon name="chevron" size={15} className={toxicSrcOpen?"yl-rot90":""}/></button>
               {toxicSrcOpen&&<div className="yl-tox-srcbody">
@@ -6709,7 +6816,7 @@ function App(){
               <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" value={toxicEmgForm.weight} onChange={e=>setToxicEmgForm(f=>({...f,weight:e.target.value}))} placeholder="例：8kg"/></li>
               <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" value={toxicEmgForm.symptom} onChange={e=>setToxicEmgForm(f=>({...f,symptom:e.target.value}))} placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
             </ol>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 症状がなくても受診が必要なことが。様子見せず、吐かせないで。</p>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子見せず、吐かせないで。様子が変わったら、すぐ病院に連絡を。</p>
             <div className="yl-modal-btns">
               <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>とじる</button>
               <button className="yl-addbtn modal" onClick={()=>{const f=toxicEmgForm;const has=f.what||f.amount||f.when||f.symptom;setToxicEmgInfo(has?{...f}:null);setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
@@ -6764,6 +6871,7 @@ function App(){
               <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
                 {[
+                  ["🗺️","お散歩が本物の地図に","歩いた道が道路の上に表示されます。一時停止も追加"],
                   ["🩹","救急・防災の情報を充実","飲んでいる薬やアレルギーを救急画面に自動表示。「食べていい？」検索も追加"],
                   ["🧹","サンプル表示の修正と、はじめ方の文言を整理","サンプルバナーの表示条件と、消去確認の文言を見直しました"],
                   ["🧹","説明を短く・導線を整理","説明文を短くし、設定の重複メニューを整理しました"],
@@ -6820,6 +6928,24 @@ function App(){
               <p className="yl-set-desc">利用規約・プライバシーポリシー・お問い合わせ窓口は準備中です。連絡先は追ってご案内します。</p>
             </div>
             <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setAboutOpen(false)}>とじる</button>
+          </div>
+        </div>
+      )}
+      {walkDetail&&(
+        <div className="yl-help-ov" onClick={()=>setWalkDetail(null)}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> {t("rec.walkTitle")}</h2><button className="yl-help-close" onClick={()=>setWalkDetail(null)} aria-label={t("common.close")}>×</button></div>
+            <div className="yl-walkrec-stats" style={{marginBottom:12}}>
+              <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDist(walkDetail.distanceM)}</span><span className="yl-walkrec-statl">{t("walk.distance")}</span></div>
+              <div className="yl-walkrec-stat"><span className="yl-walkrec-statv">{fmtDur(walkDetail.durationSec)}</span><span className="yl-walkrec-statl">{t("walk.time")}</span></div>
+              <div className="yl-walkrec-stat"><span className="yl-walkrec-statv" style={{fontSize:19}}>{fmtDate(walkDetail.date)} {fmtClock(walkDetail.start)}</span><span className="yl-walkrec-statl">{fmtClock(walkDetail.start)}–{walkDetail.end?fmtClock(walkDetail.end):""}</span></div>
+            </div>
+            {routeSegments(walkDetail.route).flat().length>=2?(
+              <WalkMap route={walkDetail.route||[]} detail height={320}/>
+            ):(
+              <p className="yl-walkrec-hint" style={{padding:"18px 0"}}>{t("walk.noRoute")}</p>
+            )}
+            <button className="yl-addbtn" style={{width:"100%",marginTop:12}} onClick={()=>setWalkDetail(null)}>{t("common.close")}</button>
           </div>
         </div>
       )}
