@@ -5302,7 +5302,12 @@ function App(){
   const inHousehold=!!(fireUser&&household);
 
   // Share modal content
-  const ShareModal=()=>{
+  // ※ 必ず renderShareModal() と「関数呼び出し」で描画すること。JSXコンポーネントとして
+  //   使うと、App の再レンダーごとに型が変わり React がモーダル全体を
+  //   再マウントしてしまう（入口アニメーション fade/pop が再起動して点滅し、入力中の
+  //   フォーカスも外れる）。関数呼び出しなら App のツリーに直接展開され、再レンダーでも
+  //   DOM が保持される。他モーダルが全てインラインJSXなのと同じ状態になる。
+  const renderShareModal=()=>{
     if(!FB_READY){
       return(
         <div className="yl-overlay" onClick={()=>setShowShareModal(false)}>
@@ -8296,7 +8301,7 @@ function App(){
           </div>
         </div>
       )}
-      {showShareModal&&<ShareModal/>}
+      {showShareModal&&renderShareModal()}
       {flash&&<div className="yl-flash">{flash}</div>}
     </div>
   );
