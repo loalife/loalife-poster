@@ -40,7 +40,16 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.memberUids;
     }
 
+    // Helper: 世帯オーナーの uid（破壊的操作の権限判定用）
+    function householdOwnerUid(hid) {
+      return get(/databases/$(database)/documents/households/$(hid)).data.ownerUid;
+    }
+
     // Helper: check if member is visible to current user
+    // ※ items の読み取り専用（memberId はパスパラメータ＝クエリに対して固定のドキュメントを
+    //   引くため、クエリでも評価できる）。members 本体の読み取りでは使わないこと：
+    //   対象ドキュメント自身を get() する形はコレクションクエリで「証明」できず、
+    //   全件否認になる（members 側は resource.data で判定する）。
     function memberVisible(hid, memberId) {
       let m = get(/databases/$(database)/documents/households/$(hid)/members/$(memberId)).data;
       return m.visibility == "household" || m.ownerUid == request.auth.uid;
@@ -97,7 +106,13 @@ service cloud.firestore {
     match /publicCards/{cardId} {
       allow get: if true;
       allow list: if false;
-      allow create, update: if verified() &&
+      allow create: if verified() &&
+        request.auth.uid == request.resource.data.ownerUid;
+      // 更新は既存ドキュメントの所有者だけ。新規データ側の ownerUid しか見ないと、
+      // ownerUid を自分に書き換えた setDoc で他人の名刺を乗っ取れてしまうため、
+      // resource（既存）側の所有者一致も必須にする。
+      allow update: if verified() &&
+        request.auth.uid == resource.data.ownerUid &&
         request.auth.uid == request.resource.data.ownerUid;
       allow delete: if request.auth != null &&
         request.auth.uid == resource.data.ownerUid;
@@ -132,16 +147,30 @@ service cloud.firestore {
 
       // ─── Household members ──────────────────────────────────────
       match /members/{memberId} {
-        // Visible if: household visibility OR the owner is querying
-        allow read: if isMember(hid) && memberVisible(hid, memberId);
+        // 読み取りは resource.data で判定する。以前は memberVisible()（対象ドキュメントを
+        // get() で引く形）だったが、コレクションのクエリではその条件を「証明」できず、
+        // 誰に対しても丸ごと permission-denied になっていた（ルールはフィルタではない）。
+        // クライアントは where("visibility","==","household") と
+        // where("ownerUid","==",自分のuid) の2クエリに分けて取得し、それぞれ
+        // 下記 OR の片方で証明できる。単一ドキュメント get の意味は従来と同一
+        // （共有設定の子、または自分の子だけが読める。秘匿の範囲は変わらない）。
+        allow read: if isMember(hid) &&
+          (resource.data.visibility == "household" || resource.data.ownerUid == request.auth.uid);
 
         // Create: must be a household member and own the record
         allow create: if isMember(hid) &&
           request.auth.uid == request.resource.data.ownerUid;
 
-        // Update/delete: only the owner of this member record
-        allow update, delete: if isMember(hid) &&
+        // Update: only the owner of this member record
+        allow update: if isMember(hid) &&
           request.auth.uid == resource.data.ownerUid;
+
+        // Delete（破壊的操作）: メンバーを作った本人、または世帯オーナーのみ。
+        // 共有した家族が他人のメンバーを間違えて消す事故を防ぐための権限分離
+        // （2026-11-20 Kao決定：オーナーは全部可、作った本人は自分の分だけ可）。
+        allow delete: if isMember(hid) &&
+          (request.auth.uid == resource.data.ownerUid ||
+           request.auth.uid == householdOwnerUid(hid));
 
         // ─── Member items ─────────────────────────────────────────
         match /items/{itemId} {
@@ -152,9 +181,45 @@ service cloud.firestore {
           allow create: if isMember(hid) &&
             request.auth.uid == request.resource.data.ownerUid;
 
-          // Update/delete: only the owner
-          allow update, delete: if isMember(hid) &&
+          // Update: only the owner
+          allow update: if isMember(hid) &&
             request.auth.uid == resource.data.ownerUid;
+
+          // Delete: 記録を作った本人に加え、メンバー削除に伴う一括削除（バッチ）を
+          // 通すため、世帯オーナーと、そのメンバーを作った本人も許可する。
+          // （メンバー自体は消せるのに、他人が記録した配下のアイテムでバッチ全体が
+          // 失敗して削除できない、という不整合を避けるための付随変更。作成・更新は不変。）
+          allow delete: if isMember(hid) &&
+            (request.auth.uid == resource.data.ownerUid ||
+             request.auth.uid == householdOwnerUid(hid) ||
+             request.auth.uid == get(/databases/$(database)/documents/households/$(hid)/members/$(memberId)).data.ownerUid);
+        }
+
+        // ─── Member photos（共有写真） ────────────────────────────
+        // 写真1枚＝1ドキュメント。data に共有コピー（480px JPEG の data URL 文字列）を
+        // 持つ。読み取りは items と同じ memberVisible 判定（memberId はパスで固定の
+        // ため、photos のコレクションクエリでも証明できる）。
+        // 作成はアップロード本人が自分の ownerUid を刻んだ場合のみ。更新は既存
+        // ドキュメントの所有者本人だけ（publicCards と同じ乗っ取り対策：新規データ側の
+        // ownerUid だけを見ると、他人の写真を自分の ownerUid で上書きできてしまう）。
+        // サイズ上限は巨大ドキュメントの混入防止（共有コピーは通常 200KB 未満）。
+        // 削除は items と同じ3者（アップロード本人・世帯オーナー・メンバー作成者）で、
+        // 記録削除・メンバー削除に伴う後始末を通す。
+        match /photos/{photoId} {
+          allow read: if isMember(hid) && memberVisible(hid, memberId);
+          allow create: if isMember(hid) &&
+            request.auth.uid == request.resource.data.ownerUid &&
+            request.resource.data.data is string &&
+            request.resource.data.data.size() <= 700000;
+          allow update: if isMember(hid) &&
+            request.auth.uid == resource.data.ownerUid &&
+            request.auth.uid == request.resource.data.ownerUid &&
+            request.resource.data.data is string &&
+            request.resource.data.data.size() <= 700000;
+          allow delete: if isMember(hid) &&
+            (request.auth.uid == resource.data.ownerUid ||
+             request.auth.uid == householdOwnerUid(hid) ||
+             request.auth.uid == get(/databases/$(database)/documents/households/$(hid)/members/$(memberId)).data.ownerUid);
         }
       }
     }
