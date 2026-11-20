@@ -85,6 +85,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ─── Public pet cards （公開名刺ページ） ──────────────────────
+    // 訪問者はリンク（cardId）を知っていれば get のみ可。列挙は禁止。
+    // 作成・更新は確認済みユーザーが自分の ownerUid のカードだけ。削除は本人のみ。
+    match /publicCards/{cardId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if verified() &&
+        request.auth.uid == request.resource.data.ownerUid;
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
+    }
+
     // ─── Households ───────────────────────────────────────────────
     match /households/{hid} {
       // Any member can read the household doc
