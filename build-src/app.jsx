@@ -1367,6 +1367,96 @@ const RENEW_KINDS=new Set(["vaccine","rabies","filaria","checkup","dental","trim
 const isRenewCare=(x)=>!!(x&&x.type==="care"&&x.careKind&&RENEW_KINDS.has(x.careKind));
 // 「今日のLOALIFE」通知カテゴリ（優先順位＝この順）。todo=予定, insight=気づき, tip=提案, memory=思い出。
 const NOTICE_META={todo:{icon:"clock",label:"やること",order:0},insight:{icon:"activity",label:"気づき",order:1},tip:{icon:"sparkles",label:"提案",order:2},memory:{icon:"heart",label:"思い出",order:3}};
+// ===== ギャップ#7: 年齢・季節に応じたケアTips =====
+// ホームの「今日のLOALIFE」お知らせ基盤に載せる、端末内生成だけのTips。
+// 医療助言には踏み込まない：一般的なケアの目安（季節の注意・習慣づけ・環境の工夫）に留め、
+// 診断・治療・健康効果の断定はしない。文言は全て辞書キー（tipc.*）に置く。
+// 抑制方式：同じTipsは表示後7日間は再表示しない（クールダウン）＋日替わりローテーション＋
+// 1日最大2件・メンバーごとに1件まで。閉じたTipsは二度と出さない（端末内に記録）。
+// 優先度はお知らせの cat:"tip"（todo/insight より下）のまま。
+const CARE_TIPS=[
+  // 犬：ライフステージ×季節。seg:"manage" はケア・予定（管理タブ）への遷移つき。
+  {k:"dogYoungSocial",sp:"dog",stage:"young",season:"any"},
+  {k:"dogYoungTeeth",sp:"dog",stage:"young",season:"any"},
+  {k:"dogYoungVaccine",sp:"dog",stage:"young",season:"any",seg:"manage"},
+  {k:"dogAdultPrevent",sp:"dog",stage:"adult",season:"spring",seg:"manage"},
+  {k:"dogAdultWeight",sp:"dog",stage:"adult",season:"autumn",seg:"manage"},
+  {k:"dogAdultPaw",sp:"dog",stage:"adult",season:"winter"},
+  {k:"dogSeniorFloor",sp:"dog",stage:"senior",season:"any"},
+  {k:"dogSeniorSummer",sp:"dog",stage:"senior",season:"summer"},
+  // 猫
+  {k:"catYoungPlay",sp:"cat",stage:"young",season:"any"},
+  {k:"catAdultBrush",sp:"cat",stage:"adult",season:"spring"},
+  {k:"catAdultHeat",sp:"cat",stage:"adult",season:"summer"},
+  {k:"catAdultWater",sp:"cat",stage:"adult",season:"winter"},
+  {k:"catSeniorStep",sp:"cat",stage:"senior",season:"any"},
+  // その他のペット（年齢帯は問わない季節の注意のみ）
+  {k:"petOtherHeat",sp:"other",stage:"any",season:"summer"},
+  {k:"petOtherCold",sp:"other",stage:"any",season:"winter"},
+  // 人：personType×季節（「わたし」は adult として扱う）
+  {k:"babyVaccine",pt:"baby",season:"any",seg:"manage"},
+  {k:"babyHeat",pt:"baby",season:"summer"},
+  {k:"babyDry",pt:"baby",season:"winter"},
+  {k:"childPollen",pt:"child",season:"spring"},
+  {k:"childHeat",pt:"child",season:"summer"},
+  {k:"childHands",pt:"child",season:"winter"},
+  {k:"adultSleep",pt:"adult",season:"spring"},
+  {k:"adultSummer",pt:"adult",season:"summer"},
+  {k:"adultDry",pt:"adult",season:"winter"},
+  {k:"seniorFall",pt:"senior",season:"any"},
+  {k:"seniorHeat",pt:"senior",season:"summer"},
+  {k:"seniorBath",pt:"senior",season:"winter"},
+];
+// 季節（月→春3-5/夏6-8/秋9-11/冬12-2）。既存の季節Tipsと同じ分け方。
+const careTipSeasonOf=(month)=>month===12||month<=2?"winter":month<=5?"spring":month<=8?"summer":"autumn";
+// ペットのライフステージ：<12ヶ月=young、犬8歳/猫11歳以上=senior（既存のシニア判定と一致）。
+// 月齢が分からない子は null（年齢を決め打ちしたTipsは出さない）。
+const careTipPetStage=(species,mo)=>{
+  if(mo==null)return null;
+  if(mo<12)return "young";
+  if(species==="cat")return mo>=132?"senior":"adult";
+  if(species==="dog")return mo>=96?"senior":"adult";
+  return "adult";
+};
+// メンバー1人ぶんの候補Tips。m は {kind,species,personType} を持つメンバー形、mo は月齢（人は null でよい）。
+const careTipsFor=(m,mo,season)=>{
+  if(!m)return[];
+  return CARE_TIPS.filter(tp=>{
+    if(tp.season!=="any"&&tp.season!==season)return false;
+    if(m.kind==="pet"){
+      if(!tp.sp||(tp.sp!=="pet"&&tp.sp!==m.species))return false;
+      const st=careTipPetStage(m.species,mo);
+      return tp.stage==="any"||(st!=null&&tp.stage===st);
+    }
+    if(m.kind==="person"||m.kind==="me"){
+      if(!tp.pt)return false;
+      return tp.pt===(m.kind==="me"?"adult":(m.personType||"child"));
+    }
+    return false;
+  });
+};
+// 表示するTipsの選定（純粋関数）。cands=[{mid,tip}]（決定的な順序）、state={shown:{id:日付},dismissed:[id]}。
+// - 閉じたものは除外。表示済みは「今日より前」に表示してから7日未満なら除外（今日の分は安定させるため残す）。
+// - 残りを日替わりで回し、メンバーごとに1件まで・最大 maxN 件。
+const pickCareTips=(cands,todayIso,state,maxN)=>{
+  const dis=new Set((state&&state.dismissed)||[]);
+  const shown=(state&&state.shown)||{};
+  const elig=(cands||[]).filter(c=>{
+    const id="ct:"+c.mid+":"+c.tip.k;
+    if(dis.has(id))return false;
+    const sd=shown[id];
+    if(sd&&sd<todayIso&&daysBetween(sd,todayIso)<7)return false;
+    return true;
+  });
+  if(!elig.length)return[];
+  const start=daysBetween("2020-01-01",todayIso)%elig.length;
+  const rot=elig.slice(start).concat(elig.slice(0,start));
+  const picked=[],used=new Set(),lim=maxN||2;
+  for(const c of rot){ if(picked.length>=lim)break; if(used.has(c.mid))continue; used.add(c.mid); picked.push(c); }
+  return picked;
+};
+const CARE_TIP_STATE_KEY="loalife-tips-state";
+const loadCareTipState=()=>{ try{ const s=JSON.parse(localStorage.getItem(CARE_TIP_STATE_KEY)||"{}"); return {shown:(s&&s.shown)||{},dismissed:(s&&s.dismissed)||[]}; }catch(e){ return {shown:{},dismissed:[]}; } };
 // 記録タブの情報設計：セクションを「毎日つけるもの(record)」と「ときどき・もしも(manage)」に頻度で振り分ける。
 // この順序＝各タブでの既定の並び。SECSEG は key→どちらのタブに出すか。
 const SEC_DEF={
@@ -2796,6 +2886,7 @@ let APP_LANG="ja";
 const MESSAGES={
   ja:{
     "nav.home":"ホーム","nav.calendar":"カレンダー","nav.settings":"設定","title.daily":"毎日",
+    "tipc.actCheck":"確認する","tipc.dogYoungSocial.t":"{name}は社会化の時期","tipc.dogYoungSocial.b":"いろんな音・人・場所に少しずつ慣らしてあげましょう。短い時間から、無理のない範囲で大丈夫です","tipc.dogYoungTeeth.t":"歯みがきに慣らすなら今の時期","tipc.dogYoungTeeth.b":"歯の生え変わりの時期です。口元を触る練習から始めて、少しずつ慣らしてあげましょう","tipc.dogYoungVaccine.t":"ワクチン・予防の予定を確認","tipc.dogYoungVaccine.b":"子犬の時期はワクチンや予防の予定が多めです。{name}の予定が入っているか確認しておきましょう","tipc.dogAdultPrevent.t":"春は予防薬のシーズン","tipc.dogAdultPrevent.b":"暖かくなるとノミ・ダニや蚊が活発になります。{name}の予防薬の予定を確認しておきましょう","tipc.dogAdultWeight.t":"秋は体重チェックの見直しどき","tipc.dogAdultWeight.b":"涼しくなると食欲が増える子もいます。{name}の体重を測って、フード量の目安を確認してみましょう","tipc.dogAdultPaw.t":"冬は肉球と関節のケア","tipc.dogAdultPaw.b":"寒さで体がこわばりがちです。お散歩の後は肉球の乾燥やひび割れをチェックしてあげましょう","tipc.dogSeniorFloor.t":"シニア期は足もと対策を","tipc.dogSeniorFloor.b":"足腰の負担を減らすため、滑りやすい床にマットを敷く、段差を減らすなどの工夫がおすすめです","tipc.dogSeniorSummer.t":"シニアの夏は無理をしない","tipc.dogSeniorSummer.b":"体温調節が苦手になりがちな時期です。涼しい室内で過ごす時間を増やしてあげましょう","tipc.catYoungPlay.t":"{name}は遊びで育つ時期","tipc.catYoungPlay.b":"短い遊び時間を何回か作ってあげましょう。爪とぎ場所を用意しておくと、家具対策にもなります","tipc.catAdultBrush.t":"春は換毛と毛玉ケア","tipc.catAdultBrush.b":"抜け毛が増える時期です。ブラッシングを少し増やすと、毛玉の予防に役立ちます","tipc.catAdultHeat.t":"猫も熱中症に注意","tipc.catAdultHeat.b":"涼しい居場所と、新鮮な水を何か所かに用意してあげましょう。お留守番の室温にも気をつけて","tipc.catAdultWater.t":"冬は飲水量が減りがち","tipc.catAdultWater.b":"水飲み場を増やしたり、水をこまめに替えるなど、飲みやすい工夫をしてみましょう","tipc.catSeniorStep.t":"シニア猫は上り下りに注意","tipc.catSeniorStep.b":"高い場所へのステップを用意したり、よく使う場所を低めに移すと、足腰の負担が減ります","tipc.petOtherHeat.t":"小動物も暑さに弱いです","tipc.petOtherHeat.b":"ケージや水槽は直射日光を避けた場所に。室温と換気にも気をつけてあげましょう","tipc.petOtherCold.t":"冬は保温の確認を","tipc.petOtherCold.b":"その子に合った保温ができているか確認しましょう。ヒーター周りの安全も一緒にチェックを","tipc.babyVaccine.t":"予防接種の予定を確認","tipc.babyVaccine.b":"月齢に合わせて予防接種の予定が進みます。{name}の次の予定を確認しておきましょう","tipc.babyHeat.t":"赤ちゃんの夏は暑さ対策","tipc.babyHeat.b":"室温と服装でこまめに調整を。お出かけは涼しい時間帯が安心です","tipc.babyDry.t":"赤ちゃんの冬は乾燥対策","tipc.babyDry.b":"室内の加湿と保湿ケアを心がけましょう。肌の様子を見ながら続けてください","tipc.childPollen.t":"春は花粉と紫外線に注意","tipc.childPollen.b":"外遊びの後は手洗い・うがいを習慣に。帽子などで日差し対策もしてあげましょう","tipc.childHeat.t":"子どもの熱中症予防","tipc.childHeat.b":"遊びに夢中だと水分補給を忘れがちです。時間を決めて声をかけてあげましょう","tipc.childHands.t":"冬は手洗いの習慣づけ","tipc.childHands.b":"感染症が増える季節です。手洗いと、室内の換気・加湿を心がけましょう","tipc.adultSleep.t":"春は生活リズムの切り替えどき","tipc.adultSleep.b":"環境が変わりやすい季節です。睡眠時間を意識して確保してみましょう","tipc.adultSummer.t":"夏バテ対策は睡眠と水分","tipc.adultSummer.b":"冷房の効いた室内と外との温度差も負担になります。こまめな水分補給を","tipc.adultDry.t":"冬の乾燥と冷え対策","tipc.adultDry.b":"加湿と保湿を心がけて。冷えやすい手足は、入浴で温めるのもおすすめです","tipc.seniorFall.t":"足もと安全と転倒予防","tipc.seniorFall.b":"段差や滑りやすい場所を見直してみましょう。無理のない範囲の運動も大切です","tipc.seniorHeat.t":"高齢者の熱中症は室内でも","tipc.seniorHeat.b":"喉の渇きを感じにくくなります。時間を決めた水分補給と、室温の管理を心がけましょう","tipc.seniorBath.t":"冬の入浴は温度差に注意","tipc.seniorBath.b":"脱衣所と浴室を温めてから入浴すると安心です",
     "seg.daily":"毎日","seg.manage":"管理",
     "home.family":"家族のようす",
     "home.registerMe":"自分のことを登録する","home.registerMeSub":"名前や誕生日を入れると、自分のケアや予定も記録できるようになります","home.okNoRecord":"まだ記録がありません","home.okPet":"{name}は順調です","home.okGeneric":"順調です",
@@ -2892,6 +2983,7 @@ const MESSAGES={
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
+    "tipc.actCheck":"Check","tipc.dogYoungSocial.t":"Socialization time for {name}","tipc.dogYoungSocial.b":"Let them get used to different sounds, people and places, a little at a time. Short sessions are fine — no need to push.","tipc.dogYoungTeeth.t":"A good time to start tooth-brushing habits","tipc.dogYoungTeeth.b":"Puppy teeth are being replaced around now. Start by gently touching around the mouth and build up little by little.","tipc.dogYoungVaccine.t":"Check vaccination and prevention plans","tipc.dogYoungVaccine.b":"Puppies tend to have several vaccinations and preventive treatments scheduled. Check that {name}'s are on the calendar.","tipc.dogAdultPrevent.t":"Spring is prevention season","tipc.dogAdultPrevent.b":"As it warms up, fleas, ticks and mosquitoes become active. Check {name}'s preventive medication schedule.","tipc.dogAdultWeight.t":"Autumn is a good time to check weight","tipc.dogAdultWeight.b":"Some dogs eat more as it cools down. Weigh {name} and check whether the food amount still fits.","tipc.dogAdultPaw.t":"Winter paw and joint care","tipc.dogAdultPaw.b":"Cold weather can make bodies stiff. After walks, check paw pads for dryness or cracks.","tipc.dogSeniorFloor.t":"Senior tip: safer footing","tipc.dogSeniorFloor.b":"To ease the load on legs and hips, try mats on slippery floors and fewer steps where possible.","tipc.dogSeniorSummer.t":"Take summer gently for seniors","tipc.dogSeniorSummer.b":"Older dogs regulate body temperature less easily. Let them spend more time in a cool indoor spot.","tipc.catYoungPlay.t":"Play is how {name} grows now","tipc.catYoungPlay.b":"Offer several short play sessions a day. A scratching spot also helps protect the furniture.","tipc.catAdultBrush.t":"Spring shedding and hairball care","tipc.catAdultBrush.b":"Shedding increases around now. A little extra brushing helps prevent hairballs.","tipc.catAdultHeat.t":"Cats need heat care too","tipc.catAdultHeat.b":"Keep cool resting spots and fresh water in a few places. Mind the room temperature when you're out, too.","tipc.catAdultWater.t":"Cats drink less in winter","tipc.catAdultWater.b":"Try adding more water bowls or refreshing the water often so drinking stays easy.","tipc.catSeniorStep.t":"Senior cats and high places","tipc.catSeniorStep.b":"A step up to favorite high spots, or moving essentials lower, can ease the strain on legs.","tipc.petOtherHeat.t":"Small pets are heat-sensitive too","tipc.petOtherHeat.b":"Keep cages and tanks out of direct sunlight, and watch room temperature and ventilation.","tipc.petOtherCold.t":"Check winter warmth","tipc.petOtherCold.b":"Check that the warmth setup suits your pet, and that heaters are placed safely.","tipc.babyVaccine.t":"Check the vaccination schedule","tipc.babyVaccine.b":"Vaccinations follow the baby's age. Check what's next on {name}'s schedule.","tipc.babyHeat.t":"Summer heat care for babies","tipc.babyHeat.b":"Adjust room temperature and clothing often. Outings are easier in the cooler hours.","tipc.babyDry.t":"Winter dryness care for babies","tipc.babyDry.b":"Keep indoor air moist and skin moisturized, watching how the skin responds.","tipc.childPollen.t":"Spring pollen and sun care","tipc.childPollen.b":"Make hand-washing and gargling a habit after playing outside. A hat helps with the sun, too.","tipc.childHeat.t":"Preventing heatstroke in kids","tipc.childHeat.b":"Kids forget to drink when they're absorbed in play. Set times and remind them.","tipc.childHands.t":"Winter hand-washing habits","tipc.childHands.b":"Infections spread more in this season. Keep up hand-washing, ventilation and humid air.","tipc.adultSleep.t":"Spring rhythm reset","tipc.adultSleep.b":"Routines often change in spring. Try to protect your sleep time.","tipc.adultSummer.t":"Beat summer fatigue with sleep and water","tipc.adultSummer.b":"Big gaps between air-conditioned rooms and the heat outside add strain. Drink water regularly.","tipc.adultDry.t":"Winter dryness and chill care","tipc.adultDry.b":"Keep air and skin moisturized. A warm bath helps cold hands and feet, too.","tipc.seniorFall.t":"Safer footing, fewer falls","tipc.seniorFall.b":"Review steps and slippery spots at home. Gentle exercise within comfort also matters.","tipc.seniorHeat.t":"Heatstroke can happen indoors","tipc.seniorHeat.b":"Thirst is felt less with age. Drink on a schedule and keep an eye on room temperature.","tipc.seniorBath.t":"Mind temperature gaps at bath time","tipc.seniorBath.b":"Warming the changing room and bathroom before a bath makes it safer.",
     "seg.daily":"Daily","seg.manage":"Manage",
     "home.family":"Family",
     "home.registerMe":"Set up your own profile","home.registerMeSub":"Add your name and birthday to keep track of your own care and plans, too","home.okNoRecord":"No records yet","home.okPet":"{name} is doing well","home.okGeneric":"Doing well",
@@ -2988,6 +3080,7 @@ const MESSAGES={
   },
   es:{
     "nav.home":"Inicio","nav.calendar":"Calendario","nav.settings":"Ajustes","title.daily":"Diario",
+    "tipc.actCheck":"Revisar","tipc.dogYoungSocial.t":"Tiempo de socialización para {name}","tipc.dogYoungSocial.b":"Acostúmbralo poco a poco a distintos sonidos, personas y lugares. Con sesiones cortas es suficiente, sin forzarlo.","tipc.dogYoungTeeth.t":"Buen momento para acostumbrarlo al cepillado","tipc.dogYoungTeeth.b":"Es la época del cambio de dientes. Empieza tocando suavemente su hocico y avanza poco a poco.","tipc.dogYoungVaccine.t":"Revisa el plan de vacunas y prevención","tipc.dogYoungVaccine.b":"En la etapa de cachorro hay varias vacunas y tratamientos preventivos. Revisa que los de {name} estén en el calendario.","tipc.dogAdultPrevent.t":"La primavera es época de prevención","tipc.dogAdultPrevent.b":"Con el calor se activan pulgas, garrapatas y mosquitos. Revisa el calendario de prevención de {name}.","tipc.dogAdultWeight.t":"El otoño es buen momento para revisar el peso","tipc.dogAdultWeight.b":"Con el frescor, algunos perros comen más. Pesa a {name} y revisa si la cantidad de comida sigue siendo la adecuada.","tipc.dogAdultPaw.t":"En invierno, cuida patas y articulaciones","tipc.dogAdultPaw.b":"El frío puede agarrotar el cuerpo. Después del paseo, revisa las almohadillas por sequedad o grietas.","tipc.dogSeniorFloor.t":"Consejo senior: suelo seguro","tipc.dogSeniorFloor.b":"Para cuidar piernas y cadera, prueba alfombras en suelos resbaladizos y reduce los escalones.","tipc.dogSeniorSummer.t":"Verano sin excesos para los mayores","tipc.dogSeniorSummer.b":"Los perros mayores regulan peor su temperatura. Déjalo pasar más tiempo en un lugar fresco.","tipc.catYoungPlay.t":"{name} crece jugando","tipc.catYoungPlay.b":"Dedica varias sesiones cortas de juego al día. Un rascador también protege los muebles.","tipc.catAdultBrush.t":"Primavera: muda y bolas de pelo","tipc.catAdultBrush.b":"Es época de muda. Un poco más de cepillado ayuda a prevenir las bolas de pelo.","tipc.catAdultHeat.t":"Los gatos también sufren el calor","tipc.catAdultHeat.b":"Prepara lugares frescos y agua fresca en varios sitios. Cuida también la temperatura cuando no estés.","tipc.catAdultWater.t":"En invierno beben menos agua","tipc.catAdultWater.b":"Prueba añadir más bebederos o cambiar el agua a menudo para que beba con facilidad.","tipc.catSeniorStep.t":"Gatos mayores y las alturas","tipc.catSeniorStep.b":"Un escalón para sus sitios altos favoritos, o bajar lo esencial, alivia sus patas.","tipc.petOtherHeat.t":"Las mascotas pequeñas también sufren el calor","tipc.petOtherHeat.b":"Mantén jaulas y terrarios lejos del sol directo, y cuida la temperatura y la ventilación.","tipc.petOtherCold.t":"Revisa el calor en invierno","tipc.petOtherCold.b":"Comprueba que la calefacción sea la adecuada y que los calefactores estén seguros.","tipc.babyVaccine.t":"Revisa el calendario de vacunas","tipc.babyVaccine.b":"Las vacunas siguen la edad del bebé. Revisa cuál es la siguiente para {name}.","tipc.babyHeat.t":"Cuidados de verano para el bebé","tipc.babyHeat.b":"Ajusta a menudo la temperatura y la ropa. Salir en las horas frescas es más seguro.","tipc.babyDry.t":"En invierno, cuida la sequedad del bebé","tipc.babyDry.b":"Mantén la humedad en casa y la piel hidratada, observando cómo responde.","tipc.childPollen.t":"Primavera: polen y sol","tipc.childPollen.b":"Que lavarse las manos y hacer gárgaras sea un hábito tras jugar fuera. Un sombrero ayuda con el sol.","tipc.childHeat.t":"Prevenir el golpe de calor en niños","tipc.childHeat.b":"Jugando, los niños olvidan beber. Marca horarios y recuérdaselo.","tipc.childHands.t":"En invierno, hábito de lavarse las manos","tipc.childHands.b":"Es época de infecciones. Mantén el lavado de manos, la ventilación y la humedad.","tipc.adultSleep.t":"Primavera: reajusta el ritmo","tipc.adultSleep.b":"En primavera cambian las rutinas. Intenta reservar tus horas de sueño.","tipc.adultSummer.t":"Contra el cansancio veraniego: sueño y agua","tipc.adultSummer.b":"El contraste entre el aire acondicionado y el calor exterior también cansa. Bebe agua a menudo.","tipc.adultDry.t":"En invierno, sequedad y frío","tipc.adultDry.b":"Mantén la humedad y la piel hidratada. Un baño caliente ayuda a manos y pies fríos.","tipc.seniorFall.t":"Pies seguros, menos caídas","tipc.seniorFall.b":"Revisa escalones y zonas resbaladizas en casa. El ejercicio suave también importa.","tipc.seniorHeat.t":"El golpe de calor también ocurre en casa","tipc.seniorHeat.b":"Con la edad se siente menos la sed. Bebe con horario y vigila la temperatura.","tipc.seniorBath.t":"En invierno, cuidado con el contraste al bañarse","tipc.seniorBath.b":"Calentar el vestidor y el baño antes de bañarse es más seguro.",
     "seg.daily":"Diario","seg.manage":"Gestionar",
     "home.family":"Familia",
     "home.registerMe":"Registra tu perfil","home.registerMeSub":"Con tu nombre y cumpleaños también podrás registrar tu cuidado y tus planes","home.okNoRecord":"Aún sin registros","home.okPet":"{name} está bien","home.okGeneric":"Todo bien",
@@ -3084,6 +3177,7 @@ const MESSAGES={
   },
   zh:{
     "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
+    "tipc.actCheck":"去确认","tipc.dogYoungSocial.t":"{name}正处于社会化时期","tipc.dogYoungSocial.b":"让它慢慢习惯各种声音、人和场所。从短时间开始，不勉强也没关系。","tipc.dogYoungTeeth.t":"现在是习惯刷牙的好时期","tipc.dogYoungTeeth.b":"现在是换牙的时期。从轻轻触碰嘴边开始，一点点让它习惯吧。","tipc.dogYoungVaccine.t":"确认疫苗和预防计划","tipc.dogYoungVaccine.b":"幼犬时期疫苗和预防安排较多。确认一下{name}的计划是否已经安排好。","tipc.dogAdultPrevent.t":"春天是预防药的季节","tipc.dogAdultPrevent.b":"天气变暖，跳蚤、蜱虫和蚊子开始活跃。确认一下{name}的预防药安排吧。","tipc.dogAdultWeight.t":"秋天适合复查体重","tipc.dogAdultWeight.b":"天气凉爽后，有些狗狗食欲会增加。给{name}称一下体重，确认一下喂食量是否合适。","tipc.dogAdultPaw.t":"冬天注意肉垫和关节护理","tipc.dogAdultPaw.b":"寒冷时身体容易僵硬。散步后检查一下肉垫是否干燥或开裂吧。","tipc.dogSeniorFloor.t":"老年期注意脚下安全","tipc.dogSeniorFloor.b":"为减轻腿脚和腰部负担，可以在光滑的地板上铺垫子，并尽量减少台阶。","tipc.dogSeniorSummer.t":"老年狗狗夏天不要勉强","tipc.dogSeniorSummer.b":"老年狗狗调节体温的能力较弱。让它多在凉爽的室内休息吧。","tipc.catYoungPlay.t":"{name}正是在玩耍中成长的时期","tipc.catYoungPlay.b":"每天安排几次短时间的玩耍。准备好猫抓板，也能保护家具。","tipc.catAdultBrush.t":"春天是换毛和毛球护理的季节","tipc.catAdultBrush.b":"这段时间掉毛增多。多梳几次毛，有助于预防毛球。","tipc.catAdultHeat.t":"猫咪也要注意中暑","tipc.catAdultHeat.b":"准备几处凉爽的休息地和新鲜的水。外出时也要注意室温。","tipc.catAdultWater.t":"冬天饮水量容易减少","tipc.catAdultWater.b":"可以多放几个水碗或勤换水，让它更容易喝水。","tipc.catSeniorStep.t":"老年猫注意上下高处","tipc.catSeniorStep.b":"为常去的高处准备台阶，或把常用物品放低一些，可以减轻腿脚负担。","tipc.petOtherHeat.t":"小动物也怕热","tipc.petOtherHeat.b":"笼子或水族箱要避开直射阳光，也要注意室温和通风。","tipc.petOtherCold.t":"冬天确认保温","tipc.petOtherCold.b":"确认保温方式适合它，也一起检查加热器周围是否安全。","tipc.babyVaccine.t":"确认疫苗接种计划","tipc.babyVaccine.b":"疫苗会按照月龄推进。确认一下{name}下一次的安排吧。","tipc.babyHeat.t":"宝宝夏天注意防暑","tipc.babyHeat.b":"经常调节室温和衣物。外出选择凉爽的时段更安心。","tipc.babyDry.t":"宝宝冬天注意保湿","tipc.babyDry.b":"注意室内加湿和皮肤保湿，一边观察皮肤状态一边坚持。","tipc.childPollen.t":"春天注意花粉和紫外线","tipc.childPollen.b":"在外面玩后养成洗手、漱口的习惯。戴帽子也能防晒。","tipc.childHeat.t":"预防儿童中暑","tipc.childHeat.b":"玩得投入时容易忘记喝水。定好时间，提醒孩子补充水分。","tipc.childHands.t":"冬天养成洗手习惯","tipc.childHands.b":"这是感染增多的季节。注意洗手、室内通风和加湿。","tipc.adultSleep.t":"春天是调整生活节奏的时候","tipc.adultSleep.b":"春天环境变化多。有意识地保证睡眠时间吧。","tipc.adultSummer.t":"防夏日疲乏靠睡眠和水分","tipc.adultSummer.b":"空调房与室外的温差也会增加负担。注意勤喝水。","tipc.adultDry.t":"冬天注意干燥和保暖","tipc.adultDry.b":"注意加湿和保湿。手脚容易冷的话，泡澡暖一暖也不错。","tipc.seniorFall.t":"注意脚下安全，预防跌倒","tipc.seniorFall.b":"检查一下家里的台阶和易滑处。在不勉强的范围内运动也很重要。","tipc.seniorHeat.t":"老年人室内也会中暑","tipc.seniorHeat.b":"年龄大了不容易感到口渴。定时喝水，并注意室温管理。","tipc.seniorBath.t":"冬天洗澡注意温差","tipc.seniorBath.b":"洗澡前先把更衣室和浴室暖起来，会更安心。",
     "seg.daily":"日常","seg.manage":"管理",
     "home.family":"家人",
     "home.registerMe":"登记我自己的信息","home.registerMeSub":"登记姓名和生日后，也能记录自己的照护和计划","home.okNoRecord":"暂无记录","home.okPet":"{name}很好","home.okGeneric":"一切都好",
@@ -7239,6 +7333,9 @@ function App(){
 
   // ── 「今日のLOALIFE」：蓄積データから“気づき”を生成。日付ベースのリマインドは通常ロジック、
   //    意味を抽出する部分（気づき・提案）は生成関数を分離し、将来AIに差し替えやすくしている。
+  // ギャップ#7：ケアTipsの表示状態（表示済み日時・閉じたもの）を端末内に保持する。
+  const[careTipState,setCareTipState]=useState(loadCareTipState);
+  const dismissCareTip=(id)=>{ setCareTipState(prev=>{ if(prev.dismissed.includes(id))return prev; const next={shown:{...prev.shown},dismissed:[...prev.dismissed,id]}; try{localStorage.setItem(CARE_TIP_STATE_KEY,JSON.stringify(next));}catch(e){} return next; }); };
   const notices=useMemo(()=>{
     const out=[];
     const petsLive=members.filter(m=>m.kind==="pet"&&!m.memorial);
@@ -7320,6 +7417,21 @@ function App(){
       if(mo>=(m.species==="cat"?132:84))
         out.push({id:`tip:senior:${m.id}:${todayIso.slice(0,7)}`,cat:"tip",title:`${m.name}はシニア期`,body:"健診の回数を少し増やしたり、関節・歯・体重を気にかけてあげると安心です"});
     });
+    // 🟢 ギャップ#7：年齢・季節に応じたケアTips（端末内生成・1日最大2件・メンバーごと1件まで）
+    //    表示後7日間は同じTipsを出さない（pickCareTips のクールダウン＋日替わりローテーション）。
+    {
+      const season=careTipSeasonOf(new Date().getMonth()+1);
+      const cands=[];
+      [...members.filter(m=>!m.memorial),{id:"me",name:meName||"わたし",kind:"me"}].forEach(m=>{
+        const mo=m.kind==="pet"&&m.birthday?monthsOld(m.birthday):null;
+        careTipsFor(m,mo,season).forEach(tip=>cands.push({mid:m.id,tip,member:m}));
+      });
+      pickCareTips(cands,todayIso,careTipState,2).forEach(({mid,tip,member})=>{
+        const notice={id:`ct:${mid}:${tip.k}:${todayIso}`,cat:"tip",careTipId:`ct:${mid}:${tip.k}`,title:t(`tipc.${tip.k}.t`,{name:member.name}),body:t(`tipc.${tip.k}.b`,{name:member.name})};
+        if(tip.seg==="manage"){ notice.actionLabel=t("tipc.actCheck"); notice.go=()=>{setTab(mid);setPersonSeg("manage");}; }
+        out.push(notice);
+      });
+    }
     // 💕 思い出：去年の今日（最大2件）
     onThisDay.slice(0,2).forEach(({item,yearsAgo})=>{
       out.push({id:`memory:${item.id}:${todayIso}`,cat:"memory",title:`${yearsAgo}年前の今日`,body:item.note||(item.title&&item.title!=="思い出"?item.title:"思い出の1枚")+(item.space?`（${nm(item.space)}）`:""),actionLabel:"思い出を見る",go:()=>{const pid=firstPhotoId(item);if(pid&&photos[pid])viewMemory(pid);else{setTab(item.space);setPersonSeg("manage");}}});
@@ -7329,7 +7441,7 @@ function App(){
     out.sort((a,b)=>NOTICE_META[a.cat].order-NOTICE_META[b.cat].order);
     for(const n of out){if(ids.has(n.id))continue;ids.add(n.id);uniq.push(n);}
     return uniq.slice(0,8);
-  },[items,members,homeData,onThisDay,weather,hasWalker,todayIso,meName]);
+  },[items,members,homeData,onThisDay,weather,hasWalker,todayIso,meName,careTipState,t]);
   const[noticesRead,setNoticesRead]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("loalife-notices-read")||"[]"));}catch(e){return new Set();}});
   const[noticesOpen,setNoticesOpen]=useState(false);
   const unreadNoticeCount=useMemo(()=>notices.filter(n=>!noticesRead.has(n.id)).length,[notices,noticesRead]);
@@ -7340,6 +7452,21 @@ function App(){
     setNoticesRead(next);
     try{localStorage.setItem("loalife-notices-read",JSON.stringify([...next].slice(-300)));}catch(e){}
   };
+  // ギャップ#7：実際に表示されたケアTipsの表示日を記録する（クールダウンの起点。90日より前の履歴は掃除）。
+  useEffect(()=>{
+    if(!loaded)return;
+    const ids=notices.filter(n=>n.careTipId).map(n=>n.careTipId);
+    if(!ids.length)return;
+    setCareTipState(prev=>{
+      let changed=false;const shown={...prev.shown};
+      ids.forEach(id=>{ if(shown[id]!==todayIso){ shown[id]=todayIso; changed=true; } });
+      if(!changed)return prev;
+      Object.keys(shown).forEach(k=>{ if(daysBetween(shown[k],todayIso)>90)delete shown[k]; });
+      const next={shown,dismissed:prev.dismissed};
+      try{localStorage.setItem(CARE_TIP_STATE_KEY,JSON.stringify(next));}catch(e){}
+      return next;
+    });
+  },[notices,loaded,todayIso]);
 
   // AIサマリー：今日の要点を1〜3行で。あいさつ＋やること件数＋お散歩おすすめ＋直近の締切。
   const aiSummary=useMemo(()=>{
@@ -9544,6 +9671,7 @@ function App(){
               <ul className="yl-notice-list">
                 {notices.map(n=>{const m=NOTICE_META[n.cat];return(
                   <li key={n.id} className={"yl-notice "+n.cat}>
+                    {n.careTipId&&<button className="yl-notice-x" onClick={()=>dismissCareTip(n.careTipId)} aria-label={t("common.close")}>×</button>}
                     <span className="yl-notice-cat"><Icon name={m.icon} size={13}/> {m.label}</span>
                     <span className="yl-notice-title">{n.title}</span>
                     {n.body&&<span className="yl-notice-body">{n.body}</span>}
