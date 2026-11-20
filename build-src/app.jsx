@@ -5166,7 +5166,7 @@ function App(){
                   <h2 className="yl-sec-title alert">{t("home.dontMiss")}</h2>
                   <ul className="yl-bomb-list">
                     {homeData.bombs.slice(0,3).map(({item,d})=>(
-                      <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>setTab(item.space)}>
+                      <li key={item.id} className={"yl-bomb-item"+(d<0?" over":"")} onClick={()=>openEdit(item)}>
                         <span className="yl-bomb-emoji"><Icon name={guessIcon(item.title,"alert")} size={20}/></span>
                         <span className="yl-bomb-body"><span className="yl-bomb-text">{item.title}</span><span className="yl-bomb-who">{nameOf(item.space)}</span></span>
                         <span className={"yl-bomb-tag"+(d<0?" over":"")}>{d<0?t("rel.overdueBy",{d:-d}):d===0?t("rel.today"):d===1?t("rel.tomorrow"):t("rel.inDays",{d})}</span>
