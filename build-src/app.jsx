@@ -1717,6 +1717,25 @@ async function decodeQRCandidates(dataUrl) {
 }
 
 // --- Calendar helpers ---
+// 予定の詳細テキスト（メモ＝note正規・旧memo互換／URL／チェックリスト）を外部カレンダー向けに整形。
+function itemDetailsText(item) {
+  const parts=[];
+  const note=item.note||item.memo||"";
+  if(note)parts.push(note);
+  if(item.url)parts.push(item.url);
+  if(Array.isArray(item.checklist)&&item.checklist.length)parts.push(item.checklist.map(c=>`${c.done?"☑":"☐"} ${c.text}`).join("\n"));
+  return parts.join("\n");
+}
+// 終了日時：endTime があればそれ（開始以前なら翌日扱い）、無ければ従来どおり開始＋1時間。
+function itemEndDate(item, st) {
+  if(item.endTime){
+    const [eh,emn]=item.endTime.split(":").map(Number);
+    const en=new Date(st.getFullYear(),st.getMonth(),st.getDate(),eh,emn);
+    if(en<=st)en.setDate(en.getDate()+1);
+    return en;
+  }
+  return new Date(st.getTime()+3600000);
+}
 function gcalLink(item, memberName, memberEmoji) {
   const title = encodeURIComponent(`${item.emoji||""} ${item.title} [${memberEmoji}${memberName}]`);
   const [y,m,d]=item.dueDate.split("-").map(Number);
@@ -1724,7 +1743,7 @@ function gcalLink(item, memberName, memberEmoji) {
   if(item.time){
     const [h,mn]=item.time.split(":").map(Number);
     const fmt=(dt)=>`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}T${String(dt.getHours()).padStart(2,"0")}${String(dt.getMinutes()).padStart(2,"0")}00`;
-    const st=new Date(y,m-1,d,h,mn);const en=new Date(st.getTime()+3600000);
+    const st=new Date(y,m-1,d,h,mn);const en=itemEndDate(item,st);
     dates=`${fmt(st)}/${fmt(en)}`;
   }else{
     const s=`${y}${String(m).padStart(2,"0")}${String(d).padStart(2,"0")}`;
@@ -1732,7 +1751,15 @@ function gcalLink(item, memberName, memberEmoji) {
     const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
     dates=`${s}/${e}`;
   }
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}`;
+  let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}`;
+  if(item.place)url+=`&location=${encodeURIComponent(item.place)}`;
+  const details=itemDetailsText(item);
+  if(details)url+=`&details=${encodeURIComponent(details)}`;
+  if(item.repeat&&item.repeat!=="none"){
+    const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};
+    url+=`&recur=${encodeURIComponent(`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`)}`;
+  }
+  return url;
 }
 
 function generateIcal(items, members, meEmoji, meName) {
@@ -1751,7 +1778,7 @@ function generateIcal(items, members, meEmoji, meName) {
     if(item.time){
       const [h,mn]=item.time.split(":").map(Number);
       const fmt=(dt)=>`${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}T${String(dt.getHours()).padStart(2,"0")}${String(dt.getMinutes()).padStart(2,"0")}00`;
-      const st=new Date(y,m-1,d,h,mn);const en=new Date(st.getTime()+3600000);
+      const st=new Date(y,m-1,d,h,mn);const en=itemEndDate(item,st);
       lines.push(`DTSTART;TZID=Asia/Tokyo:${fmt(st)}`);
       lines.push(`DTEND;TZID=Asia/Tokyo:${fmt(en)}`);
     }else{
@@ -1763,6 +1790,20 @@ function generateIcal(items, members, meEmoji, meName) {
     if(item.repeat&&item.repeat!=="none"){
       const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};
       lines.push(`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`);
+    }
+    if(item.place)lines.push(`LOCATION:${esc(item.place)}`);
+    const details=itemDetailsText(item);
+    if(details)lines.push(`DESCRIPTION:${esc(details)}`);
+    // リマインド設定がある場合のみ VALARM を付ける（無いアイテムには付けない）
+    if(Array.isArray(item.reminders)&&item.reminders.length){
+      item.reminders.forEach(mins=>{
+        const trig=mins===0?"PT0M":(mins%1440===0?`-P${mins/1440}D`:`-PT${mins}M`);
+        lines.push("BEGIN:VALARM");
+        lines.push("ACTION:DISPLAY");
+        lines.push(`TRIGGER:${trig}`);
+        lines.push(`DESCRIPTION:${esc(item.title||"")}`);
+        lines.push("END:VALARM");
+      });
     }
     lines.push("END:VEVENT");
   });
@@ -1893,7 +1934,7 @@ const MESSAGES={
     "set.familyShare":"家族で共有","share.settings":"共有の設定",
     "set.about":"アプリについて","about.help":"使い方・機能紹介","about.whatsNew":"変更点・新機能","about.tourAgain":"使い方をもう一度見る","about.aboutApp":"このアプリについて","about.reset":"データを消して最初から","about.privacyBody":"記録・写真は、基本的にこの端末内に保存されます。家族共有を使う場合のみ、「共有」に設定したメンバーのプロフィールと記録（写真を除く）が Google Firebase（東京）に保存され、家族間で同期されます。写真、「わたし」の記録、「自分のみ」のメンバーは共有されません。公開リンクやバックアップファイルを自分で渡した場合は、その内容が相手に表示されます。バックアップは設定から書き出せます。","about.analyticsBody":"利用状況の把握のため、画面表示や機能の利用を計測しています（記録の本文や写真は送りません）。天気表示では登録地点の位置情報を天気APIに送ります。","about.shareBody":"設定またはメニューの「家族で共有」から、家族スペースを作るか、招待コードで参加できます。共有されるのは「共有」に設定したメンバーのプロフィールと記録（写真を除く）です。各メンバーのプロフィールで「共有／自分のみ」を選べます。",
     "rel.daysAgo":"{n}日前","rel.today2":"今日","rel.overdueDeadline":"期限切れ","rel.todayDeadline":"今日で期限","rel.dueInDaysDeadline":"あと{n}日で期限",
-    "common.add":"追加","common.delete":"削除","common.edit":"編集","edit.due":"期限","edit.place":"場所","edit.placePh":"例：〇〇病院 3F・△△公園","edit.urlPh":"予約ページ等のリンク","edit.memo":"メモ","edit.memoPh":"持ち物・注意点など自由に","edit.stock":"在庫（回分・任意）","edit.stockPh":"例：3（フィラリア等の買い足しめやすに）","edit.checklist":"チェックリスト（持ち物など）","edit.checkAddPh":"項目を追加（例：保険証）","common.done":"完了","common.clear":"解除","common.me":"わたし","common.optional":"（任意）",
+    "common.add":"追加","common.delete":"削除","common.edit":"編集","edit.due":"期限","edit.endTime":"終了時刻","edit.place":"場所","edit.placePh":"例：〇〇病院 3F・△△公園","edit.urlPh":"予約ページ等のリンク","edit.memo":"メモ","edit.memoPh":"持ち物・注意点など自由に","edit.stock":"在庫（回分・任意）","edit.stockPh":"例：3（フィラリア等の買い足しめやすに）","edit.checklist":"チェックリスト（持ち物など）","edit.checkAddPh":"項目を追加（例：保険証）","common.done":"完了","common.clear":"解除","common.me":"わたし","common.optional":"（任意）",
     "a11y.delete":"削除","a11y.check":"チェック","a11y.done":"完了","remind.before":"{n}分前","status.done":"完了","status.inDays":"あと{d}日","status.today":"今日","status.dreamOver":"また今度でも大丈夫","status.overdue":"期限切れ","care.done":"✅ 完了","care.overdueRenew":"🔴 期限切れ・{d}日超過","care.overdueTodo":"🔴 未対応・{d}日超過","care.plannedDate":"予定日 {date}","care.dueToday":"🟡 今日で期限","care.dueInDays":"🟡 あと{d}日で期限","care.validDays":"🟢 有効・あと{d}日","care.doToday":"🟡 今日やる","care.plannedDays":"🟡 予定・あと{d}日","care.planned":"🟡 予定済み","item.doneOn":"実施 {date}","item.stockLeft":"在庫あと{n}回","item.reminderCount":"{n}件","item.resolveTip":"記録すると次回予定へ自動で進みます","item.resolveBtn":"✓ 完了にして次回へ","item.snooze":"→ 明日へ","item.copyTip":"前回と同じ内容で追加","item.copyBtn":"↩ 前回コピー","item.addToCal":"カレンダーに追加","item.cert":"証明書","item.certAdd":"証明書を追加","item.openMap":"地図で開く","item.openLink":"リンクを開く","item.checklistProg":"持ち物 {done}/{total}","a11y.pickColor":"色を選ぶ","a11y.editProfile":"プロフィールを編集","a11y.editPhotoProfile":"写真・プロフィールを編集","a11y.editIconName":"アイコン・名前を変更",
     "ph.name":"名前","ph.title":"タイトル",
     "gender.boy":"男の子","gender.girl":"女の子","neuter.done":"済み","neuter.not":"まだ",
@@ -1985,7 +2026,7 @@ const MESSAGES={
     "set.familyShare":"Family sharing","share.settings":"Sharing settings",
     "set.about":"About","about.help":"How it works","about.whatsNew":"What's new","about.tourAgain":"Replay the walkthrough","about.aboutApp":"About this app","about.reset":"Erase data & start over","about.privacyBody":"Your records and photos are basically stored on this device. Only when you use family sharing, the profiles and records (excluding photos) of members set to “Shared” are stored on Google Firebase (Tokyo) and synced with your family. Photos, your own “Me” records, and members set to “Only me” are never shared. If you hand someone a public link or a backup file yourself, its contents will be visible to them. You can export a backup from Settings.","about.analyticsBody":"To understand how the app is used, we measure screen views and feature use (we never send the contents of your records or photos). For weather, your saved locations are sent to a weather API.","about.shareBody":"From “Family sharing” in Settings or the menu, you can create a family space or join with an invite code. Only the profiles and records (excluding photos) of members set to “Shared” are shared. You can choose “Shared / Only me” in each member's profile.",
     "rel.daysAgo":"{n} days ago","rel.today2":"Today","rel.overdueDeadline":"Overdue","rel.todayDeadline":"Due today","rel.dueInDaysDeadline":"Due in {n} days",
-    "common.add":"Add","common.delete":"Delete","common.edit":"Edit","edit.due":"Due date","edit.place":"Place","edit.placePh":"e.g. Clinic 3F / the park","edit.urlPh":"Booking page or link","edit.memo":"Memo","edit.memoPh":"Things to bring, notes, anything","edit.stock":"Stock (doses, optional)","edit.stockPh":"e.g. 3 (restock guide for meds)","edit.checklist":"Checklist (things to bring)","edit.checkAddPh":"Add an item (e.g. insurance card)","common.done":"Done","common.clear":"Clear","common.me":"Me","common.optional":" (optional)",
+    "common.add":"Add","common.delete":"Delete","common.edit":"Edit","edit.due":"Due date","edit.endTime":"End time","edit.place":"Place","edit.placePh":"e.g. Clinic 3F / the park","edit.urlPh":"Booking page or link","edit.memo":"Memo","edit.memoPh":"Things to bring, notes, anything","edit.stock":"Stock (doses, optional)","edit.stockPh":"e.g. 3 (restock guide for meds)","edit.checklist":"Checklist (things to bring)","edit.checkAddPh":"Add an item (e.g. insurance card)","common.done":"Done","common.clear":"Clear","common.me":"Me","common.optional":" (optional)",
     "a11y.delete":"Delete","a11y.check":"Check","a11y.done":"Done","remind.before":"{n} min before","status.done":"Done","status.inDays":"In {d} days","status.today":"Today","status.dreamOver":"No rush — another time","status.overdue":"Overdue","care.done":"✅ Done","care.overdueRenew":"🔴 Overdue by {d} days","care.overdueTodo":"🔴 Not done — {d} days over","care.plannedDate":"Due {date}","care.dueToday":"🟡 Due today","care.dueInDays":"🟡 Due in {d} days","care.validDays":"🟢 Valid — {d} days left","care.doToday":"🟡 Do today","care.plannedDays":"🟡 Planned — {d} days","care.planned":"🟡 Planned","item.doneOn":"Done {date}","item.stockLeft":"{n} left","item.reminderCount":"{n}","item.resolveTip":"Logging advances to the next due date","item.resolveBtn":"✓ Done — next","item.snooze":"→ Tomorrow","item.copyTip":"Add same as last time","item.copyBtn":"↩ Copy last","item.addToCal":"Add to calendar","item.cert":"Certificate","item.certAdd":"Add certificate","item.openMap":"Open in maps","item.openLink":"Open link","item.checklistProg":"Items {done}/{total}","a11y.pickColor":"Pick a color","a11y.editProfile":"Edit profile","a11y.editPhotoProfile":"Edit photo & profile","a11y.editIconName":"Change icon & name",
     "ph.name":"Name","ph.title":"Title",
     "gender.boy":"Boy","gender.girl":"Girl","neuter.done":"Yes","neuter.not":"Not yet",
@@ -2077,7 +2118,7 @@ const MESSAGES={
     "set.familyShare":"Compartir con la familia","share.settings":"Ajustes de uso compartido",
     "set.about":"Acerca de","about.help":"Cómo funciona","about.whatsNew":"Novedades","about.tourAgain":"Repetir el tutorial","about.aboutApp":"Sobre esta app","about.reset":"Borrar datos y empezar de nuevo","about.privacyBody":"Tus registros y fotos se guardan básicamente en este dispositivo. Solo si usas el uso compartido en familia, los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido» se guardan en Google Firebase (Tokio) y se sincronizan con tu familia. Las fotos, tus registros («Yo») y los miembros marcados como «Solo yo» nunca se comparten. Si entregas tú un enlace público o un archivo de copia de seguridad, su contenido será visible para esa persona. Puedes exportar una copia desde Ajustes.","about.analyticsBody":"Para conocer el uso de la app, medimos las pantallas vistas y el uso de funciones (nunca enviamos el contenido de tus registros ni tus fotos). Para el clima, tus lugares guardados se envían a una API meteorológica.","about.shareBody":"Desde «Compartir en familia» en Ajustes o en el menú, puedes crear un espacio familiar o unirte con un código de invitación. Solo se comparten los perfiles y registros (sin las fotos) de los miembros marcados como «Compartido». Puedes elegir «Compartido / Solo yo» en el perfil de cada miembro.",
     "rel.daysAgo":"hace {n} días","rel.today2":"Hoy","rel.overdueDeadline":"Vencido","rel.todayDeadline":"Vence hoy","rel.dueInDaysDeadline":"Vence en {n} días",
-    "common.add":"Añadir","common.delete":"Eliminar","common.edit":"Editar","edit.due":"Fecha límite","edit.place":"Lugar","edit.placePh":"p. ej. Clínica 3F / el parque","edit.urlPh":"Página de reserva o enlace","edit.memo":"Nota","edit.memoPh":"Qué llevar, notas, lo que sea","edit.stock":"Stock (dosis, opcional)","edit.stockPh":"p. ej. 3 (guía de reposición)","edit.checklist":"Lista (qué llevar)","edit.checkAddPh":"Añadir (p. ej. tarjeta del seguro)","common.done":"Hecho","common.clear":"Borrar","common.me":"Yo","common.optional":" (opcional)",
+    "common.add":"Añadir","common.delete":"Eliminar","common.edit":"Editar","edit.due":"Fecha límite","edit.endTime":"Hora de fin","edit.place":"Lugar","edit.placePh":"p. ej. Clínica 3F / el parque","edit.urlPh":"Página de reserva o enlace","edit.memo":"Nota","edit.memoPh":"Qué llevar, notas, lo que sea","edit.stock":"Stock (dosis, opcional)","edit.stockPh":"p. ej. 3 (guía de reposición)","edit.checklist":"Lista (qué llevar)","edit.checkAddPh":"Añadir (p. ej. tarjeta del seguro)","common.done":"Hecho","common.clear":"Borrar","common.me":"Yo","common.optional":" (opcional)",
     "a11y.delete":"Eliminar","a11y.check":"Marcar","a11y.done":"Hecho","remind.before":"{n} min antes","status.done":"Hecho","status.inDays":"En {d} días","status.today":"Hoy","status.dreamOver":"Sin prisa, otro día","status.overdue":"Vencido","care.done":"✅ Hecho","care.overdueRenew":"🔴 Vencido {d} días","care.overdueTodo":"🔴 Sin hacer — {d} días","care.plannedDate":"Fecha {date}","care.dueToday":"🟡 Vence hoy","care.dueInDays":"🟡 Vence en {d} días","care.validDays":"🟢 Válido — {d} días","care.doToday":"🟡 Hazlo hoy","care.plannedDays":"🟡 Planeado — {d} días","care.planned":"🟡 Planeado","item.doneOn":"Hecho {date}","item.stockLeft":"Quedan {n}","item.reminderCount":"{n}","item.resolveTip":"Al registrar, avanza a la próxima fecha","item.resolveBtn":"✓ Hecho — siguiente","item.snooze":"→ Mañana","item.copyTip":"Añadir igual que la última vez","item.copyBtn":"↩ Copiar última","item.addToCal":"Añadir al calendario","item.cert":"Certificado","item.certAdd":"Añadir certificado","item.openMap":"Abrir en el mapa","item.openLink":"Abrir enlace","item.checklistProg":"Cosas {done}/{total}","a11y.pickColor":"Elegir un color","a11y.editProfile":"Editar perfil","a11y.editPhotoProfile":"Editar foto y perfil","a11y.editIconName":"Cambiar icono y nombre",
     "ph.name":"Nombre","ph.title":"Título",
     "gender.boy":"Niño","gender.girl":"Niña","neuter.done":"Sí","neuter.not":"Todavía no",
@@ -2169,7 +2210,7 @@ const MESSAGES={
     "set.familyShare":"家庭共享","share.settings":"共享设置",
     "set.about":"关于","about.help":"使用说明","about.whatsNew":"更新内容","about.tourAgain":"重看引导","about.aboutApp":"关于本应用","about.reset":"清除数据并重新开始","about.privacyBody":"记录和照片原则上保存在本设备内。仅在使用家庭共享时，设为「共享」的成员的资料和记录（不含照片）会保存到 Google Firebase（东京）并与家人同步。照片、「我」的记录以及设为「仅自己」的成员不会被共享。如果你亲自把公开链接或备份文件交给他人，对方就能看到其中的内容。可在设置中导出备份。","about.analyticsBody":"为了解使用情况，我们会统计画面浏览和功能使用（不会发送记录正文或照片）。天气功能会把已保存地点的位置信息发送给天气 API。","about.shareBody":"在设置或菜单的「家庭共享」中，可以创建家庭空间或用邀请码加入。仅共享设为「共享」的成员的资料和记录（不含照片）。可在每位成员的资料中选择「共享／仅自己」。",
     "rel.daysAgo":"{n}天前","rel.today2":"今天","rel.overdueDeadline":"已逾期","rel.todayDeadline":"今天到期","rel.dueInDaysDeadline":"{n}天后到期",
-    "common.add":"添加","common.delete":"删除","common.edit":"编辑","edit.due":"截止日","edit.place":"地点","edit.placePh":"如 医院3F / 公园","edit.urlPh":"预约页面等链接","edit.memo":"备注","edit.memoPh":"携带物品、注意事项等","edit.stock":"库存（次数，可选）","edit.stockPh":"如 3（补货参考）","edit.checklist":"清单（携带物品等）","edit.checkAddPh":"添加项目（如 保险卡）","common.done":"完成","common.clear":"清除","common.me":"我","common.optional":"（可选）",
+    "common.add":"添加","common.delete":"删除","common.edit":"编辑","edit.due":"截止日","edit.endTime":"结束时间","edit.place":"地点","edit.placePh":"如 医院3F / 公园","edit.urlPh":"预约页面等链接","edit.memo":"备注","edit.memoPh":"携带物品、注意事项等","edit.stock":"库存（次数，可选）","edit.stockPh":"如 3（补货参考）","edit.checklist":"清单（携带物品等）","edit.checkAddPh":"添加项目（如 保险卡）","common.done":"完成","common.clear":"清除","common.me":"我","common.optional":"（可选）",
     "a11y.delete":"删除","a11y.check":"勾选","a11y.done":"完成","remind.before":"提前{n}分钟","status.done":"完成","status.inDays":"还有{d}天","status.today":"今天","status.dreamOver":"改天也没关系","status.overdue":"已过期","care.done":"✅ 完成","care.overdueRenew":"🔴 已过期{d}天","care.overdueTodo":"🔴 未处理·超{d}天","care.plannedDate":"预定日 {date}","care.dueToday":"🟡 今天到期","care.dueInDays":"🟡 还有{d}天到期","care.validDays":"🟢 有效·还有{d}天","care.doToday":"🟡 今天做","care.plannedDays":"🟡 计划·还有{d}天","care.planned":"🟡 已计划","item.doneOn":"已做 {date}","item.stockLeft":"剩{n}次","item.reminderCount":"{n}项","item.resolveTip":"记录后自动进入下次预定","item.resolveBtn":"✓ 完成并进入下次","item.snooze":"→ 明天","item.copyTip":"按上次内容添加","item.copyBtn":"↩ 复制上次","item.addToCal":"添加到日历","item.cert":"证明","item.certAdd":"添加证明","item.openMap":"在地图中打开","item.openLink":"打开链接","item.checklistProg":"物品 {done}/{total}","a11y.pickColor":"选择颜色","a11y.editProfile":"编辑资料","a11y.editPhotoProfile":"编辑照片和资料","a11y.editIconName":"更改图标和名称",
     "ph.name":"名称","ph.title":"标题",
     "gender.boy":"男孩","gender.girl":"女孩","neuter.done":"是","neuter.not":"还没有",
@@ -2600,6 +2641,9 @@ function App(){
   const[draftTime,setDraftTime]=useState("");
   const[draftRepeat,setDraftRepeat]=useState("none");
   const[draftReminders,setDraftReminders]=useState([]);
+  const[draftEndTime,setDraftEndTime]=useState(""); // 予定の終了時刻（任意）
+  const[draftPlace,setDraftPlace]=useState("");const[draftUrl,setDraftUrl]=useState("");const[draftNote,setDraftNote]=useState(""); // 予定の詳細（場所・URL・メモ=note正規）
+  const[draftChecklist,setDraftChecklist]=useState([]);const[draftCheckDraft,setDraftCheckDraft]=useState(""); // 予定のチェックリスト
   const[draftAuto,setDraftAuto]=useState(false);
   const[adding,setAdding]=useState(false);
   const[newKind,setNewKind]=useState("pet");
@@ -2740,6 +2784,7 @@ function App(){
   const[ePlace,setEPlace]=useState("");const[eUrl,setEUrl]=useState("");const[eMemo,setEMemo]=useState(""); // 予定の詳細（場所・URL・メモ）
   const[eChecklist,setEChecklist]=useState([]);const[eCheckDraft,setECheckDraft]=useState(""); // 予定のチェックリスト（持ち物など）
   const[eStock,setEStock]=useState(""); // ケアの残り在庫（回分・任意）。フィラリア等の買い足し管理に
+  const[eEndTime,setEEndTime]=useState(""); // 予定の終了時刻（任意）
   const[onboarding,setOnboarding]=useState(false);
   const[sampleMode,setSampleMode]=useState(()=>{try{return localStorage.getItem("loalife-sample-mode")==="1";}catch(e){return false;}}); // サンプル体験中フラグ
   const clearSampleMode=()=>{try{localStorage.removeItem("loalife-sample-mode");}catch(e){}setSampleMode(false);}; // 自分のデータを登録・編集したらサンプル扱いを終える
@@ -3794,13 +3839,17 @@ function App(){
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
   const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
-  const openLifeNew=(date,space)=>setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",note:"",photos:[],reminders:[],repeat:"none",tags:[]});
+  const openLifeNew=(date,space)=>setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",endTime:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:""});
   const openLifeEdit=async(it)=>{
     const ids=photoIdsOf(it);
     const ph=await Promise.all(ids.map(async id=>{let dataUrl=photos[id]||null;if(!dataUrl){try{dataUrl=await photoStorage.get(`photo:${id}`);}catch(e){}}return{id,dataUrl,isNew:false};}));
     const category=it.type==="memory"?"memory":"event";
-    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",note:it.note||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind,tags:it.tags||[]});
+    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",endTime:it.endTime||"",note:it.note||it.memo||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind,tags:it.tags||[],place:it.place||"",url:it.url||"",checklist:Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[],checkDraft:""});
   };
+  // lifeDraft 内チェックリスト（編集モーダルと同じ操作感）
+  const addLifeCheck=()=>{const v=(lifeDraft&&lifeDraft.checkDraft||"").trim();if(!v)return;setLifeDraft(p=>p?{...p,checklist:[...(p.checklist||[]),{id:"c"+Date.now(),text:v,done:false}],checkDraft:""}:p);};
+  const toggleLifeCheck=(cid)=>setLifeDraft(p=>p?{...p,checklist:(p.checklist||[]).map(c=>c.id===cid?{...c,done:!c.done}:c)}:p);
+  const removeLifeCheck=(cid)=>setLifeDraft(p=>p?{...p,checklist:(p.checklist||[]).filter(c=>c.id!==cid)}:p);
   const pickLifePhoto=async(e)=>{
     const files=Array.from(e.target.files||[]);e.target.value="";if(!files.length)return;
     for(const file of files){
@@ -3856,10 +3905,12 @@ function App(){
     let base;
     if(d.category==="memory"){
       const tags=(d.tags||[]).map(t=>t.trim()).filter(Boolean);
-      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,title:title||"思い出",note:note||undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,tags:tags.length?tags:undefined};
+      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,title:title||"思い出",note:note||undefined,memo:undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,tags:tags.length?tags:undefined};
     }else{
       const keepCare=d.origType==="care";
-      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined};
+      const place=(d.place||"").trim(),url=(d.url||"").trim();
+      const cl=(d.checklist||[]).filter(c=>c.text&&c.text.trim());
+      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,memo:undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined,place:place||undefined,url:url||undefined,checklist:cl.length?cl:undefined};
       if(keepCare)base.careKind=d.careKind;
     }
     let next;
@@ -3872,8 +3923,8 @@ function App(){
   const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash(t("toast.deleted"));};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash(t("toast.tomorrow"));};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
-  const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
-  const saveEdit=()=>{const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,memo:memo||undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
+  const openEdit=(it)=>{setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setEEndTime(it.endTime||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.note||it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
+  const saveEdit=()=>{const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,endTime:(eTime&&eEndTime)?eEndTime:undefined,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,note:memo||undefined,memo:undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
   // チェックリスト（編集フォーム内）：追加・チェック・削除
   const addECheck=()=>{const t=eCheckDraft.trim();if(!t)return;setEChecklist(prev=>[...prev,{id:"c"+Date.now(),text:t,done:false}]);setECheckDraft("");};
   const toggleECheck=(id)=>setEChecklist(prev=>prev.map(c=>c.id===id?{...c,done:!c.done}:c));
@@ -3885,6 +3936,10 @@ function App(){
   const openMap=(place)=>{if(!place)return;const q=encodeURIComponent(place);const iOS=/iP(hone|ad|od)/.test(navigator.userAgent);const url=iOS?`https://maps.apple.com/?q=${q}`:`https://www.google.com/maps/search/?api=1&query=${q}`;try{window.open(url,"_blank","noopener,noreferrer");}catch(e){location.href=url;}};
   const toggleEReminder=(mins)=>setEReminders(prev=>prev.includes(mins)?prev.filter(m=>m!==mins):[...prev,mins].sort((a,b)=>a-b));
   const toggleReminder=(mins)=>setDraftReminders(prev=>prev.includes(mins)?prev.filter(m=>m!==mins):[...prev,mins].sort((a,b)=>a-b));
+  // スケジュール追加フォーム内チェックリスト
+  const addDraftCheck=()=>{const v=draftCheckDraft.trim();if(!v)return;setDraftChecklist(prev=>[...prev,{id:"c"+Date.now(),text:v,done:false}]);setDraftCheckDraft("");};
+  const toggleDraftCheck=(cid)=>setDraftChecklist(prev=>prev.map(c=>c.id===cid?{...c,done:!c.done}:c));
+  const removeDraftCheck=(cid)=>setDraftChecklist(prev=>prev.filter(c=>c.id!==cid));
   const pickCareKind=(k)=>{setDraftKind(k.key);if(k.key==="other"){if(draftAuto){setDraft("");setDraftAuto(false);}return;}if(draft===""||draftAuto){setDraft(careLabel(k));setDraftAuto(true);}};
 
   const addItem=async()=>{
@@ -3892,7 +3947,9 @@ function App(){
     let title=draft.trim();let careMeta=null;
     if(asCare){careMeta=careKindsFor(activeMember).find(x=>x.key===draftKind);if(!title&&draftKind!=="other")title=careLabel(careMeta);}
     if(!title)return;
-    let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined};
+    const dPlace=draftPlace.trim(),dUrl=draftUrl.trim(),dNote=draftNote.trim();
+    const dCl=draftChecklist.filter(c=>c.text&&c.text.trim());
+    let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,endTime:(draftTime&&draftEndTime)?draftEndTime:undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined,place:dPlace||undefined,url:dUrl||undefined,note:dNote||undefined,checklist:dCl.length?dCl:undefined};
     if(asCare){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,(careMeta||{}).emoji||"📄")};
       // 狂犬病・ワクチン等の更新型：入力日は「実施日」。実施日＋周期を有効期限(dueDate)に、実施日をlastDoneに。
       if(draftDate&&RENEW_KINDS.has(draftKind)){const cyc=(draftRepeat&&draftRepeat!=="none")?draftRepeat:(CARE_CYCLE[draftKind]||"yearly");base.lastDone=draftDate;base.dueDate=addInterval(draftDate,cyc);base.repeat=draftRepeat&&draftRepeat!=="none"?draftRepeat:cyc;}
@@ -3905,6 +3962,7 @@ function App(){
     if(asCare)track("care_record",{care_kind:draftKind});else track("task_add",{task_type:draftType});
     saveItemToFs(base).catch(()=>{});
     setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);setDraftPhoto(null);
+    setDraftEndTime("");setDraftPlace("");setDraftUrl("");setDraftNote("");setDraftChecklist([]);setDraftCheckDraft("");
     if(asCare&&careMeta&&draftKind!=="other"){setDraft(careLabel(careMeta));setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
   };
 
@@ -4629,11 +4687,11 @@ function App(){
             {it.type==="care"&&(it.photo?<button className="yl-photo" onClick={e=>{e.stopPropagation();viewPhoto(firstPhotoId(it));}}><Icon name="camera" size={14}/> {t("item.cert")}</button>:<label className="yl-photo add" onClick={e=>e.stopPropagation()}><Icon name="camera" size={14}/> {t("item.certAdd")}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>onFilePicked(e,it.id)}/></label>)}
           </div>
         )}
-        {(it.place||it.url||it.memo)&&(
+        {(it.place||it.url||it.note||it.memo)&&(
           <div className="yl-detailrow">
             {it.place&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openMap(it.place);}} title={t("item.openMap")}><Icon name="pin" size={12}/> {it.place}</button>}
             {it.url&&<button className="yl-detail-chip" onClick={e=>{e.stopPropagation();openUrl(it.url);}} title={it.url}><Icon name="link" size={12}/> {t("item.openLink")}</button>}
-            {it.memo&&<span className="yl-detail-memotxt"><Icon name="note" size={12}/> {it.memo}</span>}
+            {(it.note||it.memo)&&<span className="yl-detail-memotxt"><Icon name="note" size={12}/> {it.note||it.memo}</span>}
           </div>
         )}
         {Array.isArray(it.checklist)&&it.checklist.length>0&&(
@@ -5735,12 +5793,13 @@ function App(){
                         <span className="yl-tlday-body"><span className="yl-tlday-text">{e.chore.title}{nameOf(e.chore.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.chore.space)}</span>:null}</span></span>
                       </li>
                     ):(
-                      <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"))?" tap":"")} style={{borderLeftColor:colorOf(e.item.space)}} onClick={()=>(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")?openLifeEdit(e.item):null}>
+                      <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"||e.item.type==="dream"))?" tap":"")} style={{borderLeftColor:colorOf(e.item.space)}} onClick={()=>{if(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")openLifeEdit(e.item);else if(e.item.type==="dream")openEdit(e.item);}}>
                         <span className="yl-tlday-time">{e.item.time||"—"}</span>
                         {firstPhotoId(e.item)&&photos[firstPhotoId(e.item)]?<span className="yl-tlday-thumbwrap"><img className="yl-tlday-thumb" src={photos[firstPhotoId(e.item)]} alt=""/>{photoIdsOf(e.item).length>1&&<span className="yl-photo-badge">+{photoIdsOf(e.item).length-1}</span>}</span>:<span className="yl-tlday-emoji"><Icon name={guessIcon(e.item.title||recordLabel(e.item),"calendar")} size={17}/></span>}
                         <span className="yl-tlday-body">
                           <span className="yl-tlday-text">{e.item.title||recordLabel(e.item)}{nameOf(e.item.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.item.space)}</span>:null}</span>
-                          {e.item.note&&<span className="yl-tlday-note">{e.item.note}</span>}
+                          {(e.item.note||e.item.memo)&&<span className="yl-tlday-note">{e.item.note||e.item.memo}</span>}
+                          {e.item.place&&<span className="yl-tlday-note yl-tlday-place" onClick={ev=>{ev.stopPropagation();openMap(e.item.place);}}><Icon name="pin" size={11}/> {e.item.place}</span>}
                           {e.item.type==="expense"&&e.item.amount!=null&&<span className="yl-tlday-note">¥{Number(e.item.amount).toLocaleString()}</span>}
                           {e.item.type==="walk"&&(e.item.durationSec||e.item.distanceM)&&<span className="yl-tlday-note">{Math.round((e.item.durationSec||0)/60)}分{e.item.distanceM?` ・ ${(e.item.distanceM/1000).toFixed(1)}km`:""}</span>}
                         </span>
@@ -7022,6 +7081,7 @@ function App(){
               <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
                 {[
+                  ["📅","予定に場所と終了時刻を入れられるように","どの画面から作っても場所・URL・チェックリストまで入力でき、カレンダーへの出力にも全部反映されます。メモも1つに統一しました"],
                   ["✅","救急・防災のチェックリストが本物に","備えをチェックして保存できるように。登録済みの項目は自動でチェックされ、防災の備蓄は買った日と交換の目安つき"],
                   ["📜","使い方の表示を修正","開いたときに先頭から表示されるように。文字化けも直しました"],
                   ["✉️","招待がリンクになりました","開くだけで参加できるリンク付きの案内文を送れます。メンバー追加も途中でやめられます"],
@@ -7148,7 +7208,7 @@ function App(){
           </div>
         </div>
       )}
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
       {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?t("viewer.memory"):t("viewer.cert")}</h3>{viewer.loading?<p className="yl-loading">{t("viewer.loading")}</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?t("viewer.memory"):t("viewer.cert")}/>:<p className="yl-empty">{t("viewer.notFound")}</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>{t("viewer.delConfirm")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div></div>}
       {shareMemory&&(()=>{const it=shareMemory.item;const sp=it?spaces.find(s=>s.id===it.space):null;const dateStr=it&&it.date?fmtFullDateLoc(it.date,lang):"";const cap=it?(it.note||(it.title&&it.title!=="思い出"?it.title:"")):"";const who=it?(it.space==="me"?(meName||t("otd.me")):(nameOf(it.space)||t("otd.me"))):"";return(
         <div className="yl-overlay" onClick={()=>setShareMemory(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
@@ -7370,9 +7430,10 @@ function App(){
                 </div>
               );
             })()}
-            <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
+            <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("edit.endTime")}<TimeInput value={lifeDraft.endTime||""} onChange={tv=>setLifeDraft(p=>({...p,endTime:tv}))}/></label>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
             {/* 通知は「予定」のときだけ。思い出・日記は過去の記録なので事前通知は表示しない */}
             {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("life.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>}
+            {lifeDraft.category==="event"&&<div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={lifeDraft.place||""} onChange={e=>setLifeDraft(p=>({...p,place:e.target.value}))} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={lifeDraft.url||""} onChange={e=>setLifeDraft(p=>({...p,url:e.target.value}))} placeholder={t("edit.urlPh")}/></label><div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{(lifeDraft.checklist||[]).length>0&&<ul className="yl-clist">{lifeDraft.checklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleLifeCheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeLifeCheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={lifeDraft.checkDraft||""} onChange={e=>setLifeDraft(p=>({...p,checkDraft:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addLifeCheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addLifeCheck}>＋</button></div></div></div>}
             <div className="yl-modal-btns">
               {lifeDraft.mode==="edit"&&<button className="yl-modal-cancel" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>{t("common.delete")}</button>}
               <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>{t("common.close")}</button>
@@ -7427,7 +7488,7 @@ function App(){
             {!(isMemberTab||selfCare)?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {lblOf(TYPE_META[t])}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:(KIND_STYLE[activeMember?activeMember.kind:"person"]||{}).fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {careLabel(k)}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">{t("sched.frequent")}</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
             <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={(isMemberTab||selfCare)?(draftKind==="other"?t("sched.contentPh"):t("sched.addLabelPh",{label:careLabel(careKindsFor(activeMember).find(k=>k.key===draftKind))||t("sched.content")})):t("sched.addLabelPh",{label:lblOf(TYPE_META[draftType])})}/><button className="yl-addbtn" onClick={addItem}>{t("common.add")}</button></div>
-            <div className="yl-optrow"><label className="yl-opt">{(isMemberTab||selfCare)?careDateLabel(draftKind):t("sched.dateOptMe")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">{t("sched.time")}<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div>
+            <div className="yl-optrow"><label className="yl-opt">{(isMemberTab||selfCare)?careDateLabel(draftKind):t("sched.dateOptMe")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">{t("sched.time")}<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={draftEndTime} onChange={setDraftEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div>
             {!(isMemberTab||selfCare)&&<p className="yl-foot" style={{marginTop:2}}>{t("sched.dateHint")}</p>}
             {(isMemberTab||selfCare)&&(
               <div className="yl-optrow" style={{marginTop:4}}>
@@ -7441,6 +7502,7 @@ function App(){
               </div>
             )}
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("sched.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>
+            <div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={draftPlace} onChange={e=>setDraftPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={draftUrl} onChange={e=>setDraftUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={draftNote} onChange={e=>setDraftNote(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label><div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{draftChecklist.length>0&&<ul className="yl-clist">{draftChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleDraftCheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeDraftCheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={draftCheckDraft} onChange={e=>setDraftCheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addDraftCheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addDraftCheck}>＋</button></div></div></div>
             {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">{t("sched.quickAdd")}</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,careLabel(k),activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{careLabel(k)}</span><span className="yl-quickbar-prev">{prev?t("sched.lastDate",{date:fmtDate(prev.dueDate)}):"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
