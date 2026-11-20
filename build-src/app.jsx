@@ -18,8 +18,11 @@ import {
 // データ永続性・スキーマ移行レイヤー（生活インフラの安全装置）。詳細は schema.js のヘッダ参照。
 import {
   SCHEMA_VERSION, STORAGE_KEY, LEGACY_STORAGE_KEYS,
-  migrateState, serializeState, normalizeMember, normalizeItem, withSchemaMeta
+  migrateState, serializeState, normalizeMember, normalizeItem, withSchemaMeta, visOf
 } from "./schema";
+// 家族共有の2クエリ（visibility="household" / ownerUid=自分）の結果を id でマージする純粋関数。
+// 入力は {id, data} の配列（data は Firestore の生データ）。重複は後勝ちで1件に畳む。
+const mergeFsDocs = (listA, listB) => { const byId = new Map(); [...(listA || []), ...(listB || [])].forEach(d => { if (d && d.id) byId.set(d.id, d); }); return [...byId.values()]; };
 const iso = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; };
 const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return iso(d); };
 const daysUntil = (s) => { if(!s||typeof s!=="string")return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
@@ -2220,7 +2223,7 @@ const MESSAGES={
     "prof.breedCat":"猫種","prof.breedDog":"犬種","prof.breedOther":"種類","ph.breedDog":"犬種を検索・入力（一覧にない種類も登録OK）","ph.breedCat":"猫種を検索・入力（一覧にない種類も登録OK）","ph.breedOther":"種類を入力（自由入力）","prof.breedDescDog":"散歩のめやすに。","prof.breedDescOther":"体格に合わせた記録に。",
     "prof.coat":"毛の色（任意）","ph.coat":"入力して検索（自由入力も可）","prof.gender":"性別（任意）","prof.genderDesc":"迷子ポスターにも自動で反映されます。","prof.neuter":"避妊・去勢","prof.microchip":"マイクロチップ番号（任意）","ph.microchip":"15桁の番号（例：392...）","prof.microchipDesc":"迷子・防災時の備えに。",
     "prof.personType":"種別（記録項目の出し分け）","prof.blood":"血液型（任意）","blood.suffix":"型","prof.rainbow":"虹の橋（お別れの記録・任意）","prof.rainbowSet":"お別れを記録して追悼モードにする","prof.rainbowDesc":"お知らせを止め、そっと思い出を振り返る表示に。",
-    "prof.secBasic":"基本情報","prof.secDetail":"詳しい情報","prof.secShare":"共有","prof.discardBody":"入力した内容は保存されません。編集をやめますか？","prof.editTitle":"プロフィールを編集","prof.visShared":"共有すると、この子のプロフィールと記録（写真を除く）が、招待した家族にも見えるようになります。","prof.visPrivate":"この子は家族には共有されません。","prof.visNote":"見せたくない子は、プロフィール編集で『自分のみ』に設定してください。その子は家族には一切表示されません。","prof.saveMember":"保存する","prof.deleteMember":"このメンバーを削除","prof.dangerZone":"危険ゾーン","member.deleteConfirm":"{name} を削除しますか？","member.deleteConfirmRecords":"記録 {n}件も一緒に削除されます。この操作は取り消せません。","member.deleteConfirmBody":"この操作は取り消せません。","member.deleteDo":"削除する","toast.memberFsDeleteFail":"共有データの削除に失敗しました（この端末では削除済みです）","member.addTitle":"家族・ペットを追加","member.discardAddBody":"入力した内容は保存されません。追加をやめますか？","member.discardKeep":"入力を続ける","member.discardDo":"破棄する","share.inviteMsg":"LOALIFEで、家族の記録を一緒に見られるように招待しました。このリンクを開くとそのまま参加できます（14日間有効です）：{link}\nリンクが開けない時は、アプリの「家族で共有」でこのコードを入力してください：{code}","share.inviteBtn":"招待を送る","share.inviteCopied":"招待文をコピーしました","share.inviteSendDesc":"「招待を送る」から、案内文とリンクを家族に送ってください。リンクを開くだけで参加できます。","share.inviteArrived":"招待が届いています","share.errCodeNotFound":"招待コードが見つかりませんでした。コードを確認してください","share.errCodeExpired":"この招待コードは有効期限が切れています。新しいコードを送ってもらってください","share.errAlreadyJoined":"すでにこの家族に参加しています","share.errJoinFail":"参加できませんでした。通信状態を確認して、もう一度お試しください","share.errNeedVerify":"メールのご確認が必要です。確認メール内のリンクを開いてから、もう一度お試しください。","share.errNotVerifiedYet":"メール確認がまだ反映されていないようです。一度サインアウトして、サインインし直してからお試しください。","share.errCreateFail":"作成できませんでした。通信状態を確認して、もう一度お試しください。","share.joinAbout":"参加すると、「共有」に設定されたメンバーのプロフィールと記録（写真を除く）が見られるようになります。写真と、あなた自身の記録は共有されません。",
+    "prof.secBasic":"基本情報","prof.secDetail":"詳しい情報","prof.secShare":"共有","prof.discardBody":"入力した内容は保存されません。編集をやめますか？","prof.editTitle":"プロフィールを編集","prof.visShared":"共有すると、この子のプロフィールと記録（写真を除く）が、招待した家族にも見えるようになります。","prof.visPrivate":"この子は家族には共有されません。","prof.visNote":"見せたくない子は、プロフィール編集で『自分のみ』に設定してください。その子は家族には一切表示されません。","prof.saveMember":"保存する","prof.deleteMember":"このメンバーを削除","prof.dangerZone":"危険ゾーン","member.deleteConfirm":"{name} を削除しますか？","member.deleteConfirmRecords":"記録 {n}件も一緒に削除されます。この操作は取り消せません。","member.deleteConfirmBody":"この操作は取り消せません。","member.deleteDo":"削除する","toast.memberFsDeleteFail":"共有データの削除に失敗しました（この端末では削除済みです）","member.addTitle":"家族・ペットを追加","member.discardAddBody":"入力した内容は保存されません。追加をやめますか？","member.discardKeep":"入力を続ける","member.discardDo":"破棄する","share.inviteMsg":"LOALIFEで、家族の記録を一緒に見られるように招待しました。このリンクを開くとそのまま参加できます（14日間有効です）：{link}\nリンクが開けない時は、アプリの「家族で共有」でこのコードを入力してください：{code}","share.inviteBtn":"招待を送る","share.inviteCopied":"招待文をコピーしました","share.inviteSendDesc":"「招待を送る」から、案内文とリンクを家族に送ってください。リンクを開くだけで参加できます。","share.inviteArrived":"招待が届いています","share.errCodeNotFound":"招待コードが見つかりませんでした。コードを確認してください","share.errCodeExpired":"この招待コードは有効期限が切れています。新しいコードを送ってもらってください","share.errAlreadyJoined":"すでにこの家族に参加しています","share.errJoinFail":"参加できませんでした。通信状態を確認して、もう一度お試しください","share.errNeedVerify":"メールのご確認が必要です。確認メール内のリンクを開いてから、もう一度お試しください。","share.errNotVerifiedYet":"メール確認がまだ反映されていないようです。一度サインアウトして、サインインし直してからお試しください。","share.errCreateFail":"作成できませんでした。通信状態を確認して、もう一度お試しください。","share.joinAbout":"参加すると、「共有」に設定されたメンバーのプロフィールと記録（写真を除く）が見られるようになります。写真と、あなた自身の記録は共有されません。","share.syncError":"家族共有のデータを読み込めませんでした。通信状態を確認して、再試行してください。","share.retry":"再試行","share.pushLocal":"この端末のメンバーを共有に送る","share.pushDesc":"この端末にあるメンバーが家族に表示されないときは、こちらから共有へ送れます。","share.pushDone":"共有に送りました","share.pushFail":"送れませんでした。通信状態を確認して、もう一度お試しください","share.memberListTitle":"共有の状態","share.createWarn":"別の端末やブラウザですでに家族スペースを作っている場合は、新しく作らず「招待コードで参加する」から参加してください。二重に作ると、データが分かれてしまいます。","home.noDataHere":"この端末には、まだ記録がありません。記録のある端末（ホーム画面に追加したアプリなど）でLOALIFEを一度開くと、共有されたメンバーがここにも表示されます。","home.syncPending":"この端末のメンバーが、まだ家族共有に送られていません。下のボタンで送ると、家族にも表示されます。",
     "fun.gotchaToday":"迎えて{y}年！","fun.gotchaTodayNoYear":"うちの子記念日！","fun.gotchaAnniv":"記念日 {date}","fun.gotchaAnnivY":"記念日 {date}（{y}周年）","fun.together":"お迎えから{n}日","fun.neuter":"避妊・去勢{s}","member.addFamily":"家族・ペットを追加",
     "word.pet":"ケア","word.person":"予定","rec.memberTitle":"{name} の{word}","rec.tapEditDate":"タップで日付を修正",
     "rel.stillNone":"まだ記録なし","rel.weeksAgo":"{n}週間前","rel.monthsAgo":"約{n}か月前",
@@ -2315,7 +2318,7 @@ const MESSAGES={
     "prof.breedCat":"Breed","prof.breedDog":"Breed","prof.breedOther":"Type","ph.breedDog":"Search or type a breed (any breed is OK)","ph.breedCat":"Search or type a breed (any breed is OK)","ph.breedOther":"Type (free text)","prof.breedDescDog":"Helps gauge walk length.","prof.breedDescOther":"For records that fit their size.",
     "prof.coat":"Coat color (optional)","ph.coat":"Type to search (free text OK)","prof.gender":"Sex (optional)","prof.genderDesc":"Also shown on the lost-pet poster.","prof.neuter":"Spay / neuter","prof.microchip":"Microchip number (optional)","ph.microchip":"15-digit number (e.g. 392...)","prof.microchipDesc":"Handy for lost-pet or disaster prep.",
     "prof.personType":"Type (which fields to show)","prof.blood":"Blood type (optional)","blood.suffix":"","prof.rainbow":"Rainbow Bridge (memorial, optional)","prof.rainbowSet":"Record a goodbye and switch to memorial mode","prof.rainbowDesc":"Pauses reminders and gently shows memories.",
-    "prof.secBasic":"Basics","prof.secDetail":"More details","prof.secShare":"Sharing","prof.discardBody":"Your changes won't be saved. Stop editing?","prof.editTitle":"Edit profile","prof.visShared":"When shared, this one\'s profile and records (excluding photos) become visible to the family you invited.","prof.visPrivate":"This one is not shared with family.","prof.visNote":"For anyone you don\'t want to show, set them to \"Only me\" in the profile edit. They won\'t be shown to your family at all.","prof.saveMember":"Save","prof.deleteMember":"Delete this member","prof.dangerZone":"Danger zone","member.deleteConfirm":"Delete {name}?","member.deleteConfirmRecords":"{n} records will also be deleted. This can't be undone.","member.deleteConfirmBody":"This can't be undone.","member.deleteDo":"Delete","toast.memberFsDeleteFail":"Couldn't delete the shared copy (removed on this device)","member.addTitle":"Add family or pet","member.discardAddBody":"Your input won't be saved. Stop adding?","member.discardKeep":"Keep editing","member.discardDo":"Discard","share.inviteMsg":"I've invited you to LOALIFE so we can see our family's records together. Open this link to join right away (valid for 14 days): {link}\nIf the link doesn't open, enter this code under “Family sharing” in the app: {code}","share.inviteBtn":"Send invite","share.inviteCopied":"Invite copied","share.inviteSendDesc":"Use “Send invite” to send the message and link to your family. They can join just by opening the link.","share.inviteArrived":"You've been invited","share.errCodeNotFound":"Invite code not found. Please check the code","share.errCodeExpired":"This invite code has expired. Please ask for a new one","share.errAlreadyJoined":"You're already a member of this family","share.errJoinFail":"Couldn't join. Check your connection and try again","share.errNeedVerify":"Please verify your email first. Open the link in the confirmation email, then try again.","share.errNotVerifiedYet":"Your email verification doesn't seem to have taken effect yet. Please sign out, sign back in, and try again.","share.errCreateFail":"Couldn't create it. Check your connection and try again.","share.joinAbout":"When you join, you'll be able to see the profiles and records (excluding photos) of members set to “Shared”. Photos and your own records are never shared.",
+    "prof.secBasic":"Basics","prof.secDetail":"More details","prof.secShare":"Sharing","prof.discardBody":"Your changes won't be saved. Stop editing?","prof.editTitle":"Edit profile","prof.visShared":"When shared, this one\'s profile and records (excluding photos) become visible to the family you invited.","prof.visPrivate":"This one is not shared with family.","prof.visNote":"For anyone you don\'t want to show, set them to \"Only me\" in the profile edit. They won\'t be shown to your family at all.","prof.saveMember":"Save","prof.deleteMember":"Delete this member","prof.dangerZone":"Danger zone","member.deleteConfirm":"Delete {name}?","member.deleteConfirmRecords":"{n} records will also be deleted. This can't be undone.","member.deleteConfirmBody":"This can't be undone.","member.deleteDo":"Delete","toast.memberFsDeleteFail":"Couldn't delete the shared copy (removed on this device)","member.addTitle":"Add family or pet","member.discardAddBody":"Your input won't be saved. Stop adding?","member.discardKeep":"Keep editing","member.discardDo":"Discard","share.inviteMsg":"I've invited you to LOALIFE so we can see our family's records together. Open this link to join right away (valid for 14 days): {link}\nIf the link doesn't open, enter this code under “Family sharing” in the app: {code}","share.inviteBtn":"Send invite","share.inviteCopied":"Invite copied","share.inviteSendDesc":"Use “Send invite” to send the message and link to your family. They can join just by opening the link.","share.inviteArrived":"You've been invited","share.errCodeNotFound":"Invite code not found. Please check the code","share.errCodeExpired":"This invite code has expired. Please ask for a new one","share.errAlreadyJoined":"You're already a member of this family","share.errJoinFail":"Couldn't join. Check your connection and try again","share.errNeedVerify":"Please verify your email first. Open the link in the confirmation email, then try again.","share.errNotVerifiedYet":"Your email verification doesn't seem to have taken effect yet. Please sign out, sign back in, and try again.","share.errCreateFail":"Couldn't create it. Check your connection and try again.","share.joinAbout":"When you join, you'll be able to see the profiles and records (excluding photos) of members set to “Shared”. Photos and your own records are never shared.","share.syncError":"Couldn't load the family sharing data. Check your connection and try again.","share.retry":"Retry","share.pushLocal":"Send this device's members to sharing","share.pushDesc":"If members on this device aren't showing up for your family, you can send them to sharing from here.","share.pushDone":"Sent to sharing","share.pushFail":"Couldn't send. Check your connection and try again.","share.memberListTitle":"Sharing status","share.createWarn":"If you already created a family space on another device or browser, don't create a new one — join with an invite code instead. Creating two splits your data.","home.noDataHere":"There's no data on this device yet. Open LOALIFE once on the device that has your records (such as the app added to your home screen), and shared members will appear here too.","home.syncPending":"Members on this device haven't been sent to family sharing yet. Use the button below to send them so your family can see them.",
     "fun.gotchaToday":"{y} years together!","fun.gotchaTodayNoYear":"Gotcha day!","fun.gotchaAnniv":"Gotcha day {date}","fun.gotchaAnnivY":"Gotcha day {date} ({y} yr)","fun.together":"{n} days together","fun.neuter":"Spay/neuter: {s}","member.addFamily":"Add family or pet",
     "word.pet":"care","word.person":"plan","rec.memberTitle":"{name}'s {word}","rec.tapEditDate":"Tap to edit the date",
     "rel.stillNone":"Not recorded yet","rel.weeksAgo":"{n} wk ago","rel.monthsAgo":"~{n} mo ago",
@@ -2410,7 +2413,7 @@ const MESSAGES={
     "prof.breedCat":"Raza","prof.breedDog":"Raza","prof.breedOther":"Tipo","ph.breedDog":"Busca o escribe una raza (cualquiera vale)","ph.breedCat":"Busca o escribe una raza (cualquiera vale)","ph.breedOther":"Tipo (texto libre)","prof.breedDescDog":"Ayuda a estimar la duración del paseo.","prof.breedDescOther":"Para registros acordes a su tamaño.",
     "prof.coat":"Color del pelaje (opcional)","ph.coat":"Escribe para buscar (texto libre)","prof.gender":"Sexo (opcional)","prof.genderDesc":"También aparece en el cartel de mascota perdida.","prof.neuter":"Esterilización","prof.microchip":"Número de microchip (opcional)","ph.microchip":"Número de 15 dígitos (p. ej. 392...)","prof.microchipDesc":"Útil para mascota perdida o desastres.",
     "prof.personType":"Tipo (qué campos mostrar)","prof.blood":"Grupo sanguíneo (opcional)","blood.suffix":"","prof.rainbow":"Puente del arcoíris (memorial, opcional)","prof.rainbowSet":"Registrar una despedida y pasar a modo memorial","prof.rainbowDesc":"Pausa los recordatorios y muestra los recuerdos con suavidad.",
-    "prof.secBasic":"Datos básicos","prof.secDetail":"Más detalles","prof.secShare":"Compartir","prof.discardBody":"Los cambios no se guardarán. ¿Dejar de editar?","prof.editTitle":"Editar perfil","prof.visShared":"Al compartir, el perfil y los registros (sin las fotos) de este miembro podrán verlos los familiares que invitaste.","prof.visPrivate":"Este miembro no se comparte con la familia.","prof.visNote":"Si no quieres mostrar a alguien, márcalo como «Solo yo» en la edición del perfil. No se mostrará a tu familia en absoluto.","prof.saveMember":"Guardar","prof.deleteMember":"Eliminar este miembro","prof.dangerZone":"Zona de peligro","member.deleteConfirm":"¿Eliminar a {name}?","member.deleteConfirmRecords":"También se eliminarán {n} registros. Esta acción no se puede deshacer.","member.deleteConfirmBody":"Esta acción no se puede deshacer.","member.deleteDo":"Eliminar","toast.memberFsDeleteFail":"No se pudo eliminar la copia compartida (eliminado en este dispositivo)","member.addTitle":"Añadir familia o mascota","member.discardAddBody":"Lo que escribiste no se guardará. ¿Dejar de añadir?","member.discardKeep":"Seguir escribiendo","member.discardDo":"Descartar","share.inviteMsg":"Te invité a LOALIFE para que veamos juntos los registros de la familia. Abre este enlace para unirte al momento (válido por 14 días): {link}\nSi el enlace no se abre, introduce este código en «Compartir con la familia» en la app: {code}","share.inviteBtn":"Enviar invitación","share.inviteCopied":"Invitación copiada","share.inviteSendDesc":"Usa «Enviar invitación» para mandar el mensaje y el enlace a tu familia. Solo tienen que abrir el enlace para unirse.","share.inviteArrived":"Tienes una invitación","share.errCodeNotFound":"No se encontró el código de invitación. Revísalo, por favor","share.errCodeExpired":"Este código de invitación caducó. Pide uno nuevo","share.errAlreadyJoined":"Ya formas parte de esta familia","share.errJoinFail":"No se pudo unir. Revisa tu conexión e inténtalo de nuevo","share.errNeedVerify":"Primero verifica tu correo. Abre el enlace del correo de confirmación e inténtalo de nuevo.","share.errNotVerifiedYet":"Parece que la verificación de tu correo aún no se aplicó. Cierra sesión, vuelve a entrar e inténtalo de nuevo.","share.errCreateFail":"No se pudo crear. Revisa tu conexión e inténtalo de nuevo.","share.joinAbout":"Al unirte, podrás ver los perfiles y registros (sin fotos) de los miembros marcados como «Compartido». Las fotos y tus propios registros nunca se comparten.",
+    "prof.secBasic":"Datos básicos","prof.secDetail":"Más detalles","prof.secShare":"Compartir","prof.discardBody":"Los cambios no se guardarán. ¿Dejar de editar?","prof.editTitle":"Editar perfil","prof.visShared":"Al compartir, el perfil y los registros (sin las fotos) de este miembro podrán verlos los familiares que invitaste.","prof.visPrivate":"Este miembro no se comparte con la familia.","prof.visNote":"Si no quieres mostrar a alguien, márcalo como «Solo yo» en la edición del perfil. No se mostrará a tu familia en absoluto.","prof.saveMember":"Guardar","prof.deleteMember":"Eliminar este miembro","prof.dangerZone":"Zona de peligro","member.deleteConfirm":"¿Eliminar a {name}?","member.deleteConfirmRecords":"También se eliminarán {n} registros. Esta acción no se puede deshacer.","member.deleteConfirmBody":"Esta acción no se puede deshacer.","member.deleteDo":"Eliminar","toast.memberFsDeleteFail":"No se pudo eliminar la copia compartida (eliminado en este dispositivo)","member.addTitle":"Añadir familia o mascota","member.discardAddBody":"Lo que escribiste no se guardará. ¿Dejar de añadir?","member.discardKeep":"Seguir escribiendo","member.discardDo":"Descartar","share.inviteMsg":"Te invité a LOALIFE para que veamos juntos los registros de la familia. Abre este enlace para unirte al momento (válido por 14 días): {link}\nSi el enlace no se abre, introduce este código en «Compartir con la familia» en la app: {code}","share.inviteBtn":"Enviar invitación","share.inviteCopied":"Invitación copiada","share.inviteSendDesc":"Usa «Enviar invitación» para mandar el mensaje y el enlace a tu familia. Solo tienen que abrir el enlace para unirse.","share.inviteArrived":"Tienes una invitación","share.errCodeNotFound":"No se encontró el código de invitación. Revísalo, por favor","share.errCodeExpired":"Este código de invitación caducó. Pide uno nuevo","share.errAlreadyJoined":"Ya formas parte de esta familia","share.errJoinFail":"No se pudo unir. Revisa tu conexión e inténtalo de nuevo","share.errNeedVerify":"Primero verifica tu correo. Abre el enlace del correo de confirmación e inténtalo de nuevo.","share.errNotVerifiedYet":"Parece que la verificación de tu correo aún no se aplicó. Cierra sesión, vuelve a entrar e inténtalo de nuevo.","share.errCreateFail":"No se pudo crear. Revisa tu conexión e inténtalo de nuevo.","share.joinAbout":"Al unirte, podrás ver los perfiles y registros (sin fotos) de los miembros marcados como «Compartido». Las fotos y tus propios registros nunca se comparten.","share.syncError":"No se pudieron cargar los datos de uso compartido. Revisa tu conexión e inténtalo de nuevo.","share.retry":"Reintentar","share.pushLocal":"Enviar los miembros de este dispositivo","share.pushDesc":"Si los miembros de este dispositivo no aparecen para tu familia, puedes enviarlos desde aquí.","share.pushDone":"Enviado","share.pushFail":"No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.","share.memberListTitle":"Estado de compartir","share.createWarn":"Si ya creaste un espacio familiar en otro dispositivo o navegador, no crees uno nuevo: únete con un código de invitación. Crear dos divide tus datos.","home.noDataHere":"Este dispositivo aún no tiene datos. Abre LOALIFE una vez en el dispositivo que tiene tus registros (como la app añadida a la pantalla de inicio) y los miembros compartidos aparecerán aquí también.","home.syncPending":"Los miembros de este dispositivo aún no se enviaron al uso compartido. Envíalos con el botón de abajo para que tu familia pueda verlos.",
     "fun.gotchaToday":"¡{y} años juntos!","fun.gotchaTodayNoYear":"¡Día de adopción!","fun.gotchaAnniv":"Día de adopción {date}","fun.gotchaAnnivY":"Día de adopción {date} ({y} a)","fun.together":"{n} días juntos","fun.neuter":"Esterilización: {s}","member.addFamily":"Añadir familia o mascota",
     "word.pet":"cuidados","word.person":"plan","rec.memberTitle":"{word} de {name}","rec.tapEditDate":"Toca para editar la fecha",
     "rel.stillNone":"Aún sin registrar","rel.weeksAgo":"hace {n} sem","rel.monthsAgo":"hace ~{n} mes(es)",
@@ -2505,7 +2508,7 @@ const MESSAGES={
     "prof.breedCat":"品种","prof.breedDog":"品种","prof.breedOther":"类型","ph.breedDog":"搜索或输入品种（任何品种都可以）","ph.breedCat":"搜索或输入品种（任何品种都可以）","ph.breedOther":"类型（自由输入）","prof.breedDescDog":"有助于估算散步时长。","prof.breedDescOther":"便于按体型记录。",
     "prof.coat":"毛色（可选）","ph.coat":"输入以搜索（可自由输入）","prof.gender":"性别（可选）","prof.genderDesc":"也会显示在寻宠海报上。","prof.neuter":"绝育","prof.microchip":"芯片号码（可选）","ph.microchip":"15位数字（如 392...）","prof.microchipDesc":"在走失或防灾时很有用。",
     "prof.personType":"类型（显示哪些项目）","prof.blood":"血型（可选）","blood.suffix":"型","prof.rainbow":"彩虹桥（纪念，可选）","prof.rainbowSet":"记录告别并切换到纪念模式","prof.rainbowDesc":"暂停提醒，静静地回顾回忆。",
-    "prof.secBasic":"基本信息","prof.secDetail":"详细信息","prof.secShare":"共享","prof.discardBody":"输入的内容不会被保存。要放弃编辑吗？","prof.editTitle":"编辑资料","prof.visShared":"共享后，该成员的资料和记录（不含照片）将对您邀请的家人可见。","prof.visPrivate":"该成员不会与家人共享。","prof.visNote":"如果不想让某个成员被看到，请在资料编辑中将其设为「仅自己」。该成员将完全不会显示给家人。","prof.saveMember":"保存","prof.deleteMember":"删除该成员","prof.dangerZone":"危险区域","member.deleteConfirm":"要删除{name}吗？","member.deleteConfirmRecords":"{n}条记录也会被一起删除。此操作无法撤销。","member.deleteConfirmBody":"此操作无法撤销。","member.deleteDo":"删除","toast.memberFsDeleteFail":"共享副本删除失败（已在本设备删除）","member.addTitle":"添加家人或宠物","member.discardAddBody":"输入的内容不会被保存。要取消添加吗？","member.discardKeep":"继续输入","member.discardDo":"放弃","share.inviteMsg":"我邀请你加入 LOALIFE，一起查看家人的记录。打开此链接即可直接加入（14天内有效）：{link}\n如果链接打不开，请在应用的「家庭共享」中输入此代码：{code}","share.inviteBtn":"发送邀请","share.inviteCopied":"已复制邀请","share.inviteSendDesc":"点「发送邀请」把说明和链接发给家人。对方打开链接即可加入。","share.inviteArrived":"你收到了一份邀请","share.errCodeNotFound":"找不到邀请码，请确认代码","share.errCodeExpired":"此邀请码已过期，请索取新代码","share.errAlreadyJoined":"你已经是这个家庭的成员了","share.errJoinFail":"加入失败，请检查网络后重试","share.errNeedVerify":"请先完成邮箱验证。打开确认邮件中的链接后再试一次。","share.errNotVerifiedYet":"邮箱验证似乎尚未生效。请退出登录后重新登录再试。","share.errCreateFail":"创建失败，请检查网络后重试。","share.joinAbout":"加入后，你可以查看设为「共享」的成员的资料和记录（不含照片）。照片和你自己的记录不会被共享。",
+    "prof.secBasic":"基本信息","prof.secDetail":"详细信息","prof.secShare":"共享","prof.discardBody":"输入的内容不会被保存。要放弃编辑吗？","prof.editTitle":"编辑资料","prof.visShared":"共享后，该成员的资料和记录（不含照片）将对您邀请的家人可见。","prof.visPrivate":"该成员不会与家人共享。","prof.visNote":"如果不想让某个成员被看到，请在资料编辑中将其设为「仅自己」。该成员将完全不会显示给家人。","prof.saveMember":"保存","prof.deleteMember":"删除该成员","prof.dangerZone":"危险区域","member.deleteConfirm":"要删除{name}吗？","member.deleteConfirmRecords":"{n}条记录也会被一起删除。此操作无法撤销。","member.deleteConfirmBody":"此操作无法撤销。","member.deleteDo":"删除","toast.memberFsDeleteFail":"共享副本删除失败（已在本设备删除）","member.addTitle":"添加家人或宠物","member.discardAddBody":"输入的内容不会被保存。要取消添加吗？","member.discardKeep":"继续输入","member.discardDo":"放弃","share.inviteMsg":"我邀请你加入 LOALIFE，一起查看家人的记录。打开此链接即可直接加入（14天内有效）：{link}\n如果链接打不开，请在应用的「家庭共享」中输入此代码：{code}","share.inviteBtn":"发送邀请","share.inviteCopied":"已复制邀请","share.inviteSendDesc":"点「发送邀请」把说明和链接发给家人。对方打开链接即可加入。","share.inviteArrived":"你收到了一份邀请","share.errCodeNotFound":"找不到邀请码，请确认代码","share.errCodeExpired":"此邀请码已过期，请索取新代码","share.errAlreadyJoined":"你已经是这个家庭的成员了","share.errJoinFail":"加入失败，请检查网络后重试","share.errNeedVerify":"请先完成邮箱验证。打开确认邮件中的链接后再试一次。","share.errNotVerifiedYet":"邮箱验证似乎尚未生效。请退出登录后重新登录再试。","share.errCreateFail":"创建失败，请检查网络后重试。","share.joinAbout":"加入后，你可以查看设为「共享」的成员的资料和记录（不含照片）。照片和你自己的记录不会被共享。","share.syncError":"无法加载家庭共享数据。请检查网络后重试。","share.retry":"重试","share.pushLocal":"把本设备的成员发送到共享","share.pushDesc":"如果本设备的成员没有显示给家人，可以从这里发送到共享。","share.pushDone":"已发送到共享","share.pushFail":"发送失败。请检查网络后重试。","share.memberListTitle":"共享状态","share.createWarn":"如果已在其他设备或浏览器创建过家庭空间，请不要重复创建，请改用邀请码加入。重复创建会导致数据分散。","home.noDataHere":"本设备还没有记录。请在存有记录的设备（例如已添加到主屏幕的应用）上打开一次 LOALIFE，共享的成员也会显示在这里。","home.syncPending":"本设备的成员尚未发送到家庭共享。点击下面的按钮发送后，家人就能看到。",
     "fun.gotchaToday":"相伴{y}年了！","fun.gotchaTodayNoYear":"领养日！","fun.gotchaAnniv":"领养日 {date}","fun.gotchaAnnivY":"领养日 {date}（{y}年）","fun.together":"相伴{n}天","fun.neuter":"绝育：{s}","member.addFamily":"添加家人或宠物",
     "word.pet":"照护","word.person":"计划","rec.memberTitle":"{name}的{word}","rec.tapEditDate":"点按编辑日期",
     "rel.stillNone":"尚未记录","rel.weeksAgo":"{n}周前","rel.monthsAgo":"约{n}个月前",
@@ -2870,7 +2873,7 @@ function MiniChart({points,unit,color,label}){
 
 // Visibility toggle component
 function VisibilityToggle({value, onChange}) {
-  const isHousehold = value === "household";
+  const isHousehold = visOf(value) === "household";
   return (
     <button
       className={"yl-vis-toggle" + (isHousehold ? " household" : " private")}
@@ -3303,10 +3306,15 @@ function App(){
   const[shareLoading,setShareLoading]=useState(false);
   const[copiedCode,setCopiedCode]=useState(false);
   const householdUnsub=useRef(null);
-  // 世帯の初期プッシュ自己修復用：ローカル読込直後のスナップショットと、サーバー側スナップショットの ID 集合。
+  // 世帯の初期プッシュ自己修復用：ローカル読込直後のスナップショットと、サーバー側スナップショットの台帳。
   const localSnapRef=useRef(null);
-  const fsIdsRef=useRef({memberIds:new Set(),itemKeys:new Set()});
+  const fsIdsRef=useRef({memberIds:new Set(),itemKeys:new Set(),memberMeta:new Map()});
   const[fsSnapReady,setFsSnapReady]=useState(false);
+  // 購読・取得エラー（世帯所属中のみ意味を持つ）。無言で保持せず、案内＋再試行導線を出す。
+  const[fsSubError,setFsSubError]=useState(false);
+  const[fsPushBusy,setFsPushBusy]=useState(false);
+  // 起動時点のローカルに共有対象メンバーがいたか（空状態の出し分け・手動プッシュ導線の表示判定）。
+  const[hasLocalMembers,setHasLocalMembers]=useState(false);
 
   // クラウドバックアップ（自分のデータの控え・オプトイン初期オフ）state。
   // 有効フラグと最終バックアップ日時は端末ローカル（CB_KEY）に持つ（文脈ごとに独立）。
@@ -3353,6 +3361,7 @@ function App(){
       // 移行は非破壊（未知フィールド温存・欠損補完）。旧データでも UI が壊れない。
       const state=migrateState(parsed);
       localSnapRef.current={members:state.members,items:state.items}; // 世帯の初期プッシュ自己修復用に、購読で置き換えられる前のローカル状態を保持
+      setHasLocalMembers(state.members.some(m=>m&&m.id!=="me")); // 空状態の出し分け用（購読で置き換えられる前のローカル実態）
       setMembers(state.members);setItems(state.items);setUsage(state.usage);
       if(state.prep){setPrep(state.prep);prepRef.current=state.prep;}
       if(state.meEmoji)setMeEmoji(state.meEmoji);
@@ -3446,66 +3455,55 @@ function App(){
   },[pendingJoin,fireUser,household]);
 
   // Firestore members real-time subscription
+  // 読み取りルール（resource.data.visibility / ownerUid）は、クエリ側の制約で「証明できる」
+  // 形でなければ丸ごと否認される（ルールはフィルタではない）。無条件の全件 listen は
+  // 誰に対しても permission-denied になり、しかもエラーが無言だったため、購読が一度も
+  // 成功せず「家族にメンバーが表示されない」障害になった。そこで購読は
+  // where("visibility","==","household") と where("ownerUid","==",自分) の2本に分け、
+  // 結果を id でマージする（それぞれルールの OR の片方で証明できる）。
   useEffect(()=>{
     if(householdUnsub.current){householdUnsub.current();householdUnsub.current=null;}
-    if(!household||!fireUser)return;
+    if(!household||!fireUser){setFsSnapReady(false);setFsSubError(false);return;}
     const hid=household.id;
-    const q=collection(fbDb,"households",hid,"members");
-    const unsub=onSnapshot(q,(snap)=>{
-      // Firestore 読み取り時に lazy 正規化（旧スキーマでも UI が壊れないよう default 補完）
-      const firestoreMembers=snap.docs
-        .map(d=>normalizeMember({id:d.id,...d.data()}))
-        .filter(m=>m&&(m.visibility==="household"||m.ownerUid===fireUser.uid));
-      setMembers(firestoreMembers);
-      // Also load items for each member from Firestore
-      Promise.all(firestoreMembers.map(async m=>{
-        const iSnap=await getDocs(collection(fbDb,"households",hid,"members",m.id,"items"));
-        return iSnap.docs.map(d=>normalizeItem({id:d.id,...d.data(),space:m.id})).filter(Boolean);
-      })).then(allItems=>{
-        const flat=allItems.flat();
-        // 自己修復プッシュ用に、サーバーに実在するメンバー／記録の ID を控える。
-        fsIdsRef.current={memberIds:new Set(firestoreMembers.map(m=>m.id)),itemKeys:new Set(flat.map(x=>x.space+"/"+x.id))};
-        setFsSnapReady(true);
-        // Merge with local "me" items
-        setItems(prev=>{
-          const meItems=prev.filter(x=>x.space==="me");
-          return[...meItems,...flat];
-        });
-      }).catch(()=>{});
-    },()=>{/* 購読エラー（権限喪失等）は画面に出さない。データは端末側の状態を保持する */});
-    householdUnsub.current=unsub;
-    return()=>{unsub();householdUnsub.current=null;};
+    const colRef=collection(fbDb,"households",hid,"members");
+    let disposed=false;
+    let docsShared=[],docsOwn=[];
+    const applyMerged=()=>{
+      applyFsSnapshot(hid,mergeFsDocs(docsShared,docsOwn)).catch(()=>{if(!disposed)setFsSubError(true);});
+    };
+    // 購読エラーは無言でローカル保持せず、案内＋再試行導線（fsSubError）を出す。
+    const onErr=()=>{if(!disposed)setFsSubError(true);};
+    const u1=onSnapshot(query(colRef,where("visibility","==","household")),(snap)=>{docsShared=snap.docs.map(d=>({id:d.id,data:d.data()}));applyMerged();},onErr);
+    const u2=onSnapshot(query(colRef,where("ownerUid","==",fireUser.uid)),(snap)=>{docsOwn=snap.docs.map(d=>({id:d.id,data:d.data()}));applyMerged();},onErr);
+    const unsubAll=()=>{u1();u2();};
+    householdUnsub.current=unsubAll;
+    return()=>{disposed=true;unsubAll();householdUnsub.current=null;};
   },[household,fireUser]);
 
   // 世帯の初期プッシュ（自己修復）：作成時の移行（createHousehold フェーズ2）は、
   // 作成した文脈にローカルデータが無い場合（例：別ブラウザで世帯を作成）や、
   // undefined フィールド混入でバッチが失敗した場合に、メンバーがサーバーへ載らない。
   // そのまま購読が始まると表示がサーバー側（空）で置き換わり、「共有したいメンバーが
-  // 表示されない」状態になる。サーバー側スナップショット確定後、ローカルにあって
-  // サーバーに無いメンバーとその記録を、世帯×ユーザー×端末ごとに一度だけ押し上げる。
+  // 表示されない」状態になる。ローカルにあってサーバーに無いメンバーとその記録を、
+  // 世帯×ユーザー×端末ごとに一度だけ押し上げる（本体は runFsReconcile）。
+  // 発火は購読成功だけに依存させない：購読エラー時も getDocs フォールバックで試みる。
+  // 完了フラグは「全プッシュ成功」の時だけ書く。失敗時はセッション内ガードも解除し、
+  // 次回起動・手動ボタンで再試行できるようにする。
   const reconciledRef=useRef({});
   useEffect(()=>{
-    if(!household||!fireUser||!fsSnapReady||sampleMode)return;
+    if(!household||!fireUser||sampleMode)return;
+    if(!fsSnapReady&&!fsSubError)return; // 購読成功 or 購読エラー（フォールバック）で発火
     const hid=household.id;
     if(reconciledRef.current[hid])return;
     const flag="loalife-fs-reconciled-"+hid+"-"+fireUser.uid;
     try{if(localStorage.getItem(flag)){reconciledRef.current[hid]=true;return;}}catch(e){}
-    const snap=localSnapRef.current;
-    reconciledRef.current[hid]=true; // 同一セッション内の二重発火防止（失敗時は flag を書かず次回起動で再試行）
-    if(!snap)return;
-    (async()=>{
-      try{
-        const fsIds=fsIdsRef.current||{memberIds:new Set(),itemKeys:new Set()};
-        for(const m of snap.members){
-          if(!m||m.id==="me")continue; // 「わたし」は共有対象外（仕様）
-          if(!fsIds.memberIds.has(m.id))await saveMemberToFs(m).catch(()=>{});
-          const its=snap.items.filter(x=>x&&x.space===m.id&&!fsIds.itemKeys.has(x.space+"/"+x.id));
-          for(const it of its)await saveItemToFs(it).catch(()=>{});
-        }
-        try{localStorage.setItem(flag,"1");}catch(e){}
-      }catch(e){/* 失敗してもアプリは止めない（次回起動で再試行） */}
-    })();
-  },[household,fireUser,fsSnapReady,sampleMode]);
+    if(!localSnapRef.current)return;
+    reconciledRef.current[hid]=true; // 同一セッション内の二重発火防止（失敗時は解除する）
+    runFsReconcile().then(res=>{
+      if(res&&res.ok){try{localStorage.setItem(flag,"1");}catch(e){}}
+      else{reconciledRef.current[hid]=false;}
+    }).catch(()=>{reconciledRef.current[hid]=false;});
+  },[household,fireUser,fsSnapReady,fsSubError,sampleMode]);
 
   // Schedule reminders when items/permission change
   useEffect(()=>{
@@ -3727,7 +3725,9 @@ function App(){
   const saveMemberToFs=async(member)=>{
     if(!household||!fireUser)return;
     const hid=household.id;
-    const{id,...rest}=member;
+    const{id,...rest0}=member;
+    // visibility は visOf で正規化してから書く（旧データの異常値を保存のたびに修復する）。
+    const rest={...rest0,visibility:visOf(rest0)};
     await setDoc(doc(fbDb,"households",hid,"members",id),{...withSchemaMeta(fsClean(rest)),ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
   };
 
@@ -3759,6 +3759,137 @@ function App(){
       await batch.commit();
       return true;
     }catch(e){return false;}
+  };
+
+  // ─── 家族共有の同期（読み取り・自己修復） ─────────────────────────────
+  // サーバーのメンバー実データ（正規化前の生データ）を、ルールで証明できる2クエリで取る。
+  const fetchFsMembersRaw=async()=>{
+    const hid=household.id;
+    const colRef=collection(fbDb,"households",hid,"members");
+    const [s1,s2]=await Promise.all([
+      getDocs(query(colRef,where("visibility","==","household"))),
+      getDocs(query(colRef,where("ownerUid","==",fireUser.uid))),
+    ]);
+    return mergeFsDocs(
+      s1.docs.map(d=>({id:d.id,data:d.data()})),
+      s2.docs.map(d=>({id:d.id,data:d.data()}))
+    );
+  };
+
+  // サーバーのスナップショット（生データ列）を表示状態へ反映し、自己修復用の台帳も更新する。
+  // 台帳の memberMeta には「生」の visibility / ownerUid を残す（正規化してしまうと、
+  // サーバー側の異常値を検出できなくなるため）。
+  const applyFsSnapshot=async(hid,rawList)=>{
+    // Firestore 読み取り時に lazy 正規化（旧スキーマでも UI が壊れないよう default 補完）
+    const firestoreMembers=rawList
+      .map(r=>normalizeMember({id:r.id,...r.data}))
+      .filter(m=>m&&(visOf(m)==="household"||m.ownerUid===fireUser.uid));
+    setMembers(firestoreMembers);
+    // Also load items for each member from Firestore
+    const allItems=await Promise.all(firestoreMembers.map(async m=>{
+      const iSnap=await getDocs(collection(fbDb,"households",hid,"members",m.id,"items"));
+      return iSnap.docs.map(d=>normalizeItem({id:d.id,...d.data(),space:m.id})).filter(Boolean);
+    }));
+    const flat=allItems.flat();
+    const rawById=new Map(rawList.map(r=>[r.id,r.data]));
+    // 自己修復プッシュ用に、サーバーに実在するメンバー／記録の ID と生メタを控える。
+    fsIdsRef.current={memberIds:new Set(firestoreMembers.map(m=>m.id)),itemKeys:new Set(flat.map(x=>x.space+"/"+x.id)),memberMeta:new Map(firestoreMembers.map(m=>[m.id,{visibility:(rawById.get(m.id)||{}).visibility,ownerUid:(rawById.get(m.id)||{}).ownerUid}]))};
+    setFsSnapReady(true);
+    setFsSubError(false);
+    // Merge with local "me" items
+    setItems(prev=>{
+      const meItems=prev.filter(x=>x.space==="me");
+      return[...meItems,...flat];
+    });
+    return firestoreMembers;
+  };
+
+  // 修復判定用のサーバー状態を getDocs で一回取得する（購読に依存しないフォールバック）。
+  // items の一覧が取れなかったメンバーは itemKnown に入れず、その分の記録プッシュは
+  // 見送って「未完了」として扱う（成功扱いにしない）。
+  const fetchFsServerState=async()=>{
+    const hid=household.id;
+    const rawList=await fetchFsMembersRaw();
+    const mems=rawList
+      .map(r=>normalizeMember({id:r.id,...r.data}))
+      .filter(m=>m&&(visOf(m)==="household"||m.ownerUid===fireUser.uid));
+    const rawById=new Map(rawList.map(r=>[r.id,r.data]));
+    const itemKeys=new Set();const itemKnown=new Set();
+    await Promise.all(mems.map(async m=>{
+      try{
+        const iSnap=await getDocs(collection(fbDb,"households",hid,"members",m.id,"items"));
+        iSnap.docs.forEach(d=>itemKeys.add(m.id+"/"+d.id));
+        itemKnown.add(m.id);
+      }catch(e){/* このメンバーの記録一覧は不明として扱う */}
+    }));
+    return{memberIds:new Set(mems.map(m=>m.id)),itemKeys,itemKnown,memberMeta:new Map(mems.map(m=>[m.id,{visibility:(rawById.get(m.id)||{}).visibility,ownerUid:(rawById.get(m.id)||{}).ownerUid}]))};
+  };
+
+  // 自己修復プッシュ本体：起動時スナップショット（ローカル）にあってサーバーに無い
+  // メンバー／記録と、自分のドキュメントなのにサーバー側 visibility が正規化されて
+  // いないものを送り直す。「既存」判定は ID だけでなく visibility / ownerUid まで見る。
+  // 成否は正直に返す（全て成功した時だけ ok:true）。購読には依存せず毎回 getDocs で見る。
+  const runFsReconcile=async()=>{
+    if(!household||!fireUser)return{ok:false,pushed:0};
+    const hid=household.id;
+    const snap=localSnapRef.current;
+    if(!snap)return{ok:true,pushed:0};
+    let server;
+    try{server=await fetchFsServerState();}
+    catch(e){return{ok:false,pushed:0};}
+    fsIdsRef.current={memberIds:server.memberIds,itemKeys:server.itemKeys,memberMeta:server.memberMeta};
+    let allOk=true,pushed=0;
+    for(const m of snap.members){
+      if(!m||m.id==="me")continue; // 「わたし」は共有対象外（仕様）
+      const meta=server.memberMeta.get(m.id);
+      let needPush=false;
+      let itemsKnown=server.itemKnown.has(m.id);
+      if(!meta){
+        // サーバーに見当たらない。ただし他人の「自分のみ」メンバーと ID が衝突していると
+        // 書き込みがルールで否認されるため、単一ドキュメント get で存在を確認してから判断する。
+        let exists=false,denied=false;
+        try{const s=await getDoc(doc(fbDb,"households",hid,"members",m.id));exists=s.exists();}
+        catch(e){denied=true;}
+        if(denied)continue; // 他人の見えないメンバー：自分の手では直せないので触らない
+        if(!exists){needPush=true;itemsKnown=true;} // 無いことが確定＝記録も空として扱える
+      }else if(meta.ownerUid===fireUser.uid&&visOf(meta)!==visOf(m)){
+        needPush=true; // 自分のドキュメントだが、サーバー側の visibility が正規化されていない
+      }
+      if(needPush){
+        const ok=await saveMemberToFs(m).then(()=>true).catch(()=>false);
+        if(ok)pushed++;else allOk=false;
+      }
+      if(!itemsKnown){allOk=false;continue;} // 記録一覧が取れていないメンバーは成功扱いにしない
+      const its=snap.items.filter(x=>x&&x.space===m.id&&!server.itemKeys.has(x.space+"/"+x.id));
+      for(const it of its){
+        const ok=await saveItemToFs(it).then(()=>true).catch(()=>false);
+        if(!ok)allOk=false;
+      }
+    }
+    return{ok:allOk,pushed};
+  };
+
+  // 再試行導線：サーバー状態を取り直して表示へ反映する（購読が死んでいる時の手動復旧）。
+  const retryFsSync=async()=>{
+    if(!household||!fireUser)return;
+    try{
+      const rawList=await fetchFsMembersRaw();
+      await applyFsSnapshot(household.id,rawList);
+    }catch(e){setFsSubError(true);}
+  };
+
+  // 手動プッシュ：この端末のメンバーを共有へ送る（自己修復と同じ本体を使う）。
+  const manualPushLocal=async()=>{
+    if(!household||!fireUser||fsPushBusy)return;
+    setFsPushBusy(true);
+    const res=await runFsReconcile().catch(()=>({ok:false,pushed:0}));
+    setFsPushBusy(false);
+    if(res&&res.ok){
+      try{localStorage.setItem("loalife-fs-reconciled-"+household.id+"-"+fireUser.uid,"1");}catch(e){}
+      showFlash(t("share.pushDone"));
+    }else{
+      showFlash(t("share.pushFail"));
+    }
   };
 
   // ─── 公開名刺（publicCards/{cardId}） ─────────────────────────────
@@ -4161,7 +4292,7 @@ function App(){
       const b2=writeBatch(fbDb);
       members.forEach(m=>{
         const{id,...rest}=m;
-        b2.set(doc(fbDb,"households",hid,"members",id),{...fsClean(rest),visibility:m.visibility||"household",ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+        b2.set(doc(fbDb,"households",hid,"members",id),{...fsClean(rest),visibility:visOf(m),ownerUid:fireUser.uid,createdAt:serverTimestamp()});
         items.filter(it=>it.space===id).forEach(it=>{
           const{id:iid,space,...irest}=it;
           b2.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...fsClean(irest),ownerUid:fireUser.uid,createdAt:serverTimestamp()});
@@ -4642,7 +4773,7 @@ function App(){
   // 名前・犬種などのプロフィール項目は保存済みのメンバー値をそのまま使う（名刺画面はプロフィール項目を持たない）。
   const cardMemberFromForm=(base)=>({...base,personality:editPersonality.trim()||"",skills:editSkills.trim()||"",favSnack:editFavSnack.trim()||"",caution:editCaution.trim()||"",instagram:editInstagram.trim()||"",tiktok:editTiktok.trim()||"",youtube:editYoutube.trim()||"",cardPhoto:editCardPhoto||"",showPersonality:editShowPersonality,showSkills:editShowSkills,showFavSnack:editShowFavSnack,showCaution:editShowCaution,showSns:editShowSns,cardTheme:cardThemeOf(editCardTheme)});
   // 未保存チェック用のスナップショット。メンバー値から作る基準形と、フォーム現在値から作る同形を文字列で比べる。
-  const profSnapOf=(m)=>JSON.stringify({n:m.name||"",nn:m.nickname||"",bd:m.birthday||"",gd:m.gotchaDay||"",gr:m.group||"",mc:m.microchip||"",br:m.breed||"",ct:m.coat||"",nt:m.neuter||"",mm:m.memorial||"",av:m.avatar||"",vs:m.visibility||"household",pt:m.personType||"child",gx:m.gender||"",bl:m.blood||""});
+  const profSnapOf=(m)=>JSON.stringify({n:m.name||"",nn:m.nickname||"",bd:m.birthday||"",gd:m.gotchaDay||"",gr:m.group||"",mc:m.microchip||"",br:m.breed||"",ct:m.coat||"",nt:m.neuter||"",mm:m.memorial||"",av:m.avatar||"",vs:visOf(m),pt:m.personType||"child",gx:m.gender||"",bl:m.blood||""});
   const profFormSnap=()=>JSON.stringify({n:editName,nn:editNickname,bd:editBirthday,gd:editGotcha,gr:editGroup,mc:editMicrochip,br:editBreed,ct:editCoat,nt:editNeuter,mm:editMemorial,av:editAvatar,vs:editVisibility,pt:editPersonType,gx:editGender,bl:editBlood});
   const cardSnapOf=(m)=>JSON.stringify({p:m.personality||"",s:m.skills||"",f:m.favSnack||"",c:m.caution||"",ig:m.instagram||"",tt:m.tiktok||"",yt:m.youtube||"",cp:m.cardPhoto||"",sp:m.showPersonality!==false,ss:m.showSkills!==false,sf:m.showFavSnack!==false,sc:m.showCaution!==false,sn:m.showSns!==false});
   const cardFormSnap=()=>JSON.stringify({p:editPersonality,s:editSkills,f:editFavSnack,c:editCaution,ig:editInstagram,tt:editTiktok,yt:editYoutube,cp:editCardPhoto,sp:editShowPersonality,ss:editShowSkills,sf:editShowFavSnack,sc:editShowCaution,sn:editShowSns});
@@ -4676,7 +4807,7 @@ function App(){
     setCardScreenId(null);
   };
   // 指定メンバーのプロフィール編集を開く（追加直後の案内から利用）。編集state群を対象メンバーで初期化。
-  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditNickname(m.nickname||"");setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(m.visibility||"household");setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");fillCardEdit(m);setProfileOpen(true);setEditingId(m.id);};
+  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditNickname(m.nickname||"");setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(visOf(m));setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");fillCardEdit(m);setProfileOpen(true);setEditingId(m.id);};
   useEffect(()=>{if(inputSheet!=="schedule"){setDraftPhoto(null);setSelfCare(false);}},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真・自分ケアフラグをクリア
 
   const removeMember=(id)=>{
@@ -5946,6 +6077,7 @@ function App(){
             {shareStep==="create"&&(
               <>
                 <p className="yl-share-desc">「共有」に設定したメンバーのプロフィールと記録（写真を除く）を家族スペースへ移します。</p>
+                <p className="yl-share-desc">{t("share.createWarn")}</p>
                 {shareError&&<p className="yl-share-error">{shareError}</p>}
                 <div className="yl-btn-row">
                   <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>戻る</button>
@@ -6000,6 +6132,9 @@ function App(){
           </div>
           <p className="yl-share-desc">{t("share.inviteSendDesc")}</p>
           <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p><p className="yl-share-desc" style={{marginTop:8}}>共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。</p>
+          {fsSubError&&(<div className="yl-share-syncerr"><p className="yl-share-syncerr-text">{t("share.syncError")}</p><button className="yl-btn-ghost sm" onClick={retryFsSync}>{t("share.retry")}</button></div>)}
+          {(()=>{const list=members.filter(m=>m&&m.id!=="me");return list.length>0&&(<div className="yl-share-members"><p className="yl-share-members-title">{t("share.memberListTitle")}</p>{list.map(m=>(<div key={m.id} className="yl-share-member-row"><span className="yl-share-member-name">{m.emoji} {m.name}</span><span className={"yl-pill vis"+(visOf(m)==="private"?" private":"")}>{visOf(m)==="private"?t("vis.private"):t("vis.shared")}</span></div>))}</div>);})()}
+          {hasLocalMembers&&(<div className="yl-share-push"><p className="yl-share-desc">{t("share.pushDesc")}</p><button className="yl-btn-primary" onClick={manualPushLocal} disabled={fsPushBusy}>{t("share.pushLocal")}</button></div>)}
           <div className="yl-modal-btns">
             <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
             <button className="yl-modal-danger" onClick={signOutUser}>サインアウト</button>
@@ -6125,8 +6260,35 @@ function App(){
                 <button className="yl-quick-big" onClick={goRegisterMe}><Icon name="plus" size={18}/> {t("home.registerMe")}</button>
               </section>
             )}
+            {/* 世帯所属中に共有データが読み込めていない時は、無言にせず案内＋再試行を出す */}
+            {inHousehold&&fsSubError&&members.length>0&&(
+              <div className="yl-notif-banner">
+                <span>{t("share.syncError")}</span>
+                <button className="yl-notif-allow" onClick={retryFsSync}>{t("share.retry")}</button>
+              </div>
+            )}
+            {/* 世帯所属中なのにメンバーが空の時は、汎用の初回歓迎ではなく状態に合った案内を出す：
+                この端末にデータがあるなら「まだ送られていない」＋手動プッシュ、
+                無いなら「データのある端末で一度開いてください」。 */}
+            {members.length===0&&inHousehold&&!sampleMode&&(
+              hasLocalMembers?(
+                <section style={{background:"var(--card)",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
+                  <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>👨‍👩‍👧</div>
+                  <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"var(--text-sub)"}}>{t("home.syncPending")}</p>
+                  {fsSubError&&<p className="yl-share-error">{t("share.syncError")}</p>}
+                  <button className="yl-quick-big" onClick={manualPushLocal} disabled={fsPushBusy}><Icon name="users" size={18}/> {t("share.pushLocal")}</button>
+                  {fsSubError&&<div style={{marginTop:10}}><button className="yl-btn-ghost sm" onClick={retryFsSync}>{t("share.retry")}</button></div>}
+                </section>
+              ):(
+                <section style={{background:"var(--card)",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
+                  <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>👨‍👩‍👧</div>
+                  <p style={{margin:"0",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"var(--text-sub)"}}>{t("home.noDataHere")}</p>
+                  {fsSubError&&<><p className="yl-share-error" style={{marginTop:12}}>{t("share.syncError")}</p><button className="yl-btn-ghost sm" onClick={retryFsSync}>{t("share.retry")}</button></>}
+                </section>
+              )
+            )}
             {/* 初見（メンバー未登録）だけに出す追加導線。登録済みユーザーには表示しない */}
-            {members.length===0&&(
+            {members.length===0&&!(inHousehold&&!sampleMode)&&(
               <section style={{background:"var(--card)",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
                 <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>🐶🐱</div>
                 <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"var(--text)"}}>ようこそ</p>
@@ -6695,7 +6857,7 @@ function App(){
               const sub=isPet
                 ?([activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?t("sp.catShort"):activeMember.species==="dog"?t("sp.dogShort"):t("sp.petShort")))
                 :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||ptLabel);
-              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");fillCardEdit(activeMember);setProfileOpen(true);};
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");fillCardEdit(activeMember);setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
                   <button className="yl-hero-photo" onClick={openEdit} aria-label={t("a11y.editPhotoProfile")}>
@@ -6736,7 +6898,7 @@ function App(){
                           <label className="yl-editavatar-btn"><Icon name="camera" size={14}/> {t("prof.usePhoto")}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickAvatar}/></label>
                           {editAvatar&&<button className="yl-editavatar-clear" onClick={()=>setEditAvatar("")}>{t("prof.backToEmoji")}</button>}
                         </div>
-                        <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder={t("ph.name")} autoFocus/>
+                        <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder={t("ph.name")}/>
                         {activeMember.kind==="person"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> {t("prof.nickname")}<input className="yl-input sm" style={{marginTop:4}} value={editNickname} onChange={e=>setEditNickname(e.target.value)} placeholder={t("ph.nickname")}/></label>}
                         <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> {t("prof.birthday")}<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
                         {activeMember.kind==="pet"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="gift" size={14}/> {t("prof.gotcha")}<BdayInput value={editGotcha} onChange={setEditGotcha}/><span className="yl-set-desc" style={{width:"100%",marginTop:4}}>{t("prof.gotchaDesc")}</span></label>}
@@ -6780,7 +6942,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {t("rec.memberTitle",{name:activeMember.name,word:t("word."+activeMember.kind)})}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(activeMember.visibility||"household");setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");fillCardEdit(activeMember);}}><Icon name="pencil" size={15}/></button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");fillCardEdit(activeMember);}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
@@ -6789,7 +6951,7 @@ function App(){
                   {(memberStats?.over||0)>0&&<span className="yl-pill over"><Icon name="alert" size={13}/> {t("care.overdue",{n:memberStats.over})}</span>}
                   {(memberStats?.soon||0)>0&&<span className="yl-pill soon"><Icon name="clock" size={13}/> {t("care.soon",{n:memberStats.soon})}</span>}
                   {!(memberStats?.over)&&!(memberStats?.soon)&&<span className="yl-pill ok"><Icon name="check" size={13}/> {t("care.ok")}</span>}
-                  {inHousehold&&<span className={"yl-pill vis"+(activeMember.visibility==="private"?" private":"")}>{activeMember.visibility==="private"?<><Icon name="shield" size={11}/> {t("vis.private")}</>:<><Icon name="users" size={11}/> {t("vis.shared")}</>}</span>}
+                  {inHousehold&&<span className={"yl-pill vis"+(visOf(activeMember)==="private"?" private":"")}>{visOf(activeMember)==="private"?<><Icon name="shield" size={11}/> {t("vis.private")}</>:<><Icon name="users" size={11}/> {t("vis.shared")}</>}</span>}
                 </div>
                 {/* 誕生日・記念日＝お楽しみ。緊急度とは別の帯にして脳の使いどころを分ける */}
                 {(activeMember.birthday||activeMember.gotchaDay||activeMember.microchip||activeMember.breed||activeMember.coat||activeMember.neuter||activeMember.gender||activeMember.blood)&&(
@@ -8625,7 +8787,7 @@ function App(){
             </div>
             {lostStep===0&&<div className="yl-lostflow-body yl-noprint">
               <p className="yl-lostflow-lead"><b>{t("lost.step0LeadBold")}</b>{t("lost.step0LeadRest")}</p>
-              <label className="yl-opt">{t("lost.placeLabel")}<span className="yl-opt-hint">{t("lost.placeHint")}</span><input className="yl-input sm" autoFocus value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder={t("lost.placePh")}/></label>
+              <label className="yl-opt">{t("lost.placeLabel")}<span className="yl-opt-hint">{t("lost.placeHint")}</span><input className="yl-input sm" value={li.place||""} onChange={e=>setLostField(m.id,{place:e.target.value})} placeholder={t("lost.placePh")}/></label>
               <label className="yl-opt">{t("lost.placeNoteLabel")}<input className="yl-input sm" value={li.placeNote||""} onChange={e=>setLostField(m.id,{placeNote:e.target.value})} placeholder={t("lost.placeNotePh")}/></label>
               <label className="yl-opt">{t("lost.whenLabel")}<input className="yl-input sm" value={li.when||""} onChange={e=>setLostField(m.id,{when:e.target.value})} placeholder={t("lost.whenPh")}/></label>
             </div>}
@@ -8812,7 +8974,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setFoodForm(null)}>
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title"><Icon name="utensils" size={18}/> {foodForm.id?t("food.editTitle"):t("food.newTitle")}</h3>
-            <input className="yl-input" value={foodForm.name} onChange={e=>setFoodForm(f=>({...f,name:e.target.value}))} placeholder={t("ph.foodName")} autoFocus/>
+            <input className="yl-input" value={foodForm.name} onChange={e=>setFoodForm(f=>({...f,name:e.target.value}))} placeholder={t("ph.foodName")}/>
             <input className="yl-input sm" style={{marginTop:8}} value={foodForm.brand} onChange={e=>setFoodForm(f=>({...f,brand:e.target.value}))} placeholder={t("ph.brand")}/>
             <div className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("food.type")}<span className="yl-seg-mini yl-food-typeseg">{FOOD_TYPES.map(ft=><button key={ft.k} className={"yl-seg-mini-btn"+(foodForm.foodType===ft.k?" on":"")} onClick={()=>setFoodForm(f=>({...f,foodType:ft.k}))}>{t("foodtype."+ft.k)}</button>)}</span></div>
             <div className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("food.amountUnit")}<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodForm.amount} onChange={e=>setFoodForm(f=>({...f,amount:e.target.value}))} placeholder={t("ph.amount")}/><span className="yl-seg-mini">{FOOD_UNITS.map(u=><button key={u.k} className={"yl-seg-mini-btn"+(foodForm.unit===u.k?" on":"")} onClick={()=>setFoodForm(f=>({...f,unit:u.k}))}>{t("foodunit."+u.k)}</button>)}</span></div></div>
@@ -8952,7 +9114,7 @@ function App(){
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
             <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[normKind(routineEdit.space==="me"?"me":(members.find(m=>m.id===routineEdit.space)||{}).kind)]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
-            <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder={t("rec.routinePh")} autoFocus/>
+            <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder={t("rec.routinePh")}/>
             <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> リマインド{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div>{routineEdit.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
             <div className="yl-modal-btns">
@@ -8968,7 +9130,7 @@ function App(){
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{supplyEdit.id?"ストックを編集":"ストックを追加"}</h3>
             <div className="yl-routine-emojirow">{SUPPLY_EMOJIS.map(e=><button key={e} className={"yl-emoji"+(supplyEdit.emoji===e?" on":"")} onClick={()=>setSupplyEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
-            <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={t("supply.namePh")} autoFocus/>
+            <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={t("supply.namePh")}/>
             <div className="yl-optrow">
               <label className="yl-opt">最後に買った日<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
               <label className="yl-opt">消費サイクル<select className="yl-select" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:Number(e.target.value)}))}>{SUPPLY_CYCLES.map(d=><option key={d} value={d}>{d}日</option>)}</select></label>

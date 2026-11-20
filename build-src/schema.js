@@ -89,6 +89,16 @@ export function runMigrations(rawState) {
 // 欠損した optional を default で補完し、UI を null 安全にする。
 // 既知以外（将来追加される未知フィールド）も必ず温存する（前方互換）。
 // ---------------------------------------------------------------------------
+// visibility の語彙はこの2値だけに統一する（"household" = 家族に共有 / "private" = 自分のみ）。
+// "private" 以外はすべて "household" に寄せる：null/undefined の補完に加え、旧バージョン等が
+// 残した未知の文字列・空文字もここで吸収する。メンバーオブジェクトでも生の値でも受け付ける。
+// 述語（チップ・トグル・購読フィルタ・Firestore ルールとの対応）は全てこの関数経由に統一し、
+// 読み取り／保存のたびに旧データが lazy に修復されるようにする。
+export function visOf(m) {
+  const v = m && typeof m === "object" ? m.visibility : m;
+  return v === "private" ? "private" : "household";
+}
+
 export function normalizeMember(m) {
   if (!m || typeof m !== "object") return null;
   return {
@@ -99,7 +109,7 @@ export function normalizeMember(m) {
     kind: m.kind ?? "pet",
     species: m.species ?? (m.kind === "pet" || m.kind == null ? "dog" : undefined),
     birthday: m.birthday ?? "",
-    visibility: m.visibility ?? "household",
+    visibility: visOf(m),
     version: m.version ?? SCHEMA_VERSION,
   };
 }
