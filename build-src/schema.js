@@ -130,6 +130,8 @@ export function normalizeItems(arr) {
 }
 
 // localStorage の 1 ブロブ全体を「移行 + 正規化」して返す。データは破棄しない。
+// prep は救急・防災チェックリストの状態（任意フィールド追加のみ＝後方互換。
+// 旧データに無ければ null、未知の内容はオブジェクトとして温存する）。
 export function migrateState(raw) {
   const migrated = runMigrations(raw);
   return {
@@ -137,6 +139,7 @@ export function migrateState(raw) {
     members: normalizeMembers(migrated.members),
     items: normalizeItems(migrated.items),
     usage: migrated.usage && typeof migrated.usage === "object" ? migrated.usage : {},
+    prep: migrated.prep && typeof migrated.prep === "object" ? migrated.prep : null,
     meEmoji: migrated.meEmoji ?? null,
     meBirthday: migrated.meBirthday ?? null,
     meColor: migrated.meColor ?? null,
@@ -147,12 +150,13 @@ export function migrateState(raw) {
 }
 
 // localStorage へ書き出す 1 ブロブを組み立てる（必ず version を埋め込む）。
-export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar }) {
+export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar, prep }) {
   return JSON.stringify({
     version: SCHEMA_VERSION,
     members: members || [],
     items: items || [],
     usage: usage || {},
+    prep: prep ?? null,
     meEmoji: meEmoji ?? null,
     meBirthday: meBirthday ?? null,
     meColor: meColor ?? null,
