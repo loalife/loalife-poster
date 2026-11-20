@@ -199,6 +199,8 @@ const DailyPoemCard=({items,members,lang,resolveName,todayIso})=>{
 };
 
 const petCardIdFromSearch=()=>{try{const q=new URLSearchParams(location.search);const id=q.get("card");return id&&/^[A-Za-z0-9_-]{6,40}$/.test(id)?id:null;}catch(e){return null;}};
+// 病院サマリーの期限つき共有リンク（?sum=）。名刺より医療寄りの情報なので、ID は名刺（20文字）より長い24文字にする。
+const summaryIdFromSearch=()=>{try{const q=new URLSearchParams(location.search);const id=q.get("sum");return id&&/^[A-Za-z0-9_-]{6,40}$/.test(id)?id:null;}catch(e){return null;}};
 // 招待リンク（?join=CODE）：コードは genCode の8文字（紛らわしい文字なし）。多少の前後は許容して大文字化する。
 const joinCodeFromSearch=()=>{try{const q=new URLSearchParams(location.search);const c=q.get("join");if(!c)return null;const up=c.trim().toUpperCase();return /^[A-Z0-9]{6,10}$/.test(up)?up:null;}catch(e){return null;}};
 // 認証アクションリンク（メール内リンク：mode + oobCode）。コンソールでアクションURLを
@@ -206,8 +208,8 @@ const joinCodeFromSearch=()=>{try{const q=new URLSearchParams(location.search);c
 // この判定が発火するのは設定後のみ（設定前でも既存フローは壊れない）。
 const AUTH_ACTION_MODES=["verifyEmail","resetPassword","recoverEmail","verifyAndChangeEmail"];
 const authActionFromSearch=()=>{try{const q=new URLSearchParams(location.search);const mode=q.get("mode");const oobCode=q.get("oobCode");if(mode&&oobCode&&AUTH_ACTION_MODES.indexOf(mode)>=0)return{mode,oobCode};}catch(e){}return null;};
-// 公開リンク（?card= / ?pet= / ?join= / 認証アクション）で開かれたか。初回の言語選択ゲートを素通りさせる判定に使う。
-const hasPublicEntryParam=()=>{try{const q=new URLSearchParams(location.search);return !!(q.get("card")||q.get("pet")||q.get("join"))||!!authActionFromSearch();}catch(e){return false;}};
+// 公開リンク（?card= / ?pet= / ?sum= / ?join= / 認証アクション）で開かれたか。初回の言語選択ゲートを素通りさせる判定に使う。
+const hasPublicEntryParam=()=>{try{const q=new URLSearchParams(location.search);return !!(q.get("card")||q.get("pet")||q.get("sum")||q.get("join"))||!!authActionFromSearch();}catch(e){return false;}};
 // 端末の言語から対応言語（ja/en/es/zh）を推定する。合わなければ日本語。
 // 公開ビューの表示専用で、アプリ本体の言語選択として保存はしない。
 const inferDeviceLang=()=>{try{const nav=((typeof navigator!=="undefined"&&navigator.language)||"").toLowerCase();if(nav.indexOf("ja")===0)return"ja";if(nav.indexOf("en")===0)return"en";if(nav.indexOf("es")===0)return"es";if(nav.indexOf("zh")===0)return"zh";}catch(e){}return"ja";};
@@ -215,6 +217,37 @@ const INVITE_LINK_BASE="https://loalife-poster.vercel.app/";
 const inviteLinkFor=(code)=>INVITE_LINK_BASE+"?join="+encodeURIComponent(code||"");
 // 公開名刺の訪問者リンクと、SNS入力（@ID でも URL でも可）のハンドル正規化。
 const petCardLink=(cardId)=>INVITE_LINK_BASE+"?card="+encodeURIComponent(cardId||"");
+const summaryLink=(sumId)=>INVITE_LINK_BASE+"?sum="+encodeURIComponent(sumId||"");
+// ─── 病院サマリー共有リンク（publicSummaries）の純粋ロジック ─────────────────
+// セクションの正規順序と、リンク作成時の初期選択。「全部入りをデフォルトにしない」：
+// 電話番号を含む連絡先と写真は初期OFF（渡す相手に必要な分だけを所有者が選ぶ）。
+const SUMMARY_SECTIONS=["basic","caution","recent","contacts"];
+const SUMMARY_DEFAULT_SECTIONS=["basic","caution","recent"];
+const SUMMARY_EXPIRY_DAYS=[1,3,7,30];
+// ドキュメントの expiresAt を ms に正規化する（Firestore Timestamp / Date / number / {seconds} のいずれにも耐える）。
+const summaryExpiresMs=(data)=>{
+  if(!data)return null;
+  const e=data.expiresAt;
+  if(e==null)return null;
+  if(typeof e==="number"&&isFinite(e))return e;
+  if(typeof e.toMillis==="function"){try{return e.toMillis();}catch(_){return null;}}
+  if(e instanceof Date)return e.getTime();
+  if(typeof e.seconds==="number")return e.seconds*1000+Math.floor((e.nanoseconds||0)/1e6);
+  return null;
+};
+// リンク先ビューの状態判定（純粋関数）。内容を描くのは "ok" のときだけ：
+// 期限切れ・取り消し済み（ルールで get が拒否される＝permission-denied）・存在しないリンクは内容を一切出さない。
+const summaryViewState=(res,nowMs)=>{
+  if(res&&res.error){
+    const code=String((res.error&&res.error.code)||res.error||"");
+    if(code.indexOf("permission-denied")>=0)return "invalid";
+    return "error";
+  }
+  if(!res||!res.exists||!res.data)return "missing";
+  const exp=summaryExpiresMs(res.data);
+  if(exp!=null&&nowMs>=exp)return "expired";
+  return "ok";
+};
 // 名刺テーマ（飼い主が名刺画面で選択）。未設定・不正値は chic（従来デザイン）。
 // cover=フォトカバー（全面写真＋手書き風の名前）、editorial=エディトリアル（単色＋大きな活字＋英語ラベル）。
 const CARD_THEMES=["pastel","magazine","cheki","chic","cover","editorial"];
@@ -612,6 +645,34 @@ const petPageLink=(m)=>{
   const d={n:m.name||"",b:m.breed||"",bd:m.birthday||"",g:m.gender||"",s:m.species||"dog",e:m.emoji||""};
   const raw=btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   return "https://"+BRAND_HOST+"/?pet="+raw;
+};
+// 病院サマリーの期限つき共有リンク先（?sum=）。サインイン不要で開ける表示専用ページ。
+// state が "ok" のときだけ内容を描く。期限切れ（expired）・取り消し/存在しない（invalid）・
+// 読み込み失敗（error）では、内容を一切出さず理由だけを示す（医療寄りの情報のため）。
+const SummaryLinkView=({state,data,lang,onStart,existing,showHomeHint,onLang,onRetry})=>{
+  const ctaLabel=tr(lang,existing?"petpage.open":"petpage.cta");
+  const homeHint=showHomeHint?<p className="yl-petpage-hint">{tr(lang,"petpage.homeHint")}</p>:null;
+  const foot=(<><button className="yl-petpage-cta" onClick={onStart}>{ctaLabel}</button>{homeHint}<p className="yl-petpage-brand">🐾 {tr(lang,"brand.footer")} · LOALIFE</p><PublicLangSwitch lang={lang} onLang={onLang}/></>);
+  if(state!=="ok"||!data){
+    const head=state==="expired"?tr(lang,"sum.expiredTitle"):state==="invalid"||state==="missing"?tr(lang,"sum.invalidTitle"):state==="error"?tr(lang,"card.loadError"):tr(lang,"card.loading");
+    const body=state==="expired"?tr(lang,"sum.expiredBody"):state==="invalid"||state==="missing"?tr(lang,"sum.invalidBody"):null;
+    return(<div className="yl-petpage"><div className="yl-petpage-card"><div className="yl-petpage-ava">🩺</div><h2 className="yl-petpage-name" style={{fontSize:24}}>{head}</h2>{body&&<p className="yl-petpage-born">{body}</p>}{state==="error"&&onRetry&&<button className="yl-petpage-cta" style={{marginBottom:12}} onClick={onRetry}>{tr(lang,"card.retry")}</button>}{foot}</div></div>);
+  }
+  const d=data;
+  const expMs=summaryExpiresMs(d);
+  const expDate=expMs?(()=>{try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{year:"numeric",month:"long",day:"numeric"}).format(new Date(expMs));}catch(e){return ""}})():"";
+  const age=(()=>{if(!d.birthday)return "";const b=new Date(d.birthday);if(isNaN(b))return "";const n=new Date();let y=n.getFullYear()-b.getFullYear();let mo=n.getMonth()-b.getMonth();if(n.getDate()<b.getDate())mo--;if(mo<0){y--;mo+=12;}if(y>0)return tr(lang,"petpage.ageY",{y});if(mo>0)return tr(lang,"petpage.ageM",{m:mo});return tr(lang,"petpage.ageNew");})();
+  const sub=[d.kind==="pet"?(d.breed||""):(d.blood?(tr(lang,"ecard.blood")+" "+d.blood+tr(lang,"blood.suffix")):""),age].filter(Boolean).join(" ・ ");
+  const secs=Array.isArray(d.sections)?d.sections.filter(s=>s&&SUMMARY_SECTIONS.indexOf(s.key)>=0&&Array.isArray(s.lines)&&s.lines.length):[];
+  return(<div className="yl-petpage"><div className="yl-petpage-card yl-sumview-card">
+    {d.photo?<img className="yl-sumview-photo" src={d.photo} alt=""/>:<div className="yl-petpage-ava">{d.emoji||(d.kind==="pet"?"🐶":"🙂")}</div>}
+    <h2 className="yl-petpage-name" style={{fontSize:24}}>{tr(lang,"sum.title",{name:d.memberName||""})}</h2>
+    {sub&&<p className="yl-petpage-born">{sub}</p>}
+    {expDate&&<p className="yl-sumview-exp">⏳ {tr(lang,"sum.expiresLine",{date:expDate})}</p>}
+    {secs.map(s=>(<div key={s.key} className={"yl-sumview-sec"+(s.key==="caution"?" warn":"")}><h3>{tr(lang,"sum.sec."+s.key)}</h3><ul>{s.lines.map((ln,i)=><li key={i}>{ln}</li>)}</ul></div>))}
+    <p className="yl-sumview-note">{tr(lang,"sum.footNote")}</p>
+    {foot}
+  </div></div>);
 };
 const PetPageView=({data,lang,onStart,existing,showHomeHint,onLang})=>{
   const ctaLabel=tr(lang,existing?"petpage.open":"petpage.cta");
@@ -2188,6 +2249,15 @@ function genCode() {
   let s = ""; for (let i = 0; i < n; i++) s += CS[a[i] % CS.length];
   return s; // 31^8 ≈ 8.5e11
 }
+// サマリー共有リンクのID：医療寄りの情報を渡すため、名刺（20文字）より長い推測困難なランダム24文字。URL ?sum=<id> で使う。
+function genSummaryId() {
+  const CS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz"; // 紛らわしい文字を除外
+  const n = 24, a = new Uint8Array(n);
+  try { (crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.floor(Math.random() * 256); }); }
+  catch (e) { for (let i = 0; i < n; i++) a[i] = Math.floor(Math.random() * 256); }
+  let s = ""; for (let i = 0; i < n; i++) s += CS[a[i] % CS.length];
+  return s;
+}
 // 公開名刺のカードID：推測困難なランダム20文字（英数字）。URL ?card=<id> で使う。
 function genCardId() {
   const CS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz"; // 紛らわしい文字を除外
@@ -2654,7 +2724,7 @@ const MESSAGES={
     "ob.title":"大切な家族の毎日を、ひとつに。","ob.sub":"ペットも子どもも。記録から、もしもの備えまで。","ob.start":"はじめる","ob.registerStart":"登録してはじめる","ob.trySample":"サンプルで試してみる","ob.haveBackup":"バックアップがある人はこちら","ob.h2":"まず、ひとり登録しましょう","ob.choicePet":"🐶 うちの子（犬・猫など）","ob.choiceMe":"👤 自分（自分のケアも）","ob.choicePerson":"👨‍👩‍👧 家族（人）","ob.skip":"今は追加しない","ob.photoIcon":"写真をアイコンにする","ob.iconHintPre":"絵文字を選ぶか、右端の ","ob.iconHintPost":" から写真も使えます","ob.namePetPh":"名前（例：ぽち）","ob.nameMePh":"あなたの名前（例：あおい）","ob.namePersonPh":"名前（例：ゆうと）","ob.birthday":"誕生日（年は任意）","ob.back":"戻る",
     "ob.value1":"📝 毎日の記録：食事・散歩・健康・予定を、家族みんな分まとめて","ob.value2":"🆘 もしもの備え：迷子ポスターと緊急カードが、登録情報からすぐ作れる","ob.value3":"👨‍👩‍👧 家族で共有：招待した家族と、記録を分け合える",
     "tour.headseg.title":"「毎日」と「管理」で切り替え","tour.headseg.body":"上のタブで切り替え。毎日＝その日の記録、管理＝ケアや予定。","tour.fab.title":"記録はここから","tour.fab.body":"右下の＋から、予定・ケア・ごはん・体重などを記録できます。","tour.cal.title":"カレンダー","tour.cal.body":"家族の予定が一覧に。日付タップでふりかえり。","tour.home.title":"家族ごとに","tour.home.body":"家族をタップでその子のページへ。上の一覧で切り替えもできます。","coach.cal.title":"日付をタップ","coach.cal.body":"色つきドットはその日の予定。タップでふりかえり。","coach.record.title":"からだ・ようすを記録","coach.record.body":"右下の＋から、体重・体調・ごはん・日記を記録。","coach.manage.title":"毎日のお世話・予定","coach.manage.body":"やることや予定はここに。「やった」で経過がわかる。","tour.next":"次へ","tour.skip":"スキップ","common.ok":"OK",
-    "sheet.rangeDays":"{d}日","sheet.vetTitle":"{name} の記録サマリー","sheet.vetPeriod":"{from}〜{to}（{days}日間）／作成日 {made}","sheet.basicInfo":"基本情報","sheet.species":"種別","sheet.birthday":"誕生日","sheet.microchip":"マイクロチップ","sheet.weightTrend":"体重の推移","sheet.latest":"直近","sheet.periodChange":"期間の増減","sheet.vsDate":"（{date}比）","sheet.noWeightHint":"記録なし（毎日の記録に体重を入れると推移が出ます）","sheet.toilet":"トイレ","sheet.peeRate":"おしっこ成功率","sheet.poopRate":"うんち成功率","sheet.rateVal":"{rate}%（{total}回）","sheet.noRecord":"記録なし","sheet.brAvgLabel":"うんちの硬さ平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・体調","sheet.energyAvgLabel":"元気の平均","sheet.energyAvgVal":"{avg}／5（{n}回）","sheet.symCount":"{label} × {n}回","sheet.medLeft":"のこり{n}日分","sheet.none":"なし","sheet.careNext":"予防・ワクチン等の次回予定","sheet.noPlans":"予定なし","sheet.recentCare":"最近のお世話","sheet.vetNote":"※本サマリーは飼い主の記録に基づくもので、診断ではありません。","sheet.vetFileSuffix":"記録サマリー","sheet.handTitlePet":"{name} のお世話シート","sheet.handTitleOther":"{name} の引き継ぎシート","sheet.handPeriodPet":"お預け・お留守番の引き継ぎ用","sheet.handPeriodOther":"お預け・共有用（今日のようす）","sheet.madeOn":"／作成日 {date}","sheet.aboutPet":"この子について","sheet.profile":"プロフィール","sheet.name":"名前","sheet.meals":"ごはん","sheet.noFoodHint":"登録なし（口頭で共有してください）","sheet.todayChores":"今日のお世話","sheet.noRecordsYet":"まだ記録がありません","sheet.todayCond":"今日のようす（体調）","sheet.hasRecord":"記録あり","sheet.allergyCaution":"気をつけること（アレルギー・注意）","sheet.nothingSpecial":"特になし","sheet.regularVet":"かかりつけ動物病院","sheet.regularDoctor":"かかりつけ病院","sheet.noHospHint":"未登録（「大切な情報」に病院名・電話・住所を登録できます）","sheet.emergencyContact":"緊急連絡先","sheet.noContactHint":"未登録（「大切な情報」に登録できます）","sheet.familyNotes":"家族からの伝達","sheet.otherMemo":"その他メモ","sheet.handNotePet":"※飼い主の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.handNoteOther":"※ご家族の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.careFileSuffix":"お世話シート","sheet.handoverFileSuffix":"引き継ぎシート","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h",
+    "sheet.rangeDays":"{d}日","sheet.vetTitle":"{name} の記録サマリー","sheet.vetPeriod":"{from}〜{to}（{days}日間）／作成日 {made}","sheet.basicInfo":"基本情報","sheet.species":"種別","sheet.birthday":"誕生日","sheet.microchip":"マイクロチップ","sheet.weightTrend":"体重の推移","sheet.latest":"直近","sheet.periodChange":"期間の増減","sheet.vsDate":"（{date}比）","sheet.noWeightHint":"記録なし（毎日の記録に体重を入れると推移が出ます）","sheet.toilet":"トイレ","sheet.peeRate":"おしっこ成功率","sheet.poopRate":"うんち成功率","sheet.rateVal":"{rate}%（{total}回）","sheet.noRecord":"記録なし","sheet.brAvgLabel":"うんちの硬さ平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・体調","sheet.energyAvgLabel":"元気の平均","sheet.energyAvgVal":"{avg}／5（{n}回）","sheet.symCount":"{label} × {n}回","sheet.medLeft":"のこり{n}日分","sheet.none":"なし","sheet.careNext":"予防・ワクチン等の次回予定","sheet.noPlans":"予定なし","sheet.recentCare":"最近のお世話","sheet.vetNote":"※本サマリーは飼い主の記録に基づくもので、診断ではありません。","sheet.vetFileSuffix":"記録サマリー","sheet.handTitlePet":"{name} のお世話シート","sheet.handTitleOther":"{name} の引き継ぎシート","sheet.handPeriodPet":"お預け・お留守番の引き継ぎ用","sheet.handPeriodOther":"お預け・共有用（今日のようす）","sheet.madeOn":"／作成日 {date}","sheet.aboutPet":"この子について","sheet.profile":"プロフィール","sheet.name":"名前","sheet.meals":"ごはん","sheet.noFoodHint":"登録なし（口頭で共有してください）","sheet.todayChores":"今日のお世話","sheet.noRecordsYet":"まだ記録がありません","sheet.todayCond":"今日のようす（体調）","sheet.hasRecord":"記録あり","sheet.allergyCaution":"気をつけること（アレルギー・注意）","sheet.nothingSpecial":"特になし","sheet.regularVet":"かかりつけ動物病院","sheet.regularDoctor":"かかりつけ病院","sheet.noHospHint":"未登録（「大切な情報」に病院名・電話・住所を登録できます）","sheet.emergencyContact":"緊急連絡先","sheet.noContactHint":"未登録（「大切な情報」に登録できます）","sheet.familyNotes":"家族からの伝達","sheet.otherMemo":"その他メモ","sheet.handNotePet":"※飼い主の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.handNoteOther":"※ご家族の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.careFileSuffix":"お世話シート","sheet.handoverFileSuffix":"引き継ぎシート","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"病院用サマリー","sum.title":"{name} の病院サマリー","sum.fileSuffix":"病院サマリー","sum.firstThings":"まず伝えること","sum.shareBtn":"リンクで共有","sum.shareTitle":"サマリーをリンクで共有","sum.shareDesc":"リンクを知っている人は、サインインなしで、選んだ項目だけを見られます。有効期限を過ぎると自動で見られなくなります。リンクはいつでも取り消せます。","sum.needSignIn":"リンクを作るにはサインインが必要です。設定の「家族で共有」からサインインしてください。","sum.includeTitle":"リンクに含める項目","sum.sec.basic":"基本情報","sum.sec.caution":"まず伝えること（アレルギー・注意・服薬中）","sum.sec.recent":"直近の記録","sum.sec.contacts":"かかりつけ・緊急連絡先","sum.secContactsHint":"電話番号が含まれます","sum.includePhoto":"写真を含める","sum.expiry":"有効期限","sum.create":"リンクを作成","sum.copyLink":"リンクをコピー","sum.activeLinks":"発行したリンク","sum.noLinks":"まだリンクはありません","sum.active":"有効","sum.expired":"期限切れ","sum.until":"{date} まで有効","sum.revoke":"取り消す","sum.revoked":"リンクを取り消しました","sum.createFail":"リンクを作成できませんでした。もう一度お試しください。","sum.needSection":"含める項目を1つ以上選んでください","sum.expiresLine":"このリンクは {date} まで表示されます","sum.expiredTitle":"このリンクは期限切れです","sum.expiredBody":"有効期限を過ぎたため、内容は表示されません。必要な場合は、リンクを作った方に新しいリンクを頼んでください。","sum.invalidTitle":"このリンクは使えません","sum.invalidBody":"期限切れ・取り消し済み、または存在しないリンクのため、内容は表示されません。","sum.footNote":"※このサマリーは、飼い主・ご家族の記録をもとに作られたものです。診断ではありません。",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -2749,7 +2819,7 @@ const MESSAGES={
     "ob.title":"Your family's every day, in one place.","ob.sub":"Pets and kids alike — from daily records to being ready for the unexpected.","ob.start":"Get started","ob.registerStart":"Register and start","ob.trySample":"Try it with sample data","ob.haveBackup":"Have a backup? Restore it here","ob.h2":"First, let's add someone","ob.choicePet":"🐶 A pet (dog, cat, etc.)","ob.choiceMe":"👤 Myself (my own care too)","ob.choicePerson":"👨‍👩‍👧 Family (a person)","ob.skip":"Not now","ob.photoIcon":"Use a photo as the icon","ob.iconHintPre":"Pick an emoji, or add a photo from the ","ob.iconHintPost":" on the right","ob.namePetPh":"Name (e.g. Pochi)","ob.nameMePh":"Your name (e.g. Alex)","ob.namePersonPh":"Name (e.g. Yuto)","ob.birthday":"Birthday (year optional)","ob.back":"Back",
     "ob.value1":"📝 Daily records: meals, walks, health and plans for the whole family","ob.value2":"🆘 Ready for emergencies: lost-pet posters and emergency cards, made instantly from your records","ob.value3":"👨‍👩‍👧 Share with family: invite your family and keep records together",
     "tour.headseg.title":"Switch between Daily and Manage","tour.headseg.body":"Switch with the tabs above. Daily = today's records; Manage = care and plans.","tour.fab.title":"Record from here","tour.fab.body":"Use the ＋ at the bottom-right to log plans, care, meals, weight, and more.","tour.cal.title":"Calendar","tour.cal.body":"See the family's plans at a glance. Tap a date to look back.","tour.home.title":"Per family member","tour.home.body":"Tap a family member to open their page. Switch from the list at the top.","coach.cal.title":"Tap a date","coach.cal.body":"Colored dots are that day's plans. Tap to look back.","coach.record.title":"Log body & condition","coach.record.body":"Use the ＋ at the bottom-right to log weight, condition, meals, and diary.","coach.manage.title":"Daily chores & plans","coach.manage.body":"To-dos and plans go here. Tap \"Done\" to see time since last.","tour.next":"Next","tour.skip":"Skip","common.ok":"OK",
-    "sheet.rangeDays":"{d} days","sheet.vetTitle":"{name}'s Record Summary","sheet.vetPeriod":"{from}–{to} ({days} days) / Created {made}","sheet.basicInfo":"Basic Info","sheet.species":"Species","sheet.birthday":"Birthday","sheet.microchip":"Microchip","sheet.weightTrend":"Weight Trend","sheet.latest":"Latest","sheet.periodChange":"Change over period","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"No records (add weight to daily records to see the trend)","sheet.toilet":"Toilet","sheet.peeRate":"Pee success rate","sheet.poopRate":"Poop success rate","sheet.rateVal":"{rate}% ({total} times)","sheet.noRecord":"No records","sheet.brAvgLabel":"Avg. stool firmness","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Symptoms & Condition","sheet.energyAvgLabel":"Avg. energy","sheet.energyAvgVal":"{avg}/5 ({n} times)","sheet.symCount":"{label} × {n}","sheet.medLeft":"{n} days left","sheet.none":"None","sheet.careNext":"Upcoming prevention/vaccines","sheet.noPlans":"No plans","sheet.recentCare":"Recent Care","sheet.vetNote":"* This summary is based on the owner's records and is not a diagnosis.","sheet.vetFileSuffix":"Record Summary","sheet.handTitlePet":"{name}'s Care Sheet","sheet.handTitleOther":"{name}'s Handover Sheet","sheet.handPeriodPet":"For boarding / pet-sitting handover","sheet.handPeriodOther":"For sharing while away (today's status)","sheet.madeOn":" / Created {date}","sheet.aboutPet":"About this pet","sheet.profile":"Profile","sheet.name":"Name","sheet.meals":"Meals","sheet.noFoodHint":"Not registered (please share verbally)","sheet.todayChores":"Today's Care","sheet.noRecordsYet":"No records yet","sheet.todayCond":"Today's status (condition)","sheet.hasRecord":"Recorded","sheet.allergyCaution":"Things to watch (allergies & cautions)","sheet.nothingSpecial":"Nothing in particular","sheet.regularVet":"Regular vet","sheet.regularDoctor":"Regular doctor","sheet.noHospHint":"Not registered (add clinic name, phone, address in 'Important info')","sheet.emergencyContact":"Emergency contact","sheet.noContactHint":"Not registered (you can add it in 'Important info')","sheet.familyNotes":"Notes from family","sheet.otherMemo":"Other notes","sheet.handNotePet":"* Handover notes based on the owner's records. Please confirm details with the family.","sheet.handNoteOther":"* Handover notes based on the family's records. Please confirm details with the family.","sheet.careFileSuffix":"Care Sheet","sheet.handoverFileSuffix":"Handover Sheet","sheet.appetiteColon":"Appetite: ","sheet.poopColon":"Bowel: ","sheet.sleepH":"Sleep {n}h",
+    "sheet.rangeDays":"{d} days","sheet.vetTitle":"{name}'s Record Summary","sheet.vetPeriod":"{from}–{to} ({days} days) / Created {made}","sheet.basicInfo":"Basic Info","sheet.species":"Species","sheet.birthday":"Birthday","sheet.microchip":"Microchip","sheet.weightTrend":"Weight Trend","sheet.latest":"Latest","sheet.periodChange":"Change over period","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"No records (add weight to daily records to see the trend)","sheet.toilet":"Toilet","sheet.peeRate":"Pee success rate","sheet.poopRate":"Poop success rate","sheet.rateVal":"{rate}% ({total} times)","sheet.noRecord":"No records","sheet.brAvgLabel":"Avg. stool firmness","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Symptoms & Condition","sheet.energyAvgLabel":"Avg. energy","sheet.energyAvgVal":"{avg}/5 ({n} times)","sheet.symCount":"{label} × {n}","sheet.medLeft":"{n} days left","sheet.none":"None","sheet.careNext":"Upcoming prevention/vaccines","sheet.noPlans":"No plans","sheet.recentCare":"Recent Care","sheet.vetNote":"* This summary is based on the owner's records and is not a diagnosis.","sheet.vetFileSuffix":"Record Summary","sheet.handTitlePet":"{name}'s Care Sheet","sheet.handTitleOther":"{name}'s Handover Sheet","sheet.handPeriodPet":"For boarding / pet-sitting handover","sheet.handPeriodOther":"For sharing while away (today's status)","sheet.madeOn":" / Created {date}","sheet.aboutPet":"About this pet","sheet.profile":"Profile","sheet.name":"Name","sheet.meals":"Meals","sheet.noFoodHint":"Not registered (please share verbally)","sheet.todayChores":"Today's Care","sheet.noRecordsYet":"No records yet","sheet.todayCond":"Today's status (condition)","sheet.hasRecord":"Recorded","sheet.allergyCaution":"Things to watch (allergies & cautions)","sheet.nothingSpecial":"Nothing in particular","sheet.regularVet":"Regular vet","sheet.regularDoctor":"Regular doctor","sheet.noHospHint":"Not registered (add clinic name, phone, address in 'Important info')","sheet.emergencyContact":"Emergency contact","sheet.noContactHint":"Not registered (you can add it in 'Important info')","sheet.familyNotes":"Notes from family","sheet.otherMemo":"Other notes","sheet.handNotePet":"* Handover notes based on the owner's records. Please confirm details with the family.","sheet.handNoteOther":"* Handover notes based on the family's records. Please confirm details with the family.","sheet.careFileSuffix":"Care Sheet","sheet.handoverFileSuffix":"Handover Sheet","sheet.appetiteColon":"Appetite: ","sheet.poopColon":"Bowel: ","sheet.sleepH":"Sleep {n}h","rec.medSummary":"Medical summary","sum.title":"{name}'s Medical Summary","sum.fileSuffix":"Medical Summary","sum.firstThings":"First, please know","sum.shareBtn":"Share by link","sum.shareTitle":"Share this summary by link","sum.shareDesc":"Anyone with the link can view only the sections you choose, without signing in. The link stops working automatically once it expires, and you can revoke it at any time.","sum.needSignIn":"You need to be signed in to create a link. Sign in from Family sharing in Settings.","sum.includeTitle":"Include in the link","sum.sec.basic":"Basic info","sum.sec.caution":"Key cautions (allergies, notes, medication)","sum.sec.recent":"Recent records","sum.sec.contacts":"Clinic & emergency contacts","sum.secContactsHint":"Includes phone numbers","sum.includePhoto":"Include a photo","sum.expiry":"Link expires after","sum.create":"Create link","sum.copyLink":"Copy link","sum.activeLinks":"Your links","sum.noLinks":"No links yet","sum.active":"Active","sum.expired":"Expired","sum.until":"Valid until {date}","sum.revoke":"Revoke","sum.revoked":"Link revoked","sum.createFail":"Couldn't create the link. Please try again.","sum.needSection":"Choose at least one section to include.","sum.expiresLine":"This link can be viewed until {date}.","sum.expiredTitle":"This link has expired","sum.expiredBody":"The link is past its expiry, so the contents aren't shown. If you need it, please ask the person who made the link for a new one.","sum.invalidTitle":"This link isn't available","sum.invalidBody":"The link has expired, was revoked, or doesn't exist, so the contents aren't shown.","sum.footNote":"* This summary is based on the family's own records and is not a diagnosis.",
   },
   es:{
     "nav.home":"Inicio","nav.calendar":"Calendario","nav.settings":"Ajustes","title.daily":"Diario",
@@ -2844,7 +2914,7 @@ const MESSAGES={
     "ob.title":"El día a día de tu familia, en un solo lugar.","ob.sub":"Mascotas y niños por igual — desde el registro diario hasta estar listos ante lo inesperado.","ob.start":"Empezar","ob.registerStart":"Registrar y empezar","ob.trySample":"Probar con datos de ejemplo","ob.haveBackup":"¿Tienes una copia? Restáurala aquí","ob.h2":"Primero, añade a alguien","ob.choicePet":"🐶 Una mascota (perro, gato, etc.)","ob.choiceMe":"👤 Yo (también mi cuidado)","ob.choicePerson":"👨‍👩‍👧 Familia (una persona)","ob.skip":"Ahora no","ob.photoIcon":"Usar una foto como icono","ob.iconHintPre":"Elige un emoji, o añade una foto desde la ","ob.iconHintPost":" de la derecha","ob.namePetPh":"Nombre (p. ej. Pochi)","ob.nameMePh":"Tu nombre (p. ej. Alex)","ob.namePersonPh":"Nombre (p. ej. Yuto)","ob.birthday":"Cumpleaños (año opcional)","ob.back":"Atrás",
     "ob.value1":"📝 Registro diario: comidas, paseos, salud y planes de toda la familia","ob.value2":"🆘 Preparado ante imprevistos: carteles de mascota perdida y tarjetas de emergencia al instante","ob.value3":"👨‍👩‍👧 Comparte en familia: invita a tu familia y registren juntos",
     "tour.headseg.title":"Cambia entre Diario y Gestionar","tour.headseg.body":"Cambia con las pestañas de arriba. Diario = registros de hoy; Gestionar = cuidados y planes.","tour.fab.title":"Registra desde aquí","tour.fab.body":"Usa el ＋ de abajo a la derecha para registrar planes, cuidados, comidas, peso y más.","tour.cal.title":"Calendario","tour.cal.body":"Ve los planes de la familia de un vistazo. Toca una fecha para repasar.","tour.home.title":"Por cada miembro","tour.home.body":"Toca a un miembro para abrir su página. Cambia desde la lista de arriba.","coach.cal.title":"Toca una fecha","coach.cal.body":"Los puntos de color son los planes de ese día. Toca para repasar.","coach.record.title":"Registra cuerpo y estado","coach.record.body":"Usa el ＋ de abajo a la derecha para registrar peso, estado, comidas y diario.","coach.manage.title":"Tareas y planes diarios","coach.manage.body":"Las tareas y planes van aquí. Toca «Hecho» para ver el tiempo desde la última vez.","tour.next":"Siguiente","tour.skip":"Omitir","common.ok":"OK",
-    "sheet.rangeDays":"{d} días","sheet.vetTitle":"Resumen de registros de {name}","sheet.vetPeriod":"{from}–{to} ({days} días) / Creado {made}","sheet.basicInfo":"Información básica","sheet.species":"Especie","sheet.birthday":"Cumpleaños","sheet.microchip":"Microchip","sheet.weightTrend":"Evolución del peso","sheet.latest":"Último","sheet.periodChange":"Cambio en el periodo","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"Sin registros (añade el peso en los registros diarios para ver la evolución)","sheet.toilet":"Baño","sheet.peeRate":"Tasa de pipí con éxito","sheet.poopRate":"Tasa de caca con éxito","sheet.rateVal":"{rate}% ({total} veces)","sheet.noRecord":"Sin registros","sheet.brAvgLabel":"Firmeza media de las heces","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Síntomas y estado","sheet.energyAvgLabel":"Energía media","sheet.energyAvgVal":"{avg}/5 ({n} veces)","sheet.symCount":"{label} × {n}","sheet.medLeft":"Quedan {n} días","sheet.none":"Ninguno","sheet.careNext":"Próximas prevenciones/vacunas","sheet.noPlans":"Sin planes","sheet.recentCare":"Cuidados recientes","sheet.vetNote":"* Este resumen se basa en los registros del dueño y no es un diagnóstico.","sheet.vetFileSuffix":"Resumen de registros","sheet.handTitlePet":"Hoja de cuidados de {name}","sheet.handTitleOther":"Hoja de traspaso de {name}","sheet.handPeriodPet":"Para guardería / cuidador","sheet.handPeriodOther":"Para compartir en ausencia (estado de hoy)","sheet.madeOn":" / Creado {date}","sheet.aboutPet":"Sobre esta mascota","sheet.profile":"Perfil","sheet.name":"Nombre","sheet.meals":"Comidas","sheet.noFoodHint":"Sin registrar (compártelo de palabra)","sheet.todayChores":"Cuidados de hoy","sheet.noRecordsYet":"Aún no hay registros","sheet.todayCond":"Estado de hoy (condición)","sheet.hasRecord":"Registrado","sheet.allergyCaution":"A tener en cuenta (alergias y precauciones)","sheet.nothingSpecial":"Nada en particular","sheet.regularVet":"Veterinario habitual","sheet.regularDoctor":"Médico habitual","sheet.noHospHint":"Sin registrar (añade nombre, teléfono y dirección de la clínica en 'Información importante')","sheet.emergencyContact":"Contacto de emergencia","sheet.noContactHint":"Sin registrar (puedes añadirlo en 'Información importante')","sheet.familyNotes":"Notas de la familia","sheet.otherMemo":"Otras notas","sheet.handNotePet":"* Notas de traspaso basadas en los registros del dueño. Confirma los detalles con la familia.","sheet.handNoteOther":"* Notas de traspaso basadas en los registros de la familia. Confirma los detalles con la familia.","sheet.careFileSuffix":"Hoja de cuidados","sheet.handoverFileSuffix":"Hoja de traspaso","sheet.appetiteColon":"Apetito: ","sheet.poopColon":"Heces: ","sheet.sleepH":"Sueño {n}h",
+    "sheet.rangeDays":"{d} días","sheet.vetTitle":"Resumen de registros de {name}","sheet.vetPeriod":"{from}–{to} ({days} días) / Creado {made}","sheet.basicInfo":"Información básica","sheet.species":"Especie","sheet.birthday":"Cumpleaños","sheet.microchip":"Microchip","sheet.weightTrend":"Evolución del peso","sheet.latest":"Último","sheet.periodChange":"Cambio en el periodo","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"Sin registros (añade el peso en los registros diarios para ver la evolución)","sheet.toilet":"Baño","sheet.peeRate":"Tasa de pipí con éxito","sheet.poopRate":"Tasa de caca con éxito","sheet.rateVal":"{rate}% ({total} veces)","sheet.noRecord":"Sin registros","sheet.brAvgLabel":"Firmeza media de las heces","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Síntomas y estado","sheet.energyAvgLabel":"Energía media","sheet.energyAvgVal":"{avg}/5 ({n} veces)","sheet.symCount":"{label} × {n}","sheet.medLeft":"Quedan {n} días","sheet.none":"Ninguno","sheet.careNext":"Próximas prevenciones/vacunas","sheet.noPlans":"Sin planes","sheet.recentCare":"Cuidados recientes","sheet.vetNote":"* Este resumen se basa en los registros del dueño y no es un diagnóstico.","sheet.vetFileSuffix":"Resumen de registros","sheet.handTitlePet":"Hoja de cuidados de {name}","sheet.handTitleOther":"Hoja de traspaso de {name}","sheet.handPeriodPet":"Para guardería / cuidador","sheet.handPeriodOther":"Para compartir en ausencia (estado de hoy)","sheet.madeOn":" / Creado {date}","sheet.aboutPet":"Sobre esta mascota","sheet.profile":"Perfil","sheet.name":"Nombre","sheet.meals":"Comidas","sheet.noFoodHint":"Sin registrar (compártelo de palabra)","sheet.todayChores":"Cuidados de hoy","sheet.noRecordsYet":"Aún no hay registros","sheet.todayCond":"Estado de hoy (condición)","sheet.hasRecord":"Registrado","sheet.allergyCaution":"A tener en cuenta (alergias y precauciones)","sheet.nothingSpecial":"Nada en particular","sheet.regularVet":"Veterinario habitual","sheet.regularDoctor":"Médico habitual","sheet.noHospHint":"Sin registrar (añade nombre, teléfono y dirección de la clínica en 'Información importante')","sheet.emergencyContact":"Contacto de emergencia","sheet.noContactHint":"Sin registrar (puedes añadirlo en 'Información importante')","sheet.familyNotes":"Notas de la familia","sheet.otherMemo":"Otras notas","sheet.handNotePet":"* Notas de traspaso basadas en los registros del dueño. Confirma los detalles con la familia.","sheet.handNoteOther":"* Notas de traspaso basadas en los registros de la familia. Confirma los detalles con la familia.","sheet.careFileSuffix":"Hoja de cuidados","sheet.handoverFileSuffix":"Hoja de traspaso","sheet.appetiteColon":"Apetito: ","sheet.poopColon":"Heces: ","sheet.sleepH":"Sueño {n}h","rec.medSummary":"Resumen médico","sum.title":"Resumen médico de {name}","sum.fileSuffix":"Resumen médico","sum.firstThings":"Primero, tenga en cuenta","sum.shareBtn":"Compartir por enlace","sum.shareTitle":"Compartir este resumen por enlace","sum.shareDesc":"Quien tenga el enlace puede ver solo las secciones que elijas, sin iniciar sesión. El enlace deja de funcionar automáticamente al caducar, y puedes revocarlo cuando quieras.","sum.needSignIn":"Necesitas iniciar sesión para crear un enlace. Hazlo desde «Compartir en familia» en Ajustes.","sum.includeTitle":"Incluir en el enlace","sum.sec.basic":"Información básica","sum.sec.caution":"Avisos importantes (alergias, notas, medicación)","sum.sec.recent":"Registros recientes","sum.sec.contacts":"Clínica y contactos de emergencia","sum.secContactsHint":"Incluye números de teléfono","sum.includePhoto":"Incluir una foto","sum.expiry":"El enlace caduca en","sum.create":"Crear enlace","sum.copyLink":"Copiar enlace","sum.activeLinks":"Tus enlaces","sum.noLinks":"Aún no hay enlaces","sum.active":"Activo","sum.expired":"Caducado","sum.until":"Válido hasta el {date}","sum.revoke":"Revocar","sum.revoked":"Enlace revocado","sum.createFail":"No se pudo crear el enlace. Inténtalo de nuevo.","sum.needSection":"Elige al menos una sección para incluir.","sum.expiresLine":"Este enlace se puede ver hasta el {date}.","sum.expiredTitle":"Este enlace ha caducado","sum.expiredBody":"El enlace ya caducó, así que no se muestra el contenido. Si lo necesitas, pide un enlace nuevo a quien lo creó.","sum.invalidTitle":"Este enlace no está disponible","sum.invalidBody":"El enlace caducó, fue revocado o no existe, así que no se muestra el contenido.","sum.footNote":"* Este resumen se basa en los registros de la familia y no es un diagnóstico.",
   },
   zh:{
     "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
@@ -2939,7 +3009,7 @@ const MESSAGES={
     "ob.title":"家人的每一天，都在同一个地方。","ob.sub":"宠物和孩子都适用 — 从日常记录到应对万一的准备。","ob.start":"开始","ob.registerStart":"注册并开始","ob.trySample":"用示例数据体验","ob.haveBackup":"有备份？从这里恢复","ob.h2":"先添加一位","ob.choicePet":"🐶 我家的（狗、猫等）","ob.choiceMe":"👤 自己（也照护自己）","ob.choicePerson":"👨‍👩‍👧 家人（人）","ob.skip":"暂不添加","ob.photoIcon":"用照片作为图标","ob.iconHintPre":"选择表情，或从右边的 ","ob.iconHintPost":" 使用照片","ob.namePetPh":"名称（如 小白）","ob.nameMePh":"你的名字（如小明）","ob.namePersonPh":"名称（如 Yuto）","ob.birthday":"生日（年份可选）","ob.back":"返回",
     "ob.value1":"📝 日常记录：饮食、散步、健康和计划，全家人的都在一起","ob.value2":"🆘 应对万一：走失海报和急救卡，可用登记信息立即生成","ob.value3":"👨‍👩‍👧 全家共享：邀请家人，一起记录",
     "tour.headseg.title":"在「日常」和「管理」之间切换","tour.headseg.body":"用上方标签切换。日常＝当天记录，管理＝照护与计划。","tour.fab.title":"从这里记录","tour.fab.body":"用右下角的 ＋ 记录计划、照护、用餐、体重等。","tour.cal.title":"日历","tour.cal.body":"一览家人的计划。点按日期即可回顾。","tour.home.title":"按家庭成员","tour.home.body":"点按成员打开其页面，也可从上方列表切换。","coach.cal.title":"点按日期","coach.cal.body":"彩色圆点是当天的计划。点按即可回顾。","coach.record.title":"记录身体与状态","coach.record.body":"用右下角的 ＋ 记录体重、状态、用餐和日记。","coach.manage.title":"每日照料与计划","coach.manage.body":"待办和计划都在这里。点按「完成」即可看出距上次的时间。","tour.next":"下一步","tour.skip":"跳过","common.ok":"OK",
-    "sheet.rangeDays":"{d}天","sheet.vetTitle":"{name} 的记录摘要","sheet.vetPeriod":"{from}～{to}（共{days}天）／制作日 {made}","sheet.basicInfo":"基本信息","sheet.species":"种类","sheet.birthday":"生日","sheet.microchip":"芯片","sheet.weightTrend":"体重变化","sheet.latest":"最近","sheet.periodChange":"期间增减","sheet.vsDate":"（与{date}相比）","sheet.noWeightHint":"无记录（在每日记录中填入体重即可查看变化）","sheet.toilet":"如厕","sheet.peeRate":"小便成功率","sheet.poopRate":"大便成功率","sheet.rateVal":"{rate}%（{total}次）","sheet.noRecord":"无记录","sheet.brAvgLabel":"大便硬度平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・状态","sheet.energyAvgLabel":"精神平均","sheet.energyAvgVal":"{avg}／5（{n}次）","sheet.symCount":"{label} × {n}次","sheet.medLeft":"剩余{n}天份","sheet.none":"无","sheet.careNext":"预防・疫苗等下次预定","sheet.noPlans":"无预定","sheet.recentCare":"最近的照顾","sheet.vetNote":"※本摘要基于主人的记录，并非诊断。","sheet.vetFileSuffix":"记录摘要","sheet.handTitlePet":"{name} 的照顾单","sheet.handTitleOther":"{name} 的交接单","sheet.handPeriodPet":"寄养・看护交接用","sheet.handPeriodOther":"外出共享用（今日状况）","sheet.madeOn":"／制作日 {date}","sheet.aboutPet":"关于这个孩子","sheet.profile":"档案","sheet.name":"名字","sheet.meals":"饮食","sheet.noFoodHint":"未登记（请口头告知）","sheet.todayChores":"今日照顾","sheet.noRecordsYet":"还没有记录","sheet.todayCond":"今日状况（身体）","sheet.hasRecord":"有记录","sheet.allergyCaution":"注意事项（过敏・禁忌）","sheet.nothingSpecial":"无特别","sheet.regularVet":"常去的动物医院","sheet.regularDoctor":"常去的医院","sheet.noHospHint":"未登记（可在“重要信息”中登记医院名称、电话、地址）","sheet.emergencyContact":"紧急联系人","sheet.noContactHint":"未登记（可在“重要信息”中登记）","sheet.familyNotes":"家人的留言","sheet.otherMemo":"其他备注","sheet.handNotePet":"※基于主人的记录的交接备注。详情请向家人确认。","sheet.handNoteOther":"※基于家人的记录的交接备注。详情请向家人确认。","sheet.careFileSuffix":"照顾单","sheet.handoverFileSuffix":"交接单","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h",
+    "sheet.rangeDays":"{d}天","sheet.vetTitle":"{name} 的记录摘要","sheet.vetPeriod":"{from}～{to}（共{days}天）／制作日 {made}","sheet.basicInfo":"基本信息","sheet.species":"种类","sheet.birthday":"生日","sheet.microchip":"芯片","sheet.weightTrend":"体重变化","sheet.latest":"最近","sheet.periodChange":"期间增减","sheet.vsDate":"（与{date}相比）","sheet.noWeightHint":"无记录（在每日记录中填入体重即可查看变化）","sheet.toilet":"如厕","sheet.peeRate":"小便成功率","sheet.poopRate":"大便成功率","sheet.rateVal":"{rate}%（{total}次）","sheet.noRecord":"无记录","sheet.brAvgLabel":"大便硬度平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・状态","sheet.energyAvgLabel":"精神平均","sheet.energyAvgVal":"{avg}／5（{n}次）","sheet.symCount":"{label} × {n}次","sheet.medLeft":"剩余{n}天份","sheet.none":"无","sheet.careNext":"预防・疫苗等下次预定","sheet.noPlans":"无预定","sheet.recentCare":"最近的照顾","sheet.vetNote":"※本摘要基于主人的记录，并非诊断。","sheet.vetFileSuffix":"记录摘要","sheet.handTitlePet":"{name} 的照顾单","sheet.handTitleOther":"{name} 的交接单","sheet.handPeriodPet":"寄养・看护交接用","sheet.handPeriodOther":"外出共享用（今日状况）","sheet.madeOn":"／制作日 {date}","sheet.aboutPet":"关于这个孩子","sheet.profile":"档案","sheet.name":"名字","sheet.meals":"饮食","sheet.noFoodHint":"未登记（请口头告知）","sheet.todayChores":"今日照顾","sheet.noRecordsYet":"还没有记录","sheet.todayCond":"今日状况（身体）","sheet.hasRecord":"有记录","sheet.allergyCaution":"注意事项（过敏・禁忌）","sheet.nothingSpecial":"无特别","sheet.regularVet":"常去的动物医院","sheet.regularDoctor":"常去的医院","sheet.noHospHint":"未登记（可在“重要信息”中登记医院名称、电话、地址）","sheet.emergencyContact":"紧急联系人","sheet.noContactHint":"未登记（可在“重要信息”中登记）","sheet.familyNotes":"家人的留言","sheet.otherMemo":"其他备注","sheet.handNotePet":"※基于主人的记录的交接备注。详情请向家人确认。","sheet.handNoteOther":"※基于家人的记录的交接备注。详情请向家人确认。","sheet.careFileSuffix":"照顾单","sheet.handoverFileSuffix":"交接单","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"医院摘要","sum.title":"{name} 的医院摘要","sum.fileSuffix":"医院摘要","sum.firstThings":"首先请注意","sum.shareBtn":"用链接分享","sum.shareTitle":"用链接分享这份摘要","sum.shareDesc":"拥有链接的人无需登录，只能查看你选择的项目。超过有效期后将自动无法查看。你也可以随时撤销链接。","sum.needSignIn":"创建链接需要先登录。请在设置中的“家人共享”里登录。","sum.includeTitle":"链接中包含的项目","sum.sec.basic":"基本信息","sum.sec.caution":"注意事项（过敏・禁忌・用药中）","sum.sec.recent":"最近记录","sum.sec.contacts":"常去医院・紧急联系人","sum.secContactsHint":"包含电话号码","sum.includePhoto":"包含照片","sum.expiry":"有效期","sum.create":"创建链接","sum.copyLink":"复制链接","sum.activeLinks":"已创建的链接","sum.noLinks":"还没有链接","sum.active":"有效","sum.expired":"已过期","sum.until":"有效至{date}","sum.revoke":"撤销","sum.revoked":"链接已撤销","sum.createFail":"无法创建链接，请重试。","sum.needSection":"请至少选择一个要包含的项目。","sum.expiresLine":"此链接可查看至{date}。","sum.expiredTitle":"此链接已过期","sum.expiredBody":"链接已超过有效期，内容不予显示。如有需要，请向创建链接的人索取新链接。","sum.invalidTitle":"此链接无法使用","sum.invalidBody":"链接已过期、已被撤销或不存在，内容不予显示。","sum.footNote":"※本摘要基于主人・家人的记录，并非诊断。",
   },
 };
 // ── 天気の地点名の言語別解決 ──
@@ -3527,6 +3597,11 @@ function App(){
   const[petCardData,setPetCardData]=useState(null);
   const[petCardClosed,setPetCardClosed]=useState(false);
   const[petCardRetry,setPetCardRetry]=useState(0); // 読み込み失敗時の再試行カウンタ
+  const[sumId]=useState(()=>summaryIdFromSearch()); // サマリー共有リンク先（?sum=）
+  const[sumState,setSumState]=useState("loading"); // loading | ok | expired | invalid | missing | error
+  const[sumData,setSumData]=useState(null);
+  const[sumClosed,setSumClosed]=useState(false);
+  const[sumRetry,setSumRetry]=useState(0);
   useEffect(()=>{
     if(!petCardId)return;
     let alive=true;
@@ -3542,6 +3617,26 @@ function App(){
     })();
     return()=>{alive=false;};
   },[petCardId,petCardRetry]);
+  useEffect(()=>{
+    if(!sumId)return;
+    let alive=true;
+    setSumState("loading");
+    (async()=>{
+      try{
+        if(!fbDb)throw new Error("nodb");
+        const snap=await getDoc(doc(fbDb,"publicSummaries",sumId));
+        if(!alive)return;
+        const st=summaryViewState({exists:snap.exists(),data:snap.exists()?snap.data():null},Date.now());
+        if(st==="ok")setSumData(snap.data());
+        setSumState(st);
+      }catch(e){
+        if(!alive)return;
+        // 期限切れ・取り消し済み・存在しないリンクはルール側で get が拒否される（permission-denied）→ invalid として内容を出さない。
+        setSumState(summaryViewState({error:e},Date.now()));
+      }
+    })();
+    return()=>{alive=false;};
+  },[sumId,sumRetry]);
   useEffect(()=>{
     if(wrappedYear==null&&!wrappedMonth){setWrappedPhotos([]);return;}
     let alive=true;
@@ -4625,6 +4720,103 @@ function App(){
     return true;
   };
 
+  // ─── 病院サマリー共有リンク（publicSummaries/{sumId}） ─────────────────────
+  // リンク先ドキュメントは「渡してよい項目だけ」を所有者の言語で文章化した表示専用スナップショット。
+  // 発行記録は member.summaryLinks に保持し、取り消し（ドキュメント削除）がいつでもできる。
+  // 文言（誰に・何が・いつまで見えるか）は sum.shareDesc に実態どおり明記する。
+  const buildSummarySections=(member)=>{
+    const sp=member.id;
+    const from=plusDays(-29);
+    const inRange=(d)=>d&&d>=from&&d<=todayIso;
+    const mi=items.filter(x=>x.space===sp);
+    const mCards=mi.filter(x=>x.type==="card");
+    const isPet=member.kind==="pet";
+    // ① 基本情報
+    const basic=[];
+    if(isPet)basic.push(`${t("sheet.species")}：${lblOf(SPECIES.find(s=>s.key===member.species)||SPECIES[0])}${member.breed?`・${member.breed}`:""}`);
+    if(member.birthday)basic.push(`${t("sheet.birthday")}：${fmtBirthday(member.birthday)}（${ageLabel(member.birthday)}）`);
+    if(!isPet&&member.blood)basic.push(`${t("ecard.blood")}：${member.blood}${t("blood.suffix")}`);
+    const wl=mi.filter(x=>x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
+    if(wl)basic.push(`${t("chart.weight")}：${wl.weight}${wl.wunit||"kg"}（${fmtDate(wl.date)}）`);
+    if(isPet&&member.microchip)basic.push(`${t("sheet.microchip")}：${member.microchip}`);
+    // ② まず伝えること：アレルギー＋気をつけること＋服薬中
+    const caution=[];
+    mCards.filter(c=>c.kind==="allergy").forEach(c=>caution.push(`⚠ ${c.title}${c.body?`：${c.body}`:""}`));
+    if(isPet&&member.caution)caution.push(`⚠ ${member.caution}`);
+    mi.filter(x=>x.type==="medcourse"&&(x.taken||[]).length<x.days).forEach(m=>caution.push(`💊 ${m.name}：${t("sheet.medLeft",{n:Math.max(0,m.days-(m.taken||[]).length)})}`));
+    if(!caution.length)caution.push(t("sheet.nothingSpecial"));
+    // ③ 直近の記録（30日）：体重の動き・体調・トイレ（ペット）・次回予定・最近のお世話
+    const recent=[];
+    const healths=mi.filter(x=>x.type==="health"&&x.weight!=null&&inRange(x.date)).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    if(healths.length>=2){const f=healths[0],l=healths[healths.length-1];const ch=Math.round((l.weight-f.weight)*10)/10;recent.push(`${t("sheet.weightTrend")}：${l.weight}${l.wunit||"kg"}（${t("sheet.periodChange")} ${(ch>=0?"+":"")}${ch}${l.wunit||"kg"}）`);}
+    else if(healths.length===1)recent.push(`${t("chart.weight")}：${healths[0].weight}${healths[0].wunit||"kg"}（${fmtDate(healths[0].date)}）`);
+    const diaries=mi.filter(x=>x.type==="diary"&&inRange(x.date));
+    const ens=diaries.map(r=>{const em=DIARY_ENERGY.find(e=>e.key===r.energy);return em?em.score:null;}).filter(v=>v!=null);
+    if(ens.length)recent.push(`${t("sheet.energyAvgLabel")}：${t("sheet.energyAvgVal",{avg:Math.round(ens.reduce((a,b)=>a+b,0)/ens.length*10)/10,n:ens.length})}`);
+    const syms={};diaries.forEach(r=>(r.symptoms||[]).forEach(s=>{syms[s]=(syms[s]||0)+1;}));
+    Object.keys(syms).map(k=>({label:lblOf(symptomMeta(k))||k,n:syms[k]})).sort((a,b)=>b.n-a.n).slice(0,5).forEach(s=>recent.push(t("sheet.symCount",{label:s.label,n:s.n})));
+    if(isPet){
+      const toilets=mi.filter(x=>x.type==="toilet"&&inRange(x.date));
+      const trate=(k)=>{const r=toilets.filter(x=>x.tkind===k&&x.success!=null);return r.length?Math.round(r.filter(x=>x.success).length/r.length*100):null;};
+      const pr=trate("pee"),por=trate("poop");
+      if(pr!=null)recent.push(`${t("sheet.peeRate")}：${pr}%`);
+      if(por!=null)recent.push(`${t("sheet.poopRate")}：${por}%`);
+    }
+    mi.filter(x=>x.type==="care"&&x.dueDate&&!x.done).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,5).forEach(x=>recent.push(`${x.emoji||"💉"} ${x.title}：${fmtDate(x.dueDate)}`));
+    mi.filter(x=>x.type==="chore"&&x.lastDone).sort((a,b)=>(b.lastDone||"").localeCompare(a.lastDone||"")).slice(0,5).forEach(x=>recent.push(`${x.emoji||"🧹"} ${x.title}：${fmtDate(x.lastDone)}`));
+    if(!recent.length)recent.push(t("sheet.noRecord"));
+    // ④ かかりつけ・緊急連絡先
+    const contacts=[];
+    const contactLine=(c)=>`${cardMeta(c.kind).emoji} ${c.title}${isPhoneLike(c.body)?`：${fmtJPPhone(c.body)}`:(c.body?`：${c.body}`:"")}${c.kind==="hospital"&&c.addr?`（${c.addr}）`:""}`;
+    mCards.filter(c=>c.kind==="hospital").forEach(c=>contacts.push(contactLine(c)));
+    mCards.filter(c=>c.kind==="emergency"||c.kind==="insurance").forEach(c=>contacts.push(contactLine(c)));
+    return{basic,caution,recent,contacts};
+  };
+  const[sumShareOpen,setSumShareOpen]=useState(false);
+  const[sumSel,setSumSel]=useState(SUMMARY_DEFAULT_SECTIONS);
+  const[sumDays,setSumDays]=useState(7);
+  const[sumPhoto,setSumPhoto]=useState(false);
+  const[sumBusy,setSumBusy]=useState(false);
+  const[sumCreatedId,setSumCreatedId]=useState("");
+  const openSummaryShare=()=>{setSumSel(SUMMARY_DEFAULT_SECTIONS);setSumDays(7);setSumPhoto(false);setSumCreatedId("");setSumShareOpen(true);};
+  const createSummaryLink=async()=>{
+    const member=activeMember;
+    if(!member||!fireUser||!fbDb||sumBusy)return;
+    if(!sumSel.length){showFlash(t("sum.needSection"));return;}
+    setSumBusy(true);
+    try{
+      const built=buildSummarySections(member);
+      const sections=SUMMARY_SECTIONS.filter(k=>sumSel.indexOf(k)>=0).map(k=>({key:k,lines:built[k]||[]})).filter(s=>s.lines.length);
+      if(!sections.length){showFlash(t("sum.needSection"));setSumBusy(false);return;}
+      const id=genSummaryId();
+      const nowMs=Date.now();
+      const expMs=nowMs+sumDays*86400000;
+      const data={ownerUid:fireUser.uid,memberId:member.id,memberName:member.name||"",kind:member.kind||"pet",species:member.species||"",breed:member.breed||"",gender:member.gender||"",birthday:member.birthday||"",emoji:member.emoji||"",sections,createdAt:serverTimestamp(),expiresAt:new Date(expMs)};
+      if(member.kind==="person"&&member.blood)data.blood=member.blood;
+      if(sumPhoto){
+        const pid=member.cardPhoto||member.avatar;
+        if(pid){try{const raw=await photoStorage.get(`photo:${pid}`);if(raw){try{data.photo=await shrinkDataUrl(raw,480,0.75);}catch(e){data.photo=raw;}}}catch(e){}}
+      }
+      await setDoc(doc(fbDb,"publicSummaries",id),data);
+      const rec={id,createdAt:nowMs,expiresAt:expMs,sections:sections.map(s=>s.key),photo:!!data.photo};
+      const m2={...member,summaryLinks:[rec,...(Array.isArray(member.summaryLinks)?member.summaryLinks:[])]};
+      const next=members.map(x=>x.id===m2.id?m2:x);persist(next,items);
+      saveMemberToFs(m2).catch(()=>{});
+      setSumCreatedId(id);
+    }catch(e){showFlash(t("sum.createFail"));}
+    setSumBusy(false);
+  };
+  const revokeSummaryLink=async(link)=>{
+    const member=activeMember;
+    if(!member||!link)return;
+    if(fireUser&&fbDb){try{await deleteDoc(doc(fbDb,"publicSummaries",link.id));}catch(e){}}
+    const m2={...member,summaryLinks:(Array.isArray(member.summaryLinks)?member.summaryLinks:[]).filter(l=>l.id!==link.id)};
+    const next=members.map(x=>x.id===m2.id?m2:x);persist(next,items);
+    saveMemberToFs(m2).catch(()=>{});
+    if(sumCreatedId===link.id)setSumCreatedId("");
+    showFlash(t("sum.revoked"));
+  };
+
   // テーマは選んだ瞬間に反映する（フォーム保存を待たない）。
   // member へ即保存し、公開中なら公開ドキュメントもその場で書き直す。連打時は最新の選択だけを反映（連番ガード）。
   const cardThemeSeqRef=useRef(0);
@@ -5585,6 +5777,8 @@ function App(){
     deleteMemberFromFs(id).then(ok=>{if(!ok)showFlash(t("toast.memberFsDeleteFail"));}).catch(()=>{});
     // 公開名刺を出していたメンバーは、公開ドキュメントも一緒に消す（リンク先が残らないように）。
     if(m&&m.cardId&&fireUser&&fbDb){try{deleteDoc(doc(fbDb,"publicCards",m.cardId)).catch(()=>{});}catch(e){}}
+    // サマリー共有リンクを発行していたメンバーは、その公開ドキュメントも一緒に消す（医療情報のリンク先を残さない）。
+    if(m&&Array.isArray(m.summaryLinks)&&fireUser&&fbDb){m.summaryLinks.forEach(l=>{try{deleteDoc(doc(fbDb,"publicSummaries",l.id)).catch(()=>{});}catch(e){}});}
     setTab("me");setMemberSel("me");setConfirmDel(null);setEditingId(null);setProfileOpen(false);
     if(m)showFlash(t("toast.memberDeleted",{name:m.name}));
   };
@@ -6982,7 +7176,7 @@ function App(){
   // ただし公開ビュー（名刺・旧公開ページ・招待導線）が開いている間はゲートでブロックしない：
   // リンクを受け取った人に言語選択を強いると、その時点で離脱してしまうため。
   // 公開ビューを閉じて本体に入った時点で、改めてこの選択が出る（確定保存もその時）。
-  const publicViewOpen=!!petPage||!!petPageBroken||(petCardId&&!petCardClosed)||!!pendingJoin||!!authAction;
+  const publicViewOpen=!!petPage||!!petPageBroken||(petCardId&&!petCardClosed)||(sumId&&!sumClosed)||!!pendingJoin||!!authAction;
   if(!langChosen&&!publicViewOpen){
     return(
       <div className="yl-ob yl-langfirst">
@@ -8144,7 +8338,8 @@ function App(){
                 <section className="yl-vetcard">
                   <h2 className="yl-routine-title" style={{marginBottom:8}}>{t("rec.sheetsTitle")}</h2>
                   <p className="yl-set-desc" style={{marginBottom:10}}>{t("rec.sheetsDescOther")}</p>
-                  {curKind==="person"&&<button className="yl-quick-big" onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> {t("rec.handoverToday")}</button>}
+                  {curKind==="person"&&<button className="yl-quick-big" onClick={()=>setVetOpen(true)}><Icon name="stethoscope" size={18}/> {t("rec.medSummary")}</button>}
+                  {curKind==="person"&&<button className="yl-quick-big" style={{marginTop:8}} onClick={()=>setHandoverOpen(true)}><Icon name="note" size={18}/> {t("rec.handoverToday")}</button>}
                   <button className="yl-quick-big" style={curKind==="person"?{marginTop:8}:undefined} onClick={()=>setEmergencyCardOpen(true)}><Icon name="alert" size={18}/> {t("rec.emergencyCard")}</button>
                 </section>
               )});
@@ -9210,6 +9405,7 @@ function App(){
       {petPage&&<PetPageView data={petPage} lang={lang} existing={hadLocalData||!!fireUser} showHomeHint={!hadLocalData&&!!fireUser&&!isStandalone} onLang={setLang} onStart={()=>{setPetPage(null);try{history.replaceState(null,"",location.pathname);}catch(e){}}}/>}
       {!petPage&&petPageBroken&&<PetLinkBrokenView lang={lang} onLang={setLang} onStart={()=>{setPetPageBroken(false);try{history.replaceState(null,"",location.pathname);}catch(e){}}}/>}
       {petCardId&&!petCardClosed&&<PetCardView state={petCardState} data={petCardData} lang={lang} friendSaved={cardFriendSaved} existing={hadLocalData||!!fireUser} showHomeHint={!hadLocalData&&!!fireUser&&!isStandalone} onLang={setLang} onRetry={()=>setPetCardRetry(n=>n+1)} onStart={()=>{setPetCardClosed(true);try{history.replaceState(null,"",location.pathname);}catch(e){}}}/>}
+      {sumId&&!sumClosed&&<SummaryLinkView state={sumState} data={sumData} lang={lang} existing={hadLocalData||!!fireUser} showHomeHint={!hadLocalData&&!!fireUser&&!isStandalone} onLang={setLang} onRetry={()=>setSumRetry(n=>n+1)} onStart={()=>{setSumClosed(true);try{history.replaceState(null,"",location.pathname);}catch(e){}}}/>}
       {authAction&&<AuthActionView action={authAction} lang={lang} signedIn={!!fireUser} onLang={setLang} onSignIn={closeAuthActionToSignIn} onOpenApp={closeAuthAction} onResend={closeAuthActionToReset}/>}
       {(wrappedYear!=null||wrappedMonth)&&(()=>{const w=wrappedMonth?computeMonthly(wrappedMonth.y,wrappedMonth.m):computeWrapped(wrappedYear);const wrapTitle=wrappedMonth?t("wrapm.title",{y:wrappedMonth.y,month:(()=>{try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{month:"long"}).format(new Date(2001,wrappedMonth.m-1,1));}catch(e){return String(wrappedMonth.m);}})()}):t("wrap.title",{y:wrappedYear});const periodLabel=wrappedMonth?(wrappedMonth.y+"/"+wrappedMonth.m):wrappedYear;const monthName=w.topMonth?(()=>{try{return new Intl.DateTimeFormat(LOCALES[lang]||"ja-JP",{month:"long"}).format(new Date(2001,w.topMonth-1,1));}catch(e){return String(w.topMonth);}})():"";const idx=wrappedYears.indexOf(wrappedYear);const canPrev=idx>=0&&idx<wrappedYears.length-1;const canNext=idx>0;return(
         <div className="yl-overlay" onClick={()=>{setWrappedYear(null);setWrappedMonth(null);}}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
@@ -9542,8 +9738,13 @@ function App(){
         </div>
       )}
       {vetOpen&&activeMember&&vetSummary&&(()=>{
+        const isPet=activeMember.kind==="pet";
         const meds=medCourses.filter(m=>(m.taken||[]).length<m.days);
         const foods=foodDefs;
+        const allergy=cards.filter(c=>c.kind==="allergy");
+        const hospitals=cards.filter(c=>c.kind==="hospital");
+        const otherContacts=cards.filter(c=>c.kind==="emergency"||c.kind==="insurance");
+        const contactLi=(c)=>{const ph=isPhoneLike(c.body);const hmeta=c.kind==="hospital"&&[c.hours&&`🕐 ${c.hours}`,c.addr&&`📍 ${c.addr}`].filter(Boolean).join("　");return(<li key={c.id} className={ph?"yl-vetsum-contactline":undefined}>{cardMeta(c.kind).emoji} <b>{c.title}</b>{c.night?<span className="yl-emg-tag" style={{marginLeft:6}}>{t("card.nightTag")}</span>:null}{ph?<a className="yl-vetsum-tel" href={`tel:${(c.body||"").replace(/[^0-9]/g,"")}`}>📞 {fmtJPPhone(c.body)}</a>:(c.body?`：${c.body}`:"")}{hmeta&&<span className="yl-vetsum-cmeta">{hmeta}</span>}</li>);};
         const wChange=vetSummary.wLatest&&vetSummary.wFirst&&vetSummary.wFirst!==vetSummary.wLatest?Math.round((vetSummary.wLatest.weight-vetSummary.wFirst.weight)*10)/10:null;
         return(
         <div className="yl-overlay" onClick={()=>setVetOpen(false)}>
@@ -9551,14 +9752,20 @@ function App(){
             <div className="yl-noprint yl-vet-toolbar"><span className="yl-vet-range">{[7,30,90].map(d=><button key={d} className={"yl-toilet-range"+(vetDays===d?" on":"")} onClick={()=>setVetDays(d)}>{t("sheet.rangeDays",{d})}</button>)}</span></div>
             <div className="yl-vetsum">
               <div className="yl-vetsum-head">
-                <h2 className="yl-vetsum-title"><Icon name="paw" size={18}/> {t("sheet.vetTitle",{name:activeMember.name})}</h2>
+                <h2 className="yl-vetsum-title"><Icon name={isPet?"paw":"stethoscope"} size={18}/> {isPet?t("sheet.vetTitle",{name:activeMember.name}):t("sum.title",{name:activeMember.name})}</h2>
                 <p className="yl-vetsum-period">{t("sheet.vetPeriod",{from:fmtDate(vetSummary.from),to:fmtDate(vetSummary.to),days:vetDays,made:fmtDate(todayIso)})}</p>
               </div>
               <div className="yl-vetsum-grid">
+                <div className={"yl-vetsum-sec wide"+((allergy.length||meds.length||(isPet&&activeMember.caution))?" warn":"")}><h3>⚠ {t("sum.firstThings")}</h3>{(allergy.length||meds.length||(isPet&&activeMember.caution))?<ul>
+                  {allergy.map(c=><li key={c.id}>⚠ <b>{c.title}</b>{c.body?`：${c.body}`:""}</li>)}
+                  {isPet&&activeMember.caution&&<li>⚠ {activeMember.caution}</li>}
+                  {meds.map(m=><li key={m.id}>💊 {m.name}：{t("sheet.medLeft",{n:Math.max(0,m.days-(m.taken||[]).length)})}</li>)}
+                </ul>:<p className="yl-vetsum-none">{t("sheet.nothingSpecial")}</p>}</div>
                 <div className="yl-vetsum-sec"><h3>{t("sheet.basicInfo")}</h3><ul>
-                  <li><b>{t("sheet.species")}</b>：{lblOf(SPECIES.find(s=>s.key===activeMember.species)||SPECIES[0])}</li>
+                  {isPet&&<li><b>{t("sheet.species")}</b>：{lblOf(SPECIES.find(s=>s.key===activeMember.species)||SPECIES[0])}{activeMember.breed?`・${activeMember.breed}`:""}</li>}
                   {activeMember.birthday&&<li><b>{t("sheet.birthday")}</b>：{fmtBirthday(activeMember.birthday)}{parenL(ageLabel(activeMember.birthday))}</li>}
-                  {activeMember.microchip&&<li><b>{t("sheet.microchip")}</b>：{activeMember.microchip}</li>}
+                  {!isPet&&activeMember.blood&&<li><b>{t("ecard.blood")}</b>：{activeMember.blood}{t("blood.suffix")}</li>}
+                  {isPet&&activeMember.microchip&&<li><b>{t("sheet.microchip")}</b>：{activeMember.microchip}</li>}
                 </ul></div>
                 <div className="yl-vetsum-sec wide"><h3>{t("chart.weight")}</h3>
                   {vetSummary.wSeries.length>=2&&<div className="yl-vetsum-chart"><MiniChart points={vetSummary.wSeries} unit={vetSummary.wUnit} color="#E39A5C" label={t("sheet.weightTrend")}/></div>}
@@ -9567,27 +9774,72 @@ function App(){
                     {wChange!=null&&<li><b>{t("sheet.periodChange")}</b>：{(wChange>=0?"+":"")}{wChange}{vetSummary.wUnit}{t("sheet.vsDate",{date:fmtDate(vetSummary.wFirst.date)})}</li>}
                   </ul>:<p className="yl-vetsum-none">{t("sheet.noWeightHint")}</p>}
                 </div>
-                <div className="yl-vetsum-sec"><h3>{t("sheet.toilet")}</h3><ul>
+                {isPet&&<div className="yl-vetsum-sec"><h3>{t("sheet.toilet")}</h3><ul>
                   <li>{t("sheet.peeRate")}：{vetSummary.pee.total?t("sheet.rateVal",{rate:vetSummary.pee.rate,total:vetSummary.pee.total}):t("sheet.noRecord")}</li>
                   <li>{t("sheet.poopRate")}：{vetSummary.poop.total?t("sheet.rateVal",{rate:vetSummary.poop.rate,total:vetSummary.poop.total}):t("sheet.noRecord")}</li>
                   {vetSummary.brAvg!=null&&<li>{t("sheet.brAvgLabel")}：{t("sheet.brAvgVal",{avg:vetSummary.brAvg})}{parenL(lblOf(bristolMeta(Math.round(vetSummary.brAvg))))}</li>}
-                </ul></div>
+                </ul></div>}
                 <div className="yl-vetsum-sec"><h3>{t("sheet.symCond")}</h3>{(vetSummary.energyAvg!=null||vetSummary.symList.length)?<ul>
                   {vetSummary.energyAvg!=null&&<li>{t("sheet.energyAvgLabel")}：{t("sheet.energyAvgVal",{avg:vetSummary.energyAvg,n:vetSummary.energyN})}</li>}
                   {vetSummary.symList.map(s=><li key={s.k}>{t("sheet.symCount",{label:s.label,n:s.n})}</li>)}
                 </ul>:<p className="yl-vetsum-none">{t("sheet.noRecord")}</p>}</div>
-                <div className="yl-vetsum-sec"><h3>{t("rec.medsTitle")}</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：{t("sheet.medLeft",{n:Math.max(0,m.days-(m.taken||[]).length)})}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.none")}</p>}</div>
                 <div className={"yl-vetsum-sec"+(vetSummary.careNext.length?" highlight":"")}><h3><Icon name="syringe" size={13}/> {t("sheet.careNext")}</h3>{vetSummary.careNext.length?<ul>{vetSummary.careNext.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.noPlans")}</p>}</div>
                 <div className="yl-vetsum-sec"><h3>{t("sheet.recentCare")}</h3>{vetSummary.chores.length?<ul>{vetSummary.chores.map((c,i)=><li key={i}>{c.emoji} {c.title}：{fmtDate(c.date)}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.noRecord")}</p>}</div>
-                {foods.length>0&&<div className="yl-vetsum-sec"><h3>{t("rec.feedTitle")}</h3><ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefShareText(d)?`：${foodDefShareText(d)}`:""}</li>)}</ul></div>}
+                {isPet&&foods.length>0&&<div className="yl-vetsum-sec"><h3>{t("rec.feedTitle")}</h3><ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefShareText(d)?`：${foodDefShareText(d)}`:""}</li>)}</ul></div>}
+                <div className="yl-vetsum-sec wide contact"><h3><Icon name="phone" size={13}/> {t("sum.sec.contacts")}</h3>{(hospitals.length||otherContacts.length)?<ul>{hospitals.map(contactLi)}{otherContacts.map(contactLi)}</ul>:<p className="yl-vetsum-none">{t("sheet.noContactHint")}</p>}</div>
               </div>
-              <p className="yl-vetsum-note">{t("sheet.vetNote")}</p><p className="yl-brandfoot">🐾 {t("brand.footer")} · {BRAND_HOST}</p>
+              <p className="yl-vetsum-note">{isPet?t("sheet.vetNote"):t("sum.footNote")}</p><p className="yl-brandfoot">🐾 {t("brand.footer")} · {BRAND_HOST}</p>
             </div>
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setVetOpen(false)}>{t("common.close")}</button>
-              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${t("sheet.vetFileSuffix")}-${todayIso}.png`,{sheet:true})}><Icon name="download" size={16}/> {t("common.saveImage")}</button>
+              <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${isPet?t("sheet.vetFileSuffix"):t("sum.fileSuffix")}-${todayIso}.png`,{sheet:true})}><Icon name="download" size={16}/> {t("common.saveImage")}</button>
               <button className="yl-addbtn modal ghost" onClick={()=>window.print()}><Icon name="printer" size={16}/> {t("common.print")}</button>
+              {canManageMember(activeMember)&&<button className="yl-addbtn modal ghost" onClick={openSummaryShare}><Icon name="link" size={16}/> {t("sum.shareBtn")}</button>}
             </div>
+          </div>
+        </div>
+        );})()}
+      {sumShareOpen&&activeMember&&(()=>{
+        const links=(Array.isArray(activeMember.summaryLinks)?activeMember.summaryLinks:[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        const toggleSec=(k)=>setSumSel(prev=>prev.indexOf(k)>=0?prev.filter(x=>x!==k):[...prev,k]);
+        const createdRec=sumCreatedId?links.find(l=>l.id===sumCreatedId):null;
+        return(
+        <div className="yl-overlay" onClick={()=>setSumShareOpen(false)}>
+          <div className="yl-modal" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">{t("sum.shareTitle")}</h3>
+            <p className="yl-set-desc">{t("sum.shareDesc")}</p>
+            {!fireUser?(
+              <p className="yl-set-desc" style={{marginTop:10}}>{t("sum.needSignIn")}</p>
+            ):(<>
+              <div className="yl-opt" style={{marginTop:12,width:"100%"}}><span>{t("sum.includeTitle")}</span></div>
+              {SUMMARY_SECTIONS.map(k=>(
+                <label key={k} className="yl-sum-check">
+                  <input type="checkbox" checked={sumSel.indexOf(k)>=0} onChange={()=>toggleSec(k)}/>
+                  <span>{t("sum.sec."+k)}{k==="contacts"&&<span className="yl-set-desc" style={{marginLeft:6}}>{t("sum.secContactsHint")}</span>}</span>
+                </label>
+              ))}
+              <label className="yl-sum-check">
+                <input type="checkbox" checked={sumPhoto} onChange={()=>setSumPhoto(!sumPhoto)}/>
+                <span>{t("sum.includePhoto")}</span>
+              </label>
+              <div className="yl-opt" style={{marginTop:12,width:"100%"}}><span>{t("sum.expiry")}</span><span className="yl-vet-range" style={{marginLeft:8}}>{SUMMARY_EXPIRY_DAYS.map(d=><button key={d} type="button" className={"yl-toilet-range"+(sumDays===d?" on":"")} onClick={()=>setSumDays(d)}>{t("sheet.rangeDays",{d})}</button>)}</span></div>
+              {createdRec?(
+                <div className="yl-sum-created">
+                  <p className="yl-set-desc">{t("sum.until",{date:fmtDate(iso(new Date(createdRec.expiresAt||Date.now())))})}</p>
+                  <p className="yl-sum-url">{summaryLink(createdRec.id)}</p>
+                  <button type="button" className="yl-addbtn modal" onClick={()=>{const url=summaryLink(createdRec.id);if(navigator.share){navigator.share({title:activeMember.name,url}).catch(()=>{});}else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>showFlash(t("toast.copied"))).catch(()=>{});}}}>{t("sum.copyLink")}</button>
+                </div>
+              ):(
+                <div className="yl-modal-btns"><button className="yl-addbtn modal" disabled={sumBusy} onClick={createSummaryLink}>{t("sum.create")}</button></div>
+              )}
+              <div className="yl-opt" style={{marginTop:14,width:"100%"}}><span>{t("sum.activeLinks")}</span></div>
+              {links.length?links.map(l=>{const expired=Date.now()>(l.expiresAt||0);return(
+                <div key={l.id} className="yl-sum-linkrow">
+                  <span className="yl-sum-linkmeta">{fmtDate(iso(new Date(l.createdAt||Date.now())))} ・ {expired?t("sum.expired"):t("sum.until",{date:fmtDate(iso(new Date(l.expiresAt||Date.now())))})}</span>
+                  <button type="button" className="yl-quickcond-btn" onClick={()=>revokeSummaryLink(l)}>{t("sum.revoke")}</button>
+                </div>);}):<p className="yl-set-desc">{t("sum.noLinks")}</p>}
+            </>)}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setSumShareOpen(false)}>{t("common.close")}</button></div>
           </div>
         </div>
         );})()}
@@ -9624,11 +9876,11 @@ function App(){
                   {wl&&<li><b>{t("chart.weight")}</b>：{wl.weight}{wl.wunit||"kg"}{parenL(fmtDate(wl.date))}</li>}
                   {activeMember.microchip&&<li><b>{t("sheet.microchip")}</b>：{activeMember.microchip}</li>}
                 </ul></div>
+                <div className={"yl-vetsum-sec"+(allergy.length?" warn":"")}><h3>{t("sheet.allergyCaution")}</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}><b>{c.title}</b>{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.nothingSpecial")}</p>}</div>
                 {(isPet||foods.length>0)&&<div className="yl-vetsum-sec"><h3>{t("sheet.meals")}</h3>{foods.length?<ul>{foods.map(d=><li key={d.id}>🍚 {d.name}{foodDefShareText(d)?`：${foodDefShareText(d)}`:""}{parenL(d.feedTime)}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.noFoodHint")}</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>{t("sheet.todayChores")}</h3>{todayChores.length?<ul>{todayChores.map(c=><li key={c.id}>{c.emoji||"✓"} {c.title}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.noRecordsYet")}</p>}</div>}
                 {!isPet&&<div className="yl-vetsum-sec"><h3>{t("sheet.todayCond")}</h3>{todayDiary.length?<ul>{todayDiary.map(r=><li key={r.id}>{diarySum(r)||t("sheet.hasRecord")}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.noRecordsYet")}</p>}</div>}
                 <div className="yl-vetsum-sec"><h3>{t("rec.medsTitle")}</h3>{meds.length?<ul>{meds.map(m=><li key={m.id}>💊 {m.name}：{t("sheet.medLeft",{n:Math.max(0,m.days-(m.taken||[]).length)})}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.none")}</p>}</div>
-                <div className={"yl-vetsum-sec"+(allergy.length?" warn":"")}><h3>{t("sheet.allergyCaution")}</h3>{allergy.length?<ul>{allergy.map(c=><li key={c.id}><b>{c.title}</b>{c.body?`：${c.body}`:""}</li>)}</ul>:<p className="yl-vetsum-none">{t("sheet.nothingSpecial")}</p>}</div>
                 <div className="yl-vetsum-sec wide contact"><h3><Icon name="stethoscope" size={13}/> {isPet?t("sheet.regularVet"):t("sheet.regularDoctor")}</h3>{hospitals.length?<ul>{hospitals.map(contactLi)}</ul>:<p className="yl-vetsum-none">{t("sheet.noHospHint")}</p>}</div>
                 <div className="yl-vetsum-sec wide contact"><h3><Icon name="phone" size={13}/> {t("sheet.emergencyContact")}</h3>{otherContacts.length?<ul>{otherContacts.map(contactLi)}</ul>:<p className="yl-vetsum-none">{t("sheet.noContactHint")}</p>}</div>
                 {!isPet&&notes.length>0&&<div className="yl-vetsum-sec"><h3>{t("sheet.familyNotes")}</h3><ul>{notes.map(n=><li key={n.id}>{n.text}{parenL(n.author)}</li>)}</ul></div>}
