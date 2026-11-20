@@ -2188,9 +2188,9 @@ const MESSAGES={
     "home.dontMiss":"見逃せないこと","home.upcoming":"直近の予定","home.quickCond":"今日のみんなの調子は？","home.quickCondBtn":"今日も元気",
     "home.restock":"そろそろ買い足し","home.recap":"小さなふりかえり","home.statWeekCare":"今週やったケア","home.statTodayRoutine":"今日のルーティン",
     "rel.today":"今日","rel.overdue":"やり残し","rel.tomorrow":"明日","rel.inDays":"あと{d}日","rel.dueInDays":"あと{d}日で期限","rel.overdueBy":"{d}日超過",
-    "settings.title":"設定","set.language":"言語","set.appearance":"外観・テーマ",
+    "settings.title":"設定","set.language":"言語","set.appearance":"外観・テーマ","type.word":"削除","type.delHint":"続けるには「{word}」と入力してください","set.notifCalHint":"確実に知らせてほしい予定は、予定の「カレンダーに追加」から端末のカレンダーに入れておくと、カレンダーの通知で受け取れます。","set.wxSummary":"{name}・{n}件","set.wxNone":"まだ登録がありません","viewer.zoomHint":"画像をダブルタップで拡大できます",
     "theme.aria":"テーマ","theme.system":"端末に合わせる","theme.light":"ライト","theme.dark":"ダーク",
-    "set.notifications":"通知","set.notifDesc":"予定や誕生日を、アプリを開いている間に通知します。","set.notifOn":"通知は許可されています","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
+    "set.notifications":"通知","set.notifDesc":"予定や誕生日は、アプリを開いている間にだけ通知します。アプリを閉じている間は届きません。","set.notifOn":"開いている間の通知はオンです","set.notifDenied":"端末の設定で通知がオフになっています","set.notifAllow":"通知を許可する",
     "set.weather":"天気の地点","set.weatherDesc":"自宅も実家も公園も、気になる場所の天気を（最大{n}件）。","set.weatherMax":"最大{n}件まで。削除すると追加できます。","set.addLocation":"地点を追加",
     "wx.first":"先頭","wx.moveUp":"上へ","wx.moveDown":"下へ","wx.pinTop":"先頭に固定","wx.rename":"名前を変更","wx.delete":"削除","wx.namePlaceholder":"地点名（例：自宅・実家・軽井沢）","wx.currentLoc":"現在地","wx.locFallback":"地点","wx.maxReached":"地点は最大{n}件までです","wx.geoUnavailable":"この端末では位置情報が使えません","wx.geoFailed":"現在地を取得できませんでした","wx.addDesc":"自宅・実家・公園などを登録。検索でも追加できます。","wx.useCurrent":"現在地を使う","wx.gettingLoc":"現在地を取得中…","time.justNow":"たった今","otd.titleY":"{y}年前の今日","otd.titleMulti":"この日の思い出","otd.when":"{y}年前 ・ {name}","otd.me":"わたし","viewer.memory":"思い出","viewer.cert":"証明書","viewer.loading":"読み込み中…","viewer.notFound":"画像が見つかりませんでした","viewer.delConfirm":"この写真を削除しますか？元に戻せません。","viewer.delCancel":"やめる","viewer.delOk":"削除する","viewer.del":"削除","viewer.close":"とじる","share.memBtn":"思い出をシェア","share.memTitle":"思い出をシェア","share.memHint":"画像として保存・共有できます（家族やSNSへ）","share.saveBtn":"画像を保存・共有","share.fmtCard":"カード","share.fmtStory":"縦長（SNS）","toast.left":"左","toast.right":"右","toast.backupDoneN":"バックアップを書き出しました 💾（写真{n}枚ふくむ）","toast.backupDone":"バックアップを書き出しました 💾","toast.exportFail":"書き出せませんでした","toast.csvDone":"CSVを書き出しました","toast.fileReadFail":"このファイルは読み込めませんでした","toast.restoreDoneN":"復元しました 💾（写真{n}枚）","toast.restoreDone":"復元しました 💾","toast.notifOn":"通知を許可しました 🔔","toast.notifSettings":"端末の設定から通知をオンにできます","toast.notifIosHint":"ホーム画面に追加すると通知を使えます","toast.notifUnavailable":"この端末では通知を利用できません","toast.confirmMailSent":"確認メールを送りました。メール内のリンクを開いてください","toast.signedOut":"サインアウトしました","toast.joinedFamily":"家族に参加しました 👨‍👩‍👧","toast.leftFamily":"家族スペースを退出しました","toast.loggedNext":"✓ 記録しました。次は {date} ごろ 🗓","toast.copied":"内容をコピーしました。SNS等に貼り付けできます 📋","toast.shareUnavailable":"この端末では共有できません。印刷・スクショをご利用ください","toast.albumSelMax":"一度に選べるのは{n}枚までです","toast.photosMoved":"{n}枚を「{name}」へ移動しました 📸","toast.photosLoading":"写真を読み込み中…（{n}枚）","toast.storagePartial":"ストレージ不足のため{n}枚まで追加しました","toast.photosAdded":"{n}枚を撮影日ごとに追加しました（{days}日分）📅","toast.noPhotosAdded":"追加できる写真がありませんでした","toast.addedBang":"追加しました！","toast.bought":"{emoji} 買った！次は約{days}日後の目安です","toast.mealLoggedG":"ごはんを記録しました（約{g}g）🍚","toast.mealLogged":"ごはんを記録しました 🍚","toast.imgCreateFail":"画像を作成できませんでした","toast.imgCreating":"画像を作成中…","toast.imgSaveHint":"「画像を保存」でアルバムに保存できます 🖼️","toast.imgSaved":"画像を保存しました 🖼️","toast.needBwBcs":"先に体重・BCS・ME を入れてください","toast.foodSet":"「{name}」を 1回{g}g・1日{times}回 に設定しました 🍚","toast.mealLoggedKcal":"記録しました（約{kcal}kcal）🍚","toast.mealLogged2":"食事を記録しました 🍚","toast.nursingLogged":"授乳を記録しました（{side} {dur}）","toast.milkLogged":"ミルクを記録しました（{ml}ml）🍼","toast.walkOngoing":"すでに散歩を記録中です","toast.walkLogged":"お散歩記録：{dur}・{dist} 🐾","toast.needAmount":"金額を入力してください","toast.allowanceLogged":"おこづかいを記録しました","toast.expLogged":"支出を記録しました 💰","toast.expUpdated":"支出を更新しました 💰","toast.batchLogged":"{n}匹に「{emoji} {title}」を記録 ✓","toast.addedBday":"追加しました 🎂","toast.icsDownloaded":"カレンダーファイルをダウンロードしました 📅","wx.searchPlaceholder":"地名で検索（例：横浜・軽井沢）","wx.search":"検索","wx.searching":"検索中…","wx.noResults":"見つかりませんでした。別の地名でお試しください。","wx.popPrefix":"人口","wx.dupHint":"同名の地名に注意（例：新宿→東京都）。名前は後で変更できます。","wx.setupCta":"地点を追加して天気・お散歩判定を表示","wx.refresh":"更新","jma.02":"暴風雪警報","jma.03":"大雨警報","jma.04":"洪水警報","jma.05":"暴風警報","jma.06":"大雪警報","jma.07":"波浪警報","jma.08":"高潮警報","jma.10":"大雨注意報","jma.12":"大雪注意報","jma.13":"風雪注意報","jma.14":"雷注意報","jma.15":"強風注意報","jma.16":"波浪注意報","jma.17":"融雪注意報","jma.18":"洪水注意報","jma.19":"高潮注意報","jma.20":"濃霧注意報","jma.21":"乾燥注意報","jma.22":"なだれ注意報","jma.23":"低温注意報","jma.24":"霜注意報","jma.25":"着氷注意報","jma.26":"着雪注意報","jma.32":"暴風雪特別警報","jma.33":"大雨特別警報","jma.35":"暴風特別警報","jma.36":"大雪特別警報","jma.37":"波浪特別警報","jma.38":"高潮特別警報","wx.loading":"読み込み中…",
     "wcode.clear":"快晴","wcode.mostlySunny":"晴れ","wcode.partlyCloudy":"一部くもり","wcode.cloudy":"くもり","wcode.fog":"霧","wcode.rimeFog":"霧氷","wcode.drizzle":"霧雨","wcode.heavyDrizzle":"強い霧雨","wcode.freezingDrizzle":"着氷性の霧雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"強い雨","wcode.freezingRain":"着氷性の雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"霧雪","wcode.showers":"にわか雨","wcode.heavyShowers":"激しいにわか雨","wcode.snowShowers":"にわか雪","wcode.thunder":"雷雨","wcode.thunderHail":"雹を伴う雷雨","walk.adv.heatLabel":"いまは控えて","walk.adv.heatMsg":"熱中症・肉球やけどの危険。朝夕の涼しい時間帯に。","walk.adv.thunderLabel":"いまは控えて","walk.adv.thunderMsg":"雷雨・大雨のおそれ。落ち着いてからにしましょう。","walk.adv.rainLabel":"雨に注意","walk.adv.rainMsg":"雨で足元がすべりやすく、体も冷えます。無理せず短めに・雨具を。","walk.adv.hotLabel":"注意して","walk.adv.hotMsg":"地面が熱め。短めに・日陰を選び、水分を持って。","walk.adv.coldLabel":"寒さ注意","walk.adv.coldMsg":"路面凍結や冷えに注意。防寒して短めに。","walk.adv.mayRainLabel":"雨のおそれ","walk.adv.mayRainMsg":"降り出しそうです。短時間で切り上げられるように。","walk.adv.okLabel":"お散歩日和","walk.adv.okMsg":"いまは比較的お散歩に向いています。","walk.f.heat":"暑さ","walk.f.cold":"寒さ","walk.f.mug":"蒸し暑さ","walk.f.road":"路面の暑さ","walk.f.wind":"風","walk.f.uv":"紫外線","walk.f.dry":"乾燥","walk.wx.drizzle":"霧雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"霧","walk.wx.heavyRain":"強い雨","walk.wx.rainLikely":"雨のおそれ","walk.wx.rainChance":"雨の可能性","walk.lvl.excellent":"お散歩日和","walk.lvl.good":"まずまず","walk.lvl.fair":"ふつう","walk.lvl.poor":"やや不向き","walk.lvl.bad":"お散歩は控えめに","wx.errGet":"取得できませんでした","wx.retry":"再試行","wx.jma":"気象庁","wx.jmaActive":"{name}発表中。お散歩は控えて","walk.indexShort":"お散歩指数","walk.advShort.danger":"今日はお散歩を控えめに","walk.advShort.warn":"短めのお散歩がおすすめ","walk.advShort.ok":"お散歩日和です","wx.feelsHumid":"体感 {f}℃ ・ 湿度 {h}%","wx.more":"詳細を見る","wx.less":"とじる","wx.feels":"体感","wx.road":"路面","wx.nowObs":"現在（{time}時点）の実況・当日の予報","walk.indexFull":"お散歩指数 {score}／100","walk.roadApprox":"（路面約{t}℃）","walk.breakdown":"スコアの内訳（減点）","walk.whenTitle":"お散歩、いつがいい？","wx.today":"今日","wx.tomorrow":"明日","walk.tmrNA":"明日の予報はまだ取得できません","walk.timeAround":"{h}時ごろ","walk.timeRange":"{from}〜{to}時","walk.bestSuffix":"が気もちよさそう","walk.stayInToday":"今日はおうちでのんびり","walk.stayInTomorrow":"明日はおうちでのんびり","walk.axisMorning":"朝5時","walk.axis9":"9時","walk.axisNoon":"昼13時","walk.axis17":"17時","walk.axisNight":"夜22時","walk.legGood":"ごきげん","walk.legMid":"ほどほど","walk.legAvoid":"ひかえめに","batch.title":"まとめてお世話記録","batch.meal":"ごはん","batch.med":"お薬","batch.walk":"お散歩","batch.toilet":"トイレ","daily.habitToday":"今日の習慣","daily.memories":"思い出","daily.seeMore":"もっと見る","daily.recordLayer":"記録","daily.restockBadge":"買い足し {n}","daily.monthExpense":"今月の支出","daily.vsLastUp":"先月より増","daily.noRecYet":"記録はまだありません","daily.reset":"データを消して最初から","sample.banner":"サンプルデータで体験中です","sample.start":"サンプルを消してはじめる","reset.sampleTitle":"サンプルを消して、はじめますか？","reset.sampleBody":"サンプルの記録がすべて消えます。消したあと、そのまま登録画面になります。","reset.sampleBtn":"サンプルを消す","reset.title":"データをすべて消しますか？","reset.body":"記録・写真・家族の情報がすべて消え、元に戻せません。必要な場合は、先にバックアップを書き出してください。","reset.btn":"すべて消す","rectype.walk":"お散歩","rectype.feed":"ごはん","rectype.health":"健康記録","rectype.diary":"体調・日記","rectype.nursing":"授乳・ミルク","rectype.expense":"支出","rectype.period":"生理",
@@ -2283,9 +2283,9 @@ const MESSAGES={
     "home.dontMiss":"Don't miss","home.upcoming":"Coming up","home.quickCond":"How's everyone today?","home.quickCondBtn":"All good",
     "home.restock":"Time to restock","home.recap":"A little recap","home.statWeekCare":"Care this week","home.statTodayRoutine":"Today's routines",
     "rel.today":"Today","rel.overdue":"Overdue","rel.tomorrow":"Tomorrow","rel.inDays":"In {d} days","rel.dueInDays":"Due in {d} days","rel.overdueBy":"{d}d overdue",
-    "settings.title":"Settings","set.language":"Language","set.appearance":"Appearance",
+    "settings.title":"Settings","set.language":"Language","set.appearance":"Appearance","type.word":"DELETE","type.delHint":"Type \"{word}\" to continue","set.notifCalHint":"For a reminder you can't miss, add the event to your device calendar from its \"Add to calendar\" — the calendar's own notifications will reach you.","set.wxSummary":"{name} · {n} spots","set.wxNone":"No locations yet","viewer.zoomHint":"Double-tap the image to zoom",
     "theme.aria":"Theme","theme.system":"Match device","theme.light":"Light","theme.dark":"Dark",
-    "set.notifications":"Notifications","set.notifDesc":"Notifies you about schedules and birthdays while the app is open.","set.notifOn":"Notifications are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
+    "set.notifications":"Notifications","set.notifDesc":"Schedules and birthdays are announced only while the app is open. Nothing arrives while it's closed.","set.notifOn":"Notifications while open are on","set.notifDenied":"Notifications are off in your device settings","set.notifAllow":"Allow notifications",
     "set.weather":"Weather locations","set.weatherDesc":"Weather for home, family's place, the park — up to {n} spots.","set.weatherMax":"Up to {n} spots. Remove one to add more.","set.addLocation":"Add a location",
     "wx.first":"Top","wx.moveUp":"Move up","wx.moveDown":"Move down","wx.pinTop":"Pin to top","wx.rename":"Rename","wx.delete":"Delete","wx.namePlaceholder":"Place name (e.g. Home, Family's)","wx.currentLoc":"Current location","wx.locFallback":"Location","wx.maxReached":"Up to {n} locations","wx.geoUnavailable":"Location isn't available on this device","wx.geoFailed":"Couldn't get your current location","wx.addDesc":"Add home, family's place, a park… Search works too.","wx.useCurrent":"Use current location","wx.gettingLoc":"Getting location…","time.justNow":"just now","otd.titleY":"{y} years ago today","otd.titleMulti":"On this day","otd.when":"{y} yr ago · {name}","otd.me":"Me","viewer.memory":"Memory","viewer.cert":"Certificate","viewer.loading":"Loading…","viewer.notFound":"Image not found","viewer.delConfirm":"Delete this photo? This can't be undone.","viewer.delCancel":"Cancel","viewer.delOk":"Delete","viewer.del":"Delete","viewer.close":"Close","share.memBtn":"Share memory","share.memTitle":"Share this memory","share.memHint":"Save or share it as an image (with family or on social).","share.saveBtn":"Save / share image","share.fmtCard":"Card","share.fmtStory":"Tall (social)","toast.left":"Left","toast.right":"Right","toast.backupDoneN":"Backup exported 💾 ({n} photos)","toast.backupDone":"Backup exported 💾","toast.exportFail":"Couldn't export","toast.csvDone":"CSV exported","toast.fileReadFail":"Couldn't read this file","toast.restoreDoneN":"Restored 💾 ({n} photos)","toast.restoreDone":"Restored 💾","toast.notifOn":"Notifications enabled 🔔","toast.notifSettings":"Turn on notifications in device settings","toast.notifIosHint":"Add to Home Screen to use notifications","toast.notifUnavailable":"Notifications aren't available on this device","toast.confirmMailSent":"Confirmation email sent — open the link in it","toast.signedOut":"Signed out","toast.joinedFamily":"Joined the family 👨‍👩‍👧","toast.leftFamily":"Left the family space","toast.loggedNext":"✓ Logged. Next around {date} 🗓","toast.copied":"Copied — paste it anywhere 📋","toast.shareUnavailable":"Sharing isn't available — print or screenshot instead","toast.albumSelMax":"Up to {n} at a time","toast.photosMoved":"Moved {n} to \"{name}\" 📸","toast.photosLoading":"Loading photos… ({n})","toast.storagePartial":"Low storage — added up to {n}","toast.photosAdded":"Added {n} photos by date ({days} days) 📅","toast.noPhotosAdded":"No photos to add","toast.addedBang":"Added!","toast.bought":"{emoji} Bought! Next in about {days} days","toast.mealLoggedG":"Meal logged (~{g}g) 🍚","toast.mealLogged":"Meal logged 🍚","toast.imgCreateFail":"Couldn't create the image","toast.imgCreating":"Creating image…","toast.imgSaveHint":"Use \"Save image\" to save to your album 🖼️","toast.imgSaved":"Image saved 🖼️","toast.needBwBcs":"Enter weight, BCS and ME first","toast.foodSet":"Set \"{name}\" to {g}g/serving, {times}×/day 🍚","toast.mealLoggedKcal":"Logged (~{kcal} kcal) 🍚","toast.mealLogged2":"Meal logged 🍚","toast.nursingLogged":"Feeding logged ({side} {dur})","toast.milkLogged":"Formula logged ({ml}ml) 🍼","toast.walkOngoing":"A walk is already being recorded","toast.walkLogged":"Walk logged: {dur} · {dist} 🐾","toast.needAmount":"Enter an amount","toast.allowanceLogged":"Allowance logged","toast.expLogged":"Expense logged 💰","toast.expUpdated":"Expense updated 💰","toast.batchLogged":"Logged {emoji} {title} for {n} ✓","toast.addedBday":"Added 🎂","toast.icsDownloaded":"Calendar file downloaded 📅","wx.searchPlaceholder":"Search by place name","wx.search":"Search","wx.searching":"Searching…","wx.noResults":"No results. Try another place name.","wx.popPrefix":"pop. ","wx.dupHint":"Watch for same-named places. You can rename later.","wx.setupCta":"Add a location to see weather & walk tips","wx.refresh":"Refresh","jma.02":"Blizzard warning","jma.03":"Heavy rain warning","jma.04":"Flood warning","jma.05":"Storm warning","jma.06":"Heavy snow warning","jma.07":"High wave warning","jma.08":"Storm surge warning","jma.10":"Heavy rain advisory","jma.12":"Heavy snow advisory","jma.13":"Snowstorm advisory","jma.14":"Thunderstorm advisory","jma.15":"Gale advisory","jma.16":"High wave advisory","jma.17":"Snowmelt advisory","jma.18":"Flood advisory","jma.19":"Storm surge advisory","jma.20":"Dense fog advisory","jma.21":"Dry air advisory","jma.22":"Avalanche advisory","jma.23":"Low temperature advisory","jma.24":"Frost advisory","jma.25":"Icing advisory","jma.26":"Snow accretion advisory","jma.32":"Emergency blizzard warning","jma.33":"Emergency heavy rain warning","jma.35":"Emergency storm warning","jma.36":"Emergency heavy snow warning","jma.37":"Emergency high wave warning","jma.38":"Emergency storm surge warning","wx.loading":"Loading…",
     "wcode.clear":"Clear","wcode.mostlySunny":"Mostly sunny","wcode.partlyCloudy":"Partly cloudy","wcode.cloudy":"Cloudy","wcode.fog":"Fog","wcode.rimeFog":"Rime fog","wcode.drizzle":"Drizzle","wcode.heavyDrizzle":"Heavy drizzle","wcode.freezingDrizzle":"Freezing drizzle","wcode.lightRain":"Light rain","wcode.rain":"Rain","wcode.heavyRain":"Heavy rain","wcode.freezingRain":"Freezing rain","wcode.lightSnow":"Light snow","wcode.snow":"Snow","wcode.heavySnow":"Heavy snow","wcode.snowGrains":"Snow grains","wcode.showers":"Showers","wcode.heavyShowers":"Heavy showers","wcode.snowShowers":"Snow showers","wcode.thunder":"Thunderstorm","wcode.thunderHail":"Thunderstorm with hail","walk.adv.heatLabel":"Hold off for now","walk.adv.heatMsg":"Risk of heatstroke and paw burns. Go in the cool morning or evening.","walk.adv.thunderLabel":"Hold off for now","walk.adv.thunderMsg":"Thunderstorms or heavy rain likely. Wait until it settles.","walk.adv.rainLabel":"Watch for rain","walk.adv.rainMsg":"Wet ground is slippery and it gets cold. Keep it short and bring rain gear.","walk.adv.hotLabel":"Take care","walk.adv.hotMsg":"The ground is warm. Keep it short, choose shade, bring water.","walk.adv.coldLabel":"Cold warning","walk.adv.coldMsg":"Watch for icy ground and cold. Bundle up and keep it short.","walk.adv.mayRainLabel":"Rain likely","walk.adv.mayRainMsg":"Rain may start soon. Be ready to wrap up quickly.","walk.adv.okLabel":"Great for a walk","walk.adv.okMsg":"It's a relatively good time for a walk right now.","walk.f.heat":"Heat","walk.f.cold":"Cold","walk.f.mug":"Humidity & heat","walk.f.road":"Ground heat","walk.f.wind":"Wind","walk.f.uv":"UV","walk.f.dry":"Dryness","walk.wx.drizzle":"Drizzle","walk.wx.rain":"Rain","walk.wx.snow":"Snow","walk.wx.thunder":"Thunderstorm","walk.wx.fog":"Fog","walk.wx.heavyRain":"Heavy rain","walk.wx.rainLikely":"Rain likely","walk.wx.rainChance":"Chance of rain","walk.lvl.excellent":"Great for a walk","walk.lvl.good":"Pretty good","walk.lvl.fair":"So-so","walk.lvl.poor":"Not ideal","walk.lvl.bad":"Better to skip","wx.errGet":"Couldn't load","wx.retry":"Retry","wx.jma":"JMA","wx.jmaActive":"{name} in effect — take it easy on walks","walk.indexShort":"Walk score","walk.advShort.danger":"Keep walks light today","walk.advShort.warn":"A short walk is best","walk.advShort.ok":"Great for a walk","wx.feelsHumid":"Feels {f}℃ · {h}% humidity","wx.more":"Details","wx.less":"Close","wx.feels":"Feels","wx.road":"Ground","wx.nowObs":"Now (as of {time}) + today's forecast","walk.indexFull":"Walk score {score}/100","walk.roadApprox":"(ground ~{t}℃)","walk.breakdown":"Score breakdown (deductions)","walk.whenTitle":"When's a good time to walk?","wx.today":"Today","wx.tomorrow":"Tomorrow","walk.tmrNA":"Tomorrow's forecast isn't available yet","walk.timeAround":"around {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" looks nice","walk.stayInToday":"A cozy day in today","walk.stayInTomorrow":"A cozy day in tomorrow","walk.axisMorning":"5am","walk.axis9":"9am","walk.axisNoon":"1pm","walk.axis17":"5pm","walk.axisNight":"10pm","walk.legGood":"Great","walk.legMid":"OK","walk.legAvoid":"Avoid","batch.title":"Quick care log","batch.meal":"Meal","batch.med":"Meds","batch.walk":"Walk","batch.toilet":"Toilet","daily.habitToday":"Today's habits","daily.memories":"Memories","daily.seeMore":"See more","daily.recordLayer":"Records","daily.restockBadge":"Restock {n}","daily.monthExpense":"This month's spending","daily.vsLastUp":"Up vs last month","daily.noRecYet":"No records yet","daily.reset":"Erase data & start over","sample.banner":"You are trying sample data","sample.start":"Clear samples and start","reset.sampleTitle":"Clear the sample data and start?","reset.sampleBody":"All sample records will be erased. You'll go straight to the registration form.","reset.sampleBtn":"Clear sample data","reset.title":"Erase all your data?","reset.body":"All records, photos and family info will be erased and cannot be restored. Export a backup first if you need one.","reset.btn":"Erase everything","rectype.walk":"Walk","rectype.feed":"Meal","rectype.health":"Health record","rectype.diary":"Diary","rectype.nursing":"Feeding","rectype.expense":"Expense","rectype.period":"Period",
@@ -2378,9 +2378,9 @@ const MESSAGES={
     "home.dontMiss":"No te lo pierdas","home.upcoming":"Próximamente","home.quickCond":"¿Cómo están todos hoy?","home.quickCondBtn":"Todo bien",
     "home.restock":"Hora de reponer","home.recap":"Un pequeño resumen","home.statWeekCare":"Cuidados esta semana","home.statTodayRoutine":"Rutinas de hoy",
     "rel.today":"Hoy","rel.overdue":"Vencido","rel.tomorrow":"Mañana","rel.inDays":"En {d} días","rel.dueInDays":"Vence en {d} días","rel.overdueBy":"{d} d de retraso",
-    "settings.title":"Ajustes","set.language":"Idioma","set.appearance":"Apariencia",
+    "settings.title":"Ajustes","set.language":"Idioma","set.appearance":"Apariencia","type.word":"ELIMINAR","type.delHint":"Escribe «{word}» para continuar","set.notifCalHint":"Para un aviso que no puedes perderte, añade el evento al calendario de tu dispositivo desde «Añadir al calendario»: te llegarán los avisos del calendario.","set.wxSummary":"{name} · {n} lugares","set.wxNone":"Aún no hay lugares","viewer.zoomHint":"Toca dos veces la imagen para ampliar",
     "theme.aria":"Tema","theme.system":"Según el dispositivo","theme.light":"Claro","theme.dark":"Oscuro",
-    "set.notifications":"Notificaciones","set.notifDesc":"Te avisa de citas y cumpleaños mientras la app está abierta.","set.notifOn":"Notificaciones activadas","set.notifDenied":"Las notificaciones están desactivadas en los ajustes del dispositivo","set.notifAllow":"Permitir notificaciones",
+    "set.notifications":"Notificaciones","set.notifDesc":"Las citas y cumpleaños se avisan solo mientras la app está abierta. Con la app cerrada no llega nada.","set.notifOn":"Avisos con la app abierta: activados","set.notifDenied":"Las notificaciones están desactivadas en los ajustes del dispositivo","set.notifAllow":"Permitir notificaciones",
     "set.weather":"Ubicaciones del clima","set.weatherDesc":"Clima para casa, la casa de la familia, el parque — hasta {n} lugares.","set.weatherMax":"Hasta {n} lugares. Quita uno para añadir más.","set.addLocation":"Añadir una ubicación",
     "wx.first":"Arriba","wx.moveUp":"Subir","wx.moveDown":"Bajar","wx.pinTop":"Fijar arriba","wx.rename":"Renombrar","wx.delete":"Eliminar","wx.namePlaceholder":"Nombre del lugar (p. ej. Casa, De la familia)","wx.currentLoc":"Ubicación actual","wx.locFallback":"Ubicación","wx.maxReached":"Hasta {n} ubicaciones","wx.geoUnavailable":"La ubicación no está disponible en este dispositivo","wx.geoFailed":"No se pudo obtener tu ubicación actual","wx.addDesc":"Añade casa, la casa de la familia, un parque… También puedes buscar.","wx.useCurrent":"Usar ubicación actual","wx.gettingLoc":"Obteniendo ubicación…","time.justNow":"justo ahora","otd.titleY":"Hace {y} años, hoy","otd.titleMulti":"Un día como hoy","otd.when":"Hace {y} años · {name}","otd.me":"Yo","viewer.memory":"Recuerdo","viewer.cert":"Certificado","viewer.loading":"Cargando…","viewer.notFound":"No se encontró la imagen","viewer.delConfirm":"¿Eliminar esta foto? No se puede deshacer.","viewer.delCancel":"Cancelar","viewer.delOk":"Eliminar","viewer.del":"Eliminar","viewer.close":"Cerrar","share.memBtn":"Compartir recuerdo","share.memTitle":"Compartir este recuerdo","share.memHint":"Guárdalo o compártelo como imagen (con la familia o en redes).","share.saveBtn":"Guardar / compartir imagen","share.fmtCard":"Tarjeta","share.fmtStory":"Vertical (redes)","toast.left":"Izq.","toast.right":"Der.","toast.backupDoneN":"Copia exportada 💾 ({n} fotos)","toast.backupDone":"Copia exportada 💾","toast.exportFail":"No se pudo exportar","toast.csvDone":"CSV exportado","toast.fileReadFail":"No se pudo leer el archivo","toast.restoreDoneN":"Restaurado 💾 ({n} fotos)","toast.restoreDone":"Restaurado 💾","toast.notifOn":"Notificaciones activadas 🔔","toast.notifSettings":"Activa las notificaciones en los ajustes","toast.notifIosHint":"Añade a la pantalla de inicio para notificaciones","toast.notifUnavailable":"Las notificaciones no están disponibles","toast.confirmMailSent":"Correo de confirmación enviado — abre el enlace","toast.signedOut":"Sesión cerrada","toast.joinedFamily":"Te uniste a la familia 👨‍👩‍👧","toast.leftFamily":"Saliste del espacio familiar","toast.loggedNext":"✓ Registrado. Próximo hacia {date} 🗓","toast.copied":"Copiado — pégalo donde quieras 📋","toast.shareUnavailable":"No se puede compartir — imprime o captura","toast.albumSelMax":"Hasta {n} a la vez","toast.photosMoved":"{n} movidas a «{name}» 📸","toast.photosLoading":"Cargando fotos… ({n})","toast.storagePartial":"Poco espacio — se añadieron {n}","toast.photosAdded":"Añadidas {n} fotos por fecha ({days} días) 📅","toast.noPhotosAdded":"No había fotos para añadir","toast.addedBang":"¡Añadido!","toast.bought":"{emoji} ¡Comprado! Próximo en unos {days} días","toast.mealLoggedG":"Comida registrada (~{g}g) 🍚","toast.mealLogged":"Comida registrada 🍚","toast.imgCreateFail":"No se pudo crear la imagen","toast.imgCreating":"Creando imagen…","toast.imgSaveHint":"Usa «Guardar imagen» para guardarla 🖼️","toast.imgSaved":"Imagen guardada 🖼️","toast.needBwBcs":"Introduce antes peso, BCS y ME","toast.foodSet":"«{name}»: {g}g/toma, {times}×/día 🍚","toast.mealLoggedKcal":"Registrado (~{kcal} kcal) 🍚","toast.mealLogged2":"Comida registrada 🍚","toast.nursingLogged":"Toma registrada ({side} {dur})","toast.milkLogged":"Biberón registrado ({ml}ml) 🍼","toast.walkOngoing":"Ya se está registrando un paseo","toast.walkLogged":"Paseo registrado: {dur} · {dist} 🐾","toast.needAmount":"Introduce un importe","toast.allowanceLogged":"Paga registrada","toast.expLogged":"Gasto registrado 💰","toast.expUpdated":"Gasto actualizado 💰","toast.batchLogged":"{emoji} {title} registrado para {n} ✓","toast.addedBday":"Añadido 🎂","toast.icsDownloaded":"Archivo de calendario descargado 📅","wx.searchPlaceholder":"Buscar por nombre de lugar","wx.search":"Buscar","wx.searching":"Buscando…","wx.noResults":"Sin resultados. Prueba con otro nombre.","wx.popPrefix":"pob. ","wx.dupHint":"Cuidado con lugares homónimos. Puedes renombrar después.","wx.setupCta":"Añade una ubicación para ver el clima y consejos de paseo","wx.refresh":"Actualizar","jma.02":"Aviso de ventisca","jma.03":"Aviso de lluvia intensa","jma.04":"Aviso de inundación","jma.05":"Aviso de vendaval","jma.06":"Aviso de nevada intensa","jma.07":"Aviso de oleaje","jma.08":"Aviso de marejada","jma.10":"Aviso de lluvia","jma.12":"Aviso de nieve","jma.13":"Aviso de nieve y viento","jma.14":"Aviso de tormenta","jma.15":"Aviso de viento fuerte","jma.16":"Aviso de oleaje","jma.17":"Aviso de deshielo","jma.18":"Aviso de inundación","jma.19":"Aviso de marejada","jma.20":"Aviso de niebla densa","jma.21":"Aviso de sequedad","jma.22":"Aviso de aludes","jma.23":"Aviso de bajas temperaturas","jma.24":"Aviso de heladas","jma.25":"Aviso de engelamiento","jma.26":"Aviso de nieve acumulada","jma.32":"Aviso especial de ventisca","jma.33":"Aviso especial de lluvia intensa","jma.35":"Aviso especial de vendaval","jma.36":"Aviso especial de nevada","jma.37":"Aviso especial de oleaje","jma.38":"Aviso especial de marejada","wx.loading":"Cargando…",
     "wcode.clear":"Despejado","wcode.mostlySunny":"Mayormente soleado","wcode.partlyCloudy":"Parcialmente nublado","wcode.cloudy":"Nublado","wcode.fog":"Niebla","wcode.rimeFog":"Niebla helada","wcode.drizzle":"Llovizna","wcode.heavyDrizzle":"Llovizna intensa","wcode.freezingDrizzle":"Llovizna helada","wcode.lightRain":"Lluvia ligera","wcode.rain":"Lluvia","wcode.heavyRain":"Lluvia fuerte","wcode.freezingRain":"Lluvia helada","wcode.lightSnow":"Nieve ligera","wcode.snow":"Nieve","wcode.heavySnow":"Nieve intensa","wcode.snowGrains":"Granos de nieve","wcode.showers":"Chubascos","wcode.heavyShowers":"Chubascos fuertes","wcode.snowShowers":"Chubascos de nieve","wcode.thunder":"Tormenta","wcode.thunderHail":"Tormenta con granizo","walk.adv.heatLabel":"Mejor espera","walk.adv.heatMsg":"Riesgo de golpe de calor y quemaduras en las almohadillas. Sal en las horas frescas.","walk.adv.thunderLabel":"Mejor espera","walk.adv.thunderMsg":"Posible tormenta o lluvia fuerte. Espera a que se calme.","walk.adv.rainLabel":"Cuidado con la lluvia","walk.adv.rainMsg":"El suelo mojado resbala y enfría. Que sea corto y lleva impermeable.","walk.adv.hotLabel":"Ten cuidado","walk.adv.hotMsg":"El suelo está caliente. Corto, a la sombra y con agua.","walk.adv.coldLabel":"Aviso de frío","walk.adv.coldMsg":"Cuidado con el hielo y el frío. Abrígate y que sea corto.","walk.adv.mayRainLabel":"Posible lluvia","walk.adv.mayRainMsg":"Puede empezar a llover. Prepárate para terminar pronto.","walk.adv.okLabel":"Buen día de paseo","walk.adv.okMsg":"Ahora es un momento relativamente bueno para pasear.","walk.f.heat":"Calor","walk.f.cold":"Frío","walk.f.mug":"Bochorno","walk.f.road":"Calor del suelo","walk.f.wind":"Viento","walk.f.uv":"UV","walk.f.dry":"Sequedad","walk.wx.drizzle":"Llovizna","walk.wx.rain":"Lluvia","walk.wx.snow":"Nieve","walk.wx.thunder":"Tormenta","walk.wx.fog":"Niebla","walk.wx.heavyRain":"Lluvia fuerte","walk.wx.rainLikely":"Posible lluvia","walk.wx.rainChance":"Probabilidad de lluvia","walk.lvl.excellent":"Buen día de paseo","walk.lvl.good":"Bastante bien","walk.lvl.fair":"Normal","walk.lvl.poor":"Poco ideal","walk.lvl.bad":"Mejor evitar","wx.errGet":"No se pudo cargar","wx.retry":"Reintentar","wx.jma":"JMA","wx.jmaActive":"{name} activo — cuidado con los paseos","walk.indexShort":"Índice de paseo","walk.advShort.danger":"Paseos suaves hoy","walk.advShort.warn":"Mejor un paseo corto","walk.advShort.ok":"Buen día de paseo","wx.feelsHumid":"Sensación {f}℃ · {h}% humedad","wx.more":"Detalles","wx.less":"Cerrar","wx.feels":"Sensación","wx.road":"Suelo","wx.nowObs":"Ahora (a las {time}) + pronóstico de hoy","walk.indexFull":"Índice de paseo {score}/100","walk.roadApprox":"(suelo ~{t}℃)","walk.breakdown":"Desglose (penalizaciones)","walk.whenTitle":"¿Cuándo pasear?","wx.today":"Hoy","wx.tomorrow":"Mañana","walk.tmrNA":"El pronóstico de mañana aún no está disponible","walk.timeAround":"hacia las {h}:00","walk.timeRange":"{from}:00–{to}:00","walk.bestSuffix":" parece agradable","walk.stayInToday":"Hoy, tranquilos en casa","walk.stayInTomorrow":"Mañana, tranquilos en casa","walk.axisMorning":"5:00","walk.axis9":"9:00","walk.axisNoon":"13:00","walk.axis17":"17:00","walk.axisNight":"22:00","walk.legGood":"Genial","walk.legMid":"Regular","walk.legAvoid":"Evitar","batch.title":"Registro rápido","batch.meal":"Comida","batch.med":"Medicina","batch.walk":"Paseo","batch.toilet":"Baño","daily.habitToday":"Hábitos de hoy","daily.memories":"Recuerdos","daily.seeMore":"Ver más","daily.recordLayer":"Registros","daily.restockBadge":"Reponer {n}","daily.monthExpense":"Gasto de este mes","daily.vsLastUp":"Más que el mes pasado","daily.noRecYet":"Aún no hay registros","daily.reset":"Borrar datos y empezar de nuevo","sample.banner":"Estás probando datos de ejemplo","sample.start":"Borrar ejemplos y empezar","reset.sampleTitle":"¿Borrar los datos de ejemplo y empezar?","reset.sampleBody":"Se borrarán todos los registros de ejemplo. Después irás directamente al formulario de registro.","reset.sampleBtn":"Borrar ejemplos","reset.title":"¿Borrar todos tus datos?","reset.body":"Se borrarán todos los registros, fotos e información familiar y no se podrán recuperar. Exporta una copia de seguridad antes si la necesitas.","reset.btn":"Borrar todo","rectype.walk":"Paseo","rectype.feed":"Comida","rectype.health":"Registro de salud","rectype.diary":"Diario","rectype.nursing":"Lactancia","rectype.expense":"Gasto","rectype.period":"Periodo",
@@ -2473,9 +2473,9 @@ const MESSAGES={
     "home.dontMiss":"别错过","home.upcoming":"即将到来","home.quickCond":"今天大家怎么样？","home.quickCondBtn":"都很好",
     "home.restock":"该补货了","home.recap":"小结","home.statWeekCare":"本周照护","home.statTodayRoutine":"今天的日常",
     "rel.today":"今天","rel.overdue":"已逾期","rel.tomorrow":"明天","rel.inDays":"{d}天后","rel.dueInDays":"{d}天后到期","rel.overdueBy":"逾期{d}天",
-    "settings.title":"设置","set.language":"语言","set.appearance":"外观",
+    "settings.title":"设置","set.language":"语言","set.appearance":"外观","type.word":"删除","type.delHint":"输入「{word}」以继续","set.notifCalHint":"不想错过的日程，可从日程的「添加到日历」加入设备日历，通过日历的通知接收提醒。","set.wxSummary":"{name} · {n}个地点","set.wxNone":"尚未添加地点","viewer.zoomHint":"双击图片可放大",
     "theme.aria":"主题","theme.system":"跟随设备","theme.light":"浅色","theme.dark":"深色",
-    "set.notifications":"通知","set.notifDesc":"在应用打开时提醒日程和生日。","set.notifOn":"通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
+    "set.notifications":"通知","set.notifDesc":"仅在应用打开时提醒日程和生日。应用关闭时不会送达。","set.notifOn":"打开应用时的通知已开启","set.notifDenied":"通知在设备设置中已关闭","set.notifAllow":"允许通知",
     "set.weather":"天气地点","set.weatherDesc":"家、家人住处、公园的天气 — 最多{n}个地点。","set.weatherMax":"最多{n}个地点。删除一个再添加。","set.addLocation":"添加地点",
     "wx.first":"置顶","wx.moveUp":"上移","wx.moveDown":"下移","wx.pinTop":"固定到顶部","wx.rename":"重命名","wx.delete":"删除","wx.namePlaceholder":"地点名称（如 家、家人处）","wx.currentLoc":"当前位置","wx.locFallback":"地点","wx.maxReached":"最多{n}个地点","wx.geoUnavailable":"此设备无法使用定位","wx.geoFailed":"无法获取当前位置","wx.addDesc":"登记家、家人住处、公园等，也可搜索添加。","wx.useCurrent":"使用当前位置","wx.gettingLoc":"正在获取位置…","time.justNow":"刚刚","otd.titleY":"{y}年前的今天","otd.titleMulti":"这一天的回忆","otd.when":"{y}年前 · {name}","otd.me":"我","viewer.memory":"回忆","viewer.cert":"证明","viewer.loading":"加载中…","viewer.notFound":"未找到图片","viewer.delConfirm":"删除这张照片？无法恢复。","viewer.delCancel":"取消","viewer.delOk":"删除","viewer.del":"删除","viewer.close":"关闭","share.memBtn":"分享回忆","share.memTitle":"分享这个回忆","share.memHint":"可保存或作为图片分享（发给家人或社交平台）。","share.saveBtn":"保存 / 分享图片","share.fmtCard":"卡片","share.fmtStory":"竖版（社交）","toast.left":"左","toast.right":"右","toast.backupDoneN":"已导出备份 💾（含{n}张照片）","toast.backupDone":"已导出备份 💾","toast.exportFail":"导出失败","toast.csvDone":"已导出CSV","toast.fileReadFail":"无法读取此文件","toast.restoreDoneN":"已恢复 💾（{n}张照片）","toast.restoreDone":"已恢复 💾","toast.notifOn":"已开启通知 🔔","toast.notifSettings":"可在系统设置中开启通知","toast.notifIosHint":"添加到主屏幕后可使用通知","toast.notifUnavailable":"此设备无法使用通知","toast.confirmMailSent":"已发送确认邮件，请打开其中的链接","toast.signedOut":"已退出登录","toast.joinedFamily":"已加入家庭 👨‍👩‍👧","toast.leftFamily":"已退出家庭空间","toast.loggedNext":"✓ 已记录。下次约 {date} 🗓","toast.copied":"已复制，可粘贴到社交平台 📋","toast.shareUnavailable":"此设备无法分享，请打印或截图","toast.albumSelMax":"一次最多选择{n}张","toast.photosMoved":"已将{n}张移动到「{name}」📸","toast.photosLoading":"正在加载照片…（{n}张）","toast.storagePartial":"存储不足，仅添加了{n}张","toast.photosAdded":"已按日期添加{n}张照片（{days}天）📅","toast.noPhotosAdded":"没有可添加的照片","toast.addedBang":"已添加！","toast.bought":"{emoji} 已购买！下次约{days}天后","toast.mealLoggedG":"已记录用餐（约{g}g）🍚","toast.mealLogged":"已记录用餐 🍚","toast.imgCreateFail":"无法生成图片","toast.imgCreating":"正在生成图片…","toast.imgSaveHint":"点「保存图片」即可存到相册 🖼️","toast.imgSaved":"已保存图片 🖼️","toast.needBwBcs":"请先填写体重、BCS 和 ME","toast.foodSet":"已将「{name}」设为每次{g}g、每天{times}次 🍚","toast.mealLoggedKcal":"已记录（约{kcal}kcal）🍚","toast.mealLogged2":"已记录用餐 🍚","toast.nursingLogged":"已记录哺乳（{side} {dur}）","toast.milkLogged":"已记录奶量（{ml}ml）🍼","toast.walkOngoing":"已经在记录散步了","toast.walkLogged":"散步已记录：{dur}·{dist} 🐾","toast.needAmount":"请输入金额","toast.allowanceLogged":"已记录零花钱","toast.expLogged":"已记录支出 💰","toast.expUpdated":"已更新支出 💰","toast.batchLogged":"已为{n}只记录「{emoji} {title}」✓","toast.addedBday":"已添加 🎂","toast.icsDownloaded":"已下载日历文件 📅","wx.searchPlaceholder":"按地名搜索","wx.search":"搜索","wx.searching":"搜索中…","wx.noResults":"未找到。请尝试其他地名。","wx.popPrefix":"人口","wx.dupHint":"注意同名地点。名称之后可修改。","wx.setupCta":"添加地点以显示天气与遛狗建议","wx.refresh":"刷新","jma.02":"暴风雪警报","jma.03":"大雨警报","jma.04":"洪水警报","jma.05":"暴风警报","jma.06":"大雪警报","jma.07":"波浪警报","jma.08":"高潮警报","jma.10":"大雨注意报","jma.12":"大雪注意报","jma.13":"风雪注意报","jma.14":"雷电注意报","jma.15":"强风注意报","jma.16":"波浪注意报","jma.17":"融雪注意报","jma.18":"洪水注意报","jma.19":"高潮注意报","jma.20":"浓雾注意报","jma.21":"干燥注意报","jma.22":"雪崩注意报","jma.23":"低温注意报","jma.24":"霜冻注意报","jma.25":"结冰注意报","jma.26":"积雪注意报","jma.32":"暴风雪特别警报","jma.33":"大雨特别警报","jma.35":"暴风特别警报","jma.36":"大雪特别警报","jma.37":"波浪特别警报","jma.38":"高潮特别警报","wx.loading":"加载中…",
     "wcode.clear":"晴","wcode.mostlySunny":"晴","wcode.partlyCloudy":"局部多云","wcode.cloudy":"多云","wcode.fog":"雾","wcode.rimeFog":"雾凇","wcode.drizzle":"毛毛雨","wcode.heavyDrizzle":"强毛毛雨","wcode.freezingDrizzle":"冻毛毛雨","wcode.lightRain":"小雨","wcode.rain":"雨","wcode.heavyRain":"大雨","wcode.freezingRain":"冻雨","wcode.lightSnow":"小雪","wcode.snow":"雪","wcode.heavySnow":"大雪","wcode.snowGrains":"雪粒","wcode.showers":"阵雨","wcode.heavyShowers":"强阵雨","wcode.snowShowers":"阵雪","wcode.thunder":"雷雨","wcode.thunderHail":"雷雨伴冰雹","walk.adv.heatLabel":"暂时避免","walk.adv.heatMsg":"有中暑和烫伤肉垫的危险。请在清晨或傍晚凉爽时段。","walk.adv.thunderLabel":"暂时避免","walk.adv.thunderMsg":"可能有雷雨或大雨。请等天气平稳后再出门。","walk.adv.rainLabel":"注意下雨","walk.adv.rainMsg":"地面湿滑且易着凉。请缩短时间并带好雨具。","walk.adv.hotLabel":"请注意","walk.adv.hotMsg":"地面偏热。请缩短时间、选阴凉处并带水。","walk.adv.coldLabel":"注意寒冷","walk.adv.coldMsg":"注意路面结冰和着凉。请保暖并缩短时间。","walk.adv.mayRainLabel":"可能下雨","walk.adv.mayRainMsg":"可能快下雨了。请做好尽快结束的准备。","walk.adv.okLabel":"适合散步","walk.adv.okMsg":"现在比较适合散步。","walk.f.heat":"炎热","walk.f.cold":"寒冷","walk.f.mug":"闷热","walk.f.road":"路面高温","walk.f.wind":"风","walk.f.uv":"紫外线","walk.f.dry":"干燥","walk.wx.drizzle":"毛毛雨","walk.wx.rain":"雨","walk.wx.snow":"雪","walk.wx.thunder":"雷雨","walk.wx.fog":"雾","walk.wx.heavyRain":"大雨","walk.wx.rainLikely":"可能下雨","walk.wx.rainChance":"有降雨可能","walk.lvl.excellent":"适合散步","walk.lvl.good":"还不错","walk.lvl.fair":"一般","walk.lvl.poor":"不太适合","walk.lvl.bad":"建议少出门","wx.errGet":"加载失败","wx.retry":"重试","wx.jma":"气象厅","wx.jmaActive":"{name}发布中——遛狗请注意","walk.indexShort":"遛狗指数","walk.advShort.danger":"今天少出门散步","walk.advShort.warn":"建议短时间散步","walk.advShort.ok":"适合散步","wx.feelsHumid":"体感 {f}℃ · 湿度 {h}%","wx.more":"查看详情","wx.less":"收起","wx.feels":"体感","wx.road":"路面","wx.nowObs":"当前（{time}）实况 + 当日预报","walk.indexFull":"遛狗指数 {score}/100","walk.roadApprox":"(路面约{t}℃)","walk.breakdown":"分数明细（扣分）","walk.whenTitle":"什么时候适合遛狗？","wx.today":"今天","wx.tomorrow":"明天","walk.tmrNA":"明天的预报暂时还没有","walk.timeAround":"{h}点左右","walk.timeRange":"{from}–{to}点","walk.bestSuffix":"应该很舒服","walk.stayInToday":"今天在家悠闲一下","walk.stayInTomorrow":"明天在家悠闲一下","walk.axisMorning":"早5点","walk.axis9":"9点","walk.axisNoon":"午13点","walk.axis17":"17点","walk.axisNight":"晚22点","walk.legGood":"舒适","walk.legMid":"一般","walk.legAvoid":"避免","batch.title":"一键记录照顾","batch.meal":"吃饭","batch.med":"吃药","batch.walk":"散步","batch.toilet":"如厕","daily.habitToday":"今日习惯","daily.memories":"回忆","daily.seeMore":"查看更多","daily.recordLayer":"记录","daily.restockBadge":"补货 {n}","daily.monthExpense":"本月支出","daily.vsLastUp":"比上月增加","daily.noRecYet":"还没有记录","daily.reset":"清除数据并重新开始","sample.banner":"正在体验示例数据","sample.start":"清除示例并开始","reset.sampleTitle":"清除示例数据并开始吗？","reset.sampleBody":"所有示例记录都会被清除。清除后将直接进入注册画面。","reset.sampleBtn":"清除示例","reset.title":"要清除全部数据吗？","reset.body":"所有记录、照片和家人信息都会被清除，且无法恢复。如有需要，请先导出备份。","reset.btn":"全部清除","rectype.walk":"散步","rectype.feed":"吃饭","rectype.health":"健康记录","rectype.diary":"日记","rectype.nursing":"喂奶","rectype.expense":"支出","rectype.period":"生理",
@@ -2557,6 +2557,45 @@ const MESSAGES={
     "sheet.rangeDays":"{d}天","sheet.vetTitle":"{name} 的记录摘要","sheet.vetPeriod":"{from}～{to}（共{days}天）／制作日 {made}","sheet.basicInfo":"基本信息","sheet.species":"种类","sheet.birthday":"生日","sheet.microchip":"芯片","sheet.weightTrend":"体重变化","sheet.latest":"最近","sheet.periodChange":"期间增减","sheet.vsDate":"（与{date}相比）","sheet.noWeightHint":"无记录（在每日记录中填入体重即可查看变化）","sheet.toilet":"如厕","sheet.peeRate":"小便成功率","sheet.poopRate":"大便成功率","sheet.rateVal":"{rate}%（{total}次）","sheet.noRecord":"无记录","sheet.brAvgLabel":"大便硬度平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・状态","sheet.energyAvgLabel":"精神平均","sheet.energyAvgVal":"{avg}／5（{n}次）","sheet.symCount":"{label} × {n}次","sheet.medLeft":"剩余{n}天份","sheet.none":"无","sheet.careNext":"预防・疫苗等下次预定","sheet.noPlans":"无预定","sheet.recentCare":"最近的照顾","sheet.vetNote":"※本摘要基于主人的记录，并非诊断。","sheet.vetFileSuffix":"记录摘要","sheet.handTitlePet":"{name} 的照顾单","sheet.handTitleOther":"{name} 的交接单","sheet.handPeriodPet":"寄养・看护交接用","sheet.handPeriodOther":"外出共享用（今日状况）","sheet.madeOn":"／制作日 {date}","sheet.aboutPet":"关于这个孩子","sheet.profile":"档案","sheet.name":"名字","sheet.meals":"饮食","sheet.noFoodHint":"未登记（请口头告知）","sheet.todayChores":"今日照顾","sheet.noRecordsYet":"还没有记录","sheet.todayCond":"今日状况（身体）","sheet.hasRecord":"有记录","sheet.allergyCaution":"注意事项（过敏・禁忌）","sheet.nothingSpecial":"无特别","sheet.regularVet":"常去的动物医院","sheet.regularDoctor":"常去的医院","sheet.noHospHint":"未登记（可在“重要信息”中登记医院名称、电话、地址）","sheet.emergencyContact":"紧急联系人","sheet.noContactHint":"未登记（可在“重要信息”中登记）","sheet.familyNotes":"家人的留言","sheet.otherMemo":"其他备注","sheet.handNotePet":"※基于主人的记录的交接备注。详情请向家人确认。","sheet.handNoteOther":"※基于家人的记录的交接备注。详情请向家人确认。","sheet.careFileSuffix":"照顾单","sheet.handoverFileSuffix":"交接单","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h",
   },
 };
+// ── 天気の地点名の言語別解決 ──
+// 地点名は登録時の言語の文字列で保存され固定されていたため、表示言語に追随しなかった。
+// Open-Meteo Geocoding は language パラメータでその言語の地名を返すので、同じ地点を
+// 各言語で引き直し、検索結果の id（geoId）で同一地点を突き合わせて名前表を作る。
+// 座標の近さで同定する（旧データ移行用）。失敗時は null を返し、保存名の表示に留める。
+const WX_NAME_LANGS=["ja","en","es","zh"];
+const wxLabelFromRes=(res)=>res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");
+async function wxSearchNames(q,language,fetchImpl){
+  const r=await fetchImpl(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=20&language=${language}&format=json`);
+  const j=await r.json();
+  return Array.isArray(j.results)?j.results:[];
+}
+// entry={name,lat,lon,geoId?,names?,custom?} → {geoId,names} | null
+async function resolveWxNames(entry,fetchImpl){
+  if(!entry||entry.custom||entry.lat==null||entry.lon==null)return null;
+  if(entry.name==="現在地"||entry.name==="地点")return null; // センチネルは表示側で言語化する
+  const f=fetchImpl||((u)=>fetch(u));
+  const q=String(entry.name||"").split("・")[0].trim();
+  if(!q)return null;
+  let geoId=entry.geoId!=null?entry.geoId:null;
+  const names={...(entry.names||{})};
+  try{
+    if(geoId==null){
+      const list=await wxSearchNames(q,"ja",f);
+      const hit=list.find(x=>Math.abs(x.latitude-entry.lat)<0.08&&Math.abs(x.longitude-entry.lon)<0.08);
+      if(!hit)return null; // 近くに同名地点が無い＝手付けのラベル等。保存名のままにする
+      geoId=hit.id;
+      if(!names.ja)names.ja=wxLabelFromRes(hit);
+    }
+    for(const L of WX_NAME_LANGS){
+      if(names[L])continue;
+      const list=await wxSearchNames(q,L,f);
+      const hit=list.find(x=>x.id===geoId);
+      if(hit)names[L]=wxLabelFromRes(hit);
+    }
+  }catch(e){return null;}
+  if(geoId==null||!WX_NAME_LANGS.some(L=>names[L]))return null;
+  return {geoId,names};
+}
 function tr(lang,key,vars){
   let s=(MESSAGES[lang]&&MESSAGES[lang][key]);
   if(s==null&&lang!=="en")s=(MESSAGES.en&&MESSAGES.en[key]); // 未訳キーは英語にフォールバック（es 等の段階的追加用）
@@ -3233,6 +3272,15 @@ function App(){
   const[wxAddOpen,setWxAddOpen]=useState(false);   // 地点追加モーダル
   const[wxGeoLoading,setWxGeoLoading]=useState(false);
   const[wxRename,setWxRename]=useState(null);       // {id,val} 地点名の変更中
+  // 設定の段階的開示（初期は畳む。言語・テーマはピッカー、天気・色日数・クラウドはセクション畳み）
+  const[langOpen,setLangOpen]=useState(false);
+  const[themeOpen,setThemeOpen]=useState(false);
+  const[wxSetOpen,setWxSetOpen]=useState(false);
+  const[colorSetOpen,setColorSetOpen]=useState(false);
+  const[cbSetOpen,setCbSetOpen]=useState(false);
+  const[supplyEmojiOpen,setSupplyEmojiOpen]=useState(false); // 消耗品フォームの絵文字ピッカー
+  const[pvZoom,setPvZoom]=useState(1);             // 全画面写真ビューアの拡大率
+  const pvPinchRef=useRef(null);                   // ピンチ操作の開始距離・倍率
   const[walkOpen,setWalkOpen]=useState(false); // お散歩指数の内訳の開閉
   const[wxDetail,setWxDetail]=useState(false); // 天気カードの詳細の開閉（初期は要点だけ）
   const[walkDay,setWalkDay]=useState("today"); // 散歩タイム：今日/明日の切替
@@ -3323,6 +3371,16 @@ function App(){
   const[cbLastAt,setCbLastAt]=useState(()=>{try{return Number(JSON.parse(localStorage.getItem(CB_KEY)||"{}").lastAt)||0;}catch(e){return 0;}});
   const[cbCloudAt,setCbCloudAt]=useState(0); // クラウド側の最終バックアップ日時（取得できた時だけ）
   const[cbOffer,setCbOffer]=useState(null); // {stateJson,updatedAt,auto} 復元確認モーダルの対象
+  // 入力確認（取り返しのつかない操作だけ：メンバー削除・全消去・復元の上書き）。
+  // 日々の単一記録の削除には付けない。確認ワードはUI言語ごと（type.word）。
+  const[delWord,setDelWord]=useState("");
+  const[resetWord,setResetWord]=useState("");
+  const[cbWord,setCbWord]=useState("");
+  const[impWord,setImpWord]=useState("");
+  useEffect(()=>{setDelWord("");},[confirmDel]);
+  useEffect(()=>{setResetWord("");},[confirmReset]);
+  useEffect(()=>{setCbWord("");},[cbOffer]);
+  useEffect(()=>{if(!confirmRestore)setImpWord("");},[confirmRestore]);
   const cbHashRef=useRef(""); // 最後にアップロードした内容の指紋（無変更時の再送防止）
   const cbPromptRef=useRef(false); // サインイン時の復元提案は1セッション1回まで
   const saveCbMeta=(patch)=>{try{const cur=JSON.parse(localStorage.getItem(CB_KEY)||"{}");localStorage.setItem(CB_KEY,JSON.stringify({...cur,...patch}));}catch(e){}};
@@ -3675,8 +3733,33 @@ function App(){
   // 表示・保存用の地名（都道府県・市区町村を付けて取り違えを防ぐ）
   const placeParts=(res)=>[res.admin1,res.admin2,res.admin3].filter(v=>v&&v!==res.name);
   const placeLabel=(res)=>[res.name,...placeParts(res)].join("・");
-  // 保存済み地点名の表示：センチネル（現在地・地点）は言語化、それ以外は保存値をそのまま。
-  const locDisplayName=(l)=>{const n=l&&l.name;if(n==="現在地")return t("wx.currentLoc");if(n==="地点")return t("wx.locFallback");return n||t("wx.locFallback");};
+  // 保存済み地点名の表示：センチネル（現在地・地点）は言語化。手付けの名前（custom）は
+  // そのまま、それ以外は言語別の名前表（names）があれば表示言語で出し直す。
+  const locDisplayName=(l)=>{const n=l&&l.name;if(n==="現在地")return t("wx.currentLoc");if(n==="地点")return t("wx.locFallback");if(l&&!l.custom&&l.names&&l.names[lang])return l.names[lang];return n||t("wx.locFallback");};
+  // 地点名の言語別解決：名前表が未完成の地点を裏で引き直し、登録し直しなしで言語切替に追随させる。
+  // 失敗しても表示は保存名のまま（天気取得には一切触れない）。同一セッションでは再試行しない。
+  const wxResolveRef=useRef(new Set());
+  useEffect(()=>{
+    let alive=true;
+    const targets=weatherLocs.filter(l=>l&&!l.custom&&l.lat!=null&&(l.geoId==null||!l.names||WX_NAME_LANGS.some(x=>!l.names[x])));
+    for(const l of targets){
+      if(wxResolveRef.current.has(l.id))continue;
+      wxResolveRef.current.add(l.id);
+      resolveWxNames(l).then(res=>{
+        if(!alive||!res)return;
+        setWeatherLocs(cur=>{
+          const i=cur.findIndex(x=>x.id===l.id);
+          if(i<0)return cur;
+          const merged={...cur[i],geoId:res.geoId,names:{...(cur[i].names||{}),...res.names}};
+          if(cur[i].geoId===merged.geoId&&WX_NAME_LANGS.every(x=>(cur[i].names||{})[x]===merged.names[x]))return cur;
+          const arr=cur.slice();arr[i]=merged;
+          try{localStorage.setItem("loalife-weatherlocs",JSON.stringify(arr));}catch(e){}
+          return arr;
+        });
+      }).catch(()=>{});
+    }
+    return()=>{alive=false;};
+  },[weatherLocs]);
   // 人口表示（日中は「万」、他言語はロケール整形）。
   const wxPop=(n)=>{if(!n)return null;if(lang==="ja"||lang==="zh")return `${t("wx.popPrefix")}${n>=10000?`${Math.round(n/10000)}万`:n.toLocaleString()}`;return `${t("wx.popPrefix")}${n.toLocaleString(LOCALES[lang]||"en-US")}`;};
   // 地点リストの保存（端末ローカル）。選択中の地点は旧キー（loalife-weatherloc）にも同期し、互換性を保つ。
@@ -3690,13 +3773,16 @@ function App(){
     if(weatherLocs.length>=LOC_MAX){showFlash(t("wx.maxReached",{n:LOC_MAX}));return null;}
     const id="loc"+Date.now()+Math.floor(Math.random()*1000);
     const entry={id,name:((loc.name||t("wx.locFallback")).trim()||t("wx.locFallback")).slice(0,24),lat:loc.lat,lon:loc.lon};
+    if(loc.geoId!=null)entry.geoId=loc.geoId; // 検索結果のID（言語別名の突き合わせ用）
+    if(loc.names)entry.names=loc.names;
     setWeather(null);
     persistLocs([...weatherLocs,entry],id);
     return id;
   };
-  const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");if(addPlace({name:nm,lat:res.latitude,lon:res.longitude})){setWxResults(null);setWxQuery("");setWxAddOpen(false);}};
+  const pickPlace=(res)=>{const nm=res.name+(res.admin1&&res.admin1!==res.name?`・${res.admin1}`:"");if(addPlace({name:nm,lat:res.latitude,lon:res.longitude,geoId:res.id,names:{[lang]:nm}})){setWxResults(null);setWxQuery("");setWxAddOpen(false);}};
   const selectPlace=(id)=>{if(id===weatherLoc?.id)return;setWeather(null);setWeatherLocId(id);try{localStorage.setItem("loalife-weatherloc-sel",id);const sel=weatherLocs.find(l=>l.id===id);if(sel)localStorage.setItem("loalife-weatherloc",JSON.stringify({name:sel.name,lat:sel.lat,lon:sel.lon}));}catch(e){}};
-  const renamePlace=(id,name)=>{persistLocs(weatherLocs.map(l=>l.id===id?{...l,name:(name.trim()||l.name).slice(0,24)}:l));};
+  // 手で付けた名前は本人のラベル（自宅・実家など）なので custom とし、自動の言語別名で上書きしない。
+  const renamePlace=(id,name)=>{persistLocs(weatherLocs.map(l=>l.id===id?{...l,name:(name.trim()||l.name).slice(0,24),custom:true}:l));};
   const removePlace=(id)=>{const arr=weatherLocs.filter(l=>l.id!==id);const nextSel=(id===weatherLoc?.id)?(arr[0]?arr[0].id:null):weatherLocId;setWeather(null);persistLocs(arr,nextSel);};
   const movePlace=(id,dir)=>{const i=weatherLocs.findIndex(l=>l.id===id);if(i<0)return;const j=i+dir;if(j<0||j>=weatherLocs.length)return;const arr=[...weatherLocs];[arr[i],arr[j]]=[arr[j],arr[i]];persistLocs(arr);};
   const pinPlace=(id)=>{const i=weatherLocs.findIndex(l=>l.id===id);if(i<=0)return;const arr=[...weatherLocs];const[it]=arr.splice(i,1);arr.unshift(it);persistLocs(arr);};
@@ -4787,6 +4873,20 @@ function App(){
   },[cardScreenId]);
   // わたし設定を開くたび、絵文字グリッドと色パレットは畳んだ状態から始める。
   useEffect(()=>{if(mePicker){setMeEmojiOpen(false);setMeColorOpen(false);}},[mePicker]);
+  // モーダル土台：いずれかのオーバーレイが開いている間は背後のスクロールを止める。
+  // 個別モーダルに継ぎ当てせず、オーバーレイ要素の出現を監視して html/body に印を付ける。
+  useEffect(()=>{
+    const SEL=".yl-overlay,.yl-help-ov,.yl-hub-ov,.yl-drawer-ov,.yl-slide-ov,.yl-pv,.yl-ob,.yl-langfirst";
+    const apply=()=>{const open=!!document.querySelector(SEL);document.documentElement.classList.toggle("yl-lock",open);if(document.body)document.body.classList.toggle("yl-lock",open);};
+    apply();
+    if(typeof MutationObserver==="undefined"||!document.body)return undefined;
+    const mo=new MutationObserver(apply);
+    mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});
+    return()=>{mo.disconnect();document.documentElement.classList.remove("yl-lock");if(document.body)document.body.classList.remove("yl-lock");};
+  },[]);
+  // 写真ビューア：対象が変わったら拡大を戻す。消耗品フォーム：開くたびに絵文字ピッカーは畳む。
+  useEffect(()=>{setPvZoom(1);pvPinchRef.current=null;},[viewer&&viewer.id]);
+  useEffect(()=>{if(supplyEdit)setSupplyEmojiOpen(false);},[!!supplyEdit]);
   const cancelMemberEdit=()=>{if(editSnap&&profFormSnap()!==editSnap){setConfirmDiscardEdit(true);}else{setEditingId(null);}};
   const doDiscardEdit=()=>{setConfirmDiscardEdit(false);setEditingId(null);};
   // 名刺の専用画面を開く（メンバー詳細の「名刺」入口から）。
@@ -6237,6 +6337,8 @@ function App(){
         )}
 
         {adding&&(
+          <div className="yl-help-ov" onClick={cancelAdd}>
+          <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
           <div className="yl-petform">
             <div className="yl-petform-head"><span className="yl-petform-title">{t("member.addTitle")}</span><button type="button" className="yl-petform-x" onClick={cancelAdd} aria-label={t("common.cancel")}>×</button></div>
             <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(PET_EMOJIS[0]);setNewAvatar("");}}>🐾 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(PERSON_EMOJIS[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
@@ -6247,6 +6349,8 @@ function App(){
             <label className="yl-opt" style={{marginTop:10}}>誕生日（年は任意）<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
             {inHousehold&&<div style={{marginTop:10}}><VisibilityToggle value={newVisibility} onChange={setNewVisibility}/></div>}
             <button type="button" className="yl-petform-cancel" onClick={cancelAdd}>{t("common.cancel")}</button>
+          </div>
+          </div>
           </div>
         )}
 
@@ -6732,33 +6836,19 @@ function App(){
           <div className="yl-settings">
             <h2 className="yl-sec-title" style={{marginBottom:12}}>{t("settings.title")}</h2>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="globe" size={16}/> {t("set.language")}</h3>
-              <div className="yl-theme-seg" role="group" aria-label={t("set.language")}>
-                {[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"],["zh","简体中文","🇨🇳"]].map(([v,label,flag])=>(
-                  <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>setLang(v)} aria-pressed={lang===v}>
-                    <span aria-hidden="true">{flag}</span> <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="sun" size={16}/> {t("set.appearance")}</h3>
-              <div className="yl-theme-seg" role="group" aria-label={t("theme.aria")}>
-                {[["system",t("theme.system"),"phone"],["light",t("theme.light"),"sun"],["dark",t("theme.dark"),"moon"]].map(([v,label,ic])=>(
-                  <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>setTheme(v)} aria-pressed={theme===v}>
-                    <Icon name={ic} size={16}/> <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="bell" size={16}/> {t("set.notifications")}</h3>
               <p className="yl-set-desc">{t("set.notifDesc")}</p>
+              <p className="yl-set-desc">{t("set.notifCalHint")}</p>
               {notifPerm==="granted"?<p className="yl-set-ok"><Icon name="check" size={13}/> {t("set.notifOn")}</p>:notifPerm==="denied"?<p className="yl-set-warn">{t("set.notifDenied")}</p>:<button className="yl-addbtn sm" onClick={handleNotifRequest}>{t("set.notifAllow")}</button>}
             </section>
             <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="thermometer" size={16}/> {t("set.weather")}</h3>
-              <p className="yl-set-desc">{t("set.weatherDesc",{n:LOC_MAX})}</p>
+              <button type="button" className="yl-set-headbtn" onClick={()=>setWxSetOpen(o=>!o)} aria-expanded={wxSetOpen}>
+                <span className="yl-set-title" style={{margin:0}}><Icon name="thermometer" size={16}/> {t("set.weather")}</span>
+                <span className="yl-set-summary">{weatherLocs.length?t("set.wxSummary",{name:locDisplayName(weatherLocs[0]),n:weatherLocs.length}):t("set.wxNone")}</span>
+                <span className="yl-set-caret">{wxSetOpen?"▲":"▼"}</span>
+              </button>
+              {wxSetOpen&&(<>
+              <p className="yl-set-desc" style={{marginTop:8}}>{t("set.weatherDesc",{n:LOC_MAX})}</p>
               {weatherLocs.length>0&&<ul className="yl-wxmanage">{weatherLocs.map((l,i)=>(
                 <li key={l.id} className="yl-wxmrow">
                   {wxRename&&wxRename.id===l.id?(
@@ -6776,14 +6866,7 @@ function App(){
                 </li>
               ))}</ul>}
               {weatherLocs.length<LOC_MAX?<button className="yl-addbtn sm" onClick={()=>setWxAddOpen(true)}><Icon name="plus" size={14}/> {t("set.addLocation")}</button>:<p className="yl-set-desc">{t("set.weatherMax",{n:LOC_MAX})}</p>}
-            </section>
-            <section className="yl-set-sec">
-              <h3 className="yl-set-title"><Icon name="clock" size={16}/> {t("set.colorTime")}</h3>
-              <div className="yl-colordays">
-                <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> {t("set.colorWarn")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>{t("unit.dShort")}</span></label>
-                <label className="yl-colordays-field"><span className="yl-legend-dot alert"/> {t("set.colorAlert")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>{t("unit.dShort")}</span></label>
-              </div>
-              <p className="yl-set-desc" style={{marginTop:6}}>{t("set.colorNow")}{colorDays.warn}{t("set.colorDaySuffix")}<span className="yl-legend-dot warn"/>・{colorDays.alert}{t("set.colorDaySuffix")}<span className="yl-legend-dot alert"/></p>
+              </>)}
             </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="download" size={16}/> {t("set.backup")}</h3>
@@ -6794,7 +6877,8 @@ function App(){
                 {confirmRestore?(
                   <div className="yl-restore-confirm">
                     <p className="yl-set-warn" style={{margin:"0 0 8px"}}>{t("backup.restoreWarn")}</p>
-                    <label className="yl-btn-primary sm" style={{cursor:"pointer"}}><Icon name="folder" size={14}/> {t("backup.chooseFile")}<input type="file" accept="application/json,.json" style={{display:"none"}} onChange={importData}/></label>
+                    <div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={impWord} onChange={setImpWord} placeholder={t("type.word")}/></div>
+                    <label className={"yl-btn-primary sm"+(impWord.trim()!==t("type.word")?" yl-typecheck-off":"")} style={{cursor:"pointer"}}><Icon name="folder" size={14}/> {t("backup.chooseFile")}<input type="file" accept="application/json,.json" style={{display:"none"}} disabled={impWord.trim()!==t("type.word")} onChange={importData}/></label>
                     <button className="yl-btn-ghost sm" style={{marginLeft:8}} onClick={()=>setConfirmRestore(false)}>{t("common.stop")}</button>
                   </div>
                 ):(
@@ -6804,26 +6888,25 @@ function App(){
             </section>
             {FB_READY&&(
               <section className="yl-set-sec">
-                <h3 className="yl-set-title"><Icon name="shield" size={16}/> {t("cb.title")}</h3>
-                <p className="yl-set-desc">{t("cb.desc")}</p>
-                {!fireUser?(
-                  <>
-                    <p className="yl-set-desc" style={{marginTop:6}}>{t("cb.needSignIn")}</p>
+                <div className="yl-set-headrow">
+                  <button type="button" className="yl-set-headbtn" style={{flex:1,minWidth:0}} onClick={()=>setCbSetOpen(o=>!o)} aria-expanded={cbSetOpen}>
+                    <span className="yl-set-title" style={{margin:0}}><Icon name="shield" size={16}/> {t("cb.title")}</span>
+                    <span className="yl-set-summary">{!fireUser?t("cb.needSignIn"):cbStatus==="busy"?t("cb.statusBusy"):cbStatus==="toobig"?t("cb.statusTooBig"):cbStatus==="error"?t("cb.statusError"):(cbLastAt||cbCloudAt)?t("cb.statusLast",{date:fmtBackupDate(cbLastAt||cbCloudAt)}):cbEnabled?t("cb.statusNone"):t("cb.statusOff")}</span>
+                    <span className="yl-set-caret">{cbSetOpen?"▲":"▼"}</span>
+                  </button>
+                  {fireUser&&<button className={"yl-theme-opt"+(cbEnabled?" on":"")} style={{flex:"0 0 auto",width:"auto",minHeight:0,padding:"8px 14px"}} onClick={()=>toggleCloudBackup(!cbEnabled)} aria-pressed={cbEnabled} aria-label={t("cb.autoLabel")}>{cbEnabled?t("cb.on"):t("cb.off")}</button>}
+                </div>
+                {cbSetOpen&&(<>
+                  <p className="yl-set-desc" style={{marginTop:8}}>{t("cb.desc")}</p>
+                  {!fireUser?(
                     <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>{t("cb.signIn")}</button></div>
-                  </>
-                ):(
-                  <>
-                    <div className="yl-set-actions" style={{alignItems:"center",gap:10}}>
-                      <span style={{fontSize:13,fontWeight:800}}>{t("cb.autoLabel")}</span>
-                      <button className={"yl-theme-opt"+(cbEnabled?" on":"")} onClick={()=>toggleCloudBackup(!cbEnabled)} aria-pressed={cbEnabled}>{cbEnabled?t("cb.on"):t("cb.off")}</button>
-                    </div>
-                    <p className="yl-set-desc" style={{marginTop:6}}>{cbStatus==="busy"?t("cb.statusBusy"):cbStatus==="toobig"?t("cb.statusTooBig"):cbStatus==="error"?t("cb.statusError"):(cbLastAt||cbCloudAt)?t("cb.statusLast",{date:fmtBackupDate(cbLastAt||cbCloudAt)}):cbEnabled?t("cb.statusNone"):t("cb.statusOff")}</p>
+                  ):(
                     <div className="yl-set-actions">
                       <button className="yl-addbtn sm" onClick={()=>uploadBackup(true)}>{t("cb.now")}</button>
                       <button className="yl-addbtn sm" onClick={fetchCloudBackup}>{t("cb.restoreBtn")}</button>
                     </div>
-                  </>
-                )}
+                  )}
+                </>)}
               </section>
             )}
             {FB_READY&&(
@@ -6832,6 +6915,50 @@ function App(){
                 <div className="yl-set-actions"><button className="yl-addbtn sm" onClick={()=>setShowShareModal(true)}>{t("share.settings")}</button></div>
               </section>
             )}
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title"><Icon name="sun" size={16}/> {t("set.appearance")}</h3>
+              {(()=>{const cur=[["system",t("theme.system"),"phone"],["light",t("theme.light"),"sun"],["dark",t("theme.dark"),"moon"]].find(x=>x[0]===theme)||["system",t("theme.system"),"phone"];return(<>
+              <button type="button" className="yl-pickrow" onClick={()=>setThemeOpen(o=>!o)} aria-expanded={themeOpen}>
+                <Icon name={cur[2]} size={16}/> <span>{cur[1]}</span><span className="yl-set-caret">{themeOpen?"▲":"▼"}</span>
+              </button>
+              {themeOpen&&<div className="yl-theme-seg" style={{marginTop:10}} role="group" aria-label={t("theme.aria")}>
+                {[["system",t("theme.system"),"phone"],["light",t("theme.light"),"sun"],["dark",t("theme.dark"),"moon"]].map(([v,label,ic])=>(
+                  <button key={v} className={"yl-theme-opt"+(theme===v?" on":"")} onClick={()=>{setTheme(v);setThemeOpen(false);}} aria-pressed={theme===v}>
+                    <Icon name={ic} size={16}/> <span>{label}</span>
+                  </button>
+                ))}
+              </div>}
+              </>);})()}
+            </section>
+            <section className="yl-set-sec">
+              <h3 className="yl-set-title"><Icon name="globe" size={16}/> {t("set.language")}</h3>
+              {(()=>{const langs=[["ja","日本語","🇯🇵"],["en","English","🇺🇸"],["es","Español","🇪🇸"],["zh","简体中文","🇨🇳"]];const cur=langs.find(x=>x[0]===lang)||langs[0];return(<>
+              <button type="button" className="yl-pickrow" onClick={()=>setLangOpen(o=>!o)} aria-expanded={langOpen}>
+                <span aria-hidden="true">{cur[2]}</span> <span>{cur[1]}</span><span className="yl-set-caret">{langOpen?"▲":"▼"}</span>
+              </button>
+              {langOpen&&<div className="yl-theme-seg" style={{marginTop:10}} role="group" aria-label={t("set.language")}>
+                {langs.map(([v,label,flag])=>(
+                  <button key={v} className={"yl-theme-opt"+(lang===v?" on":"")} onClick={()=>{setLang(v);setLangOpen(false);}} aria-pressed={lang===v}>
+                    <span aria-hidden="true">{flag}</span> <span>{label}</span>
+                  </button>
+                ))}
+              </div>}
+              </>);})()}
+            </section>
+            <section className="yl-set-sec">
+              <button type="button" className="yl-set-headbtn" onClick={()=>setColorSetOpen(o=>!o)} aria-expanded={colorSetOpen}>
+                <span className="yl-set-title" style={{margin:0}}><Icon name="clock" size={16}/> {t("set.colorTime")}</span>
+                <span className="yl-set-summary">{colorDays.warn}{t("unit.dShort")}・{colorDays.alert}{t("unit.dShort")}</span>
+                <span className="yl-set-caret">{colorSetOpen?"▲":"▼"}</span>
+              </button>
+              {colorSetOpen&&(<>
+              <div className="yl-colordays" style={{marginTop:8}}>
+                <label className="yl-colordays-field"><span className="yl-legend-dot warn"/> {t("set.colorWarn")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={colorDays.warn} onChange={e=>{const w=Math.max(1,parseInt(e.target.value||"1",10));persistColorDays({warn:w,alert:Math.max(w+1,colorDays.alert)});}}/>{t("unit.dShort")}</span></label>
+                <label className="yl-colordays-field"><span className="yl-legend-dot alert"/> {t("set.colorAlert")}<span className="yl-colordays-inp"><input type="number" inputMode="numeric" min="2" className="yl-health-num" value={colorDays.alert} onChange={e=>{const a=Math.max(2,parseInt(e.target.value||"2",10));persistColorDays({warn:Math.min(colorDays.warn,a-1),alert:a});}}/>{t("unit.dShort")}</span></label>
+              </div>
+              <p className="yl-set-desc" style={{marginTop:6}}>{t("set.colorNow")}{colorDays.warn}{t("set.colorDaySuffix")}<span className="yl-legend-dot warn"/>・{colorDays.alert}{t("set.colorDaySuffix")}<span className="yl-legend-dot alert"/></p>
+              </>)}
+            </section>
             <section className="yl-set-sec">
               <h3 className="yl-set-title"><Icon name="note" size={16}/> {t("set.about")}</h3>
               <div className="yl-set-actions">
@@ -8198,7 +8325,7 @@ function App(){
         </div>
       )}
       {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><div className="yl-detailfields"><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
-      {viewer&&<div className="yl-overlay" onClick={()=>setViewer(null)}><div className="yl-modal photo" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{viewer.isMemory?t("viewer.memory"):t("viewer.cert")}</h3>{viewer.loading?<p className="yl-loading">{t("viewer.loading")}</p>:viewer.src?<img className="yl-photo-img" src={viewer.src} alt={viewer.isMemory?t("viewer.memory"):t("viewer.cert")}/>:<p className="yl-empty">{t("viewer.notFound")}</p>}{viewer.confirming?<><p className="yl-modal-body" style={{margin:"0 0 12px"}}>{t("viewer.delConfirm")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-modal-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div></div>}
+      {viewer&&<div className="yl-pv" role="dialog" aria-label={viewer.isMemory?t("viewer.memory"):t("viewer.cert")}><div className="yl-pv-head"><span className="yl-pv-title">{viewer.isMemory?t("viewer.memory"):t("viewer.cert")}</span><button className="yl-pv-close" onClick={()=>setViewer(null)} aria-label={t("viewer.close")}>×</button></div>{viewer.loading?<p className="yl-loading" style={{color:"#FFF7E8"}}>{t("viewer.loading")}</p>:viewer.src?<div className={"yl-pv-scroll"+(pvZoom>1?" zoomed":"")} onDoubleClick={()=>setPvZoom(z=>z>1?1:2.5)}><img className="yl-pv-img" src={viewer.src} alt={viewer.isMemory?t("viewer.memory"):t("viewer.cert")} style={pvZoom>1?{width:(pvZoom*100)+"%"}:undefined} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setPvZoom(z=>Math.min(4,Math.max(1,z*(e.deltaY<0?1.15:0.87))));}}} onTouchStart={e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pvPinchRef.current={d:Math.hypot(dx,dy),z:pvZoom};}}} onTouchMove={e=>{if(e.touches.length===2&&pvPinchRef.current){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.hypot(dx,dy);if(pvPinchRef.current.d>0)setPvZoom(Math.min(4,Math.max(1,pvPinchRef.current.z*d/pvPinchRef.current.d)));}}} onTouchEnd={()=>{pvPinchRef.current=null;}}/></div>:<p className="yl-empty" style={{color:"#FFF7E8"}}>{t("viewer.notFound")}</p>}{viewer.src&&<p className="yl-pv-hint">{t("viewer.zoomHint")}</p>}{viewer.confirming?<><p className="yl-pv-confirm">{t("viewer.delConfirm")}</p><div className="yl-pv-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-pv-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div>}
       {shareMemory&&(()=>{const it=shareMemory.item;const sp=it?spaces.find(s=>s.id===it.space):null;const dateStr=it&&it.date?fmtFullDateLoc(it.date,lang):"";const cap=it?(it.note||(it.title&&it.title!=="思い出"?it.title:"")):"";const who=it?(it.space==="me"?(meName||t("otd.me")):(nameOf(it.space)||t("otd.me"))):"";return(
         <div className="yl-overlay" onClick={()=>setShareMemory(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <h3 className="yl-modal-title">{t("share.memTitle")}</h3>
@@ -8439,7 +8566,7 @@ function App(){
         <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色 <button type="button" className="yl-colorpick-btn" onClick={()=>setMeColorOpen(o=>!o)} aria-expanded={meColorOpen}><span className="yl-colordot" style={{background:colorOf("me")}}/><span className="yl-colorpick-caret">{meColorOpen?"▲":"▼"}</span></button></p>{meColorOpen&&<div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>{persistMeColor(col);setMeColorOpen(false);}} aria-label={t("a11y.pickColor")}/>)}</div>}
         <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
       {confirmDiscardAdd&&<div className="yl-overlay" onClick={()=>setConfirmDiscardAdd(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("member.addTitle")}</h3><p className="yl-modal-body">{t("member.discardAddBody")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDiscardAdd(false)}>{t("member.discardKeep")}</button><button className="yl-modal-del" onClick={doCancelAdd}>{t("member.discardDo")}</button></div></div></div>}
-      {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{t("member.deleteConfirm",{name:confirmDel.name})}</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?t("member.deleteConfirmRecords",{n}):t("member.deleteConfirmBody");})()}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>removeMember(confirmDel.id)}>{t("member.deleteDo")}</button></div></div></div>}
+      {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{t("member.deleteConfirm",{name:confirmDel.name})}</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?t("member.deleteConfirmRecords",{n}):t("member.deleteConfirmBody");})()}</p><div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={delWord} onChange={setDelWord} placeholder={t("type.word")}/></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>{t("common.cancel")}</button><button className="yl-modal-del" disabled={delWord.trim()!==t("type.word")} onClick={()=>removeMember(confirmDel.id)}>{t("member.deleteDo")}</button></div></div></div>}
       {lifeDraft&&(
         <div className="yl-overlay" onClick={()=>setLifeDraft(null)}>
           <div className="yl-modal edit life" onClick={e=>e.stopPropagation()}>
@@ -9056,8 +9183,8 @@ function App(){
           <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>あとで</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>プロフィールを設定</button></div>
         </div></div>
       );})()}
-      {cbOffer&&<div className="yl-overlay" onClick={()=>setCbOffer(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">☁️</div><h3 className="yl-modal-title">{t(cbOffer.auto?"cb.foundTitle":"cb.restoreTitle")}</h3><p className="yl-modal-body">{t(cbOffer.auto?"cb.foundBody":"cb.restoreBody",{date:fmtBackupDate(cbOffer.updatedAt)})}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCbOffer(null)}>{t("common.cancel")}</button><button className="yl-btn-primary" onClick={applyCloudRestore}>{t("cb.doRestore")}</button></div></div></div>}
-      {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="alert" size={30}/></div><h3 className="yl-modal-title">{t(sampleMode?"reset.sampleTitle":"reset.title")}</h3><p className="yl-modal-body">{t(sampleMode?"reset.sampleBody":"reset.body")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>{setConfirmReset(false);resetApp(sampleMode?1:0);}}>{t(sampleMode?"reset.sampleBtn":"reset.btn")}</button></div></div></div>}
+      {cbOffer&&<div className="yl-overlay" onClick={()=>setCbOffer(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">☁️</div><h3 className="yl-modal-title">{t(cbOffer.auto?"cb.foundTitle":"cb.restoreTitle")}</h3><p className="yl-modal-body">{t(cbOffer.auto?"cb.foundBody":"cb.restoreBody",{date:fmtBackupDate(cbOffer.updatedAt)})}</p>{!cbOffer.auto&&<div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={cbWord} onChange={setCbWord} placeholder={t("type.word")}/></div>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCbOffer(null)}>{t("common.cancel")}</button><button className="yl-btn-primary" disabled={!cbOffer.auto&&cbWord.trim()!==t("type.word")} onClick={applyCloudRestore}>{t("cb.doRestore")}</button></div></div></div>}
+      {confirmReset&&<div className="yl-overlay" onClick={()=>setConfirmReset(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji"><Icon name="alert" size={30}/></div><h3 className="yl-modal-title">{t(sampleMode?"reset.sampleTitle":"reset.title")}</h3><p className="yl-modal-body">{t(sampleMode?"reset.sampleBody":"reset.body")}</p>{!sampleMode&&<div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={resetWord} onChange={setResetWord} placeholder={t("type.word")}/></div>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmReset(false)}>{t("common.cancel")}</button><button className="yl-modal-del" disabled={!sampleMode&&resetWord.trim()!==t("type.word")} onClick={()=>{setConfirmReset(false);resetApp(sampleMode?1:0);}}>{t(sampleMode?"reset.sampleBtn":"reset.btn")}</button></div></div></div>}
       {calPicker&&(()=>{
         const it=calPicker.item;
         const memberName=it?nameOf(it.space):"";
@@ -9129,7 +9256,7 @@ function App(){
         <div className="yl-overlay" onClick={()=>setSupplyEdit(null)}>
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{supplyEdit.id?"ストックを編集":"ストックを追加"}</h3>
-            <div className="yl-routine-emojirow">{SUPPLY_EMOJIS.map(e=><button key={e} className={"yl-emoji"+(supplyEdit.emoji===e?" on":"")} onClick={()=>setSupplyEdit(p=>({...p,emoji:e}))}>{e}</button>)}</div>
+            <div style={{marginBottom:12}}><button type="button" className="yl-emoji-current" onClick={()=>setSupplyEmojiOpen(o=>!o)} aria-expanded={supplyEmojiOpen}>{supplyEdit.emoji}<span className="yl-colorpick-caret">{supplyEmojiOpen?"▲":"▼"}</span></button>{supplyEmojiOpen&&<div className="yl-emoji-grid" style={{marginTop:8}}>{SUPPLY_EMOJIS.map(e=><button key={e} type="button" className={"yl-emoji-pick"+(supplyEdit.emoji===e?" on":"")} onClick={()=>{setSupplyEdit(p=>({...p,emoji:e}));setSupplyEmojiOpen(false);}}>{e}</button>)}</div>}</div>
             <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={t("supply.namePh")}/>
             <div className="yl-optrow">
               <label className="yl-opt">最後に買った日<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
