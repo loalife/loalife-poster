@@ -1555,6 +1555,65 @@ const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);ret
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
 const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
+// ─── 記録者（家族共有：誰が記録したか） ─────────────────────────────
+// 記録者情報はアイテム自身に持つ（byUid = 記録したアカウントの uid、byName = その時点の
+// 表示名のスナップショット）。users/{uid} は本人のみ読み取り可のルールのため、他の家族の
+// 表示名をアカウント側から引くことはできない。家族ノートの author と同じ
+// 「記録に名前を埋める」方式に揃える。旧データ（byUid/byName が無い共有記録）は
+// ownerUid（Firestore 保存時に必ず書かれる作成者 uid）を記録者として扱い、
+// それも無いものは記録者なし（表示側で「家族」にフォールバックする）。
+const recorderUidOf=(it)=>{if(!it||typeof it!=="object")return null;return it.byUid||it.ownerUid||null;};
+// ISO日付（YYYY-MM-DD）の正午のミリ秒。日付だけの記録の並び順用（TZずれで日が動かないよう正午）。
+const dayNoonMs=(s)=>{if(!s||typeof s!=="string")return 0;const[y,m,d]=s.split("-").map(Number);if(!y||!m||!d)return 0;const dt=new Date(y,m-1,d,12);return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d?dt.getTime():0;};
+// 家族フィードの対象種別（単発の記録ログ）。ケア/予定の完了・服薬は別経路で足す。
+const FAM_FEED_LOG_TYPES=["walk","feed","toilet","diary","health","memory","nursing","milestone"];
+// 家族の記録フィードを組み立てる純粋関数。
+//   items: 全アイテム / sharedIds: 「共有」設定のメンバーIDの Set（この子たちの記録だけが対象）
+//   sinceIso..todayIso の日付範囲（ISO文字列の比較）で絞り、新しい順に limit 件まで。
+// 各エントリ: {key,space,kind,date,ts,hasTime,seg,itemId,title,foodName,name,byUid,byName}
+//   seg は遷移先セグメント（ログ系="record"、ケア/予定の完了="manage"）。
+//   記録者は byUid/byName。服薬は takenBy[日付]、ケア完了は lastBy* を優先し、
+//   無ければアイテムの記録者にフォールバックする（旧データでも表示が破綻しない）。
+//   hasTime は ts が実時刻（createdAt 等）由来の時だけ true。日付のみ由来の正午は
+//   時刻として表示しない（実態と違う時刻を見せないため）。
+const buildFamilyFeed=(items,sharedIds,sinceIso,todayIso,limit=40)=>{
+  const inWin=(d)=>typeof d==="string"&&d>=sinceIso&&d<=todayIso;
+  const out=[];
+  (items||[]).forEach(it=>{
+    if(!it||!sharedIds||!sharedIds.has(it.space))return;
+    const byUid=recorderUidOf(it),byName=it.byName||null;
+    if(FAM_FEED_LOG_TYPES.includes(it.type)){
+      if(!inWin(it.date))return;
+      let ts=it.createdAt||0,hasTime=!!it.createdAt;
+      if(it.type==="walk"){ts=it.start||it.createdAt||0;hasTime=!!(it.start||it.createdAt);}
+      if(!ts){ts=dayNoonMs(it.date);hasTime=false;}
+      out.push({key:"lg:"+it.id,space:it.space,kind:it.type,date:it.date,ts,hasTime,seg:"record",itemId:it.id,title:it.title||"",foodName:it.foodName||"",name:"",byUid,byName});
+      return;
+    }
+    if(it.type==="medcourse"){
+      (it.taken||[]).forEach(d=>{
+        if(!inWin(d))return;
+        const tb=(it.takenBy&&typeof it.takenBy==="object")?it.takenBy[d]:null;
+        // 服薬は「その日に押した人」が分かる場合だけ名前を持つ。takenBy が無い旧データで
+        // コース作成者の名前を出すと「その人があげた」ように見えてしまう（実態と不一致）
+        // ため、記録者なし（表示側で「家族」）にする。
+        out.push({key:"med:"+it.id+":"+d,space:it.space,kind:"medcourse",date:d,ts:(tb&&tb.at)||dayNoonMs(d),hasTime:!!(tb&&tb.at),seg:"record",itemId:it.id,title:"",foodName:"",name:it.name||"",byUid:(tb&&tb.uid)||null,byName:(tb&&tb.name)||null});
+      });
+      return;
+    }
+    if(it.type==="care"||it.type==="event"){
+      // 周期ケアの完了は lastDone / lastDoneAt、単発の完了は done + completedAt が根拠。
+      if(it.lastDone&&inWin(it.lastDone)){
+        out.push({key:"done:"+it.id+":"+it.lastDone,space:it.space,kind:"done",date:it.lastDone,ts:it.lastDoneAt||dayNoonMs(it.lastDone),hasTime:!!it.lastDoneAt,seg:"manage",itemId:it.id,title:it.title||"",foodName:"",name:"",byUid:it.lastByUid||byUid,byName:it.lastByName||byName});
+      }else if(it.done&&it.completedAt){
+        const d=isoOf(it.completedAt);
+        if(inWin(d))out.push({key:"done:"+it.id+":"+d,space:it.space,kind:"done",date:d,ts:it.completedAt,hasTime:true,seg:"manage",itemId:it.id,title:it.title||"",foodName:"",name:"",byUid:it.lastByUid||byUid,byName:it.lastByName||byName});
+      }
+    }
+  });
+  out.sort((a,b)=>(b.ts-a.ts)||(a.key<b.key?-1:a.key>b.key?1:0));
+  return out.slice(0,limit);
+};
 // ─── 写真の家族共有（transport 抽象化） ─────────────────────────────
 // 共有コピーの仕様は公開名刺と同じ（最大辺 480px・JPEG 品質 0.75）。端末内の原本は
 // そのまま残し、共有用に小さくしたコピーだけを送る（文案の「共有用に小さくした画像」）。
@@ -2725,6 +2784,7 @@ const MESSAGES={
     "ob.value1":"📝 毎日の記録：食事・散歩・健康・予定を、家族みんな分まとめて","ob.value2":"🆘 もしもの備え：迷子ポスターと緊急カードが、登録情報からすぐ作れる","ob.value3":"👨‍👩‍👧 家族で共有：招待した家族と、記録を分け合える",
     "tour.headseg.title":"「毎日」と「管理」で切り替え","tour.headseg.body":"上のタブで切り替え。毎日＝その日の記録、管理＝ケアや予定。","tour.fab.title":"記録はここから","tour.fab.body":"右下の＋から、予定・ケア・ごはん・体重などを記録できます。","tour.cal.title":"カレンダー","tour.cal.body":"家族の予定が一覧に。日付タップでふりかえり。","tour.home.title":"家族ごとに","tour.home.body":"家族をタップでその子のページへ。上の一覧で切り替えもできます。","coach.cal.title":"日付をタップ","coach.cal.body":"色つきドットはその日の予定。タップでふりかえり。","coach.record.title":"からだ・ようすを記録","coach.record.body":"右下の＋から、体重・体調・ごはん・日記を記録。","coach.manage.title":"毎日のお世話・予定","coach.manage.body":"やることや予定はここに。「やった」で経過がわかる。","tour.next":"次へ","tour.skip":"スキップ","common.ok":"OK",
     "sheet.rangeDays":"{d}日","sheet.vetTitle":"{name} の記録サマリー","sheet.vetPeriod":"{from}〜{to}（{days}日間）／作成日 {made}","sheet.basicInfo":"基本情報","sheet.species":"種別","sheet.birthday":"誕生日","sheet.microchip":"マイクロチップ","sheet.weightTrend":"体重の推移","sheet.latest":"直近","sheet.periodChange":"期間の増減","sheet.vsDate":"（{date}比）","sheet.noWeightHint":"記録なし（毎日の記録に体重を入れると推移が出ます）","sheet.toilet":"トイレ","sheet.peeRate":"おしっこ成功率","sheet.poopRate":"うんち成功率","sheet.rateVal":"{rate}%（{total}回）","sheet.noRecord":"記録なし","sheet.brAvgLabel":"うんちの硬さ平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・体調","sheet.energyAvgLabel":"元気の平均","sheet.energyAvgVal":"{avg}／5（{n}回）","sheet.symCount":"{label} × {n}回","sheet.medLeft":"のこり{n}日分","sheet.none":"なし","sheet.careNext":"予防・ワクチン等の次回予定","sheet.noPlans":"予定なし","sheet.recentCare":"最近のお世話","sheet.vetNote":"※本サマリーは飼い主の記録に基づくもので、診断ではありません。","sheet.vetFileSuffix":"記録サマリー","sheet.handTitlePet":"{name} のお世話シート","sheet.handTitleOther":"{name} の引き継ぎシート","sheet.handPeriodPet":"お預け・お留守番の引き継ぎ用","sheet.handPeriodOther":"お預け・共有用（今日のようす）","sheet.madeOn":"／作成日 {date}","sheet.aboutPet":"この子について","sheet.profile":"プロフィール","sheet.name":"名前","sheet.meals":"ごはん","sheet.noFoodHint":"登録なし（口頭で共有してください）","sheet.todayChores":"今日のお世話","sheet.noRecordsYet":"まだ記録がありません","sheet.todayCond":"今日のようす（体調）","sheet.hasRecord":"記録あり","sheet.allergyCaution":"気をつけること（アレルギー・注意）","sheet.nothingSpecial":"特になし","sheet.regularVet":"かかりつけ動物病院","sheet.regularDoctor":"かかりつけ病院","sheet.noHospHint":"未登録（「大切な情報」に病院名・電話・住所を登録できます）","sheet.emergencyContact":"緊急連絡先","sheet.noContactHint":"未登録（「大切な情報」に登録できます）","sheet.familyNotes":"家族からの伝達","sheet.otherMemo":"その他メモ","sheet.handNotePet":"※飼い主の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.handNoteOther":"※ご家族の記録に基づく引き継ぎメモです。詳しいことはご家族にご確認ください。","sheet.careFileSuffix":"お世話シート","sheet.handoverFileSuffix":"引き継ぎシート","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"病院用サマリー","sum.title":"{name} の病院サマリー","sum.fileSuffix":"病院サマリー","sum.firstThings":"まず伝えること","sum.shareBtn":"リンクで共有","sum.shareTitle":"サマリーをリンクで共有","sum.shareDesc":"リンクを知っている人は、サインインなしで、選んだ項目だけを見られます。有効期限を過ぎると自動で見られなくなります。リンクはいつでも取り消せます。","sum.needSignIn":"リンクを作るにはサインインが必要です。設定の「家族で共有」からサインインしてください。","sum.includeTitle":"リンクに含める項目","sum.sec.basic":"基本情報","sum.sec.caution":"まず伝えること（アレルギー・注意・服薬中）","sum.sec.recent":"直近の記録","sum.sec.contacts":"かかりつけ・緊急連絡先","sum.secContactsHint":"電話番号が含まれます","sum.includePhoto":"写真を含める","sum.expiry":"有効期限","sum.create":"リンクを作成","sum.copyLink":"リンクをコピー","sum.activeLinks":"発行したリンク","sum.noLinks":"まだリンクはありません","sum.active":"有効","sum.expired":"期限切れ","sum.until":"{date} まで有効","sum.revoke":"取り消す","sum.revoked":"リンクを取り消しました","sum.createFail":"リンクを作成できませんでした。もう一度お試しください。","sum.needSection":"含める項目を1つ以上選んでください","sum.expiresLine":"このリンクは {date} まで表示されます","sum.expiredTitle":"このリンクは期限切れです","sum.expiredBody":"有効期限を過ぎたため、内容は表示されません。必要な場合は、リンクを作った方に新しいリンクを頼んでください。","sum.invalidTitle":"このリンクは使えません","sum.invalidBody":"期限切れ・取り消し済み、または存在しないリンクのため、内容は表示されません。","sum.footNote":"※このサマリーは、飼い主・ご家族の記録をもとに作られたものです。診断ではありません。",
+    "fam.title":"家族の記録","fam.by":"{name}が記録","fam.you":"あなた","fam.family":"家族","fam.today":"今日","fam.yesterday":"昨日","fam.actWalk":"お散歩","fam.actMeal":"ごはん","fam.actToilet":"トイレ","fam.actDiary":"ようすの記録","fam.actHealth":"からだの記録","fam.actMed":"お薬","fam.actDone":"{title}を完了","fam.actMemory":"思い出","fam.actNursing":"授乳","fam.actMilestone":"成長の記録","fam.tookBy":"今日は{name}が記録済み",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -2820,6 +2880,7 @@ const MESSAGES={
     "ob.value1":"📝 Daily records: meals, walks, health and plans for the whole family","ob.value2":"🆘 Ready for emergencies: lost-pet posters and emergency cards, made instantly from your records","ob.value3":"👨‍👩‍👧 Share with family: invite your family and keep records together",
     "tour.headseg.title":"Switch between Daily and Manage","tour.headseg.body":"Switch with the tabs above. Daily = today's records; Manage = care and plans.","tour.fab.title":"Record from here","tour.fab.body":"Use the ＋ at the bottom-right to log plans, care, meals, weight, and more.","tour.cal.title":"Calendar","tour.cal.body":"See the family's plans at a glance. Tap a date to look back.","tour.home.title":"Per family member","tour.home.body":"Tap a family member to open their page. Switch from the list at the top.","coach.cal.title":"Tap a date","coach.cal.body":"Colored dots are that day's plans. Tap to look back.","coach.record.title":"Log body & condition","coach.record.body":"Use the ＋ at the bottom-right to log weight, condition, meals, and diary.","coach.manage.title":"Daily chores & plans","coach.manage.body":"To-dos and plans go here. Tap \"Done\" to see time since last.","tour.next":"Next","tour.skip":"Skip","common.ok":"OK",
     "sheet.rangeDays":"{d} days","sheet.vetTitle":"{name}'s Record Summary","sheet.vetPeriod":"{from}–{to} ({days} days) / Created {made}","sheet.basicInfo":"Basic Info","sheet.species":"Species","sheet.birthday":"Birthday","sheet.microchip":"Microchip","sheet.weightTrend":"Weight Trend","sheet.latest":"Latest","sheet.periodChange":"Change over period","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"No records (add weight to daily records to see the trend)","sheet.toilet":"Toilet","sheet.peeRate":"Pee success rate","sheet.poopRate":"Poop success rate","sheet.rateVal":"{rate}% ({total} times)","sheet.noRecord":"No records","sheet.brAvgLabel":"Avg. stool firmness","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Symptoms & Condition","sheet.energyAvgLabel":"Avg. energy","sheet.energyAvgVal":"{avg}/5 ({n} times)","sheet.symCount":"{label} × {n}","sheet.medLeft":"{n} days left","sheet.none":"None","sheet.careNext":"Upcoming prevention/vaccines","sheet.noPlans":"No plans","sheet.recentCare":"Recent Care","sheet.vetNote":"* This summary is based on the owner's records and is not a diagnosis.","sheet.vetFileSuffix":"Record Summary","sheet.handTitlePet":"{name}'s Care Sheet","sheet.handTitleOther":"{name}'s Handover Sheet","sheet.handPeriodPet":"For boarding / pet-sitting handover","sheet.handPeriodOther":"For sharing while away (today's status)","sheet.madeOn":" / Created {date}","sheet.aboutPet":"About this pet","sheet.profile":"Profile","sheet.name":"Name","sheet.meals":"Meals","sheet.noFoodHint":"Not registered (please share verbally)","sheet.todayChores":"Today's Care","sheet.noRecordsYet":"No records yet","sheet.todayCond":"Today's status (condition)","sheet.hasRecord":"Recorded","sheet.allergyCaution":"Things to watch (allergies & cautions)","sheet.nothingSpecial":"Nothing in particular","sheet.regularVet":"Regular vet","sheet.regularDoctor":"Regular doctor","sheet.noHospHint":"Not registered (add clinic name, phone, address in 'Important info')","sheet.emergencyContact":"Emergency contact","sheet.noContactHint":"Not registered (you can add it in 'Important info')","sheet.familyNotes":"Notes from family","sheet.otherMemo":"Other notes","sheet.handNotePet":"* Handover notes based on the owner's records. Please confirm details with the family.","sheet.handNoteOther":"* Handover notes based on the family's records. Please confirm details with the family.","sheet.careFileSuffix":"Care Sheet","sheet.handoverFileSuffix":"Handover Sheet","sheet.appetiteColon":"Appetite: ","sheet.poopColon":"Bowel: ","sheet.sleepH":"Sleep {n}h","rec.medSummary":"Medical summary","sum.title":"{name}'s Medical Summary","sum.fileSuffix":"Medical Summary","sum.firstThings":"First, please know","sum.shareBtn":"Share by link","sum.shareTitle":"Share this summary by link","sum.shareDesc":"Anyone with the link can view only the sections you choose, without signing in. The link stops working automatically once it expires, and you can revoke it at any time.","sum.needSignIn":"You need to be signed in to create a link. Sign in from Family sharing in Settings.","sum.includeTitle":"Include in the link","sum.sec.basic":"Basic info","sum.sec.caution":"Key cautions (allergies, notes, medication)","sum.sec.recent":"Recent records","sum.sec.contacts":"Clinic & emergency contacts","sum.secContactsHint":"Includes phone numbers","sum.includePhoto":"Include a photo","sum.expiry":"Link expires after","sum.create":"Create link","sum.copyLink":"Copy link","sum.activeLinks":"Your links","sum.noLinks":"No links yet","sum.active":"Active","sum.expired":"Expired","sum.until":"Valid until {date}","sum.revoke":"Revoke","sum.revoked":"Link revoked","sum.createFail":"Couldn't create the link. Please try again.","sum.needSection":"Choose at least one section to include.","sum.expiresLine":"This link can be viewed until {date}.","sum.expiredTitle":"This link has expired","sum.expiredBody":"The link is past its expiry, so the contents aren't shown. If you need it, please ask the person who made the link for a new one.","sum.invalidTitle":"This link isn't available","sum.invalidBody":"The link has expired, was revoked, or doesn't exist, so the contents aren't shown.","sum.footNote":"* This summary is based on the family's own records and is not a diagnosis.",
+    "fam.title":"Family records","fam.by":"by {name}","fam.you":"You","fam.family":"Family","fam.today":"Today","fam.yesterday":"Yesterday","fam.actWalk":"Walk","fam.actMeal":"Meal","fam.actToilet":"Toilet","fam.actDiary":"Condition log","fam.actHealth":"Body log","fam.actMed":"Medicine","fam.actDone":"Did: {title}","fam.actMemory":"Memory","fam.actNursing":"Nursing","fam.actMilestone":"Growth record","fam.tookBy":"Logged today by {name}",
   },
   es:{
     "nav.home":"Inicio","nav.calendar":"Calendario","nav.settings":"Ajustes","title.daily":"Diario",
@@ -2915,6 +2976,7 @@ const MESSAGES={
     "ob.value1":"📝 Registro diario: comidas, paseos, salud y planes de toda la familia","ob.value2":"🆘 Preparado ante imprevistos: carteles de mascota perdida y tarjetas de emergencia al instante","ob.value3":"👨‍👩‍👧 Comparte en familia: invita a tu familia y registren juntos",
     "tour.headseg.title":"Cambia entre Diario y Gestionar","tour.headseg.body":"Cambia con las pestañas de arriba. Diario = registros de hoy; Gestionar = cuidados y planes.","tour.fab.title":"Registra desde aquí","tour.fab.body":"Usa el ＋ de abajo a la derecha para registrar planes, cuidados, comidas, peso y más.","tour.cal.title":"Calendario","tour.cal.body":"Ve los planes de la familia de un vistazo. Toca una fecha para repasar.","tour.home.title":"Por cada miembro","tour.home.body":"Toca a un miembro para abrir su página. Cambia desde la lista de arriba.","coach.cal.title":"Toca una fecha","coach.cal.body":"Los puntos de color son los planes de ese día. Toca para repasar.","coach.record.title":"Registra cuerpo y estado","coach.record.body":"Usa el ＋ de abajo a la derecha para registrar peso, estado, comidas y diario.","coach.manage.title":"Tareas y planes diarios","coach.manage.body":"Las tareas y planes van aquí. Toca «Hecho» para ver el tiempo desde la última vez.","tour.next":"Siguiente","tour.skip":"Omitir","common.ok":"OK",
     "sheet.rangeDays":"{d} días","sheet.vetTitle":"Resumen de registros de {name}","sheet.vetPeriod":"{from}–{to} ({days} días) / Creado {made}","sheet.basicInfo":"Información básica","sheet.species":"Especie","sheet.birthday":"Cumpleaños","sheet.microchip":"Microchip","sheet.weightTrend":"Evolución del peso","sheet.latest":"Último","sheet.periodChange":"Cambio en el periodo","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"Sin registros (añade el peso en los registros diarios para ver la evolución)","sheet.toilet":"Baño","sheet.peeRate":"Tasa de pipí con éxito","sheet.poopRate":"Tasa de caca con éxito","sheet.rateVal":"{rate}% ({total} veces)","sheet.noRecord":"Sin registros","sheet.brAvgLabel":"Firmeza media de las heces","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Síntomas y estado","sheet.energyAvgLabel":"Energía media","sheet.energyAvgVal":"{avg}/5 ({n} veces)","sheet.symCount":"{label} × {n}","sheet.medLeft":"Quedan {n} días","sheet.none":"Ninguno","sheet.careNext":"Próximas prevenciones/vacunas","sheet.noPlans":"Sin planes","sheet.recentCare":"Cuidados recientes","sheet.vetNote":"* Este resumen se basa en los registros del dueño y no es un diagnóstico.","sheet.vetFileSuffix":"Resumen de registros","sheet.handTitlePet":"Hoja de cuidados de {name}","sheet.handTitleOther":"Hoja de traspaso de {name}","sheet.handPeriodPet":"Para guardería / cuidador","sheet.handPeriodOther":"Para compartir en ausencia (estado de hoy)","sheet.madeOn":" / Creado {date}","sheet.aboutPet":"Sobre esta mascota","sheet.profile":"Perfil","sheet.name":"Nombre","sheet.meals":"Comidas","sheet.noFoodHint":"Sin registrar (compártelo de palabra)","sheet.todayChores":"Cuidados de hoy","sheet.noRecordsYet":"Aún no hay registros","sheet.todayCond":"Estado de hoy (condición)","sheet.hasRecord":"Registrado","sheet.allergyCaution":"A tener en cuenta (alergias y precauciones)","sheet.nothingSpecial":"Nada en particular","sheet.regularVet":"Veterinario habitual","sheet.regularDoctor":"Médico habitual","sheet.noHospHint":"Sin registrar (añade nombre, teléfono y dirección de la clínica en 'Información importante')","sheet.emergencyContact":"Contacto de emergencia","sheet.noContactHint":"Sin registrar (puedes añadirlo en 'Información importante')","sheet.familyNotes":"Notas de la familia","sheet.otherMemo":"Otras notas","sheet.handNotePet":"* Notas de traspaso basadas en los registros del dueño. Confirma los detalles con la familia.","sheet.handNoteOther":"* Notas de traspaso basadas en los registros de la familia. Confirma los detalles con la familia.","sheet.careFileSuffix":"Hoja de cuidados","sheet.handoverFileSuffix":"Hoja de traspaso","sheet.appetiteColon":"Apetito: ","sheet.poopColon":"Heces: ","sheet.sleepH":"Sueño {n}h","rec.medSummary":"Resumen médico","sum.title":"Resumen médico de {name}","sum.fileSuffix":"Resumen médico","sum.firstThings":"Primero, tenga en cuenta","sum.shareBtn":"Compartir por enlace","sum.shareTitle":"Compartir este resumen por enlace","sum.shareDesc":"Quien tenga el enlace puede ver solo las secciones que elijas, sin iniciar sesión. El enlace deja de funcionar automáticamente al caducar, y puedes revocarlo cuando quieras.","sum.needSignIn":"Necesitas iniciar sesión para crear un enlace. Hazlo desde «Compartir en familia» en Ajustes.","sum.includeTitle":"Incluir en el enlace","sum.sec.basic":"Información básica","sum.sec.caution":"Avisos importantes (alergias, notas, medicación)","sum.sec.recent":"Registros recientes","sum.sec.contacts":"Clínica y contactos de emergencia","sum.secContactsHint":"Incluye números de teléfono","sum.includePhoto":"Incluir una foto","sum.expiry":"El enlace caduca en","sum.create":"Crear enlace","sum.copyLink":"Copiar enlace","sum.activeLinks":"Tus enlaces","sum.noLinks":"Aún no hay enlaces","sum.active":"Activo","sum.expired":"Caducado","sum.until":"Válido hasta el {date}","sum.revoke":"Revocar","sum.revoked":"Enlace revocado","sum.createFail":"No se pudo crear el enlace. Inténtalo de nuevo.","sum.needSection":"Elige al menos una sección para incluir.","sum.expiresLine":"Este enlace se puede ver hasta el {date}.","sum.expiredTitle":"Este enlace ha caducado","sum.expiredBody":"El enlace ya caducó, así que no se muestra el contenido. Si lo necesitas, pide un enlace nuevo a quien lo creó.","sum.invalidTitle":"Este enlace no está disponible","sum.invalidBody":"El enlace caducó, fue revocado o no existe, así que no se muestra el contenido.","sum.footNote":"* Este resumen se basa en los registros de la familia y no es un diagnóstico.",
+    "fam.title":"Registros de la familia","fam.by":"por {name}","fam.you":"Tú","fam.family":"Familia","fam.today":"Hoy","fam.yesterday":"Ayer","fam.actWalk":"Paseo","fam.actMeal":"Comida","fam.actToilet":"Baño","fam.actDiary":"Registro de estado","fam.actHealth":"Registro corporal","fam.actMed":"Medicina","fam.actDone":"Hecho: {title}","fam.actMemory":"Recuerdo","fam.actNursing":"Lactancia","fam.actMilestone":"Registro de crecimiento","fam.tookBy":"Hoy lo registró {name}",
   },
   zh:{
     "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
@@ -3010,6 +3072,7 @@ const MESSAGES={
     "ob.value1":"📝 日常记录：饮食、散步、健康和计划，全家人的都在一起","ob.value2":"🆘 应对万一：走失海报和急救卡，可用登记信息立即生成","ob.value3":"👨‍👩‍👧 全家共享：邀请家人，一起记录",
     "tour.headseg.title":"在「日常」和「管理」之间切换","tour.headseg.body":"用上方标签切换。日常＝当天记录，管理＝照护与计划。","tour.fab.title":"从这里记录","tour.fab.body":"用右下角的 ＋ 记录计划、照护、用餐、体重等。","tour.cal.title":"日历","tour.cal.body":"一览家人的计划。点按日期即可回顾。","tour.home.title":"按家庭成员","tour.home.body":"点按成员打开其页面，也可从上方列表切换。","coach.cal.title":"点按日期","coach.cal.body":"彩色圆点是当天的计划。点按即可回顾。","coach.record.title":"记录身体与状态","coach.record.body":"用右下角的 ＋ 记录体重、状态、用餐和日记。","coach.manage.title":"每日照料与计划","coach.manage.body":"待办和计划都在这里。点按「完成」即可看出距上次的时间。","tour.next":"下一步","tour.skip":"跳过","common.ok":"OK",
     "sheet.rangeDays":"{d}天","sheet.vetTitle":"{name} 的记录摘要","sheet.vetPeriod":"{from}～{to}（共{days}天）／制作日 {made}","sheet.basicInfo":"基本信息","sheet.species":"种类","sheet.birthday":"生日","sheet.microchip":"芯片","sheet.weightTrend":"体重变化","sheet.latest":"最近","sheet.periodChange":"期间增减","sheet.vsDate":"（与{date}相比）","sheet.noWeightHint":"无记录（在每日记录中填入体重即可查看变化）","sheet.toilet":"如厕","sheet.peeRate":"小便成功率","sheet.poopRate":"大便成功率","sheet.rateVal":"{rate}%（{total}次）","sheet.noRecord":"无记录","sheet.brAvgLabel":"大便硬度平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・状态","sheet.energyAvgLabel":"精神平均","sheet.energyAvgVal":"{avg}／5（{n}次）","sheet.symCount":"{label} × {n}次","sheet.medLeft":"剩余{n}天份","sheet.none":"无","sheet.careNext":"预防・疫苗等下次预定","sheet.noPlans":"无预定","sheet.recentCare":"最近的照顾","sheet.vetNote":"※本摘要基于主人的记录，并非诊断。","sheet.vetFileSuffix":"记录摘要","sheet.handTitlePet":"{name} 的照顾单","sheet.handTitleOther":"{name} 的交接单","sheet.handPeriodPet":"寄养・看护交接用","sheet.handPeriodOther":"外出共享用（今日状况）","sheet.madeOn":"／制作日 {date}","sheet.aboutPet":"关于这个孩子","sheet.profile":"档案","sheet.name":"名字","sheet.meals":"饮食","sheet.noFoodHint":"未登记（请口头告知）","sheet.todayChores":"今日照顾","sheet.noRecordsYet":"还没有记录","sheet.todayCond":"今日状况（身体）","sheet.hasRecord":"有记录","sheet.allergyCaution":"注意事项（过敏・禁忌）","sheet.nothingSpecial":"无特别","sheet.regularVet":"常去的动物医院","sheet.regularDoctor":"常去的医院","sheet.noHospHint":"未登记（可在“重要信息”中登记医院名称、电话、地址）","sheet.emergencyContact":"紧急联系人","sheet.noContactHint":"未登记（可在“重要信息”中登记）","sheet.familyNotes":"家人的留言","sheet.otherMemo":"其他备注","sheet.handNotePet":"※基于主人的记录的交接备注。详情请向家人确认。","sheet.handNoteOther":"※基于家人的记录的交接备注。详情请向家人确认。","sheet.careFileSuffix":"照顾单","sheet.handoverFileSuffix":"交接单","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"医院摘要","sum.title":"{name} 的医院摘要","sum.fileSuffix":"医院摘要","sum.firstThings":"首先请注意","sum.shareBtn":"用链接分享","sum.shareTitle":"用链接分享这份摘要","sum.shareDesc":"拥有链接的人无需登录，只能查看你选择的项目。超过有效期后将自动无法查看。你也可以随时撤销链接。","sum.needSignIn":"创建链接需要先登录。请在设置中的“家人共享”里登录。","sum.includeTitle":"链接中包含的项目","sum.sec.basic":"基本信息","sum.sec.caution":"注意事项（过敏・禁忌・用药中）","sum.sec.recent":"最近记录","sum.sec.contacts":"常去医院・紧急联系人","sum.secContactsHint":"包含电话号码","sum.includePhoto":"包含照片","sum.expiry":"有效期","sum.create":"创建链接","sum.copyLink":"复制链接","sum.activeLinks":"已创建的链接","sum.noLinks":"还没有链接","sum.active":"有效","sum.expired":"已过期","sum.until":"有效至{date}","sum.revoke":"撤销","sum.revoked":"链接已撤销","sum.createFail":"无法创建链接，请重试。","sum.needSection":"请至少选择一个要包含的项目。","sum.expiresLine":"此链接可查看至{date}。","sum.expiredTitle":"此链接已过期","sum.expiredBody":"链接已超过有效期，内容不予显示。如有需要，请向创建链接的人索取新链接。","sum.invalidTitle":"此链接无法使用","sum.invalidBody":"链接已过期、已被撤销或不存在，内容不予显示。","sum.footNote":"※本摘要基于主人・家人的记录，并非诊断。",
+    "fam.title":"家人记录","fam.by":"{name}记录","fam.you":"你","fam.family":"家人","fam.today":"今天","fam.yesterday":"昨天","fam.actWalk":"散步","fam.actMeal":"用餐","fam.actToilet":"如厕","fam.actDiary":"状态记录","fam.actHealth":"身体记录","fam.actMed":"服药","fam.actDone":"完成了：{title}","fam.actMemory":"回忆","fam.actNursing":"喂奶","fam.actMilestone":"成长记录","fam.tookBy":"今天由{name}记录",
   },
 };
 // ── 天気の地点名の言語別解決 ──
@@ -4181,8 +4244,22 @@ function App(){
   // 世帯共有中でも書かないと、ホームで完了にした「やり残し」が再起動で復活してしまう。
   // メンバーの記録はスナップショットでサーバー側が正として上書きされるため、書いても害はない。
   const persist=async(m,it,u=usage)=>{
-    setMembers(m);setItems(it);setUsage(u);
-    try{await storage.set(STORAGE_KEY,serializeState({members:m,items:it,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current}));}catch(e){}
+    // 記録者の自動スタンプ：世帯に参加している間、この端末で新しく作られた記録には
+    // 記録者（byUid/byName）を自動で付ける（入力の手数は増やさない）。
+    // Firestore 由来の記録は ownerUid を必ず持つため対象外（二重付与・他人名義化を防ぐ）。
+    // 「わたし」の記録は共有されないので付けない。
+    let itemsToSave=it;
+    if(household&&fireUser){
+      const nm=(meName&&meName.trim())||fireUser.displayName||"";
+      itemsToSave=it.map(x=>{
+        if(!x||x.space==="me"||x.byUid||x.ownerUid)return x;
+        const stamped=Object.assign({},x,{byUid:fireUser.uid});
+        if(nm)stamped.byName=nm;
+        return stamped;
+      });
+    }
+    setMembers(m);setItems(itemsToSave);setUsage(u);
+    try{await storage.set(STORAGE_KEY,serializeState({members:m,items:itemsToSave,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current}));}catch(e){}
   };
 
   // クラウドバックアップ：オプトインON＋サインイン済みのとき、状態が変わったら
@@ -4473,7 +4550,13 @@ function App(){
     if(item.space==="me")return; // Me items stay local
     const hid=household.id;
     const{id,space,...rest}=item;
-    await setDoc(doc(fbDb,"households",hid,"members",space,"items",id),{...withSchemaMeta(fsClean(rest)),ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
+    // 記録者をドキュメントにも刻む（ルール上、書けるのは作成者本人だけなので
+    // fireUser.uid がそのまま記録者になる）。byName が無い旧データは、自分の保存の
+    // ついでに現在の表示名で補完する（自己修復）。名前が取れない場合は付けない。
+    const myNm=(meName&&meName.trim())||fireUser.displayName||"";
+    const stamped=Object.assign({},rest,{byUid:rest.byUid||fireUser.uid});
+    if(rest.byName||myNm)Object.assign(stamped,{byName:rest.byName||myNm});
+    await setDoc(doc(fbDb,"households",hid,"members",space,"items",id),{...withSchemaMeta(fsClean(stamped)),ownerUid:fireUser.uid,updatedAt:serverTimestamp()},{merge:true});
     // 記録の写真も共有する（共有コピーで送信。失敗しても記録の保存は成功扱い）。
     photoIdsOf(item).forEach(pid=>{uploadPhotoToFs(space,pid,{item}).catch(()=>{});});
   };
@@ -5169,7 +5252,9 @@ function App(){
         b2.set(doc(fbDb,"households",hid,"members",id),{...fsClean(rest),visibility:visOf(m),ownerUid:fireUser.uid,createdAt:serverTimestamp()});
         items.filter(it=>it.space===id).forEach(it=>{
           const{id:iid,space,...irest}=it;
-          b2.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...fsClean(irest),ownerUid:fireUser.uid,createdAt:serverTimestamp()});
+          // 移行する記録はこの端末（＝作成者）のものなので、記録者も一緒に刻む。
+          const myNm=(meName&&meName.trim())||fireUser.displayName||"";
+          b2.set(doc(fbDb,"households",hid,"members",id,"items",iid),{...fsClean(irest),ownerUid:fireUser.uid,byUid:fireUser.uid,...(myNm?{byName:myNm}:{}),createdAt:serverTimestamp()});
         });
       });
       await b2.commit();
@@ -5379,14 +5464,17 @@ function App(){
   const toggle=(id)=>{
     const it=items.find(x=>x.id===id);if(!it)return;let next;
     const cyc=effRepeat(it); // ケア種別の既定周期も含めて判定
+    // 完了した人を記録する（家族フィードの「誰がやったか」用）。サインイン中のみ。
+    const byStamp={};
+    if(fireUser){byStamp.lastByUid=fireUser.uid;const bnm=(meName&&meName.trim())||fireUser.displayName;if(bnm)byStamp.lastByName=bnm;}
     if(!it.done&&cyc!=="none"){
       // 記録＝前回を今日に更新し、次回を周期ぶん先へ自動セット（赤が消えて静かに次へ）
       const today=iso(new Date());const newDue=addInterval(today,cyc);
-      next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,lastDoneAt:Date.now(),repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false,...(typeof x.stock==="number"&&x.stock>0?{stock:x.stock-1}:{})}:x);
+      next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,lastDoneAt:Date.now(),...byStamp,repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false,...(typeof x.stock==="number"&&x.stock>0?{stock:x.stock-1}:{})}:x);
       showFlash(t("toast.loggedNext",{date:fmtDate(newDue)}));
       track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});
     }
-    else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null}:x);if(!it.done)track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});}
+    else{next=items.map(x=>x.id===id?{...x,done:!x.done,completedAt:!x.done?Date.now():null,...(!x.done?byStamp:{})}:x);if(!it.done)track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});}
     persist(members,next);
     const updated=next.find(x=>x.id===id);
     if(updated)saveItemToFs(updated).catch(()=>{});
@@ -6276,7 +6364,7 @@ function App(){
   // お薬コース：X日間の服用を1日ずつチェック。残り日数を表示。
   const medCourses=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="medcourse").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items,tab]);
   const addMedCourse=()=>{const n=(medName||"").trim();if(!n){showFlash(t("toast.medName"));return;}const days=Math.max(1,parseInt(medDays||"1",10));const rec={id:"md"+Date.now(),space:tab,type:"medcourse",name:n,days,startDate:todayIso,taken:[],createdAt:Date.now()};persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});setMedName("");showFlash(t("toast.medSaved"));};
-  const toggleMedToday=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const taken=x.taken||[];const has=taken.includes(todayIso);const nt=has?taken.filter(d=>d!==todayIso):[...taken,todayIso];return{...x,taken:nt};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
+  const toggleMedToday=(id)=>{const next=items.map(x=>{if(x.id!==id)return x;const taken=x.taken||[];const has=taken.includes(todayIso);const nt=has?taken.filter(d=>d!==todayIso):[...taken,todayIso];const tb={...(x.takenBy&&typeof x.takenBy==="object"?x.takenBy:{})};if(has)delete tb[todayIso];else if(fireUser){const nm=(meName&&meName.trim())||fireUser.displayName||"";tb[todayIso]={uid:fireUser.uid,...(nm?{name:nm}:{}),at:Date.now()};}return{...x,taken:nt,takenBy:tb};});persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
   const removeMedCourse=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
   // 家族ノート（メッセージ・感謝・きもち）。端末内で家族が書き込める簡易ボード。
   const familyNotes=useMemo(()=>items.filter(x=>x.type==="familynote").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items]);
@@ -6734,6 +6822,59 @@ function App(){
     const order=["me",...members.map(m=>m.id)];
     return order.filter(sp=>groups[sp]&&groups[sp].length).map(sp=>({space:sp,av:spaces.find(s=>s.id===sp)||null,name:nameOf(sp)||"わたし",todos:groups[sp]}));
   },[homeData.todos,members,spaces]);
+  // ── 記録者表示＋家族フィード ──
+  // 自分の表示名（記録者スタンプ・名前解決の基準）。「わたし」の名前→アカウント名の順。
+  const myDisplayName=(meName&&meName.trim())||(fireUser&&fireUser.displayName)||"";
+  // 記録者名の解決：自分の記録は現在の自分の名前、他人の記録は記録時点の byName、
+  // どちらも無ければ「家族」（旧データでも空白にしない・推測で名前を作らない）。
+  const recorderNameOf=(o)=>{
+    if(!o)return t("fam.family");
+    const uid=o.byUid||o.ownerUid;
+    if(uid&&fireUser&&uid===fireUser.uid)return myDisplayName||t("fam.you");
+    if(o.byName)return o.byName;
+    return t("fam.family");
+  };
+  // 記録者チップを出す文脈か：世帯に参加中＋今開いているメンバーが「共有」設定の時だけ。
+  // 「自分のみ」のメンバーと「わたし」の記録には付けない（可視性の実態と一致させる）。
+  const recChipVisible=!!(household&&tab!=="me"&&activeMember&&visOf(activeMember)==="household");
+  const recBySpan=(o)=>recChipVisible?<span className="yl-recby">{t("fam.by",{name:recorderNameOf(o)})}</span>:null;
+  // 服薬リスト用：今日の分を誰が記録したか。takenBy（実際に押した人）がある時だけ出す。
+  // 無い旧データでコース作成者の名前を出すと実態と食い違うため、その場合は何も出さない。
+  const recTookBySpan=(m)=>{
+    if(!recChipVisible)return null;
+    const tb=(m.takenBy&&typeof m.takenBy==="object")?m.takenBy[todayIso]:null;
+    if(!tb)return null;
+    return <span className="yl-recby">{t("fam.tookBy",{name:recorderNameOf({byUid:tb.uid,byName:tb.name})})}</span>;
+  };
+  // 家族の記録フィード（直近7日・「共有」メンバーの記録のみ・新しい順）。
+  const famFeed=useMemo(()=>{
+    if(!household)return[];
+    const sharedIds=new Set(members.filter(m=>visOf(m)==="household").map(m=>m.id));
+    if(sharedIds.size===0)return[];
+    const since=iso(new Date(Date.now()-6*86400000));
+    return buildFamilyFeed(items,sharedIds,since,todayIso,40);
+  },[household,items,members,todayIso]);
+  const famFeedGroups=useMemo(()=>{
+    const groups=[];const byDate=new Map();
+    famFeed.forEach(e=>{if(!byDate.has(e.date)){const g={date:e.date,entries:[]};byDate.set(e.date,g);groups.push(g);}byDate.get(e.date).entries.push(e);});
+    return groups;
+  },[famFeed]);
+  const yesterdayIso=iso(new Date(Date.now()-86400000));
+  const famActLabel=(e)=>{
+    switch(e.kind){
+      case "walk":return t("fam.actWalk");
+      case "feed":return t("fam.actMeal")+(e.foodName?" "+e.foodName:"");
+      case "toilet":return t("fam.actToilet");
+      case "diary":return t("fam.actDiary");
+      case "health":return t("fam.actHealth");
+      case "medcourse":return t("fam.actMed")+(e.name?" "+e.name:"");
+      case "done":return t("fam.actDone",{title:e.title||""});
+      case "memory":return t("fam.actMemory")+(e.title&&e.title!=="思い出"?" "+e.title:"");
+      case "nursing":return t("fam.actNursing");
+      case "milestone":return t("fam.actMilestone")+(e.title?" "+e.title:"");
+      default:return e.title||"";
+    }
+  };
   // 完了：タスク種別に応じて既存ハンドラへ振り分け（ルーティン=doneDate／お世話=履歴／ケア・予定=記録・完了）。
   const completeHomeTask=(id)=>{const it=items.find(x=>x.id===id);if(!it)return;if(it.type==="routine")toggleRoutine(id);else if(it.type==="chore")logChore(id);else toggle(id);};
   // 「1年前の今日」：過去の同じ月日の思い出を、そっと振り返る（全メンバー横断・年数が近い順）。
@@ -7493,6 +7634,33 @@ function App(){
               );})()}
             </div>
             );})()}
+
+            {/* 家族の記録フィード：共有メンバーの直近の記録を「誰が・どの子に・何を」で横断表示。
+                お知らせ（notices＝これからの予定・気づき）とは別物で、こちらは「済んだこと」の流れ。
+                行タップでその子の該当セグメントへ（ログ系=毎日／ケア・予定の完了=管理）。 */}
+            {famFeed.length>0&&(
+              <section className="yl-famfeed">
+                <h2 className="yl-sec-title"><Icon name="users" size={16}/> {t("fam.title")}</h2>
+                {famFeedGroups.map(g=>(
+                  <div key={g.date} className="yl-famfeed-day">
+                    <p className="yl-famfeed-date">{g.date===todayIso?t("fam.today"):g.date===yesterdayIso?t("fam.yesterday"):fmtDate(g.date)}</p>
+                    <ul className="yl-famfeed-list">
+                      {g.entries.map(e=>{const sp=spaces.find(s=>s.id===e.space);return(
+                        <li key={e.key}>
+                          <button className="yl-famfeed-row" onClick={()=>{setTab(e.space);setPersonSeg(e.seg);}}>
+                            {sp?avatarNode(sp,"xs"):<span className="yl-famfeed-emoji">👤</span>}
+                            <span className="yl-famfeed-main">
+                              <span className="yl-famfeed-act">{sp?sp.name:""} ・ {famActLabel(e)}</span>
+                              <span className="yl-famfeed-by">{t("fam.by",{name:recorderNameOf(e)})}{e.hasTime?` ・ ${fmtClock(e.ts)}`:""}</span>
+                            </span>
+                          </button>
+                        </li>
+                      );})}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+            )}
 
             {/* 年間ふりかえり（LOALIFE Wrapped）への誘導：十分に記録がたまったら、そっと。 */}
             {members.length>0&&wrappedThisYear.records>=8&&(
@@ -8310,6 +8478,7 @@ function App(){
                         <li key={r.id} className="yl-health-item">
                           <span className="yl-health-date">{fmtDate(r.date)}</span>
                           <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          {recBySpan(r)}
                           <button className="yl-health-del" onClick={()=>askDelete(t("health.recordOf",{date:fmtDate(r.date)}),()=>removeHealth(r.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       ))}
@@ -8320,7 +8489,7 @@ function App(){
               if(curKind==="me")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.medsTitle")}</h2>
-                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span>{doneToday&&recTookBySpan(m)}</span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
                   <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder={t("ph.medName")}/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>{t("med.daysUnit")}</span><button className="yl-addbtn sm" onClick={addMedCourse}>{t("common.register")}</button></div>
                 </section>
               )});
@@ -8414,7 +8583,7 @@ function App(){
                       {walkRecords.slice(0,6).map(w=>{const hasRoute=routeSegments(w.route).flat().length>=2;return(
                         <li key={w.id} className="yl-walkrec-item">
                           <span className="yl-walkrec-thumb clk" onClick={()=>setWalkDetail(w)}>{hasRoute?<WalkMap route={w.route} mini height={64}/>:<Icon name="paw" size={16}/>}</span>
-                          <span className="yl-walkrec-body clk" onClick={()=>setWalkDetail(w)}><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span></span>
+                          <span className="yl-walkrec-body clk" onClick={()=>setWalkDetail(w)}><span className="yl-walkrec-main">{fmtDist(w.distanceM)}・{fmtDur(w.durationSec)}</span><span className="yl-walkrec-sub">{fmtDate(w.date)} {fmtClock(w.start)}</span>{recBySpan(w)}</span>
                           <button className="yl-walkrec-del" onClick={()=>askDelete(t("walk.delLabel"),()=>removeWalk(w.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       );})}
@@ -8443,13 +8612,13 @@ function App(){
                         <div key={s.k} className="yl-meal-slot">
                           <span className="yl-meal-slotlabel">{t("mealslot."+s.k)}</span>
                           <div className="yl-meal-rows">{rows.map(x=>(
-                            <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{x.amount}{foodUnitLabel(x.unit)}{x.kcal!=null?` ・ ${x.kcal}kcal`:""}</span><button className="yl-feed-del" onClick={()=>askDelete(t("food.delMeal"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
+                            <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{x.amount}{foodUnitLabel(x.unit)}{x.kcal!=null?` ・ ${x.kcal}kcal`:""}</span>{recBySpan(x)}<button className="yl-feed-del" onClick={()=>askDelete(t("food.delMeal"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
                           ))}</div>
                         </div>
                       );})}
                       {(()=>{const other=feedToday.filter(x=>!x.slot);if(other.length===0)return null;return(
                         <div className="yl-meal-slot"><span className="yl-meal-slotlabel">{t("food.recordLabel")}</span><div className="yl-meal-rows">{other.map(x=>(
-                          <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{feedEntryText(x)}</span><button className="yl-feed-del" onClick={()=>askDelete(t("food.delRecord"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
+                          <div key={x.id} className="yl-meal-row"><span className="yl-meal-name">{x.foodName||t("food.defaultName")}</span><span className="yl-meal-amt">{feedEntryText(x)}</span>{recBySpan(x)}<button className="yl-feed-del" onClick={()=>askDelete(t("food.delRecord"),()=>removeFeed(x.id))} aria-label={t("a11y.delete")}>×</button></div>
                         ))}</div></div>
                       );})()}
                     </div>
@@ -8523,6 +8692,7 @@ function App(){
                                       {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> 病院</span>}
                                       {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/> {symptomMeta(sk).label}</span>)}
                                       {r.note&&<span className="yl-dayrec-note">{r.note}</span>}
+                                      {recBySpan(r)}
                                       {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false,kind:"diary"})}/>}
                                     </span>
                                     <button className="yl-dayrec-del" onClick={()=>askDelete("この記録",()=>removeDiary(r.id))} aria-label={t("a11y.deleteRecord")}>×</button>
@@ -8645,14 +8815,14 @@ function App(){
               if(curKind==="person")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.medsTitle")}</h2>
-                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span>{doneToday&&recTookBySpan(m)}</span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
                   <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder={t("meds.namePh")}/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>{t("med.daysUnit")}</span><button className="yl-addbtn sm" onClick={addMedCourse}>{t("common.register")}</button></div>
                 </section>
               )});
               if(curKind==="pet")defs.push({key:"meds",el:(
                 <section className="yl-med-sec">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.medsTitle")}</h2>
-                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span></span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
+                  {medCourses.length>0&&<ul className="yl-med-list">{medCourses.map(m=>{const dayNo=Math.min(m.days,Math.floor((new Date(todayIso)-new Date(m.startDate))/86400000)+1);const doneToday=(m.taken||[]).includes(todayIso);const left=Math.max(0,m.days-(m.taken||[]).length);const finished=(m.taken||[]).length>=m.days;return(<li key={m.id} className={"yl-med-item"+(finished?" done":"")}><span className="yl-med-body"><span className="yl-med-name"><Icon name="pill" size={14}/><span className="yl-med-nametext">{m.name}</span></span><span className="yl-med-meta">{finished?t("med.finished"):t("med.progress",{days:m.days,n:dayNo>0?dayNo:1,left})}</span>{doneToday&&recTookBySpan(m)}</span>{!finished&&<button className={"yl-med-check"+(doneToday?" on":"")} onClick={()=>toggleMedToday(m.id)}>{doneToday?t("med.tookDone"):t("med.took")}</button>}<button className="yl-health-del" onClick={()=>askDelete(m.name,()=>removeMedCourse(m.id))} aria-label={t("a11y.delete")}>×</button></li>);})}</ul>}
                   <div className="yl-med-add"><input className="yl-input sm" value={medName} onChange={e=>setMedName(e.target.value)} placeholder={t("meds.namePh")}/><span className="yl-med-days"><input type="number" inputMode="numeric" min="1" className="yl-health-num" value={medDays} onChange={e=>setMedDays(e.target.value)}/>{t("med.daysUnit")}</span><button className="yl-addbtn sm" onClick={addMedCourse}>{t("common.register")}</button></div>
                 </section>
               )});
