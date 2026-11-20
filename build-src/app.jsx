@@ -1538,15 +1538,27 @@ const appetiteIcon=(k)=>APPETITE_ICON[k]||"utensils";
 // rows: energy(元気) / appetite(食欲) / poop(うんち) / walk(さんぽ) / hospital(病院)
 const DIARY_CONFIG={
   pet:{rows:["energy","appetite","poop","walk","hospital"],symptoms:["cough","sneeze","diarrhea","vomit","noappetite","itch"]},
-  adult:{rows:["energy","appetite","sleep","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
-  child:{rows:["energy","appetite","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
-  senior:{rows:["energy","appetite","sleep","hospital"],symptoms:["headache","fever","cough","fatigue","nose","throat"]},
+  adult:{rows:["energy","appetite","sleep","exercise","hospital"],symptoms:["headache","fever","cough","nose","throat","fatigue","period"]},
+  child:{rows:["energy","appetite","sleep","exercise","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash","mood"]},
+  senior:{rows:["energy","appetite","sleep","exercise","hospital"],symptoms:["headache","fever","cough","fatigue","nose","throat"]},
   baby:{rows:["energy","appetite","poop","sleep","hospital"],symptoms:["fever","cough","nose","vomit","diarrhea","rash"]},
 };
 const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // 生理は性別が女性（girl）のメンバーだけに出す。性別未設定・「わたし」は従来どおり出す（安全側）。
 // ペットの性別は「男の子/女の子」の文字列保存だが、ペット設定には元々 period が無いので影響しない。
 const diarySymptomsFor=(type,gender)=>{const list=(DIARY_CONFIG[type]||DIARY_CONFIG.adult).symptoms;if(gender&&gender!=="girl"&&gender!=="女の子")return list.filter(s=>s!=="period");return list;};
+// 人の運動の種目マスタ（体調記録の「運動」行で使う）。犬の運動は散歩記録（walk）が担うので、ここは人専用。
+// 記録は diary レコードの exAct（種目キー）＋ exMin（分）として保存し、月次ふりかえりの「運動の記録」が数える。
+const EXERCISE_ACTS=[
+  {key:"run",label:"ランニング",labelEn:"Running",labelEs:"Correr",labelZh:"跑步",emoji:"🏃"},
+  {key:"walk",label:"ウォーキング",labelEn:"Walking",labelEs:"Caminar",labelZh:"步行",emoji:"🚶"},
+  {key:"strength",label:"筋トレ",labelEn:"Strength training",labelEs:"Pesas",labelZh:"力量训练",emoji:"🏋️"},
+  {key:"yoga",label:"ヨガ",labelEn:"Yoga",labelEs:"Yoga",labelZh:"瑜伽",emoji:"🧘"},
+  {key:"cycle",label:"自転車",labelEn:"Cycling",labelEs:"Ciclismo",labelZh:"骑行",emoji:"🚴"},
+  {key:"swim",label:"水泳",labelEn:"Swimming",labelEs:"Natación",labelZh:"游泳",emoji:"🏊"},
+  {key:"other",label:"その他",labelEn:"Other",labelEs:"Otro",labelZh:"其他",emoji:"🤸"},
+];
+const exerciseMeta=(k)=>EXERCISE_ACTS.find(a=>a.key===k)||null;
 // 家族台帳（人）：性別・血液型の選択肢。
 // 性別の文言は種別で出し分け（キーは boy/girl/other で共通・保存互換）。
 const GENDER_OPTS_CHILD=[{k:"boy",l:"男の子"},{k:"girl",l:"女の子"},{k:"other",l:"その他"}];
@@ -2329,7 +2341,7 @@ const MESSAGES={
     "hub.title":"何を記録しますか？","hub.addable":"追加できる機能","hub.schedulePet":"ケア・予定","hub.scheduleMe":"予定・ToDo","hub.toilet":"トイレ記録","hub.routine":"ルーティン（習慣）","hub.health":"体重・からだ","hub.belong":"持ち物（曜日）","hub.bday":"誕生日・記念日",
     "del.confirmTitle":"本当に削除しますか？","del.confirmBody":"「{label}」を削除します。この操作は元に戻せません。","del.confirmBodyPlain":"この操作は元に戻せません。","del.confirmBtn":"削除する",
     "health.addTitle":"からだの記録","health.bp":"血圧","health.temp":"体温","health.glucose":"血糖値","health.bpHigh":"上","health.bpLow":"下","health.optionalPh":"任意","health.smallAnimalHint":"小動物は0.1g単位","health.condLabel":"体調","health.saveBtn":"からだを記録","health.targetWeight":"目標体重","health.targetHint":"目標との差を表示。",
-    "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"お散歩・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録",
+    "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"お散歩・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録","diary.exercise":"運動","diary.minSuffix":"分","diary.minPh":"分","diary.sleepCta":"睡眠を記録する",
     "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
     "sched.titlePet":"ケア・予定を追加","sched.titleSelf":"健康・ケアを追加","sched.titleMe":"予定・ToDoを追加","sched.frequent":"よく使う","sched.contentPh":"内容を入力…","sched.addLabelPh":"{label}を追加…","sched.content":"内容","sched.dateOptMe":"日付・期限（任意）","sched.time":"時間","sched.dateHint":"日付・期限を入れると、その日のカレンダーに表示されます。","sched.certPhoto":"証明書・写真（任意）","sched.changePhoto":"写真を変更","sched.attachPhoto":"＋ 写真を添付","sched.notify":"通知","sched.quickAdd":"1タップ追加（前回コピー）","sched.lastDate":"前回 {date}","sched.dateDone":"実施日","sched.dateDate":"日付","sched.dateVisit":"受診日","sched.dateDue":"期限","care.fallback":"ケア","filter.all":"すべて",
     "toilet.hint":"タップで記録（今日・現在時刻）。","toilet.pee":"おしっこ","toilet.recordBtn":"記録","toilet.success":"✓ 成功","toilet.fail":"✕ 失敗","toilet.hardness":"うんちの硬さ（7段階）","toilet.bristolNote":"4が健康的。1や7が続くときは獣医さんに相談を。","toilet.alertBody":"気をつけたいこと：消化管異物・腸閉塞・中毒","toilet.alertLink":"危険物リストで詳しく","toilet.ideal":"（理想的）","toilet.disclaimer":"受診の目安です（診断ではありません）。","toilet.trendLoose":"ゆるいうんちが続いています。長引くようなら受診の目安です。","toilet.trendHard":"硬いうんちが続いています。水分や食事、気になるときは受診を。",
@@ -2424,7 +2436,7 @@ const MESSAGES={
     "hub.title":"What would you like to record?","hub.addable":"Add a feature","hub.schedulePet":"Care & plans","hub.scheduleMe":"Plans & to-dos","hub.toilet":"Toilet log","hub.routine":"Routines (habits)","hub.health":"Weight & body","hub.belong":"Belongings (by day)","hub.bday":"Birthdays & anniversaries",
     "del.confirmTitle":"Delete this?","del.confirmBody":"Delete “{label}”. This can’t be undone.","del.confirmBodyPlain":"This can’t be undone.","del.confirmBtn":"Delete",
     "health.addTitle":"Body record","health.bp":"Blood pressure","health.temp":"Temperature","health.glucose":"Blood glucose","health.bpHigh":"Sys","health.bpLow":"Dia","health.optionalPh":"optional","health.smallAnimalHint":"Small animals: 0.1 g steps","health.condLabel":"Condition","health.saveBtn":"Log body","health.targetWeight":"Target weight","health.targetHint":"Shows the gap to your target.",
-    "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes",
+    "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes","diary.exercise":"Exercise","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Log sleep",
     "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
     "sched.titlePet":"Add care or plan","sched.titleSelf":"Add health or care","sched.titleMe":"Add plan or to-do","sched.frequent":"Frequent","sched.contentPh":"Enter details…","sched.addLabelPh":"Add {label}…","sched.content":"item","sched.dateOptMe":"Date / deadline (optional)","sched.time":"Time","sched.dateHint":"Add a date or deadline and it appears on that day's calendar.","sched.certPhoto":"Certificate / photo (optional)","sched.changePhoto":"Change photo","sched.attachPhoto":"＋ Attach photo","sched.notify":"Notify","sched.quickAdd":"One-tap add (copy last)","sched.lastDate":"Last {date}","sched.dateDone":"Date done","sched.dateDate":"Date","sched.dateVisit":"Visit date","sched.dateDue":"Due","care.fallback":"Care","filter.all":"All",
     "toilet.hint":"Tap to log (today, current time).","toilet.pee":"Pee","toilet.recordBtn":"Log","toilet.success":"✓ Success","toilet.fail":"✕ Miss","toilet.hardness":"Stool firmness (7 levels)","toilet.bristolNote":"4 is healthy. If 1 or 7 keeps up, check with your vet.","toilet.alertBody":"Watch for: GI foreign objects, intestinal blockage, poisoning","toilet.alertLink":"See the hazards list","toilet.ideal":" (ideal)","toilet.disclaimer":"A guide for when to see a vet (not a diagnosis).","toilet.trendLoose":"Loose stools have continued. If it lasts, consider seeing a vet.","toilet.trendHard":"Hard stools have continued. Watch hydration and diet; see a vet if concerned.",
@@ -2519,7 +2531,7 @@ const MESSAGES={
     "hub.title":"¿Qué quieres registrar?","hub.addable":"Añadir una función","hub.schedulePet":"Cuidados y planes","hub.scheduleMe":"Planes y tareas","hub.toilet":"Registro de baño","hub.routine":"Rutinas (hábitos)","hub.health":"Peso y cuerpo","hub.belong":"Objetos (por día)","hub.bday":"Cumpleaños y aniversarios",
     "del.confirmTitle":"¿Eliminar esto?","del.confirmBody":"Eliminar «{label}». No se puede deshacer.","del.confirmBodyPlain":"No se puede deshacer.","del.confirmBtn":"Eliminar",
     "health.addTitle":"Registro corporal","health.bp":"Presión arterial","health.temp":"Temperatura","health.glucose":"Glucosa","health.bpHigh":"Sist.","health.bpLow":"Diast.","health.optionalPh":"opcional","health.smallAnimalHint":"Animales pequeños: pasos de 0,1 g","health.condLabel":"Estado","health.saveBtn":"Registrar cuerpo","health.targetWeight":"Peso objetivo","health.targetHint":"Muestra la diferencia con tu objetivo.",
-    "diary.quickHealthy":"Bien hoy (un toque)","diary.hint":"Solo cuando quieras dar detalles (opcional).","diary.energy":"Energía","diary.appetite":"Apetito","diary.poop":"Caca","diary.sleep":"Sueño","diary.other":"Otro","diary.symptoms":"Síntomas","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"h","diary.walk":"Paseo / salida","diary.hospital":"Fue a la clínica","diary.periodPriv":"Un registro privado, solo para ti","diary.periodNote":"Última {last} · próxima hacia {next} (ciclo ~{avg} días)","diary.notePh":"Notas del día, visita a la clínica, unas palabras…","diary.delPhoto":"Eliminar foto","diary.addPhoto":"Añadir una foto (medicación, síntomas, etc.)","diary.saveBtn":"Guardar las notas de hoy",
+    "diary.quickHealthy":"Bien hoy (un toque)","diary.hint":"Solo cuando quieras dar detalles (opcional).","diary.energy":"Energía","diary.appetite":"Apetito","diary.poop":"Caca","diary.sleep":"Sueño","diary.other":"Otro","diary.symptoms":"Síntomas","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"h","diary.walk":"Paseo / salida","diary.hospital":"Fue a la clínica","diary.periodPriv":"Un registro privado, solo para ti","diary.periodNote":"Última {last} · próxima hacia {next} (ciclo ~{avg} días)","diary.notePh":"Notas del día, visita a la clínica, unas palabras…","diary.delPhoto":"Eliminar foto","diary.addPhoto":"Añadir una foto (medicación, síntomas, etc.)","diary.saveBtn":"Guardar las notas de hoy","diary.exercise":"Ejercicio","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Registrar sueño",
     "feed.addTitle":"Registro de comida","feed.servingLabel":"Cantidad por ración","feed.servingPh":"p. ej. 100","feed.hintSet":"1 ración = {g} g, se aplica al total (configúralo una vez y listo)","feed.hintUnset":"Puedes registrar sin configurar esto (configúralo para reflejarlo en el total)","feed.amount":"Cantidad","feed.previewPre":"= unos ","feed.previewPost":" ({n} raciones)","feed.saveBtn":"Registrar comida","feed.today":"Total de hoy ~{g} g ({n})",
     "sched.titlePet":"Añadir cuidado o plan","sched.titleSelf":"Añadir salud o cuidado","sched.titleMe":"Añadir plan o tarea","sched.frequent":"Frecuentes","sched.contentPh":"Escribe los detalles…","sched.addLabelPh":"Añadir {label}…","sched.content":"elemento","sched.dateOptMe":"Fecha / plazo (opcional)","sched.time":"Hora","sched.dateHint":"Añade una fecha o plazo y aparecerá en el calendario de ese día.","sched.certPhoto":"Certificado / foto (opcional)","sched.changePhoto":"Cambiar foto","sched.attachPhoto":"＋ Adjuntar foto","sched.notify":"Avisar","sched.quickAdd":"Añadir con un toque (copia el anterior)","sched.lastDate":"Última {date}","sched.dateDone":"Fecha realizada","sched.dateDate":"Fecha","sched.dateVisit":"Fecha de la cita","sched.dateDue":"Plazo","care.fallback":"Cuidado","filter.all":"Todos",
     "toilet.hint":"Toca para registrar (hoy, hora actual).","toilet.pee":"Pipí","toilet.recordBtn":"Registrar","toilet.success":"✓ Acierto","toilet.fail":"✕ Fallo","toilet.hardness":"Firmeza de las heces (7 niveles)","toilet.bristolNote":"El 4 es sano. Si el 1 o el 7 se mantienen, consulta a tu veterinario.","toilet.alertBody":"Cuidado con: cuerpos extraños, obstrucción intestinal, intoxicación","toilet.alertLink":"Ver la lista de peligros","toilet.ideal":" (ideal)","toilet.disclaimer":"Una guía de cuándo acudir al veterinario (no un diagnóstico).","toilet.trendLoose":"Las heces blandas han continuado. Si persisten, plantéate ver al veterinario.","toilet.trendHard":"Las heces duras han continuado. Vigila la hidratación y la dieta; ve al veterinario si te preocupa.",
@@ -2614,7 +2626,7 @@ const MESSAGES={
     "hub.title":"想记录什么？","hub.addable":"可添加的功能","hub.schedulePet":"照护与计划","hub.scheduleMe":"计划与待办","hub.toilet":"如厕记录","hub.routine":"日常（习惯）","hub.health":"体重与身体","hub.belong":"物品（按星期）","hub.bday":"生日与纪念日",
     "del.confirmTitle":"确定要删除吗？","del.confirmBody":"删除「{label}」。此操作无法撤销。","del.confirmBodyPlain":"此操作无法撤销。","del.confirmBtn":"删除",
     "health.addTitle":"身体记录","health.bp":"血压","health.temp":"体温","health.glucose":"血糖","health.bpHigh":"高压","health.bpLow":"低压","health.optionalPh":"可选","health.smallAnimalHint":"小动物以0.1g为单位","health.condLabel":"状态","health.saveBtn":"记录身体","health.targetWeight":"目标体重","health.targetHint":"显示与目标的差距。",
-    "diary.quickHealthy":"今天也很好（一键完成）","diary.hint":"只在想详细记录时（可选）。","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态",
+    "diary.quickHealthy":"今天也很好（一键完成）","diary.hint":"只在想详细记录时（可选）。","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态","diary.exercise":"运动","diary.minSuffix":"分钟","diary.minPh":"分钟","diary.sleepCta":"记录睡眠",
     "feed.addTitle":"用餐记录","feed.servingLabel":"每份分量","feed.servingPh":"如 100","feed.hintSet":"1份＝{g}g，会计入总量（只需设置一次）","feed.hintUnset":"不设置也可以记录（设置后会计入总量）","feed.amount":"分量","feed.previewPre":"＝ 约 ","feed.previewPost":"（{n}份）","feed.saveBtn":"记录用餐","feed.today":"今天合计 约{g}g（{n}次）",
     "sched.titlePet":"添加照护或计划","sched.titleSelf":"添加健康或照护","sched.titleMe":"添加计划或待办","sched.frequent":"常用","sched.contentPh":"输入内容…","sched.addLabelPh":"添加{label}…","sched.content":"内容","sched.dateOptMe":"日期/期限（可选）","sched.time":"时间","sched.dateHint":"填入日期/期限后，会显示在当天的日历上。","sched.certPhoto":"证明/照片（可选）","sched.changePhoto":"更换照片","sched.attachPhoto":"＋ 附加照片","sched.notify":"通知","sched.quickAdd":"一键添加（复制上次）","sched.lastDate":"上次 {date}","sched.dateDone":"实施日","sched.dateDate":"日期","sched.dateVisit":"就诊日","sched.dateDue":"期限","care.fallback":"照护","filter.all":"全部",
     "toilet.hint":"点按记录（今天，当前时间）。","toilet.pee":"小便","toilet.recordBtn":"记录","toilet.success":"✓ 成功","toilet.fail":"✕ 失败","toilet.hardness":"大便硬度（7级）","toilet.bristolNote":"4是健康的。如果1或7持续，请咨询兽医。","toilet.alertBody":"需要注意：消化道异物、肠梗阻、中毒","toilet.alertLink":"查看危险物清单","toilet.ideal":"（理想）","toilet.disclaimer":"就诊的参考（并非诊断）。","toilet.trendLoose":"稀便持续中。如果拖久了，建议就诊。","toilet.trendHard":"硬便持续中。注意补水和饮食，担心时请就诊。",
@@ -3265,7 +3277,9 @@ function App(){
   const[meAvatar,setMeAvatar]=useState(""); // わたしの写真アイコン（IDBの photo:<id>）
   const[meNameDraft,setMeNameDraft]=useState("");
   // 今日のようす（日記）入力（症状・写真も。お薬手帳/体調メモ兼用）
-  const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",note:"",symptoms:[],photo:null});
+  const[diaryDraft,setDiaryDraft]=useState({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",exAct:"",exMin:"",note:"",symptoms:[],photo:null});
+  const[diaryFocus,setDiaryFocus]=useState(null); // 導線（ふりかえり等）から開いたときに注目させる行。"sleep" のみ
+  const[sleepHl,setSleepHl]=useState(false); // 睡眠行の一時ハイライト（発見性のため）
   const[diaryOpen,setDiaryOpen]=useState({}); // 今日のようすカードの開閉（アプリ内state・localStorage非依存）。既定=今日開・過去閉
   const[profileOpen,setProfileOpen]=useState(false); // プロフィール詳細（顔写真・説明・誕生日・編集）の開閉。既定=畳む
   const[profilePrompt,setProfilePrompt]=useState(null); // メンバー追加直後の「プロフィールを設定しませんか？」案内（対象 member id）
@@ -5405,7 +5419,7 @@ function App(){
     const dDays=(mo)=>new Set(diaryRecords.filter(r=>inMo(r.date,mo)).map(r=>r.date)).size;
     const sleepAvg=(mo)=>{const v=diaryRecords.filter(r=>inMo(r.date,mo)&&r.sleep!=null&&r.sleep!=="").map(r=>Number(r.sleep)).filter(n=>!isNaN(n));return v.length?v.reduce((s,n)=>s+n,0)/v.length:null;};
     const logCount=(mo)=>{let n=0;items.filter(x=>x.space===tab&&x.type==="chore").forEach(c=>{(c.history||[]).forEach(dt=>{if(inMo(dt,mo))n++;});});items.filter(x=>x.space===tab&&x.type==="routine").forEach(r=>{if(r.doneDate&&inMo(r.doneDate,mo))n++;});return n;};
-    const moveCount=(mo)=>walkRecords.filter(w=>inMo(w.date,mo)).length;
+    const moveCount=(mo)=>walkRecords.filter(w=>inMo(w.date,mo)).length+diaryRecords.filter(r=>inMo(r.date,mo)&&r.exAct).length;
     const openTasks=items.filter(x=>x.space===tab&&(x.type==="care"||x.type==="event")&&x.dueDate&&!x.done).length;
     const cur={days:dDays(thisMo),sleep:sleepAvg(thisMo),logs:logCount(thisMo),moves:moveCount(thisMo)};
     const prev={days:dDays(lastMo),sleep:sleepAvg(lastMo),logs:logCount(lastMo),moves:moveCount(lastMo)};
@@ -5413,6 +5427,16 @@ function App(){
     return any?{cur,prev,openTasks}:null;
   },[curKind,diaryRecords,items,tab,walkRecords,todayIso]);
   const setDiary=(patch)=>setDiaryDraft(d=>({...d,...patch}));
+  // 睡眠の導線：ふりかえり・体調まわりで睡眠が未記録のとき、空欄で終わらせず体調フォームの睡眠行へ直接案内する。
+  const openDiarySleep=()=>{setDiaryFocus("sleep");setInputSheet("diary");};
+  useEffect(()=>{
+    if(inputSheet!=="diary"||diaryFocus!=="sleep")return;
+    const t1=setTimeout(()=>{const el=document.getElementById("yl-diary-sleep-row");if(el){if(typeof el.scrollIntoView==="function"){try{el.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}}setSleepHl(true);}},90);
+    const t2=setTimeout(()=>{setSleepHl(false);setDiaryFocus(null);},2200);
+    return ()=>{clearTimeout(t1);clearTimeout(t2);};
+  },[inputSheet,diaryFocus]);
+  // フォームを閉じたら注目状態を残さない（次に開いたとき睡眠行が光りっぱなしにならないように）。
+  useEffect(()=>{if(inputSheet!=="diary"){setSleepHl(false);setDiaryFocus(null);}},[inputSheet]);
   const toggleSymptom=(k)=>setDiaryDraft(d=>({...d,symptoms:(d.symptoms||[]).includes(k)?d.symptoms.filter(s=>s!==k):[...(d.symptoms||[]),k]}));
   const pickDiaryPhoto=async(e)=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
@@ -5426,16 +5450,17 @@ function App(){
     const gm=tab==="me"?null:members.find(x=>x.id===tab);
     const syms=(d.symptoms||[]).filter(s=>diarySymptomsFor(dtype,gm?gm.gender:null).includes(s));
     const has=k=>cfg.rows.includes(k);
-    const v={energy:has("energy")?d.energy:"",appetite:has("appetite")?d.appetite:"",poop:has("poop")?d.poop:"",walk:has("walk")?!!d.walk:false,hospital:has("hospital")?!!d.hospital:false,sleep:has("sleep")?d.sleep:""};
-    if(!v.energy&&!v.appetite&&!v.poop&&!v.walk&&!v.hospital&&!v.sleep&&!note&&!syms.length&&!d.photo){showFlash(t("toast.diaryPick"));return;}
+    const v={energy:has("energy")?d.energy:"",appetite:has("appetite")?d.appetite:"",poop:has("poop")?d.poop:"",walk:has("walk")?!!d.walk:false,hospital:has("hospital")?!!d.hospital:false,sleep:has("sleep")?d.sleep:"",exAct:has("exercise")?d.exAct:"",exMin:has("exercise")?d.exMin:""};
+    if(!v.energy&&!v.appetite&&!v.poop&&!v.walk&&!v.hospital&&!v.sleep&&!v.exAct&&!note&&!syms.length&&!d.photo){showFlash(t("toast.diaryPick"));return;}
     const id="dy"+Date.now();
     const rec={id,space:tab,type:"diary",date:todayIso,createdAt:Date.now()};
     if(v.energy)rec.energy=v.energy;if(v.appetite)rec.appetite=v.appetite;if(v.poop)rec.poop=v.poop;if(v.sleep)rec.sleep=v.sleep;
+    if(v.exAct){rec.exAct=v.exAct;const exMinNum=parseFloat(v.exMin);if(!isNaN(exMinNum)&&exMinNum>0)rec.exMin=exMinNum;}
     if(v.walk)rec.walk=true;if(v.hospital)rec.hospital=true;if(note)rec.note=note;if(syms.length)rec.symptoms=syms;
     if(syms.includes("period"))rec.private=true; // 生理を含む記録はセンシティブ＝本人のみ
     if(d.photo){const pid="dyp"+Date.now();const ok=await photoStorage.set(`photo:${pid}`,d.photo);if(ok){setPhotos(p=>({...p,[pid]:d.photo}));rec.photo=true;rec.photos=[pid];}}
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
-    setDiaryDraft({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",note:"",symptoms:[],photo:null});
+    setDiaryDraft({energy:"",appetite:"",poop:"",walk:false,hospital:false,sleep:"",exAct:"",exMin:"",note:"",symptoms:[],photo:null});
     showFlash(t("toast.diarySaved"));setInputSheet(null);
   };
   const removeDiary=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
@@ -7704,6 +7729,7 @@ function App(){
                   )}
                   {energyPts.length>1&&<MiniChart points={energyPts} unit="" color="#557E63" label={t("chart.energy")}/>}
                   {curKind!=="pet"&&sleepPts.length>1&&<MiniChart points={sleepPts} unit="h" color="#6F7BB3" label={t("chart.sleep")}/>}
+                  {curKind!=="pet"&&sleepPts.length===0&&<p style={{margin:"2px 0 8px"}}><button className="yl-linkbtn" onClick={openDiarySleep}><Icon name="moon" size={13}/> {t("diary.sleepCta")}</button></p>}
                   {curKind!=="pet"&&appetitePts.length>1&&<MiniChart points={appetitePts} unit="" color="#C77A2E" label={t("chart.appetite")}/>}
                   {diaryRecords.length===0&&<p className="yl-routine-empty">{t("diary.empty")}</p>}
                   {diaryByDate.length>0&&(
@@ -7735,6 +7761,7 @@ function App(){
                                       {r.appetite&&diaryMeta(DIARY_APPETITE,r.appetite)&&<span className="yl-dayrec-chip"><Icon name={appetiteIcon(r.appetite)} size={13}/> {lblOf(diaryMeta(DIARY_APPETITE,r.appetite))}</span>}
                                       {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip"><Icon name={POOP_DIARY_ICON[r.poop]||"droplet"} size={13}/> {lblOf(diaryMeta(DIARY_POOP,r.poop))}</span>}
                                       {r.sleep&&<span className="yl-dayrec-chip"><Icon name="moon" size={13}/> 睡眠{r.sleep}h</span>}
+                                      {r.exAct&&exerciseMeta(r.exAct)&&<span className="yl-dayrec-chip"><Icon name="activity" size={13}/> {lblOf(exerciseMeta(r.exAct))}{r.exMin?` ${r.exMin}${t("diary.minSuffix")}`:""}</span>}
                                       {r.walk&&<span className="yl-dayrec-chip"><Icon name="paw" size={13}/> さんぽ</span>}
                                       {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> 病院</span>}
                                       {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/> {symptomMeta(sk).label}</span>)}
@@ -7782,6 +7809,7 @@ function App(){
                     <div className="yl-stat"><span className="yl-stat-n">{cur.sleep!=null?cur.sleep.toFixed(1):"—"}</span><span className="yl-stat-l">{t("review.sleepLabel")}</span></div>
                     <div className="yl-stat"><span className="yl-stat-n">{curKind==="me"?cur.moves:cur.logs}</span><span className="yl-stat-l">{curKind==="me"?t("review.movesLabel"):t("review.logsLabel")}</span></div>
                   </div>
+                  {cur.sleep==null&&<p style={{marginTop:10}}><button className="yl-linkbtn" onClick={openDiarySleep}><Icon name="moon" size={13}/> {t("diary.sleepCta")}</button></p>}
                   {parts.length>0&&<p className="yl-set-desc" style={{marginTop:10}}>{t("review.vsPrev",{parts:parts.join(lang==="ja"?"・":" · ")})}</p>}
                   {openTasks>0&&<p className="yl-set-desc" style={{marginTop:6}}>{t("review.openTasks",{n:openTasks})}</p>}
                 </section>
@@ -9186,7 +9214,8 @@ function App(){
             {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.energy")}</span><span className="yl-diary-chips">{DIARY_ENERGY.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
             {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.appetite")}</span><span className="yl-diary-chips">{DIARY_APPETITE.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}><Icon name="utensils" size={15}/> {lblOf(c)}</button>)}</span></div>}
             {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.poop")}</span><span className="yl-diary-chips">{DIARY_POOP.map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}><Icon name={POOP_DIARY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
-            {has("sleep")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.sleep")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="adult"||diaryTypeOf(tab)==="senior"?["6","7","8"]:["9","10","11","12"]).map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {t("diary.hours",{h})}</button>)}<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder={t("diary.hoursPh")}/>{t("diary.hoursSuffix")}</span></span></div>}
+            {has("sleep")&&<div className={"yl-diary-row"+(sleepHl?" hl":"")} id="yl-diary-sleep-row"><span className="yl-diary-label">{t("diary.sleep")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="adult"||diaryTypeOf(tab)==="senior"?["6","7","8"]:["9","10","11","12"]).map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {t("diary.hours",{h})}</button>)}<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder={t("diary.hoursPh")}/>{t("diary.hoursSuffix")}</span></span></div>}
+            {has("exercise")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.exercise")}</span><span className="yl-diary-chips">{EXERCISE_ACTS.map(a=><button key={a.key} className={"yl-diary-chip"+(diaryDraft.exAct===a.key?" on":"")} onClick={()=>setDiary({exAct:diaryDraft.exAct===a.key?"":a.key})}>{a.emoji} {lblOf(a)}</button>)}{diaryDraft.exAct&&<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="600" className="yl-health-num" value={diaryDraft.exMin} onChange={e=>setDiary({exMin:e.target.value})} placeholder={t("diary.minPh")}/>{t("diary.minSuffix")}</span>}</span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.other")}</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}><Icon name="paw" size={15}/> {t("diary.walk")}</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}><Icon name="activity" size={15}/> {t("diary.hospital")}</button>}</span></div>}
             {symList.length>0&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.symptoms")}</span><span className="yl-diary-chips">{symList.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+((diaryDraft.symptoms||[]).includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}><Icon name={symIcon(sk)} size={15}/> {lblOf(s)}</button>;})}</span></div>}
             {symList.includes("period")&&(()=>{const periodSel=(diaryDraft.symptoms||[]).includes("period");const fc=periodForecast(tab);const showFc=fc&&fc.next;if(!periodSel&&!showFc)return null;return(<div className="yl-period-inline">
