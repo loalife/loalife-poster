@@ -161,12 +161,15 @@ export function migrateState(raw) {
     meColor: migrated.meColor ?? null,
     meName: migrated.meName ?? null,
     meAvatar: migrated.meAvatar ?? null,
+    // 犬友だち（公開名刺の自動保存スナップショット等）。端末ローカルの DF_KEY が正で、
+    // ここではバックアップ経由の受け渡し用に optional で温存するだけ（無ければ undefined）。
+    dogFriends: Array.isArray(migrated.dogFriends) ? migrated.dogFriends : undefined,
     version: SCHEMA_VERSION,
   };
 }
 
 // localStorage へ書き出す 1 ブロブを組み立てる（必ず version を埋め込む）。
-export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar, prep }) {
+export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar, prep, dogFriends }) {
   return JSON.stringify({
     version: SCHEMA_VERSION,
     members: members || [],
@@ -178,6 +181,9 @@ export function serializeState({ members, items, usage, meEmoji, meBirthday, meC
     meColor: meColor ?? null,
     meName: meName ?? null,
     meAvatar: meAvatar ?? null,
+    // 犬友だちは optional。渡された時だけ含める（undefined は JSON 化で落ちるため、
+    // 渡さない既存の呼び出し元の出力は従来と完全同一になる）。実データの正は DF_KEY。
+    dogFriends: Array.isArray(dogFriends) ? dogFriends : undefined,
   });
 }
 
