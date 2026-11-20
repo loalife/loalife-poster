@@ -17,12 +17,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 export const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAzfQpakeONe6Lngn-OyeegAj69dIMcy40",
+  authDomain: "loalife-51e0a.firebaseapp.com",
+  projectId: "loalife-51e0a",
+  storageBucket: "loalife-51e0a.firebasestorage.app",
+  messagingSenderId: "275583961116",
+  appId: "1:275583961116:web:c7f673d7b16135dfc2f7d9"
 };
 
 // Firebase が設定済みかどうか
