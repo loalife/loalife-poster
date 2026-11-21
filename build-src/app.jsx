@@ -238,6 +238,21 @@ const lostPosterFingerprint=(member,items)=>{
     pp:member.posterPhotos||[],li:member.lostInfo||{},w:wl?[wl.weight,wl.wunit||"kg"]:null,cards,
   });
 };
+// ─── 迷子ポスターの「事件ごとの情報」 ─────────────────────────────
+// 場所・補足・日時・様子・伝えたいことは「その事件だけ」の情報。前回の下書きが
+// メンバー情報（lostInfo）に残ったまま次のポスターに印刷される事故を防ぐため、
+// ウィザードを新規に開くたびに空で始める（下の lostIncidentCleared で消す）。
+// 首輪・ハーネスと性格（お願い文の調整）はペットの安定した特徴なので残す。
+// 「見つかった」は今の事件の状態なので新規では消す。公開中のポスターでは
+// 生きた状態として扱い、呼び出し側が「公開中は消さない」ことで守る。
+const LOST_INCIDENT_FIELDS=["place","placeNote","when","situation","note","found"];
+// 事件情報が残っていれば、それを除いた lostInfo を返す。残っていなければ null
+// （＝呼び出し側は何も保存し直さない）。元のオブジェクトは変更しない。
+const lostIncidentCleared=(li)=>{
+  const src=li||{};let has=false;const out={...src};
+  for(const k of LOST_INCIDENT_FIELDS){if(out[k])has=true;delete out[k];}
+  return has?out:null;
+};
 // ─── 病院サマリー共有リンク（publicSummaries）の純粋ロジック ─────────────────
 // セクションの正規順序と、リンク作成時の初期選択。「全部入りをデフォルトにしない」：
 // 電話番号を含む連絡先と写真は初期OFF（渡す相手に必要な分だけを所有者が選ぶ）。
@@ -5754,7 +5769,14 @@ function App(){
   },[tab,personSeg,isPersonMode,tourStep,coachKey,onboarding,loaded]);
   const dismissCoach=useCallback(()=>{setCoachKey(k=>{if(k)markCoachSeen(k);return null;});},[]);
   // 迷子モードを開くたびに最初のステップ（場所・日時）から。パニック時でも一本道で進める。
-  useEffect(()=>{if(lostOpen)setLostStep(0);},[lostOpen]);
+  // あわせて、新規作成（ポスター未公開）のときは前回の事件情報（場所・日時・様子など）を
+  // 消してから始める：下書きがメンバー情報に残っていると、そのまま次のポスターに
+  // 印刷されてしまうため。公開中のポスターは公開内容を編集する現行挙動を守り、消さない。
+  // ウィザードを開いている間の入力は lostOpen が変わらないので保持される。
+  useEffect(()=>{if(!lostOpen)return;setLostStep(0);
+    const m=members.find(x=>x.id===tab);
+    if(m&&!m.lostPosterPublic){const cleared=lostIncidentCleared(m.lostInfo);if(cleared)persist(members.map(x=>x.id===m.id?{...x,lostInfo:cleared}:x),items);}
+  },[lostOpen]);
   // 誤食・中毒を開くたびに展開・チェックをリセット
   useEffect(()=>{if(toxicOpen){setToxicExpanded(null);setToxicEmgOpen(false);setToxicSrcOpen(false);}},[toxicOpen]);
   // ルーティン/ストックは「わたし」タブでも使える。space=tab、kind は me/person/pet。
