@@ -350,13 +350,14 @@ const docDataOf=(member,items,opts)=>{
   const cautions=[...new Set([member.caution,member.profileNote].map(v=>(v||"").trim()).filter(Boolean))];
   return {cards,cautionCards,hospitalCards,otherCards,foods,meds,weight,nextCare,careDone,walkSlots,cautions};
 };
-// 散歩の時間（ルーティンの散歩の時刻）と散歩のお願い（プロフィール＋メモ）を引く。
+// 散歩の時間（ルーティンの散歩の時刻）と散歩のお願い（プロフィールの注意・メモ）を引く。
+// 散歩のお願いには散歩に関係するお願いだけを置く。アレルギー・持病カードの本文は
+// 「気をつけること」側だけに置き、ここには混ぜない（「卵」だけが散歩欄に出る不具合の修正）。
 const docWalkSlots=(member,all)=>{
   const routines=all.filter(x=>x.type==="care"&&x.careKind==="routine"&&!x.done&&x.time&&((x.title||"").includes("散歩")||(x.title||"").includes("さんぽ")));
   const hours=[...new Set(routines.map(x=>{const m=String(x.time).match(/^(\d{1,2})/);return m?parseInt(m[1],10):null;}).filter(h=>h!=null))].sort((a,b)=>a-b);
   const asks=[];
   [member.caution,member.profileNote].forEach(v=>{const n=(v||"").trim();if(n&&!asks.includes(n))asks.push(n);});
-  all.filter(x=>x.type==="card"&&DOC_CAUTION_KINDS.includes(x.kind)).forEach(c=>{const b=(c.body||"").trim();if(b&&!asks.includes(b))asks.push(b);});
   return {hours,asks};
 };
 // 経過タイムライン: 症状・体温・体調メモ・「病院に行った」日を日付順に並べる。
@@ -7389,11 +7390,15 @@ function App(){
     persist(members,next);const it=next.find(x=>x.id===expEdit.id);if(it)saveItemToFs(it).catch(()=>{});
     setExpEdit(null);showFlash(t("toast.expUpdated"));
   };
+  // 文書（サマリー／お世話シート）用の写真解決。写真の実体は photoStorage（photo:<id>）にあり、
+  // photos state には遅延読み込みで入る。シート側は「名刺写真→プロフィール写真→名刺の追加写真→
+  // ポスター写真」の順に、読み込み済みの実体をフォールバックして探す（片方だけ登録の実データでも出るように）。
+  const memberPhotoSrc=(m)=>{if(!m)return"";const pids=[m.cardPhoto,m.avatar,...(Array.isArray(m.cardPhotos)?m.cardPhotos:[]),...(Array.isArray(m.posterPhotos)?m.posterPhotos:[])];for(const pid of pids){if(pid&&photos[pid])return photos[pid];}return "";};
   // サムネイルの遅延読み込み（複数写真対応。各 photoId を未ロードのみ取得）
   useEffect(()=>{
     const missing=[];const seen={};
     items.forEach(x=>photoIdsOf(x).forEach(pid=>{if(!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}}));
-    members.forEach(m=>{if(m.avatar&&!photos[m.avatar]&&!seen[m.avatar]){seen[m.avatar]=1;missing.push(m.avatar);}(m.posterPhotos||[]).forEach(pid=>{if(pid&&!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}});});
+    members.forEach(m=>{[m.avatar,m.cardPhoto,...(Array.isArray(m.cardPhotos)?m.cardPhotos:[]),...(m.posterPhotos||[])].forEach(pid=>{if(pid&&!photos[pid]&&!seen[pid]){seen[pid]=1;missing.push(pid);}});});
     if(meAvatar&&!photos[meAvatar]&&!seen[meAvatar]){seen[meAvatar]=1;missing.push(meAvatar);}
     if(missing.length===0)return;
     let cancelled=false;
@@ -11183,7 +11188,7 @@ function App(){
             <div className="yl-noprint yl-vet-toolbar"><span className="yl-vet-range">{[7,30,90].map(d=><button key={d} className={"yl-toilet-range"+(vetDays===d?" on":"")} onClick={()=>setVetDays(d)}>{t("sheet.rangeDays",{d})}</button>)}</span></div>
             <div className="yl-vetsum">
               <div className="yl-vetsum-head">
-                {(()=>{const pid=activeMember.cardPhoto||activeMember.avatar;const src=pid?photos[pid]:"";return src?<img className="yl-sumview-photo" src={src} alt=""/>:null;})()}
+                {(()=>{const src=memberPhotoSrc(activeMember);return src?<img className="yl-sumview-photo" src={src} alt=""/>:null;})()}
                 <h2 className="yl-vetsum-title"><Icon name={isPet?"paw":"stethoscope"} size={18}/> {isPet?t("sheet.vetTitle",{name:activeMember.name}):t("sum.title",{name:activeMember.name})}</h2>
                 <p className="yl-vetsum-period">{t("sheet.vetPeriod",{from:fmtDate(vetSummary.from),to:fmtDate(vetSummary.to),days:vetDays,made:fmtDate(todayIso)})}</p>
               </div>
@@ -11196,7 +11201,7 @@ function App(){
                 <div className="yl-vetsum-sec"><h3>{t("sheet.basicInfo")}</h3><ul>
                   {isPet&&<li><b>{t("sheet.species")}</b>：{lblOf(SPECIES.find(s=>s.key===activeMember.species)||SPECIES[0])}{activeMember.breed?`・${activeMember.breed}`:""}</li>}
                   {genderTextIn(APP_LANG,activeMember.gender,activeMember.personType)&&<li><b>{t("prof.gender")}</b>：{genderTextIn(APP_LANG,activeMember.gender,activeMember.personType)}</li>}
-                  {activeMember.birthday&&<li><b>{t("sheet.birthday")}</b>：{fmtBirthday(activeMember.birthday)}{parenL(ageLabel(activeMember.birthday))}</li>}
+                  {activeMember.birthday&&<li><b>{t("sheet.birthday")}</b>：{fmtFullDateLoc(activeMember.birthday,APP_LANG)}{parenL(ageLabel(activeMember.birthday))}</li>}
                   {!isPet&&activeMember.blood&&<li><b>{t("ecard.blood")}</b>：{activeMember.blood}{t("blood.suffix")}</li>}
                   {!isPet&&(activeMember.personType||"child")==="child"&&(()=>{const hs=items.filter(x=>x.space===activeMember.id&&x.type==="health"&&x.height!=null&&x.date).sort((a,b)=>(a.date||"").localeCompare(b.date||""));const lh=hs[hs.length-1];return lh?<li><b>{t("chart.height")}</b>：{lh.height}cm{parenL(fmtDate(lh.date))}</li>:null;})()}
                   {!vetSummary.wLatest&&docD.weight&&<li><b>{t("chart.weight")}</b>：{docD.weight.value}{docD.weight.unit||"kg"}{docD.weight.fromProfile?parenL(t("sheet.fromProfile")):(docD.weight.date?parenL(fmtDate(docD.weight.date)):"")}</li>}
@@ -11302,15 +11307,14 @@ function App(){
                 <h2 className="yl-vetsum-title"><Icon name="note" size={18}/> {isPet?t("sheet.handTitlePet",{name:activeMember.name}):t("sheet.handTitleOther",{name:activeMember.name})}</h2>
                 <p className="yl-vetsum-period">{isPet?t("sheet.handPeriodPet"):t("sheet.handPeriodOther")}{t("sheet.madeOn",{date:fmtDate(todayIso)})}</p>
               </div>
-              {handIncomplete&&<p className="yl-vetsum-warn">⚠ {t("sheet.incompleteWarn")}</p>}
               <div className="yl-vetsum-grid">
                 <div className="yl-vetsum-sec"><h3>{isPet?t("sheet.aboutPet"):t("sheet.profile")}</h3>
-                  {isPet&&(()=>{const pid=activeMember.cardPhoto||activeMember.avatar;const src=pid?photos[pid]:"";return src?<img className="yl-sumview-photo" src={src} alt=""/>:null;})()}
+                  {isPet&&(()=>{const src=memberPhotoSrc(activeMember);return src?<img className="yl-sumview-photo" src={src} alt=""/>:null;})()}
                 <ul>
                   {isPet
                     ?<li><b>{t("sheet.name")}</b>：{activeMember.name}{parenL(`${lblOf(SPECIES.find(s=>s.key===activeMember.species)||SPECIES[0])}${activeMember.breed?`・${activeMember.breed}`:""}`)}</li>
                     :<li><b>{t("sheet.name")}</b>：{activeMember.name}{parenL(activeMember.nickname)}{genderTextIn(APP_LANG,activeMember.gender,activeMember.personType)?`・${genderTextIn(APP_LANG,activeMember.gender,activeMember.personType)}`:""}</li>}
-                  {bd&&<li><b>{t("sheet.birthday")}</b>：{fmtBirthday(bd)}{parenL(ageLabel(bd))}</li>}
+                  {bd&&<li><b>{t("sheet.birthday")}</b>：{fmtFullDateLoc(bd,APP_LANG)}{parenL(ageLabel(bd))}</li>}
                   {wl&&<li><b>{t("chart.weight")}</b>：{wl.weight}{wl.wunit||"kg"}{parenL(fmtDate(wl.date))}</li>}
                   {activeMember.microchip&&<li><b>{t("sheet.microchip")}</b>：{activeMember.microchip}</li>}
                 </ul></div>
@@ -11329,6 +11333,7 @@ function App(){
               </div>
               <p className="yl-vetsum-note">{isPet?t("sheet.handNotePet"):t("sheet.handNoteOther")}</p><p className="yl-brandfoot">🐾 {t("brand.footer")} · {BRAND_HOST}</p>
             </div>
+            {handIncomplete&&<p className="yl-vetsum-warn yl-noprint" style={{margin:"10px 2px 0"}}>⚠ {t("sheet.incompleteWarn")}</p>}
             <div className="yl-modal-btns yl-noprint" style={{flexWrap:"wrap"}}>
               <button className="yl-modal-cancel" onClick={()=>setHandoverOpen(false)}>{t("common.close")}</button>
               <button className="yl-addbtn modal" disabled={imgSaving} onClick={()=>saveSheetImage(".yl-vetsum",`${safeName(activeMember.name)}-${isPet?t("sheet.careFileSuffix"):t("sheet.handoverFileSuffix")}-${todayIso}.png`,{sheet:true})}><Icon name="download" size={16}/> {t("common.saveImage")}</button>
