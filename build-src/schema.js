@@ -167,6 +167,7 @@ export function migrateState(raw) {
     usage: migrated.usage && typeof migrated.usage === "object" ? migrated.usage : {},
     prep: migrated.prep && typeof migrated.prep === "object" ? migrated.prep : null,
     meEmoji: migrated.meEmoji ?? null,
+    meSkinTone: migrated.meSkinTone ?? null,
     meBirthday: migrated.meBirthday ?? null,
     meColor: migrated.meColor ?? null,
     meName: migrated.meName ?? null,
@@ -179,7 +180,7 @@ export function migrateState(raw) {
 }
 
 // localStorage へ書き出す 1 ブロブを組み立てる（必ず version を埋め込む）。
-export function serializeState({ members, items, usage, meEmoji, meBirthday, meColor, meName, meAvatar, prep, dogFriends }) {
+export function serializeState({ members, items, usage, meEmoji, meSkinTone, meBirthday, meColor, meName, meAvatar, prep, dogFriends }) {
   return JSON.stringify({
     version: SCHEMA_VERSION,
     members: members || [],
@@ -187,6 +188,7 @@ export function serializeState({ members, items, usage, meEmoji, meBirthday, meC
     usage: usage || {},
     prep: prep ?? null,
     meEmoji: meEmoji ?? null,
+    meSkinTone: meSkinTone ?? null,
     meBirthday: meBirthday ?? null,
     meColor: meColor ?? null,
     meName: meName ?? null,

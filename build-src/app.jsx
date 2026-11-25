@@ -26,7 +26,14 @@ const mergeFsDocs = (listA, listB) => { const byId = new Map(); [...(listA || []
 const iso = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),da=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${da}`; };
 const plusDays = (n) => { const d=new Date(); d.setDate(d.getDate()+n); return iso(d); };
 const daysUntil = (s) => { if(!s||typeof s!=="string")return null; const[y,m,d]=s.split("-").map(Number); const due=new Date(y,m-1,d),now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((due-t0)/86400000); };
-const addInterval = (s,rep) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); if(rep==="daily")dt.setDate(dt.getDate()+1); else if(rep==="weekly")dt.setDate(dt.getDate()+7); else if(rep==="monthly")dt.setMonth(dt.getMonth()+1); else if(rep==="yearly")dt.setFullYear(dt.getFullYear()+1); return iso(dt); };
+const addInterval = (s,rep,days) => { const[y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); if(rep==="daily")dt.setDate(dt.getDate()+1); else if(rep==="weekly"){if(Array.isArray(days)&&days.length){return nextWeeklyDate(s,days);}dt.setDate(dt.getDate()+7);} else if(rep==="monthly")dt.setMonth(dt.getMonth()+1); else if(rep==="yearly")dt.setFullYear(dt.getFullYear()+1); return iso(dt); };
+// 繰り返し（曜日指定の毎週）: repeatDays は曜日番号 0=日〜6=土の配列。開始日より後の最初の該当日を返す。
+const REPEAT_WEEKDAYS=[1,2,3,4,5]; // 平日（月〜金）
+const REPEAT_WEEKEND=[0,6]; // 週末（土・日）
+const BYDAY2=["SU","MO","TU","WE","TH","FR","SA"];
+const repeatDaysOf=(x)=>{if(!x||x.repeat!=="weekly")return null;if(!Array.isArray(x.repeatDays))return null;const d=x.repeatDays.filter(n=>typeof n==="number"&&n>=0&&n<=6);return d.length?d:null;};
+const nextWeeklyDate=(fromIso,days)=>{const[y,m,d]=fromIso.split("-").map(Number);const dt=new Date(y,m-1,d);for(let i=0;i<7;i++){dt.setDate(dt.getDate()+1);if(days.indexOf(dt.getDay())>=0)return iso(dt);}return iso(dt);};
+const rruleFor=(item)=>{if(!item||!item.repeat||item.repeat==="none")return null;const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};let r=`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`;if(item.repeat==="weekly"){const days=repeatDaysOf(item);if(days)r+=`;BYDAY=${days.map(d=>BYDAY2[d]).join(",")}`;}return r;};
 // ISO日付に n ヶ月を足す（防災備蓄の「交換・賞味の目安」初期値の計算用）。不正な日付なら ""。
 const addMonthsIso = (s,months) => { if(!s||typeof s!=="string")return ""; const[y,m,d]=s.split("-").map(Number); if(!y||!m||!d)return ""; const dt=new Date(y,m-1+months,d); return iso(dt); };
 // ISO日付から今日までの経過（年・月・日）。未来日なら null。
@@ -1569,6 +1576,13 @@ const PERSON_TYPES=[{k:"baby",l:"赤ちゃん",lEn:"Baby",lZh:"婴儿",lEs:"Beb�
 // ユーザーが自分で選んだ絵文字はどちらの初期値とも一致しないので、絶対に差し替わらない。
 const personDefaultEmojis=(ptKey)=>{const l=personEmojisFor(ptKey);const out=[l[0]];const meta=PERSON_TYPES.find(x=>x.k===ptKey);if(meta&&out.indexOf(meta.emoji)<0)out.push(meta.emoji);return out;};
 const followPersonEmoji=(cur,prevPt,nextPt)=>personDefaultEmojis(prevPt).indexOf(cur)>=0?personEmojisFor(nextPt)[0]:cur;
+// 肌色トーン（Unicode肌色修飾子）。skinTone はキー ""（既定）/light/medium-light/medium/medium-dark/dark で保存する。
+const SKIN_TONES=[{key:"",mod:""},{key:"light",mod:"\u{1F3FB}"},{key:"medium-light",mod:"\u{1F3FC}"},{key:"medium",mod:"\u{1F3FD}"},{key:"medium-dark",mod:"\u{1F3FE}"},{key:"dark",mod:"\u{1F3FF}"}];
+const TONEABLE_EMOJIS=new Set(["👶","👧","🧒","👦","👩","👨","🧑","👵","👴","🧓","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","👩‍🎤","👨‍🎤"]);
+const isToneableEmoji=(e)=>TONEABLE_EMOJIS.has(e);
+const emojiWithTone=(emoji,toneKey)=>{if(!emoji||!toneKey)return emoji||"";const mod=(SKIN_TONES.find(x=>x.key===toneKey)||{}).mod;if(!mod||!TONEABLE_EMOJIS.has(emoji))return emoji;const cps=Array.from(emoji);if(cps.length>1&&cps[1]==="\u200D")return cps[0]+mod+cps.slice(1).join("");return emoji+mod;};
+const memberEmojiOf=(m)=>m?emojiWithTone(m.emoji||"",m.skinTone):"";
+const toneTitleKey=(k)=>k===""?"":("tone."+(k==="medium-light"?"mediumLight":k==="medium-dark"?"mediumDark":k));
 // メンバーの表示順（ord）。未設定のメンバーは従来順（配列順）を維持するため、大きな値＋元の位置で比較する。
 const memberOrdKey=(m,i)=>(m&&typeof m.ord==="number"&&isFinite(m.ord))?m.ord:1000000+(i||0);
 const sortMembersByOrd=(arr)=>arr.map((m,i)=>({m,i})).sort((a,b)=>memberOrdKey(a.m,a.i)-memberOrdKey(b.m,b.i)).map(x=>x.m);
@@ -1851,6 +1865,8 @@ const MON_EN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov",
 const fmtMonthDay=(s)=>{if(!s||typeof s!=="string")return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
 const mmdd=(s)=>s?s.slice(5):""; // "MM-DD"
 const dowOf=(iso)=>{if(!iso)return 0;const[y,m,d]=iso.split("-").map(Number);return new Date(y,m-1,d).getDay();};
+// CSV・表示用の繰り返しラベル（日本語固定。画面表示は repeatTextOf を使う）
+const repeatCsvLabel=(x)=>{if(!x||!x.repeat||x.repeat==="none")return"";if(x.repeat==="weekly"){const days=repeatDaysOf(x);if(days){if(days.length===5&&REPEAT_WEEKDAYS.every(d=>days.indexOf(d)>=0))return"平日のみ";if(days.length===2&&REPEAT_WEEKEND.every(d=>days.indexOf(d)>=0))return"週末のみ";return"毎週 "+days.map(d=>WEEKDAYS_JA[d]).join("・");}return"毎週";}return(REPEATS.find(r=>r.key===x.repeat)||{}).label||"";};
 // 写真は複数可。新形式は item.photos=[id...]、旧形式は photo:true（IDBキーは photo:<item.id>）。
 const photoIdsOf=(it)=>it&&Array.isArray(it.photos)&&it.photos.length?it.photos:(it&&it.photo?[it.id]:[]);
 const firstPhotoId=(it)=>{const a=photoIdsOf(it);return a.length?a[0]:null;};
@@ -2847,16 +2863,13 @@ function gcalLink(item, memberName, memberEmoji) {
   if(item.place)url+=`&location=${encodeURIComponent(item.place)}`;
   const details=itemDetailsText(item);
   if(details)url+=`&details=${encodeURIComponent(details)}`;
-  if(item.repeat&&item.repeat!=="none"){
-    const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};
-    url+=`&recur=${encodeURIComponent(`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`)}`;
-  }
+  {const rr=rruleFor(item);if(rr)url+=`&recur=${encodeURIComponent(rr)}`;}
   return url;
 }
 
-function generateIcal(items, members, meEmoji, meName) {
+function generateIcal(items, members, meEmoji, meName, meSkinTone) {
   const nameOf=(sid)=>sid==="me"?(meName||"わたし"):(members.find(m=>m.id===sid)?.name||"");
-  const emojiOf=(sid)=>sid==="me"?meEmoji:(members.find(m=>m.id===sid)?.emoji||"");
+  const emojiOf=(sid)=>sid==="me"?emojiWithTone(meEmoji,meSkinTone):memberEmojiOf(members.find(m=>m.id===sid));
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}T${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}00Z`;
   const esc=(s)=>String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
@@ -2881,10 +2894,7 @@ function generateIcal(items, members, meEmoji, meName) {
       const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
       lines.push(`DTSTART;VALUE=DATE:${s}`);lines.push(`DTEND;VALUE=DATE:${e}`);
     }
-    if(item.repeat&&item.repeat!=="none"){
-      const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};
-      lines.push(`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`);
-    }
+    {const rr=rruleFor(item);if(rr)lines.push(rr);}
     if(item.place)lines.push(`LOCATION:${esc(item.place)}`);
     const details=itemDetailsText(item);
     if(details)lines.push(`DESCRIPTION:${esc(details)}`);
@@ -3071,7 +3081,7 @@ const MESSAGES={
     "prof.calColor":"カレンダーの色","prof.calColorDesc":"カレンダーで見分けやすく。","prof.birthday":"誕生日","prof.gotcha":"うちの子記念日","prof.gotchaDesc":"お迎え記念日のお祝いに。",
     "prof.breedCat":"猫種","prof.breedDog":"犬種","prof.breedOther":"種類","ph.breedDog":"犬種を検索・入力（一覧にない種類も登録OK）","ph.breedCat":"猫種を検索・入力（一覧にない種類も登録OK）","ph.breedOther":"種類を入力（自由入力）","prof.breedDescDog":"散歩のめやすに。","prof.breedDescOther":"体格に合わせた記録に。",
     "prof.coat":"毛の色（任意）","ph.coat":"入力して検索（自由入力も可）","prof.gender":"性別（任意）","prof.genderDesc":"迷子ポスターにも自動で反映されます。","prof.neuter":"避妊・去勢","prof.microchip":"マイクロチップ番号（任意）","ph.microchip":"15桁の番号（例：392...）","prof.microchipDesc":"迷子・防災時の備えに。",
-    "prof.personType":"種別","prof.promptBodyPet":"犬種やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBodyPetCat":"猫種やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBodyPetOther":"種類やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBody":"誕生日を入れると、年齢や誕生日のお知らせが自動で出ます。色を決めると、カレンダーで見分けやすくなります。","prof.blood":"血液型（任意）","blood.suffix":"型","prof.rainbow":"虹の橋（お別れの記録・任意）","prof.rainbowSet":"お別れを記録して追悼モードにする","prof.rainbowDesc":"お知らせを止め、そっと思い出を振り返る表示に。",
+    "prof.personType":"種別","prof.skinTone":"肌色","tone.light":"明るい","tone.mediumLight":"やや明るい","tone.medium":"中間","tone.mediumDark":"やや濃い","tone.dark":"濃い","prof.promptBodyPet":"犬種やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBodyPetCat":"猫種やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBodyPetOther":"種類やお迎え日も入れておくと、記録がもっと楽しくなります。","prof.promptBody":"誕生日を入れると、年齢や誕生日のお知らせが自動で出ます。色を決めると、カレンダーで見分けやすくなります。","prof.blood":"血液型（任意）","blood.suffix":"型","prof.rainbow":"虹の橋（お別れの記録・任意）","prof.rainbowSet":"お別れを記録して追悼モードにする","prof.rainbowDesc":"お知らせを止め、そっと思い出を振り返る表示に。",
     "prof.secBasic":"基本情報","prof.secDetail":"詳しい情報","prof.secShare":"共有","prof.discardBody":"入力した内容は保存されません。編集をやめますか？","prof.editTitle":"プロフィールを編集","prof.visShared":"共有すると、プロフィールと記録が、招待した家族にも見えるようになります。写真も共有されます（共有用に小さくした画像です）。写真が多い場合は、最近のものから共有されます。","prof.visPrivate":"このメンバーは家族には共有されません。","prof.visNote":"見せたくない場合は『自分のみ』に設定してください。そのメンバーは家族には一切表示されません。","prof.saveMember":"保存する","prof.deleteMember":"このメンバーを削除","prof.deleteNoPerm":"この子の削除は、家族スペースのオーナーと、この子を登録した本人だけができます","prof.dangerZone":"危険ゾーン","member.deleteConfirm":"{name} を削除しますか？","member.deleteConfirmRecords":"記録 {n}件も一緒に削除されます。この操作は取り消せません。","member.deleteConfirmBody":"この操作は取り消せません。","member.deleteDo":"削除する","toast.memberFsDeleteFail":"共有データの削除に失敗しました（この端末では削除済みです）","member.addTitle":"家族・ペットを追加","member.kindText":"種類","member.discardAddBody":"入力した内容は保存されません。追加をやめますか？","member.discardKeep":"入力を続ける","member.discardDo":"破棄する","share.inviteMsg":"LOALIFEで、家族の記録を一緒に見られるように招待しました。このリンクを開くとそのまま参加できます（14日間有効です）：{link}\nリンクが開けない時は、アプリの「家族で共有」でこのコードを入力してください：{code}","share.inviteBtn":"招待を送る","share.inviteCopied":"招待文をコピーしました","share.inviteSendDesc":"「招待を送る」から、案内文とリンクを家族に送ってください。リンクを開くだけで参加できます。","share.inviteArrived":"招待が届いています","share.errCodeNotFound":"招待コードが見つかりませんでした。コードを確認してください","share.errCodeExpired":"この招待コードは有効期限が切れています。新しいコードを送ってもらってください","share.errAlreadyJoined":"すでにこの家族に参加しています","share.errJoinFail":"参加できませんでした。通信状態を確認して、もう一度お試しください","share.errNeedVerify":"メールのご確認が必要です。確認メール内のリンクを開いてから、もう一度お試しください。","share.errNotVerifiedYet":"メール確認がまだ反映されていないようです。一度サインアウトして、サインインし直してからお試しください。","share.errCreateFail":"作成できませんでした。通信状態を確認して、もう一度お試しください。","share.joinAbout":"参加すると、「共有」に設定されたメンバーのプロフィールと記録が見られるようになります。写真も共有されます（共有用に小さくした画像です）。あなた自身の記録は共有されません。","share.syncError":"家族共有のデータを読み込めませんでした。通信状態を確認して、再試行してください。","share.retry":"再試行","share.pushLocal":"この端末のメンバーを共有に送る","share.pushDesc":"この端末にあるメンバーが家族に表示されないときは、こちらから共有へ送れます。","share.pushDone":"共有に送りました","share.pushFail":"送れませんでした。通信状態を確認して、もう一度お試しください","share.memberListTitle":"共有の状態","home.lostBanner":"🚨 {name}が迷子モード中です（公開ページが緊急表示になっています）","home.lostBannerOff":"オフにする","share.createWarn":"別の端末やブラウザですでに家族スペースを作っている場合は、新しく作らず「招待コードで参加する」から参加してください。二重に作ると、データが分かれてしまいます。","home.noDataHere":"この端末には、まだ記録がありません。記録のある端末（ホーム画面に追加したアプリなど）でLOALIFEを一度開くと、共有されたメンバーがここにも表示されます。","home.syncPending":"この端末のメンバーが、まだ家族共有に送られていません。下のボタンで送ると、家族にも表示されます。",
     "fun.gotchaToday":"迎えて{y}年！","fun.gotchaTodayNoYear":"うちの子記念日！","fun.gotchaAnniv":"記念日 {date}","fun.gotchaAnnivY":"記念日 {date}（{y}周年）","fun.together":"お迎えから{n}日","fun.neuter":"避妊・去勢{s}","member.addFamily":"家族・ペットを追加",
     "word.pet":"ケア","word.person":"予定","rec.memberTitle":"{name} の{word}","rec.tapEditDate":"タップで日付を修正",
@@ -3086,7 +3096,7 @@ const MESSAGES={
     "rec.feedTitle":"フード・食事","food.delMeal":"食事の記録","food.delRecord":"記録","food.registerLink":"＋ フード登録","food.todayCount":"今日 {n}回","food.pickToLog":"フードを選んで食事を記録。","food.recordLabel":"記録","food.tapToLog":"タップして記録","food.todayMeal":"タップで今日のごはん。","food.amountOnly":"量だけ記録","food.registerBig":"フード・食事を登録する","food.defaultName":"ごはん",
     "rec.toiletTitle":"トイレ成功率","toilet.peeRate":"おしっこ成功率","toilet.poopRate":"うんち成功率","toilet.none":"記録なし","toilet.count":" ({success}/{total}回)","toilet.logBtn":"トイレを記録する",
     "rec.diaryTitle":"今日のようす","diary.recordedDone":"今日の体調は記録ずみ","diary.editMore":"追記・編集","diary.recordBtn":"体調を記録","chart.energy":"元気の推移（5段階）","chart.sleep":"睡眠時間の推移","chart.appetite":"食欲の推移（3段階）","diary.empty":"「体調を記録」から残せます",
-    "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記（長文・任意）","ph.memo":"メモ（場所・持ち物など）","ph.dayNote":"この日のこと","ph.kindText":"例：トカゲ、ハムスター、文鳥","life.tag":"タグ","life.tagHint":"タグは思い出アルバムで絞り込むときに使います","life.firstTag":"はじめて","ph.tag":"例：旅行 / 記念日 / お出かけ","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","life.notify":"通知（任意）","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
+    "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記（長文・任意）","ph.memo":"メモ（場所・持ち物など）","ph.dayNote":"この日のこと","ph.kindText":"例：トカゲ、ハムスター、文鳥","life.tag":"タグ","life.tagHint":"タグは思い出アルバムで絞り込むときに使います","life.firstTag":"はじめて","ph.tag":"例：旅行 / 記念日 / お出かけ","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","repeat.weekdays":"平日のみ","repeat.weekend":"週末のみ","repeat.weeklyDays":"毎週 {days}","repeat.weekdayPreset":"よく使う組み合わせ","life.notify":"通知（任意）","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
     "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間","card.hoursPh":"受付・診療時間（任意 例：24時間／夜間 20:00〜翌8:00）","card.addrPh":"住所（任意）","card.nightToggle":"夜間・救急でまず電話する病院にする",
     "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.insurancePerson":"保険（マイナ保険証・資格確認書）","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など","card.bodyPh.emergency":"例：母 山田花子 090-0000-0000（緊急時はまずこちらへ）","card.bodyPh.allergy":"例：卵・乳製品は不可。エピペンを携帯しています。そばアレルギーあり","card.bodyPh.hospital":"例：〇〇病院、担当は△△先生。ワクチンと定期健診で通院中","card.bodyPh.shelter":"例：避難先は〇〇小学校の体育館。集合場所は公園前。持ち出し品：フード3日分・水・薬","card.bodyPh.insurance":"例：保険者名〇〇、証券番号12345678、有効期限2027年3月まで","card.bodyPh.other":"例：自由にメモできます（連絡先・注意点・お願いなど）",
     "rec.walkTitle":"お散歩記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。必要量は体調・個体差で変わります。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"お散歩スタート","walk.delLabel":"お散歩の記録","walk.gpsSearching":"GPSを探しています…","walk.gpsDenied":"位置情報が許可されていません（時間は記録できます）","walk.gpsError":"位置情報を取得できませんでした","walk.gpsNoSupport":"この端末では位置情報が使えません（時間は記録できます）","walk.pause":"一時停止","walk.resume":"再開","walk.paused":"一時停止中です","walk.locate":"現在地","walk.noRoute":"この散歩はルートが記録されていません",
@@ -3168,7 +3178,7 @@ const MESSAGES={
     "prof.calColor":"Calendar color","prof.calColorDesc":"Easier to tell apart on the calendar.","prof.birthday":"Birthday","prof.gotcha":"Gotcha day","prof.gotchaDesc":"To celebrate the day they joined you.",
     "prof.breedCat":"Breed","prof.breedDog":"Breed","prof.breedOther":"Type","ph.breedDog":"Search or type a breed (any breed is OK)","ph.breedCat":"Search or type a breed (any breed is OK)","ph.breedOther":"Type (free text)","prof.breedDescDog":"Helps gauge walk length.","prof.breedDescOther":"For records that fit their size.",
     "prof.coat":"Coat color (optional)","ph.coat":"Type to search (free text OK)","prof.gender":"Sex (optional)","prof.genderDesc":"Also shown on the lost-pet poster.","prof.neuter":"Spay / neuter","prof.microchip":"Microchip number (optional)","ph.microchip":"15-digit number (e.g. 392...)","prof.microchipDesc":"Handy for lost-pet or disaster prep.",
-    "prof.personType":"Type","prof.promptBodyPet":"Add their breed and gotcha day too, and your records will be even more fun.","prof.promptBodyPetCat":"Add their breed and gotcha day too, and your records will be even more fun.","prof.promptBodyPetOther":"Add what kind of animal they are and their gotcha day too, and your records will be even more fun.","prof.promptBody":"Add a birthday and their age and birthday reminders will appear automatically. Pick a color and they will be easy to tell apart in the calendar.","prof.blood":"Blood type (optional)","blood.suffix":"","prof.rainbow":"Rainbow Bridge (memorial, optional)","prof.rainbowSet":"Record a goodbye and switch to memorial mode","prof.rainbowDesc":"Pauses reminders and gently shows memories.",
+    "prof.personType":"Type","prof.skinTone":"Skin tone","tone.light":"Light","tone.mediumLight":"Medium light","tone.medium":"Medium","tone.mediumDark":"Medium dark","tone.dark":"Dark","prof.promptBodyPet":"Add their breed and gotcha day too, and your records will be even more fun.","prof.promptBodyPetCat":"Add their breed and gotcha day too, and your records will be even more fun.","prof.promptBodyPetOther":"Add what kind of animal they are and their gotcha day too, and your records will be even more fun.","prof.promptBody":"Add a birthday and their age and birthday reminders will appear automatically. Pick a color and they will be easy to tell apart in the calendar.","prof.blood":"Blood type (optional)","blood.suffix":"","prof.rainbow":"Rainbow Bridge (memorial, optional)","prof.rainbowSet":"Record a goodbye and switch to memorial mode","prof.rainbowDesc":"Pauses reminders and gently shows memories.",
     "prof.secBasic":"Basics","prof.secDetail":"More details","prof.secShare":"Sharing","prof.discardBody":"Your changes won't be saved. Stop editing?","prof.editTitle":"Edit profile","prof.visShared":"When shared, this member\'s profile and records become visible to the family you invited. Photos are shared too (as smaller copies made for sharing). If there are many photos, the most recent ones are shared first.","prof.visPrivate":"This member is not shared with family.","prof.visNote":"Set this member to \"Only me\" to keep them private. They won\'t be shown to your family at all.","prof.saveMember":"Save","prof.deleteMember":"Delete this member","prof.deleteNoPerm":"Only the family space owner and the person who added this member can delete this member.","prof.dangerZone":"Danger zone","member.deleteConfirm":"Delete {name}?","member.deleteConfirmRecords":"{n} records will also be deleted. This can't be undone.","member.deleteConfirmBody":"This can't be undone.","member.deleteDo":"Delete","toast.memberFsDeleteFail":"Couldn't delete the shared copy (removed on this device)","member.addTitle":"Add family or pet","member.kindText":"Kind","member.discardAddBody":"Your input won't be saved. Stop adding?","member.discardKeep":"Keep editing","member.discardDo":"Discard","share.inviteMsg":"I've invited you to LOALIFE so we can see our family's records together. Open this link to join right away (valid for 14 days): {link}\nIf the link doesn't open, enter this code under “Family sharing” in the app: {code}","share.inviteBtn":"Send invite","share.inviteCopied":"Invite copied","share.inviteSendDesc":"Use “Send invite” to send the message and link to your family. They can join just by opening the link.","share.inviteArrived":"You've been invited","share.errCodeNotFound":"Invite code not found. Please check the code","share.errCodeExpired":"This invite code has expired. Please ask for a new one","share.errAlreadyJoined":"You're already a member of this family","share.errJoinFail":"Couldn't join. Check your connection and try again","share.errNeedVerify":"Please verify your email first. Open the link in the confirmation email, then try again.","share.errNotVerifiedYet":"Your email verification doesn't seem to have taken effect yet. Please sign out, sign back in, and try again.","share.errCreateFail":"Couldn't create it. Check your connection and try again.","share.joinAbout":"When you join, you'll be able to see the profiles and records of members set to “Shared”. Photos are shared too (as smaller copies made for sharing). Your own records are never shared.","share.syncError":"Couldn't load the family sharing data. Check your connection and try again.","share.retry":"Retry","share.pushLocal":"Send this device's members to sharing","share.pushDesc":"If members on this device aren't showing up for your family, you can send them to sharing from here.","share.pushDone":"Sent to sharing","share.pushFail":"Couldn't send. Check your connection and try again.","share.memberListTitle":"Sharing status","home.lostBanner":"🚨 {name} is in Lost mode (the public page shows the emergency view)","home.lostBannerOff":"Turn off","share.createWarn":"If you already created a family space on another device or browser, don't create a new one — join with an invite code instead. Creating two splits your data.","home.noDataHere":"There's no data on this device yet. Open LOALIFE once on the device that has your records (such as the app added to your home screen), and shared members will appear here too.","home.syncPending":"Members on this device haven't been sent to family sharing yet. Use the button below to send them so your family can see them.",
     "fun.gotchaToday":"{y} years together!","fun.gotchaTodayNoYear":"Gotcha day!","fun.gotchaAnniv":"Gotcha day {date}","fun.gotchaAnnivY":"Gotcha day {date} ({y} yr)","fun.together":"{n} days together","fun.neuter":"Spay/neuter: {s}","member.addFamily":"Add family or pet",
     "word.pet":"care","word.person":"plan","rec.memberTitle":"{name}'s {word}","rec.tapEditDate":"Tap to edit the date",
@@ -3183,7 +3193,7 @@ const MESSAGES={
     "rec.feedTitle":"Food & meals","food.delMeal":"meal record","food.delRecord":"record","food.registerLink":"＋ Add food","food.todayCount":"Today: {n}","food.pickToLog":"Pick a food to log a meal.","food.recordLabel":"Logged","food.tapToLog":"Tap to log","food.todayMeal":"Tap to log today's meal.","food.amountOnly":"Log amount only","food.registerBig":"Add a food or meal","food.defaultName":"Meal",
     "rec.toiletTitle":"Potty success rate","toilet.peeRate":"Pee success","toilet.poopRate":"Poop success","toilet.none":"No data","toilet.count":" ({success}/{total})","toilet.logBtn":"Log potty",
     "rec.diaryTitle":"Today's notes","diary.recordedDone":"Today's condition logged","diary.editMore":"Add / edit","diary.recordBtn":"Log condition","chart.energy":"Energy trend (1–5)","chart.sleep":"Sleep trend","chart.appetite":"Appetite trend (1–3)","diary.empty":"Log it via \"Log condition\"",
-    "life.editTitle":"Edit record","life.newTitle":"Log this day","cat.memory":"Memory / diary","cat.event":"Event","ph.eventTitle":"Event title (e.g. Vet)","ph.memoTitle":"A note (optional, e.g. First beach trip)","common.photo":"Photo","ph.diary":"Diary (optional)","ph.memo":"Note (place, things to bring, etc.)","ph.dayNote":"About this day","ph.kindText":"e.g. Lizard, hamster, finch","life.tag":"Tag","life.tagHint":"Tags are used to filter your memory album","life.firstTag":"First","ph.tag":"e.g. Trip / Anniversary / Outing","life.date":"Date","life.time":"Time","life.repeat":"Repeat","repeat.none":"None","repeat.daily":"Daily","repeat.weekly":"Weekly","repeat.monthly":"Monthly","repeat.yearly":"Yearly","life.notify":"Notifications (optional)","notif.allowShort":"Allow","remind.0":"At start","remind.5":"5 min before","remind.30":"30 min before","remind.60":"1 hr before","remind.1440":"Day before","life.notifyHint":"Too many 🔔 are easy to miss — keep just what you need.",
+    "life.editTitle":"Edit record","life.newTitle":"Log this day","cat.memory":"Memory / diary","cat.event":"Event","ph.eventTitle":"Event title (e.g. Vet)","ph.memoTitle":"A note (optional, e.g. First beach trip)","common.photo":"Photo","ph.diary":"Diary (optional)","ph.memo":"Note (place, things to bring, etc.)","ph.dayNote":"About this day","ph.kindText":"e.g. Lizard, hamster, finch","life.tag":"Tag","life.tagHint":"Tags are used to filter your memory album","life.firstTag":"First","ph.tag":"e.g. Trip / Anniversary / Outing","life.date":"Date","life.time":"Time","life.repeat":"Repeat","repeat.none":"None","repeat.daily":"Daily","repeat.weekly":"Weekly","repeat.monthly":"Monthly","repeat.yearly":"Yearly","repeat.weekdays":"Weekdays","repeat.weekend":"Weekends","repeat.weeklyDays":"Weekly · {days}","repeat.weekdayPreset":"Presets","life.notify":"Notifications (optional)","notif.allowShort":"Allow","remind.0":"At start","remind.5":"5 min before","remind.30":"30 min before","remind.60":"1 hr before","remind.1440":"Day before","life.notifyHint":"Too many 🔔 are easy to miss — keep just what you need.",
     "rec.trayTitle":"Important info","rec.trayCount":" ({n})","rec.trayHint":"Save contacts, allergies, and vet info as cards.","card.nightTag":"Night","card.hoursPh":"Hours (optional, e.g. 24h / night 8pm–8am)","card.addrPh":"Address (optional)","card.nightToggle":"Make this the clinic to call first at night / in emergencies",
     "card.editTitle":"Edit card","card.newTitle":"Add card","cardkind.emergency":"Emergency contact","cardkind.allergy":"Allergies & no-gos","cardkind.hospital":"Vet & clinic notes","cardkind.shelter":"Shelter & disaster notes","cardkind.insurance":"Insurance info","cardkind.insurancePerson":"Insurance (My Number card / eligibility letter)","cardkind.other":"Note","ph.cardTitle":"Title (e.g. Regular vet)","ph.cardBody":"Contacts, allergies, notes, meds remaining, etc.","card.bodyPh.emergency":"e.g. Mom (Hanako Yamada) 090-0000-0000 — call here first in an emergency","card.bodyPh.allergy":"e.g. No eggs or dairy. Carries an EpiPen. Allergic to buckwheat","card.bodyPh.hospital":"e.g. XX Clinic, Dr. YY. Goes in for vaccines and regular checkups","card.bodyPh.shelter":"e.g. Shelter: XX Elementary School gym. Meet at the park entrance. Grab bag: 3 days of food, water, meds","card.bodyPh.insurance":"e.g. Insurer: XX, policy no. 12345678, valid until March 2027","card.bodyPh.other":"e.g. Write anything — contacts, cautions, requests",
     "rec.walkTitle":"Walk log","walk.goalTitle":"This month's guide (reference)","walk.distance":"Distance","walk.count":"Walks","walk.timesUnit":"","walk.dcPre":"Based on breed","walk.dcMid":" and age","walk.dcPost1":", a ","walk.dcBold":"general guideline (reference)","walk.dcPost2":". Needs vary with health and each dog.","walk.dcBreedUnset":" (not set → medium)","walk.dcAgeUnset":" (not set → adult)","walk.reviewTitle":"Walk review","walk.vsLast":"vs last month ","walk.summaryThisMonth":"This month ","walk.walksUnit":" walks","walk.summaryMin":" · {m} min","walk.summarySep":" / 6-mo total ","walk.time":"Time","walk.gpsRecording":"Recording route by GPS","walk.gpsStart":"Recording route by GPS… start walking and the distance grows","walk.stopSave":"Finish & save","walk.otherRunning":"A walk for another one is being tracked","walk.startBtn":"Start walk","walk.delLabel":"walk record","walk.gpsSearching":"Looking for GPS…","walk.gpsDenied":"Location isn't allowed (time is still recorded)","walk.gpsError":"Couldn't get your location","walk.gpsNoSupport":"Location isn't available on this device (time is still recorded)","walk.pause":"Pause","walk.resume":"Resume","walk.paused":"Paused","walk.locate":"My location","walk.noRoute":"No route was recorded for this walk",
@@ -3265,7 +3275,7 @@ const MESSAGES={
     "prof.calColor":"Color del calendario","prof.calColorDesc":"Más fácil de distinguir en el calendario.","prof.birthday":"Cumpleaños","prof.gotcha":"Día de adopción","prof.gotchaDesc":"Para celebrar el día en que llegó a tu vida.",
     "prof.breedCat":"Raza","prof.breedDog":"Raza","prof.breedOther":"Tipo","ph.breedDog":"Busca o escribe una raza (cualquiera vale)","ph.breedCat":"Busca o escribe una raza (cualquiera vale)","ph.breedOther":"Tipo (texto libre)","prof.breedDescDog":"Ayuda a estimar la duración del paseo.","prof.breedDescOther":"Para registros acordes a su tamaño.",
     "prof.coat":"Color del pelaje (opcional)","ph.coat":"Escribe para buscar (texto libre)","prof.gender":"Sexo (opcional)","prof.genderDesc":"También aparece en el cartel de mascota perdida.","prof.neuter":"Esterilización","prof.microchip":"Número de microchip (opcional)","ph.microchip":"Número de 15 dígitos (p. ej. 392...)","prof.microchipDesc":"Útil para mascota perdida o desastres.",
-    "prof.personType":"Tipo","prof.promptBodyPet":"Si agregas también su raza y el día de adopción, tus registros serán aún más divertidos.","prof.promptBodyPetCat":"Si agregas también su raza y el día de adopción, tus registros serán aún más divertidos.","prof.promptBodyPetOther":"Si agregas también qué animal es y el día de adopción, tus registros serán aún más divertidos.","prof.promptBody":"Si agregas el cumpleaños, la edad y los avisos de cumpleaños aparecerán automáticamente. Si eliges un color, será más fácil distinguirlo en el calendario.","prof.blood":"Grupo sanguíneo (opcional)","blood.suffix":"","prof.rainbow":"Puente del arcoíris (memorial, opcional)","prof.rainbowSet":"Registrar una despedida y pasar a modo memorial","prof.rainbowDesc":"Pausa los recordatorios y muestra los recuerdos con suavidad.",
+    "prof.personType":"Tipo","prof.skinTone":"Tono de piel","tone.light":"Claro","tone.mediumLight":"Medio claro","tone.medium":"Medio","tone.mediumDark":"Medio oscuro","tone.dark":"Oscuro","prof.promptBodyPet":"Si agregas también su raza y el día de adopción, tus registros serán aún más divertidos.","prof.promptBodyPetCat":"Si agregas también su raza y el día de adopción, tus registros serán aún más divertidos.","prof.promptBodyPetOther":"Si agregas también qué animal es y el día de adopción, tus registros serán aún más divertidos.","prof.promptBody":"Si agregas el cumpleaños, la edad y los avisos de cumpleaños aparecerán automáticamente. Si eliges un color, será más fácil distinguirlo en el calendario.","prof.blood":"Grupo sanguíneo (opcional)","blood.suffix":"","prof.rainbow":"Puente del arcoíris (memorial, opcional)","prof.rainbowSet":"Registrar una despedida y pasar a modo memorial","prof.rainbowDesc":"Pausa los recordatorios y muestra los recuerdos con suavidad.",
     "prof.secBasic":"Datos básicos","prof.secDetail":"Más detalles","prof.secShare":"Compartir","prof.discardBody":"Los cambios no se guardarán. ¿Dejar de editar?","prof.editTitle":"Editar perfil","prof.visShared":"Al compartir, el perfil y los registros de este miembro podrán verlos los familiares que invitaste. Las fotos también se comparten (en copias reducidas para compartir). Si hay muchas fotos, se comparten primero las más recientes.","prof.visPrivate":"Este miembro no se comparte con la familia.","prof.visNote":"Si no quieres mostrar a alguien, márcalo como «Solo yo» en la edición del perfil. No se mostrará a tu familia en absoluto.","prof.saveMember":"Guardar","prof.deleteMember":"Eliminar este miembro","prof.deleteNoPerm":"Solo el dueño del espacio familiar y la persona que registró a este miembro pueden eliminarlo.","prof.dangerZone":"Zona de peligro","member.deleteConfirm":"¿Eliminar a {name}?","member.deleteConfirmRecords":"También se eliminarán {n} registros. Esta acción no se puede deshacer.","member.deleteConfirmBody":"Esta acción no se puede deshacer.","member.deleteDo":"Eliminar","toast.memberFsDeleteFail":"No se pudo eliminar la copia compartida (eliminado en este dispositivo)","member.addTitle":"Añadir familia o mascota","member.kindText":"Tipo de animal","member.discardAddBody":"Lo que escribiste no se guardará. ¿Dejar de añadir?","member.discardKeep":"Seguir escribiendo","member.discardDo":"Descartar","share.inviteMsg":"Te invité a LOALIFE para que veamos juntos los registros de la familia. Abre este enlace para unirte al momento (válido por 14 días): {link}\nSi el enlace no se abre, introduce este código en «Compartir con la familia» en la app: {code}","share.inviteBtn":"Enviar invitación","share.inviteCopied":"Invitación copiada","share.inviteSendDesc":"Usa «Enviar invitación» para mandar el mensaje y el enlace a tu familia. Solo tienen que abrir el enlace para unirse.","share.inviteArrived":"Tienes una invitación","share.errCodeNotFound":"No se encontró el código de invitación. Revísalo, por favor","share.errCodeExpired":"Este código de invitación caducó. Pide uno nuevo","share.errAlreadyJoined":"Ya formas parte de esta familia","share.errJoinFail":"No se pudo unir. Revisa tu conexión e inténtalo de nuevo","share.errNeedVerify":"Primero verifica tu correo. Abre el enlace del correo de confirmación e inténtalo de nuevo.","share.errNotVerifiedYet":"Parece que la verificación de tu correo aún no se aplicó. Cierra sesión, vuelve a entrar e inténtalo de nuevo.","share.errCreateFail":"No se pudo crear. Revisa tu conexión e inténtalo de nuevo.","share.joinAbout":"Al unirte, podrás ver los perfiles y registros de los miembros marcados como «Compartido». Las fotos también se comparten (en copias reducidas para compartir). Tus propios registros nunca se comparten.","share.syncError":"No se pudieron cargar los datos de uso compartido. Revisa tu conexión e inténtalo de nuevo.","share.retry":"Reintentar","share.pushLocal":"Enviar los miembros de este dispositivo","share.pushDesc":"Si los miembros de este dispositivo no aparecen para tu familia, puedes enviarlos desde aquí.","share.pushDone":"Enviado","share.pushFail":"No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.","share.memberListTitle":"Estado de compartir","home.lostBanner":"🚨 {name} está en modo Perdido (la página pública muestra la vista de emergencia)","home.lostBannerOff":"Desactivar","share.createWarn":"Si ya creaste un espacio familiar en otro dispositivo o navegador, no crees uno nuevo: únete con un código de invitación. Crear dos divide tus datos.","home.noDataHere":"Este dispositivo aún no tiene datos. Abre LOALIFE una vez en el dispositivo que tiene tus registros (como la app añadida a la pantalla de inicio) y los miembros compartidos aparecerán aquí también.","home.syncPending":"Los miembros de este dispositivo aún no se enviaron al uso compartido. Envíalos con el botón de abajo para que tu familia pueda verlos.",
     "fun.gotchaToday":"¡{y} años juntos!","fun.gotchaTodayNoYear":"¡Día de adopción!","fun.gotchaAnniv":"Día de adopción {date}","fun.gotchaAnnivY":"Día de adopción {date} ({y} a)","fun.together":"{n} días juntos","fun.neuter":"Esterilización: {s}","member.addFamily":"Añadir familia o mascota",
     "word.pet":"cuidados","word.person":"plan","rec.memberTitle":"{word} de {name}","rec.tapEditDate":"Toca para editar la fecha",
@@ -3280,7 +3290,7 @@ const MESSAGES={
     "rec.feedTitle":"Comida y raciones","food.delMeal":"registro de comida","food.delRecord":"registro","food.registerLink":"＋ Añadir comida","food.todayCount":"Hoy: {n}","food.pickToLog":"Elige una comida para registrarla.","food.recordLabel":"Registrado","food.tapToLog":"Toca para registrar","food.todayMeal":"Toca para registrar la comida de hoy.","food.amountOnly":"Registrar solo cantidad","food.registerBig":"Añadir una comida","food.defaultName":"Comida",
     "rec.toiletTitle":"Tasa de acierto en el baño","toilet.peeRate":"Acierto pipí","toilet.poopRate":"Acierto caca","toilet.none":"Sin datos","toilet.count":" ({success}/{total})","toilet.logBtn":"Registrar baño",
     "rec.diaryTitle":"Notas de hoy","diary.recordedDone":"Estado de hoy registrado","diary.editMore":"Añadir / editar","diary.recordBtn":"Registrar estado","chart.energy":"Tendencia de energía (1–5)","chart.sleep":"Tendencia de sueño","chart.appetite":"Tendencia de apetito (1–3)","diary.empty":"Regístralo con «Registrar estado»",
-    "life.editTitle":"Editar registro","life.newTitle":"Registrar este día","cat.memory":"Recuerdo / diario","cat.event":"Evento","ph.eventTitle":"Título del evento (p. ej. Veterinario)","ph.memoTitle":"Una nota (opcional, p. ej. Primera vez en la playa)","common.photo":"Foto","ph.diary":"Diario (opcional)","ph.memo":"Nota (lugar, cosas para llevar, etc.)","ph.dayNote":"Sobre este día","ph.kindText":"Ej.: Lagartija, hámster, pinzón","life.tag":"Etiqueta","life.tagHint":"Las etiquetas sirven para filtrar tu álbum de recuerdos","life.firstTag":"Primera vez","ph.tag":"Ej.: Viaje / Aniversario / Salida","life.date":"Fecha","life.time":"Hora","life.repeat":"Repetir","repeat.none":"No","repeat.daily":"Cada día","repeat.weekly":"Cada semana","repeat.monthly":"Cada mes","repeat.yearly":"Cada año","life.notify":"Notificaciones (opcional)","notif.allowShort":"Permitir","remind.0":"Al empezar","remind.5":"5 min antes","remind.30":"30 min antes","remind.60":"1 h antes","remind.1440":"El día antes","life.notifyHint":"Demasiados 🔔 se pasan por alto — deja solo los necesarios.",
+    "life.editTitle":"Editar registro","life.newTitle":"Registrar este día","cat.memory":"Recuerdo / diario","cat.event":"Evento","ph.eventTitle":"Título del evento (p. ej. Veterinario)","ph.memoTitle":"Una nota (opcional, p. ej. Primera vez en la playa)","common.photo":"Foto","ph.diary":"Diario (opcional)","ph.memo":"Nota (lugar, cosas para llevar, etc.)","ph.dayNote":"Sobre este día","ph.kindText":"Ej.: Lagartija, hámster, pinzón","life.tag":"Etiqueta","life.tagHint":"Las etiquetas sirven para filtrar tu álbum de recuerdos","life.firstTag":"Primera vez","ph.tag":"Ej.: Viaje / Aniversario / Salida","life.date":"Fecha","life.time":"Hora","life.repeat":"Repetir","repeat.none":"No","repeat.daily":"Cada día","repeat.weekly":"Cada semana","repeat.monthly":"Cada mes","repeat.yearly":"Cada año","repeat.weekdays":"Entre semana","repeat.weekend":"Fines de semana","repeat.weeklyDays":"Cada semana · {days}","repeat.weekdayPreset":"Combinaciones frecuentes","life.notify":"Notificaciones (opcional)","notif.allowShort":"Permitir","remind.0":"Al empezar","remind.5":"5 min antes","remind.30":"30 min antes","remind.60":"1 h antes","remind.1440":"El día antes","life.notifyHint":"Demasiados 🔔 se pasan por alto — deja solo los necesarios.",
     "rec.trayTitle":"Información importante","rec.trayCount":" ({n})","rec.trayHint":"Guarda contactos, alergias e info del veterinario como tarjetas.","card.nightTag":"Noche","card.hoursPh":"Horario (opcional, p. ej. 24 h / noche 20:00–8:00)","card.addrPh":"Dirección (opcional)","card.nightToggle":"Marcar como la clínica a la que llamar primero de noche o en urgencias",
     "card.editTitle":"Editar tarjeta","card.newTitle":"Añadir tarjeta","cardkind.emergency":"Contacto de emergencia","cardkind.allergy":"Alergias y prohibiciones","cardkind.hospital":"Notas del veterinario","cardkind.shelter":"Refugio y desastres","cardkind.insurance":"Datos del seguro","cardkind.insurancePerson":"Seguro (tarjeta My Number / carta de elegibilidad)","cardkind.other":"Nota","ph.cardTitle":"Título (p. ej. Veterinario habitual)","ph.cardBody":"Contactos, alergias, notas, medicación restante, etc.","card.bodyPh.emergency":"Ej.: Mamá (Hanako Yamada) 090-0000-0000, llamar primero en caso de emergencia","card.bodyPh.allergy":"Ej.: Sin huevo ni lácteos. Lleva un EpiPen. Alergia al trigo sarraceno","card.bodyPh.hospital":"Ej.: Clínica XX, a cargo del Dr. YY. Acude para vacunas y revisiones periódicas","card.bodyPh.shelter":"Ej.: Refugio: gimnasio de la escuela primaria XX. Punto de encuentro: entrada del parque. Mochila: comida para 3 días, agua, medicinas","card.bodyPh.insurance":"Ej.: Aseguradora: XX, n.º de póliza 12345678, válido hasta marzo de 2027","card.bodyPh.other":"Ej.: Escribe lo que quieras: contactos, precauciones, peticiones",
     "rec.walkTitle":"Registro de paseos","walk.goalTitle":"Guía de este mes (referencia)","walk.distance":"Distancia","walk.count":"Paseos","walk.timesUnit":"","walk.dcPre":"Según la raza","walk.dcMid":" y la edad","walk.dcPost1":", una ","walk.dcBold":"guía general (referencia)","walk.dcPost2":". La cantidad varía según la salud y cada perro.","walk.dcBreedUnset":" (sin definir → mediano)","walk.dcAgeUnset":" (sin definir → adulto)","walk.reviewTitle":"Resumen de paseos","walk.vsLast":"vs el mes pasado ","walk.summaryThisMonth":"Este mes ","walk.walksUnit":" paseos","walk.summaryMin":" · {m} min","walk.summarySep":" / total 6 meses ","walk.time":"Tiempo","walk.gpsRecording":"Grabando ruta por GPS","walk.gpsStart":"Grabando ruta por GPS… empieza a caminar y la distancia aumenta","walk.stopSave":"Terminar y guardar","walk.otherRunning":"Se está registrando el paseo de otro","walk.startBtn":"Empezar paseo","walk.delLabel":"registro de paseo","walk.gpsSearching":"Buscando GPS…","walk.gpsDenied":"La ubicación no está permitida (el tiempo sí se registra)","walk.gpsError":"No se pudo obtener la ubicación","walk.gpsNoSupport":"Este dispositivo no puede usar la ubicación (el tiempo sí se registra)","walk.pause":"Pausar","walk.resume":"Reanudar","walk.paused":"En pausa","walk.locate":"Mi ubicación","walk.noRoute":"No se registró la ruta de este paseo",
@@ -3362,7 +3372,7 @@ const MESSAGES={
     "prof.calColor":"日历颜色","prof.calColorDesc":"在日历上更容易区分。","prof.birthday":"生日","prof.gotcha":"领养日","prof.gotchaDesc":"庆祝它来到你身边的日子。",
     "prof.breedCat":"品种","prof.breedDog":"品种","prof.breedOther":"类型","ph.breedDog":"搜索或输入品种（任何品种都可以）","ph.breedCat":"搜索或输入品种（任何品种都可以）","ph.breedOther":"类型（自由输入）","prof.breedDescDog":"有助于估算散步时长。","prof.breedDescOther":"便于按体型记录。",
     "prof.coat":"毛色（可选）","ph.coat":"输入以搜索（可自由输入）","prof.gender":"性别（可选）","prof.genderDesc":"也会显示在寻宠海报上。","prof.neuter":"绝育","prof.microchip":"芯片号码（可选）","ph.microchip":"15位数字（如 392...）","prof.microchipDesc":"在走失或防灾时很有用。",
-    "prof.personType":"类型","prof.promptBodyPet":"再填上品种和领养日，记录会更有趣。","prof.promptBodyPetCat":"再填上品种和领养日，记录会更有趣。","prof.promptBodyPetOther":"再填上种类和领养日，记录会更有趣。","prof.promptBody":"填写生日后，年龄和生日提醒会自动显示。选好颜色后，在日历里也更容易区分。","prof.blood":"血型（可选）","blood.suffix":"型","prof.rainbow":"彩虹桥（纪念，可选）","prof.rainbowSet":"记录告别并切换到纪念模式","prof.rainbowDesc":"暂停提醒，静静地回顾回忆。",
+    "prof.personType":"类型","prof.skinTone":"肤色","tone.light":"浅色","tone.mediumLight":"较浅","tone.medium":"中等","tone.mediumDark":"较深","tone.dark":"深色","prof.promptBodyPet":"再填上品种和领养日，记录会更有趣。","prof.promptBodyPetCat":"再填上品种和领养日，记录会更有趣。","prof.promptBodyPetOther":"再填上种类和领养日，记录会更有趣。","prof.promptBody":"填写生日后，年龄和生日提醒会自动显示。选好颜色后，在日历里也更容易区分。","prof.blood":"血型（可选）","blood.suffix":"型","prof.rainbow":"彩虹桥（纪念，可选）","prof.rainbowSet":"记录告别并切换到纪念模式","prof.rainbowDesc":"暂停提醒，静静地回顾回忆。",
     "prof.secBasic":"基本信息","prof.secDetail":"详细信息","prof.secShare":"共享","prof.discardBody":"输入的内容不会被保存。要放弃编辑吗？","prof.editTitle":"编辑资料","prof.visShared":"共享后，该成员的资料和记录将对您邀请的家人可见。照片也会共享（为共享而缩小的副本）。照片较多时，会从最近的开始共享。","prof.visPrivate":"该成员不会与家人共享。","prof.visNote":"如果不想让某个成员被看到，请在资料编辑中将其设为「仅自己」。该成员将完全不会显示给家人。","prof.saveMember":"保存","prof.deleteMember":"删除该成员","prof.deleteNoPerm":"只有家庭空间的创建者和登记该成员的人才能删除该成员。","prof.dangerZone":"危险区域","member.deleteConfirm":"要删除{name}吗？","member.deleteConfirmRecords":"{n}条记录也会被一起删除。此操作无法撤销。","member.deleteConfirmBody":"此操作无法撤销。","member.deleteDo":"删除","toast.memberFsDeleteFail":"共享副本删除失败（已在本设备删除）","member.addTitle":"添加家人或宠物","member.kindText":"种类","member.discardAddBody":"输入的内容不会被保存。要取消添加吗？","member.discardKeep":"继续输入","member.discardDo":"放弃","share.inviteMsg":"我邀请你加入 LOALIFE，一起查看家人的记录。打开此链接即可直接加入（14天内有效）：{link}\n如果链接打不开，请在应用的「家庭共享」中输入此代码：{code}","share.inviteBtn":"发送邀请","share.inviteCopied":"已复制邀请","share.inviteSendDesc":"点「发送邀请」把说明和链接发给家人。对方打开链接即可加入。","share.inviteArrived":"你收到了一份邀请","share.errCodeNotFound":"找不到邀请码，请确认代码","share.errCodeExpired":"此邀请码已过期，请索取新代码","share.errAlreadyJoined":"你已经是这个家庭的成员了","share.errJoinFail":"加入失败，请检查网络后重试","share.errNeedVerify":"请先完成邮箱验证。打开确认邮件中的链接后再试一次。","share.errNotVerifiedYet":"邮箱验证似乎尚未生效。请退出登录后重新登录再试。","share.errCreateFail":"创建失败，请检查网络后重试。","share.joinAbout":"加入后，你可以查看设为「共享」的成员的资料和记录。照片也会共享（为共享而缩小的副本）。你自己的记录不会被共享。","share.syncError":"无法加载家庭共享数据。请检查网络后重试。","share.retry":"重试","share.pushLocal":"把本设备的成员发送到共享","share.pushDesc":"如果本设备的成员没有显示给家人，可以从这里发送到共享。","share.pushDone":"已发送到共享","share.pushFail":"发送失败。请检查网络后重试。","share.memberListTitle":"共享状态","home.lostBanner":"🚨 {name}正处于走失模式（公开页面显示紧急视图）","home.lostBannerOff":"关闭","share.createWarn":"如果已在其他设备或浏览器创建过家庭空间，请不要重复创建，请改用邀请码加入。重复创建会导致数据分散。","home.noDataHere":"本设备还没有记录。请在存有记录的设备（例如已添加到主屏幕的应用）上打开一次 LOALIFE，共享的成员也会显示在这里。","home.syncPending":"本设备的成员尚未发送到家庭共享。点击下面的按钮发送后，家人就能看到。",
     "fun.gotchaToday":"相伴{y}年了！","fun.gotchaTodayNoYear":"领养日！","fun.gotchaAnniv":"领养日 {date}","fun.gotchaAnnivY":"领养日 {date}（{y}年）","fun.together":"相伴{n}天","fun.neuter":"绝育：{s}","member.addFamily":"添加家人或宠物",
     "word.pet":"照护","word.person":"计划","rec.memberTitle":"{name}的{word}","rec.tapEditDate":"点按编辑日期",
@@ -3377,7 +3387,7 @@ const MESSAGES={
     "rec.feedTitle":"食物与用餐","food.delMeal":"用餐记录","food.delRecord":"记录","food.registerLink":"＋ 添加食物","food.todayCount":"今天：{n}","food.pickToLog":"选择一种食物来记录用餐。","food.recordLabel":"已记录","food.tapToLog":"点按记录","food.todayMeal":"点按记录今天的用餐。","food.amountOnly":"只记录分量","food.registerBig":"添加食物","food.defaultName":"用餐",
     "rec.toiletTitle":"如厕成功率","toilet.peeRate":"小便成功","toilet.poopRate":"大便成功","toilet.none":"无数据","toilet.count":" （{success}/{total}）","toilet.logBtn":"记录如厕",
     "rec.diaryTitle":"今日状态","diary.recordedDone":"今天的状态已记录","diary.editMore":"添加/编辑","diary.recordBtn":"记录状态","chart.energy":"精神趋势（1–5）","chart.sleep":"睡眠趋势","chart.appetite":"食欲趋势（1–3）","diary.empty":"用「记录状态」来记录",
-    "life.editTitle":"编辑记录","life.newTitle":"记录这一天","cat.memory":"回忆/日记","cat.event":"事件","ph.eventTitle":"事件标题（如 兽医）","ph.memoTitle":"备注（可选，如 第一次去海边）","common.photo":"照片","ph.diary":"日记（可选）","ph.memo":"备注（地点、携带物品等）","ph.dayNote":"这一天的事","ph.kindText":"例：蜥蜴、仓鼠、文鸟","life.tag":"标签","life.tagHint":"标签用于在回忆相册中筛选","life.firstTag":"第一次","ph.tag":"例：旅行 / 纪念日 / 出游","life.date":"日期","life.time":"时间","life.repeat":"重复","repeat.none":"不重复","repeat.daily":"每天","repeat.weekly":"每周","repeat.monthly":"每月","repeat.yearly":"每年","life.notify":"通知（可选）","notif.allowShort":"允许","remind.0":"开始时","remind.5":"提前5分钟","remind.30":"提前30分钟","remind.60":"提前1小时","remind.1440":"前一天","life.notifyHint":"🔔太多容易忽略 — 只留需要的。",
+    "life.editTitle":"编辑记录","life.newTitle":"记录这一天","cat.memory":"回忆/日记","cat.event":"事件","ph.eventTitle":"事件标题（如 兽医）","ph.memoTitle":"备注（可选，如 第一次去海边）","common.photo":"照片","ph.diary":"日记（可选）","ph.memo":"备注（地点、携带物品等）","ph.dayNote":"这一天的事","ph.kindText":"例：蜥蜴、仓鼠、文鸟","life.tag":"标签","life.tagHint":"标签用于在回忆相册中筛选","life.firstTag":"第一次","ph.tag":"例：旅行 / 纪念日 / 出游","life.date":"日期","life.time":"时间","life.repeat":"重复","repeat.none":"不重复","repeat.daily":"每天","repeat.weekly":"每周","repeat.monthly":"每月","repeat.yearly":"每年","repeat.weekdays":"仅工作日","repeat.weekend":"仅周末","repeat.weeklyDays":"每周 {days}","repeat.weekdayPreset":"常用组合","life.notify":"通知（可选）","notif.allowShort":"允许","remind.0":"开始时","remind.5":"提前5分钟","remind.30":"提前30分钟","remind.60":"提前1小时","remind.1440":"前一天","life.notifyHint":"🔔太多容易忽略 — 只留需要的。",
     "rec.trayTitle":"重要信息","rec.trayCount":" （{n}）","rec.trayHint":"把联系人、过敏和兽医信息保存为卡片。","card.nightTag":"夜间","card.hoursPh":"接诊时间（可选，如 24小时／夜间 20:00〜次日8:00）","card.addrPh":"地址（可选）","card.nightToggle":"设为夜间/急救时首先拨打的医院",
     "card.editTitle":"编辑卡片","card.newTitle":"添加卡片","cardkind.emergency":"紧急联系人","cardkind.allergy":"过敏与禁忌","cardkind.hospital":"兽医备注","cardkind.shelter":"避难与防灾备注","cardkind.insurance":"保险信息","cardkind.insurancePerson":"保险（个人编号卡/资格确认书）","cardkind.other":"备注","ph.cardTitle":"标题（如 常去的兽医）","ph.cardBody":"联系人、过敏、备注、剩余药量等。","card.bodyPh.emergency":"例：妈妈 山田花子 090-0000-0000（紧急时先打这个电话）","card.bodyPh.allergy":"例：不能吃鸡蛋和乳制品。随身携带肾上腺素笔。对荞麦过敏","card.bodyPh.hospital":"例：〇〇医院，负责医生是△△。定期接种疫苗和体检","card.bodyPh.shelter":"例：避难地点：〇〇小学体育馆。集合地点：公园门口。应急包：3天食物、水、药品","card.bodyPh.insurance":"例：保险公司：〇〇，保单号12345678，有效期至2027年3月","card.bodyPh.other":"例：可自由记录（联系方式、注意事项、请求等）",
     "rec.walkTitle":"散步记录","walk.goalTitle":"本月参考量","walk.distance":"距离","walk.count":"次数","walk.timesUnit":"次","walk.dcPre":"根据品种","walk.dcMid":"和年龄","walk.dcPost1":"的","walk.dcBold":"一般参考值","walk.dcPost2":"。实际需求因健康和个体而异。","walk.dcBreedUnset":"（未设置→按中型计算）","walk.dcAgeUnset":"（未设置→按成犬计算）","walk.reviewTitle":"散步回顾","walk.vsLast":"较上月 ","walk.summaryThisMonth":"本月 ","walk.walksUnit":"次","walk.summaryMin":" · {m}分钟","walk.summarySep":" / 6个月合计 ","walk.time":"时间","walk.gpsRecording":"正在用GPS记录路线","walk.gpsStart":"正在用GPS记录路线…开始走动距离就会增加","walk.stopSave":"结束并保存","walk.otherRunning":"正在记录另一位的散步","walk.startBtn":"开始散步","walk.delLabel":"散步记录","walk.gpsSearching":"正在搜索GPS…","walk.gpsDenied":"未允许定位（仍可记录时间）","walk.gpsError":"无法获取位置信息","walk.gpsNoSupport":"此设备无法使用定位（仍可记录时间）","walk.pause":"暂停","walk.resume":"继续","walk.paused":"已暂停","walk.locate":"当前位置","walk.noRoute":"这次散步没有记录路线",
@@ -3849,6 +3859,7 @@ function App(){
   const[selfCare,setSelfCare]=useState(false); // 「自分」の健康・ケア記録を追加する時だけ true（ケアフォームを自分にも開放。既存の予定・ToDoとは別導線）
   const[draftTime,setDraftTime]=useState("");
   const[draftRepeat,setDraftRepeat]=useState("none");
+  const[draftRepeatDays,setDraftRepeatDays]=useState([]); // ケア追加フォームの曜日指定（0=日〜6=土）
   const[draftReminders,setDraftReminders]=useState([]);
   const[draftEndTime,setDraftEndTime]=useState(""); // 予定の終了時刻（任意）
   const[draftPlace,setDraftPlace]=useState("");const[draftUrl,setDraftUrl]=useState("");const[draftNote,setDraftNote]=useState(""); // 予定の詳細（場所・URL・メモ=note正規）
@@ -3862,6 +3873,7 @@ function App(){
   const[newPersonType,setNewPersonType]=useState("child");
   const[newName,setNewName]=useState("");
   const[newEmoji,setNewEmoji]=useState("🐶");
+  const[newSkinTone,setNewSkinTone]=useState(""); // 追加フォームの肌色（""＝既定）
   const[newBirthday,setNewBirthday]=useState("");
   const[newVisibility,setNewVisibility]=useState("household");
   const[editingId,setEditingId]=useState(null);
@@ -3873,6 +3885,7 @@ function App(){
   const[editMicrochip,setEditMicrochip]=useState(""); // マイクロチップ番号（ペット）
   const[editBreed,setEditBreed]=useState(""); // 犬種・猫種
   const[editEmoji,setEditEmoji]=useState(""); // 編集中の絵文字（種別切替では初期値のときだけ追随）
+  const[editSkinTone,setEditSkinTone]=useState(""); // 編集中の肌色
   const[editKindText,setEditKindText]=useState(""); // 「その他」ペットの種類（自由文）
   const[editCoat,setEditCoat]=useState(""); // 毛の色
   const[editNeuter,setEditNeuter]=useState(""); // 避妊・去勢（""＝未設定 / done / not）
@@ -4115,12 +4128,13 @@ function App(){
   const[prep,setPrep]=useState(null);
   const prepRef=useRef(null);
   const applyPrep=(next)=>{prepRef.current=next;setPrep(next);};
-  const savePrep=(next)=>{applyPrep(next);try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep:next})).catch(()=>{});}catch(e){}};
+  const savePrep=(next)=>{applyPrep(next);try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar,prep:next})).catch(()=>{});}catch(e){}};
   const[editItemId,setEditItemId]=useState(null);
   const[eTitle,setETitle]=useState("");
   const[eDate,setEDate]=useState("");
   const[eTime,setETime]=useState("");
   const[eRepeat,setERepeat]=useState("none");
+  const[eRepeatDays,setERepeatDays]=useState([]); // 編集モーダルの曜日指定（0=日〜6=土）
   const[eReminders,setEReminders]=useState([]);
   const[ePlace,setEPlace]=useState("");const[eUrl,setEUrl]=useState("");const[eMemo,setEMemo]=useState(""); // 予定の詳細（場所・URL・メモ）
   const[eDetailOpen,setEDetailOpen]=useState(false); // 予定編集：詳細の段階開示（値がある時だけ開いて出す）
@@ -4145,6 +4159,7 @@ function App(){
   const[newAvatar,setNewAvatar]=useState(""); // 通常追加フォームの写真アイコン（photo id）
   const[notifPerm,setNotifPerm]=useState(notifSupported?Notification.permission:"denied");
   const[meEmoji,setMeEmoji]=useState("🙂");
+  const[meSkinTone,setMeSkinTone]=useState(""); // わたしの絵文字の肌色
   const[meBirthday,setMeBirthday]=useState("");
   const[meBdayEdit,setMeBdayEdit]=useState(false);
   const[meBdayDraft,setMeBdayDraft]=useState("");
@@ -4400,6 +4415,7 @@ function App(){
       setMembers(state.members);setItems(state.items);setUsage(state.usage);
       if(state.prep){setPrep(state.prep);prepRef.current=state.prep;}
       if(state.meEmoji)setMeEmoji(state.meEmoji);
+      if(state.meSkinTone!=null)setMeSkinTone(state.meSkinTone);
       if(state.meBirthday)setMeBirthday(state.meBirthday);
       if(state.meColor)setMeColor(state.meColor);
       if(state.meName)setMeName(state.meName);
@@ -4412,7 +4428,7 @@ function App(){
         const needWrite=fromLegacy||parsed.version!==SCHEMA_VERSION;
         if(needWrite){
           if(!fromLegacy)await storage.set(STORAGE_KEY+".bak",raw); // 念のため移行前の生データを退避
-          await storage.set(STORAGE_KEY,serializeState({members:state.members,items:state.items,usage:state.usage,meEmoji:state.meEmoji,meBirthday:state.meBirthday,meColor:state.meColor,meName:state.meName,meAvatar:state.meAvatar,prep:state.prep}));
+          await storage.set(STORAGE_KEY,serializeState({members:state.members,items:state.items,usage:state.usage,meEmoji:state.meEmoji,meSkinTone:state.meSkinTone,meBirthday:state.meBirthday,meColor:state.meColor,meName:state.meName,meAvatar:state.meAvatar,prep:state.prep}));
         }
       }catch(e){}
       return;
@@ -4456,6 +4472,7 @@ function App(){
           if(uSnap.exists()){
             const ud=uSnap.data();
             if(ud.meEmoji)setMeEmoji(ud.meEmoji);
+            if(ud.meSkinTone!=null)setMeSkinTone(ud.meSkinTone);
             if(ud.meBirthday)setMeBirthday(ud.meBirthday);
             if(ud.meColor)setMeColor(ud.meColor);
             if(ud.meName)setMeName(ud.meName);
@@ -4647,7 +4664,7 @@ function App(){
       });
     }
     setMembers(m);setItems(itemsToSave);setUsage(u);
-    try{await storage.set(STORAGE_KEY,serializeState({members:m,items:itemsToSave,usage:u,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current}));}catch(e){}
+    try{await storage.set(STORAGE_KEY,serializeState({members:m,items:itemsToSave,usage:u,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar,prep:prepRef.current}));}catch(e){}
   };
 
   // クラウドバックアップ：オプトインON＋サインイン済みのとき、状態が変わったら
@@ -4656,7 +4673,7 @@ function App(){
     if(!cbEnabled||!fireUser||!loaded||!FB_READY)return;
     const id=setTimeout(()=>{uploadBackup(false);},8000);
     return()=>clearTimeout(id);
-  },[cbEnabled,fireUser,loaded,members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep,dogFriends]);
+  },[cbEnabled,fireUser,loaded,members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar,prep,dogFriends]);
 
   // サインイン時：クラウドにバックアップがあれば日時を控え、ローカルが空（またはサンプルのみ）の
   // 文脈でのみ「復元しますか？」を提案する。ローカルに実データがある場合は勝手に上書きしない。
@@ -5117,7 +5134,7 @@ function App(){
   // 公開状態は member.cardId（ID保持）と member.cardPublic（公開中フラグ）で管理する。
   // ドキュメントは「載せてよい項目だけ」を毎回まるごと書き直す（トグルOFFや削除が残らないよう merge しない）。
   const buildCardDoc=async(member)=>{
-    const data={ownerUid:fireUser.uid,name:member.name||"",breed:member.breed||"",birthday:member.birthday||"",gender:member.gender||"",species:member.species||"dog",emoji:member.emoji||"",theme:cardThemeOf(member.cardTheme),
+    const data={ownerUid:fireUser.uid,name:member.name||"",breed:member.breed||"",birthday:member.birthday||"",gender:member.gender||"",species:member.species||"dog",emoji:memberEmojiOf(member)||"",theme:cardThemeOf(member.cardTheme),
       showPersonality:member.showPersonality!==false,showSkills:member.showSkills!==false,showFavSnack:member.showFavSnack!==false,showCaution:member.showCaution!==false,showSns:member.showSns!==false,
       updatedAt:serverTimestamp()};
     const put=(key,val,show)=>{const v=(val||"").trim();if(v&&show!==false)data[key]=v;};
@@ -5219,7 +5236,7 @@ function App(){
     const mi=items.filter(x=>x.space===member.id);
     const wl=mi.filter(x=>x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();
     const mCards=mi.filter(x=>x.type==="card").sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    const data={ownerUid:fireUser.uid,memberId:member.id,name:member.name||"",nickname:member.nickname||"",species:member.species||"dog",breed:member.breed||"",coat:member.coat||"",gender:member.gender||"",birthday:member.birthday||"",emoji:member.emoji||"",
+    const data={ownerUid:fireUser.uid,memberId:member.id,name:member.name||"",nickname:member.nickname||"",species:member.species||"dog",breed:member.breed||"",coat:member.coat||"",gender:member.gender||"",birthday:member.birthday||"",emoji:memberEmojiOf(member)||"",
       pleaKey:pleaKeyFor(member),found:!!li.found,updatedAt:serverTimestamp()};
     const put=(k,v)=>{const s=(v||"").trim();if(s)data[k]=s;};
     put("collar",li.collar);put("place",li.place);put("placeNote",li.placeNote);put("when",li.when);put("situation",li.situation);
@@ -5395,7 +5412,7 @@ function App(){
       const id=genSummaryId();
       const nowMs=Date.now();
       const expMs=nowMs+sumDays*86400000;
-      const data={ownerUid:fireUser.uid,memberId:member.id,memberName:member.name||"",kind:member.kind||"pet",species:member.species||"",breed:member.breed||"",gender:member.gender||"",birthday:member.birthday||"",emoji:member.emoji||"",sections,createdAt:serverTimestamp(),expiresAt:new Date(expMs)};
+      const data={ownerUid:fireUser.uid,memberId:member.id,memberName:member.name||"",kind:member.kind||"pet",species:member.species||"",breed:member.breed||"",gender:member.gender||"",birthday:member.birthday||"",emoji:memberEmojiOf(member)||"",sections,createdAt:serverTimestamp(),expiresAt:new Date(expMs)};
       if(member.kind==="person"&&member.blood)data.blood=member.blood;
       if(sumPhoto){
         const pid=member.cardPhoto||member.avatar;
@@ -5446,27 +5463,32 @@ function App(){
 
   const persistMeEmoji=(emo)=>{
     setMeEmoji(emo);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:emo,meBirthday,meColor,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:emo,meSkinTone,meBirthday,meColor,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:emo},{merge:true}).catch(()=>{});}catch(e){}}
+  };
+  const persistMeSkinTone=(tone)=>{
+    setMeSkinTone(tone);
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone:tone,meBirthday,meColor,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meSkinTone:tone},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeBirthday=(bday)=>{
     setMeBirthday(bday);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday:bday,meColor,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday:bday,meColor,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meBirthday:bday},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeColor=(c)=>{
     setMeColor(c);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor:c,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor:c,meName,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meColor:c},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeName=(nm)=>{
     setMeName(nm);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName:nm,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName:nm,meAvatar,prep:prepRef.current})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meName:nm},{merge:true}).catch(()=>{});}catch(e){}}
   };
   const persistMeAvatar=(pid)=>{
     setMeAvatar(pid);
-    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar:pid,prep:prepRef.current})).catch(()=>{});}catch(e){}
+    try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar:pid,prep:prepRef.current})).catch(()=>{});}catch(e){}
     if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meAvatar:pid},{merge:true}).catch(()=>{});}catch(e){}}
   };
   // わたしの写真アイコン取り込み（軽量リサイズ→IDB保存→丸型はCSSで適用）
@@ -5516,7 +5538,7 @@ function App(){
       if(meAvatar)ids.add(meAvatar);
       const photoMap={};
       for(const pid of ids){let d=photos[pid];if(!d){try{d=await photoStorage.get(`photo:${pid}`);}catch(e){}}if(d)photoMap[pid]=d;}
-      const state=JSON.parse(serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current,dogFriends}));
+      const state=JSON.parse(serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar,prep:prepRef.current,dogFriends}));
       const backup={__loalife_backup:1,exportedAt:Date.now(),state,photos:photoMap};
       const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
       const url=URL.createObjectURL(blob);const a=document.createElement("a");
@@ -5547,7 +5569,7 @@ function App(){
         else if(x.type==="expense")push(x.date,tm,x.space,"支出",x.title,x.amount!=null?x.amount+"円":"",expCatLabel(expCatMeta(x.category)),by,x.note);
         else if(x.type==="diary"){const en=x.energy?(diaryMeta(DIARY_ENERGY,x.energy)||{}).label:"";const syms=(x.symptoms||[]).map(s=>(symptomMeta(s)||{}).label||s).join("・");push(x.date,tm,x.space,"今日のようす",en||"記録",[x.appetite?(diaryMeta(DIARY_APPETITE,x.appetite)||{}).label:"",x.walk?"散歩":"",x.hospital?"通院":""].filter(Boolean).join("・"),"",by,[syms,x.note].filter(Boolean).join(" / "));}
         else if(x.type==="chore")(x.history||[]).forEach(d=>push(d,"",x.space,"やった記録",x.title,"","",by,""));
-        else if(x.type==="care")push(x.dueDate,tm,x.space,"ケア・予定",x.title,x.done?"完了":(x.dueDate?"予定":""),careCatOf(x),by,x.repeat&&x.repeat!=="none"?(REPEATS.find(r=>r.key===x.repeat)||{}).label:"");
+        else if(x.type==="care")push(x.dueDate,tm,x.space,"ケア・予定",x.title,x.done?"完了":(x.dueDate?"予定":""),careCatOf(x),by,repeatCsvLabel(x));
         else if(x.type==="memory")push(x.date,tm,x.space,"思い出",x.title,"","",by,x.note);
       });
       rows.sort((a,b)=>a===rows[0]?-1:b===rows[0]?1:(a[0]<b[0]?1:a[0]>b[0]?-1:0));
@@ -5575,7 +5597,7 @@ function App(){
       // 犬友だちがバックアップに含まれていれば、端末ローカルの保存先（DF_KEY）へ復元する。
       if(Array.isArray(st.dogFriends))persistDF(st.dogFriends);
       setPhotos(p=>({...p,...restored}));
-      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar,prep:st.prep}));}catch(er){}
+      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meSkinTone:st.meSkinTone,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar,prep:st.prep}));}catch(er){}
       setConfirmRestore(false);setOnboarding(false);setTab("home");
       const n=Object.keys(restored).length;
       showFlash(n?t("toast.restoreDoneN",{n}):t("toast.restoreDone"));
@@ -5583,7 +5605,7 @@ function App(){
   };
   // ===== クラウドバックアップ（自分のデータの控え） =====
   // ローカル全状態（テキストのみ・写真は対象外）を serializeState で1本化する。ファイル書き出しと同じ範囲。
-  const buildLocalStateJson=()=>serializeState({members,items,usage,meEmoji,meBirthday,meColor,meName,meAvatar,prep:prepRef.current,dogFriends});
+  const buildLocalStateJson=()=>serializeState({members,items,usage,meEmoji,meSkinTone,meBirthday,meColor,meName,meAvatar,prep:prepRef.current,dogFriends});
   const backupFingerprint=(json,bytes)=>bytes+":"+json.slice(0,64)+":"+json.slice(-64);
   // クラウドへアップロード。manual=true は設定画面の「今すぐ」用（結果をフラッシュ表示）。
   // 容量超過・通信失敗は無言で終わらせず、必ず状態（cbStatus）に残す。
@@ -5632,7 +5654,7 @@ function App(){
       setMembers(st.members);setItems(st.items);setUsage(st.usage||{});setPrep(st.prep||null);prepRef.current=st.prep||null;
       setMeEmoji(st.meEmoji||"🙂");setMeBirthday(st.meBirthday||"");setMeColor(st.meColor||"");setMeName(st.meName||"");setMeAvatar(st.meAvatar||"");
       if(Array.isArray(st.dogFriends))persistDF(st.dogFriends);
-      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar,prep:st.prep}));}catch(e){}
+      try{await storage.set(STORAGE_KEY,serializeState({members:st.members,items:st.items,usage:st.usage||{},meEmoji:st.meEmoji,meSkinTone:st.meSkinTone,meBirthday:st.meBirthday,meColor:st.meColor,meName:st.meName,meAvatar:st.meAvatar,prep:st.prep}));}catch(e){}
       clearSampleMode();setOnboarding(false);setTab("home");
       // 復元した内容をそのまま再アップロードしないよう指紋を合わせておく。
       const docData=buildBackupDoc(offer.stateJson,offer.updatedAt);
@@ -5661,8 +5683,8 @@ function App(){
     if(obKind==="me"){
       const nm2=obName.trim()||meName;const em=obEmoji||meEmoji;const bd=obBirthday||meBirthday;const av=obAvatar||meAvatar;
       setMeName(nm2);setMeEmoji(em);setMeBirthday(bd);setMeAvatar(av);
-      try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:em,meBirthday:bd,meColor,meName:nm2,meAvatar:av,prep:prepRef.current})).catch(()=>{});}catch(e){}
-      if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:em,meBirthday:bd,meName:nm2,meAvatar:av},{merge:true}).catch(()=>{});}catch(e){}}
+      try{storage.set(STORAGE_KEY,serializeState({members,items,usage,meEmoji:em,meSkinTone,meBirthday:bd,meColor,meName:nm2,meAvatar:av,prep:prepRef.current})).catch(()=>{});}catch(e){}
+      if(fireUser){try{setDoc(doc(fbDb,"users",fireUser.uid),{meEmoji:em,meSkinTone,meBirthday:bd,meName:nm2,meAvatar:av},{merge:true}).catch(()=>{});}catch(e){}}
       track("app_start",{first_kind:"me"});
       setOnboarding(false);setObStep(0);setTab("home");
       return;
@@ -5792,7 +5814,7 @@ function App(){
       const b1=writeBatch(fbDb);
       b1.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp(),version:SCHEMA_VERSION});
       b1.set(doc(fbDb,"inviteCodes",code),{householdId:hid,createdAt:serverTimestamp(),expiresAt:Date.now()+INVITE_TTL_MS});
-      b1.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
+      b1.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meSkinTone,meBirthday},{merge:true});
       await b1.commit();
       // フェーズ2：既存メンバー・記録を移行（household 確定後なので isMember が通る）。
       const b2=writeBatch(fbDb);
@@ -5831,7 +5853,7 @@ function App(){
       // 自分を追加（コードの知識を joinProof で証明。ルールが inviteCode と一致を検証）
       await updateDoc(doc(fbDb,"households",hid),{memberUids:arrayUnion(fireUser.uid),joinProof:code});
       // Update user profile
-      await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meBirthday},{merge:true});
+      await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meSkinTone,meBirthday},{merge:true});
       const hhSnap=await getDoc(doc(fbDb,"households",hid));
       setHousehold({id:hid,...hhSnap.data()});
       setPendingJoin(null);
@@ -6019,7 +6041,7 @@ function App(){
     if(fireUser){byStamp.lastByUid=fireUser.uid;const bnm=(meName&&meName.trim())||fireUser.displayName;if(bnm)byStamp.lastByName=bnm;}
     if(!it.done&&cyc!=="none"){
       // 記録＝前回を今日に更新し、次回を周期ぶん先へ自動セット（赤が消えて静かに次へ）
-      const today=iso(new Date());const newDue=addInterval(today,cyc);
+      const today=iso(new Date());const newDue=addInterval(today,cyc,repeatDaysOf(it));
       next=items.map(x=>x.id===id?{...x,dueDate:newDue,lastDone:today,lastDoneAt:Date.now(),...byStamp,repeat:x.repeat&&x.repeat!=="none"?x.repeat:cyc,done:false,...(typeof x.stock==="number"&&x.stock>0?{stock:x.stock-1}:{})}:x);
       showFlash(t("toast.loggedNext",{date:fmtDate(newDue)}));
       track("task_complete",{task_type:it.type||"care",care_kind:it.careKind});
@@ -6164,13 +6186,13 @@ function App(){
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
   const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
-  const openLifeNew=(date,space)=>{setLifeDetailOpen(false);setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:"plan",addAnother:false});};
+  const openLifeNew=(date,space)=>{setLifeDetailOpen(false);setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",repeatDays:[],tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:"plan",addAnother:false});};
   const openLifeEdit=async(it)=>{
     const ids=photoIdsOf(it);
     const ph=await Promise.all(ids.map(async id=>{let dataUrl=photos[id]||null;if(!dataUrl){try{dataUrl=await photoStorage.get(`photo:${id}`);}catch(e){}}return{id,dataUrl,isNew:false};}));
     const category=it.type==="memory"?"memory":"event";
     setLifeDetailOpen(!!(it.place||it.url||(Array.isArray(it.checklist)&&it.checklist.length>0)));
-    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",endTime:it.endTime||"",endDate:(it.endDate&&itemDate(it)&&it.endDate>itemDate(it))?it.endDate:"",note:it.note||it.memo||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind,tags:it.tags||[],place:it.place||"",url:it.url||"",checklist:Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[],checkDraft:"",evCat:evCatOf(it),addAnother:false});
+    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",endTime:it.endTime||"",endDate:(it.endDate&&itemDate(it)&&it.endDate>itemDate(it))?it.endDate:"",note:it.note||it.memo||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",repeatDays:repeatDaysOf(it)||[],origType:it.type,careKind:it.careKind,tags:it.tags||[],place:it.place||"",url:it.url||"",checklist:Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[],checkDraft:"",evCat:evCatOf(it),addAnother:false});
   };
   // lifeDraft 内チェックリスト（編集モーダルと同じ操作感）
   const addLifeCheck=()=>{const v=(lifeDraft&&lifeDraft.checkDraft||"").trim();if(!v)return;setLifeDraft(p=>p?{...p,checklist:[...(p.checklist||[]),{id:"c"+Date.now(),text:v,done:false}],checkDraft:""}:p);};
@@ -6237,12 +6259,12 @@ function App(){
       // 予定から思い出に切り替えて保存しても、場所・URL・チェックリスト・終了時刻を黙って捨てない。
       const mPlace=(d.place||"").trim(),mUrl=(d.url||"").trim();
       const mCl=(d.checklist||[]).filter(c=>c.text&&c.text.trim());
-      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||undefined,title:title||"思い出",note:note||undefined,memo:undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,tags:tags.length?tags:undefined,place:mPlace||undefined,url:mUrl||undefined,checklist:mCl.length?mCl:undefined};
+      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||undefined,title:title||"思い出",note:note||undefined,memo:undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,repeatDays:(d.repeat==="weekly"&&Array.isArray(d.repeatDays)&&d.repeatDays.length)?d.repeatDays.slice():undefined,tags:tags.length?tags:undefined,place:mPlace||undefined,url:mUrl||undefined,checklist:mCl.length?mCl:undefined};
     }else{
       const keepCare=d.origType==="care";
       const place=(d.place||"").trim(),url=(d.url||"").trim();
       const cl=(d.checklist||[]).filter(c=>c.text&&c.text.trim());
-      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,memo:undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||"plan",reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined,place:place||undefined,url:url||undefined,checklist:cl.length?cl:undefined};
+      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,memo:undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||"plan",reminders:rem,repeat:d.repeat,repeatDays:(d.repeat==="weekly"&&Array.isArray(d.repeatDays)&&d.repeatDays.length)?d.repeatDays.slice():undefined,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined,place:place||undefined,url:url||undefined,checklist:cl.length?cl:undefined};
       if(keepCare)base.careKind=d.careKind;
     }
     let next;
@@ -6253,15 +6275,15 @@ function App(){
     // 原則は「保存したら自動で閉じる」。「続けて追加」がONの新規作成だけ、
     // 同じ日付・対象・カテゴリの空フォームを出し直して連続入力できるようにする。
     if(d.mode==="new"&&d.addAnother){
-      setLifeDraft({mode:"new",space:d.space,category:d.category,title:"",date:d.date,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:d.evCat||"plan",addAnother:true});
+      setLifeDraft({mode:"new",space:d.space,category:d.category,title:"",date:d.date,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",repeatDays:[],tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:d.evCat||"plan",addAnother:true});
     }else setLifeDraft(null);
     showFlash(t("toast.saved"));
   };
   const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash(t("toast.deleted"));};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash(t("toast.tomorrow"));};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
-  const openEdit=(it)=>{setEDetailOpen(!!(it.place||it.url||it.note||it.memo||it.stock!=null||(Array.isArray(it.checklist)&&it.checklist.length>0)));setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setEEndTime(it.endTime||"");setEEndDate((it.endDate&&it.dueDate&&it.endDate>it.dueDate)?it.endDate:"");setEEvCat(evCatOf(it));setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.note||it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
-  const saveEdit=()=>{const curItem=items.find(x=>x.id===editItemId);let effTitle=eTitle.trim();if(!effTitle&&curItem&&curItem.careKind){const km=careKindMetaOf(curItem.careKind);if(km)effTitle=careLabel(km);}if(!effTitle&&!(curItem&&curItem.title&&curItem.title.trim())){showFlash(t("toast.titleNeeded"));return;}const badEnd=endTimeBad(eTime,eEndTime);if(badEnd){showFlash(t(badEnd==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}if(eEndDate&&eDate&&eEndDate<eDate){showFlash(t("life.endDateOrder"));return;}const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:effTitle||x.title,dueDate:eDate||undefined,time:eTime||undefined,endTime:(eTime&&eEndTime)?eEndTime:undefined,endDate:(eDate&&eEndDate&&eEndDate>eDate)?eEndDate:undefined,evCat:eEvCat,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,note:memo||undefined,memo:undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
+  const openEdit=(it)=>{setEDetailOpen(!!(it.place||it.url||it.note||it.memo||it.stock!=null||(Array.isArray(it.checklist)&&it.checklist.length>0)));setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setEEndTime(it.endTime||"");setEEndDate((it.endDate&&it.dueDate&&it.endDate>it.dueDate)?it.endDate:"");setEEvCat(evCatOf(it));setERepeat(it.repeat||"none");setERepeatDays(repeatDaysOf(it)||[]);setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.note||it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
+  const saveEdit=()=>{const curItem=items.find(x=>x.id===editItemId);let effTitle=eTitle.trim();if(!effTitle&&curItem&&curItem.careKind){const km=careKindMetaOf(curItem.careKind);if(km)effTitle=careLabel(km);}if(!effTitle&&!(curItem&&curItem.title&&curItem.title.trim())){showFlash(t("toast.titleNeeded"));return;}const badEnd=endTimeBad(eTime,eEndTime);if(badEnd){showFlash(t(badEnd==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}if(eEndDate&&eDate&&eEndDate<eDate){showFlash(t("life.endDateOrder"));return;}const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:effTitle||x.title,dueDate:eDate||undefined,time:eTime||undefined,endTime:(eTime&&eEndTime)?eEndTime:undefined,endDate:(eDate&&eEndDate&&eEndDate>eDate)?eEndDate:undefined,evCat:eEvCat,repeat:eRepeat,repeatDays:(eRepeat==="weekly"&&eRepeatDays.length)?eRepeatDays.slice():undefined,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,note:memo||undefined,memo:undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
   // チェックリスト（編集フォーム内）：追加・チェック・削除
   const addECheck=()=>{const t=eCheckDraft.trim();if(!t)return;setEChecklist(prev=>[...prev,{id:"c"+Date.now(),text:t,done:false}]);setECheckDraft("");};
   const toggleECheck=(id)=>setEChecklist(prev=>prev.map(c=>c.id===id?{...c,done:!c.done}:c));
@@ -6289,10 +6311,10 @@ function App(){
     const badEnd=endTimeBad(draftTime,draftEndTime);if(badEnd){showFlash(t(badEnd==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}
     const dPlace=draftPlace.trim(),dUrl=draftUrl.trim(),dNote=draftNote.trim();
     const dCl=draftChecklist.filter(c=>c.text&&c.text.trim());
-    let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,endTime:(draftTime&&draftEndTime)?draftEndTime:undefined,repeat:draftRepeat,reminders:draftReminders.length?draftReminders:undefined,place:dPlace||undefined,url:dUrl||undefined,note:dNote||undefined,checklist:dCl.length?dCl:undefined};
+    let base={id:"x"+Date.now(),space:tab,title,done:false,createdAt:Date.now(),dueDate:draftDate||undefined,time:draftTime||undefined,endTime:(draftTime&&draftEndTime)?draftEndTime:undefined,repeat:draftRepeat,repeatDays:(draftRepeat==="weekly"&&draftRepeatDays.length)?draftRepeatDays.slice():undefined,reminders:draftReminders.length?draftReminders:undefined,place:dPlace||undefined,url:dUrl||undefined,note:dNote||undefined,checklist:dCl.length?dCl:undefined};
     if(asCare){base={...base,type:"care",careKind:draftKind,emoji:guessEmoji(title,(careMeta||{}).emoji||"📄")};
       // 狂犬病・ワクチン等の更新型：入力日は「実施日」。実施日＋周期を有効期限(dueDate)に、実施日をlastDoneに。
-      if(draftDate&&RENEW_KINDS.has(draftKind)){const cyc=(draftRepeat&&draftRepeat!=="none")?draftRepeat:(CARE_CYCLE[draftKind]||"yearly");base.lastDone=draftDate;base.dueDate=addInterval(draftDate,cyc);base.repeat=draftRepeat&&draftRepeat!=="none"?draftRepeat:cyc;}
+      if(draftDate&&RENEW_KINDS.has(draftKind)){const cyc=(draftRepeat&&draftRepeat!=="none")?draftRepeat:(CARE_CYCLE[draftKind]||"yearly");base.lastDone=draftDate;base.dueDate=addInterval(draftDate,cyc,repeatDaysOf({repeat:cyc,repeatDays:draftRepeatDays}));base.repeat=draftRepeat&&draftRepeat!=="none"?draftRepeat:cyc;}
     }
     else{base={...base,type:draftType,emoji:guessEmoji(title,TYPE_META[draftType].emoji)};}
     // ケア追加フォームで先に写真（証明書）を選んでいた場合、既存の photoStorage / photos をそのまま利用して保存前に添付（onFilePicked と同じ保存先）。
@@ -6301,7 +6323,7 @@ function App(){
     persist(members,[...items,base],{...usage,[uKey]:(usage[uKey]||0)+1});
     if(asCare)track("care_record",{care_kind:draftKind});else track("task_add",{task_type:draftType});
     saveItemToFs(base).catch(()=>{});
-    setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftReminders([]);setDraftPhoto(null);
+    setDraftDate("");setDraftTime("");setDraftRepeat("none");setDraftRepeatDays([]);setDraftReminders([]);setDraftPhoto(null);
     setDraftEndTime("");setDraftPlace("");setDraftUrl("");setDraftNote("");setDraftChecklist([]);setDraftCheckDraft("");
     if(asCare&&careMeta&&draftKind!=="other"){setDraft(careLabel(careMeta));setDraftAuto(true);}else{setDraft("");setDraftAuto(false);}
   };
@@ -6314,14 +6336,14 @@ function App(){
     // 登録時に固定色を自動割り当て（既に使われている色を避けて MEMBER_COLORS から選ぶ）
     const used=new Set([meColor||MEMBER_COLORS[0],...members.map(m=>m.color).filter(Boolean)]);
     const color=MEMBER_COLORS.find(c=>!used.has(c))||MEMBER_COLORS[(members.length+1)%MEMBER_COLORS.length];
-    const member={id,name,emoji:newEmoji,avatar:newAvatar||"",kind:newKind,birthday:newBirthday||"",visibility:newVisibility,color,ord:nextMemberOrd()};
+    const member={id,name,emoji:newEmoji,skinTone:(newKind==="person"&&isToneableEmoji(newEmoji))?newSkinTone:"",avatar:newAvatar||"",kind:newKind,birthday:newBirthday||"",visibility:newVisibility,color,ord:nextMemberOrd()};
     if(newKind==="pet"){member.species=newSpecies;if(newSpecies==="other"&&newKindText.trim())member.kindText=newKindText.trim();}
     if(newKind==="person")member.personType=newPersonType;
     persist([...members,member],items);
     clearSampleMode();
     track("member_add",{member_kind:newKind,species:newKind==="pet"?newSpecies:undefined});
     saveMemberToFs(member).catch(()=>{});
-    setNewName("");setNewBirthday("");setNewVisibility("household");setNewAvatar("");setNewKindText("");setAdding(false);setTab(id);setMemberSel(id);
+    setNewName("");setNewBirthday("");setNewVisibility("household");setNewAvatar("");setNewSkinTone("");setNewKindText("");setAdding(false);setTab(id);setMemberSel(id);
     setProfilePrompt(id); // 追加直後にプロフィール充実をやさしく案内（強制遷移はしない）
   };
   // 追加フォームのキャンセル：メンバーは「登録」を押した時に初めて作られる（addMember）ため、
@@ -6331,7 +6353,7 @@ function App(){
   const addFormDirty=()=>(!!newName.trim()||!!newBirthday||!!newAvatar);
   const doCancelAdd=()=>{
     if(newAvatar){try{photoStorage.delete(`photo:${newAvatar}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[newAvatar];return n;});}
-    setNewName("");setNewBirthday("");setNewAvatar("");setNewVisibility("household");setNewKind("pet");setNewSpecies("dog");setNewPersonType("child");setNewEmoji("🐶");setNewKindText("");
+    setNewName("");setNewBirthday("");setNewAvatar("");setNewSkinTone("");setNewVisibility("household");setNewKind("pet");setNewSpecies("dog");setNewPersonType("child");setNewEmoji("🐶");setNewKindText("");
     setConfirmDiscardAdd(false);setAdding(false);
   };
   const cancelAdd=()=>{if(addFormDirty())setConfirmDiscardAdd(true);else doCancelAdd();};
@@ -6351,8 +6373,8 @@ function App(){
   // 大切な情報の種別表示名。人の「保険」は健康保険証の廃止（マイナ保険証・資格確認書）に合わせた文言にする。保存キー（kind）自体は変えない。
   const cardKindLabel=(kind,member)=>{if(kind==="insurance"&&member&&(member.kind==="person"||member.kind==="me"))return t("cardkind.insurancePerson");return t("cardkind."+kind);};
   // 未保存チェック用のスナップショット。メンバー値から作る基準形と、フォーム現在値から作る同形を文字列で比べる。
-  const profSnapOf=(m)=>JSON.stringify({n:m.name||"",nn:m.nickname||"",bd:m.birthday||"",gd:m.gotchaDay||"",gr:m.group||"",mc:m.microchip||"",br:m.breed||"",ct:m.coat||"",nt:m.neuter||"",mm:m.memorial||"",av:m.avatar||"",vs:visOf(m),pt:m.personType||"child",gx:m.gender||"",bl:m.blood||"",em:m.emoji||"",kt:m.kindText||""});
-  const profFormSnap=()=>JSON.stringify({n:editName,nn:editNickname,bd:editBirthday,gd:editGotcha,gr:editGroup,mc:editMicrochip,br:editBreed,ct:editCoat,nt:editNeuter,mm:editMemorial,av:editAvatar,vs:editVisibility,pt:editPersonType,gx:editGender,bl:editBlood,em:editEmoji,kt:editKindText});
+  const profSnapOf=(m)=>JSON.stringify({n:m.name||"",nn:m.nickname||"",bd:m.birthday||"",gd:m.gotchaDay||"",gr:m.group||"",mc:m.microchip||"",br:m.breed||"",ct:m.coat||"",nt:m.neuter||"",mm:m.memorial||"",av:m.avatar||"",vs:visOf(m),pt:m.personType||"child",gx:m.gender||"",bl:m.blood||"",em:m.emoji||"",st:m.skinTone||"",kt:m.kindText||""});
+  const profFormSnap=()=>JSON.stringify({n:editName,nn:editNickname,bd:editBirthday,gd:editGotcha,gr:editGroup,mc:editMicrochip,br:editBreed,ct:editCoat,nt:editNeuter,mm:editMemorial,av:editAvatar,vs:editVisibility,pt:editPersonType,gx:editGender,bl:editBlood,em:editEmoji,st:editSkinTone,kt:editKindText});
   const cardSnapOf=(m)=>{const ci=cardLostInitOf(m);return JSON.stringify({p:m.personality||"",s:m.skills||"",f:m.favSnack||"",c:m.caution||"",ig:m.instagram||"",tt:m.tiktok||"",yt:m.youtube||"",cp:m.cardPhoto||"",cp2:(Array.isArray(m.cardPhotos)?m.cardPhotos:[]).join(","),vd:m.cardVideo||"",lo:!!m.cardLost,lc:m.cardLostContact||"",ln:ci.note,lp:ci.place,lpn:ci.placeNote,lw:ci.when,ls:ci.situation,lpl:ci.plea,lco:ci.collar,lsn:(Array.isArray(m.cardLostSns)?m.cardLostSns.filter(k=>LOST_SNS_KINDS.indexOf(k)>=0):[]).join(","),low:ci.owner||meName||"",sp:m.showPersonality!==false,ss:m.showSkills!==false,sf:m.showFavSnack!==false,sc:m.showCaution!==false,sn:m.showSns!==false});};
   const cardFormSnap=()=>JSON.stringify({p:editPersonality,s:editSkills,f:editFavSnack,c:editCaution,ig:editInstagram,tt:editTiktok,yt:editYoutube,cp:editCardPhoto,cp2:editCardPhotos.join(","),vd:editCardVideo,lo:editCardLost,lc:editCardLostContact,ln:editCardLostNote,lp:editCardLostPlace,lpn:editCardLostPlaceNote,lw:editCardLostWhen,ls:editCardLostSituation,lpl:editCardLostPlea,lco:editCardLostCollar,lsn:editCardLostSns.join(","),low:editCardLostOwner,sp:editShowPersonality,ss:editShowSkills,sf:editShowFavSnack,sc:editShowCaution,sn:editShowSns});
   // プロフィール編集を開いたら、破棄確認の基準と比較できるようスナップショットを取り、セクションは初期状態（基本だけ開く）に戻す。
@@ -6436,7 +6458,7 @@ function App(){
     setCardQrBusy(false);
   };
   // 指定メンバーのプロフィール編集を開く（追加直後の案内から利用）。編集state群を対象メンバーで初期化。
-  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditNickname(m.nickname||"");setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(visOf(m));setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setEditEmoji(m.emoji||"");setEditKindText(m.kindText||"");fillCardEdit(m);setProfileOpen(true);setEditingId(m.id);};
+  const startMemberEdit=(m)=>{if(!m)return;setTab(m.id);setMemberSel(m.id);setPersonSeg("manage");setEditName(m.name);setEditNickname(m.nickname||"");setEditBirthday(m.birthday||"");setEditGotcha(m.gotchaDay||"");setEditGroup(m.group||"");setEditMicrochip(m.microchip||"");setEditBreed(m.breed||"");setEditCoat(m.coat||"");setEditNeuter(m.neuter||"");setEditMemorial(m.memorial||"");setEditAvatar(m.avatar||"");setEditVisibility(visOf(m));setEditPersonType(m.personType||"child");setEditGender(m.gender||"");setEditBlood(m.blood||"");setEditEmoji(m.emoji||"");setEditSkinTone(m.skinTone||"");setEditKindText(m.kindText||"");fillCardEdit(m);setProfileOpen(true);setEditingId(m.id);};
   useEffect(()=>{if(inputSheet!=="schedule"){setDraftPhoto(null);setSelfCare(false);}},[inputSheet]); // ケア追加フォームを閉じたら未保存の写真・自分ケアフラグをクリア
 
   // ─── オーナー権限（破壊的な操作の可否） ─────────────────────────
@@ -6491,7 +6513,7 @@ function App(){
   const saveRename=(id)=>{
     const name=editName.trim();if(!name)return;
     // 名刺まわりの項目（性格・SNS・名刺写真・テーマ等）は名刺画面の担当なので、ここでは触らず既存値を保持する。
-    const next=members.map(m=>m.id===id?{...m,name,nickname:editNickname.trim()||"",birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",emoji:editEmoji||m.emoji,visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType,gender:editGender||"",blood:editBlood||""}:(m.kind==="pet"?{gender:editGender||"",kindText:editKindText.trim()}:{}))}:m);
+    const next=members.map(m=>m.id===id?{...m,name,nickname:editNickname.trim()||"",birthday:editBirthday,gotchaDay:editGotcha||"",group:editGroup.trim()||"",microchip:editMicrochip.trim()||"",breed:editBreed.trim()||"",coat:editCoat.trim()||"",neuter:editNeuter||"",memorial:(m.kind==="pet"?(editMemorial||""):""),avatar:editAvatar||"",emoji:editEmoji||m.emoji,skinTone:(m.kind==="person"&&isToneableEmoji(editEmoji))?editSkinTone:"",visibility:editVisibility,...(m.kind==="person"?{personType:editPersonType,gender:editGender||"",blood:editBlood||""}:(m.kind==="pet"?{gender:editGender||"",kindText:editKindText.trim()}:{}))}:m);
     persist(next,items);
     clearSampleMode();
     const updated=next.find(m=>m.id===id);
@@ -6569,20 +6591,20 @@ function App(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[cardPickOpen,cardExtraPickOpen,cardScreenId]);
   // メンバーのアイコン表示（写真があれば写真、無ければ絵文字）
-  const avatarNode=(m,cls)=>{const src=m&&m.avatar&&photos[m.avatar];return src?<img className={"yl-avatar "+(cls||"")} src={src} alt=""/>:<span className={cls}>{m?m.emoji:""}</span>;};
+  const avatarNode=(m,cls)=>{const src=m&&m.avatar&&photos[m.avatar];return src?<img className={"yl-avatar "+(cls||"")} src={src} alt=""/>:<span className={cls}>{m?memberEmojiOf(m):""}</span>;};
 
   // --- Quick-add functions ---
-  const openQuickAdd=(kind,emoji,title,space,lastDate,repeat)=>{
-    setQuickAdd({kind,emoji,title,space,lastDate:lastDate||null,repeat:repeat||"none"});
+  const openQuickAdd=(kind,emoji,title,space,lastDate,repeat,repeatDays)=>{
+    setQuickAdd({kind,emoji,title,space,lastDate:lastDate||null,repeat:repeat||"none",repeatDays:repeatDays||[]});
     setQuickDate("");
   };
   const openQuickCopy=(it)=>{
-    setQuickAdd({kind:it.careKind,emoji:it.emoji,title:it.title,space:it.space,lastDate:it.dueDate||null,repeat:it.repeat||"none"});
+    setQuickAdd({kind:it.careKind,emoji:it.emoji,title:it.title,space:it.space,lastDate:it.dueDate||null,repeat:it.repeat||"none",repeatDays:repeatDaysOf(it)||[]});
     setQuickDate("");
   };
   const saveQuickAdd=()=>{
     if(!quickAdd)return;
-    const base={id:"x"+Date.now(),space:quickAdd.space,title:quickAdd.title,emoji:quickAdd.emoji,type:"care",careKind:quickAdd.kind,done:false,createdAt:Date.now(),dueDate:quickDate||undefined,repeat:quickAdd.repeat};
+    const base={id:"x"+Date.now(),space:quickAdd.space,title:quickAdd.title,emoji:quickAdd.emoji,type:"care",careKind:quickAdd.kind,done:false,createdAt:Date.now(),dueDate:quickDate||undefined,repeat:quickAdd.repeat,repeatDays:quickAdd.repeatDays};
     const next=[...items,base];
     persist(members,next);
     saveItemToFs(base).catch(()=>{});
@@ -7251,7 +7273,7 @@ function App(){
             {it.time&&<span className="yl-time"><Icon name="clock" size={12}/> {it.time}</span>}
             {isCare&&isRenewCare(it)&&it.lastDone&&<span className="yl-repeat"><Icon name="syringe" size={12}/> {t("item.doneOn",{date:fmtDate(it.lastDone)})}</span>}
             {isCare&&typeof it.stock==="number"&&<span className={"yl-repeat"+(it.stock<=1?" yl-stock-low":"")}><Icon name="pill" size={12}/> {t("item.stockLeft",{n:it.stock})}</span>}
-            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat"><Icon name="repeat" size={12}/> {t("repeat."+it.repeat)}</span>}
+            {it.repeat&&it.repeat!=="none"&&<span className="yl-repeat"><Icon name="repeat" size={12}/> {repeatTextOf(it)}</span>}
             {it.reminders&&it.reminders.length>0&&<span className="yl-notif-badge"><Icon name="bell" size={12}/> {it.reminders.length<=2?it.reminders.map(reminderLabel).join("・"):t("item.reminderCount",{n:it.reminders.length})}</span>}
             {actionable&&<button className="yl-resolve" onClick={e=>{e.stopPropagation();toggle(it.id);}} title={t("item.resolveTip")}>{t("item.resolveBtn")}</button>}
             {!isCare&&!it.done&&it.dueDate&&daysUntil(it.dueDate)<=0&&<button className="yl-snooze" onClick={e=>{e.stopPropagation();snooze(it.id);}}>{t("item.snooze")}</button>}
@@ -7308,7 +7330,7 @@ function App(){
   },[items]);
   const memberStats=useMemo(()=>{if(!isMemberTab)return null;const arr=items.filter(x=>x.space===tab&&!x.done);let soon=0,over=0;arr.forEach(x=>{if(isOverdue(x)){over++;return;}const d=daysUntil(x.dueDate);if(d!==null&&d>=0&&d<=7)soon++;});return{soon,over};},[items,tab,isMemberTab]);
   const emojiSet=newKind==="person"?personEmojisFor(newPersonType):petEmojisFor(newSpecies);
-  const spaces=useMemo(()=>[{id:"me",name:meName||"わたし",emoji:meEmoji,avatar:meAvatar||"",kind:"me"},...sortMembersByOrd(members)],[members,meEmoji,meName,meAvatar]);
+  const spaces=useMemo(()=>[{id:"me",name:meName||"わたし",emoji:emojiWithTone(meEmoji,meSkinTone),avatar:meAvatar||"",kind:"me"},...sortMembersByOrd(members)],[members,meEmoji,meSkinTone,meName,meAvatar]);
   // 「わたし（自分）」を実際に使っているか。ペットだけ登録した人には空の自分を出さない（家族のようす等）。
   const meUsed=useMemo(()=>!!(meBirthday||meAvatar||(meName&&meName.trim())||items.some(x=>x.space==="me")),[meBirthday,meAvatar,meName,items]);
   // ホームの「家族のようす」「今日の調子」用：自分が未使用なら除外
@@ -7375,8 +7397,8 @@ function App(){
   };
   const annivAll=useMemo(()=>{
     const list=[];
-    members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:m.emoji,label:`${m.name}の誕生日`,space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:`${m.name} うちの子記念日`,space:m.id});});
-    if(meBirthday)list.push({mmdd:mmdd(meBirthday),emoji:meEmoji,label:"わたしの誕生日",space:"me"});
+    members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:memberEmojiOf(m),label:`${m.name}の誕生日`,space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:`${m.name} うちの子記念日`,space:m.id});});
+    if(meBirthday)list.push({mmdd:mmdd(meBirthday),emoji:emojiWithTone(meEmoji,meSkinTone),label:"わたしの誕生日",space:"me"});
     items.forEach(x=>{if(x.type==="bday"&&x.birthday)list.push({mmdd:mmdd(x.birthday),emoji:x.emoji||"🎂",label:x.title,space:"me"});});
     return list;
   },[members,meBirthday,meEmoji,items]);
@@ -7436,7 +7458,7 @@ function App(){
         {e.item.place&&<span className="yl-tlday-note yl-tlday-place" onClick={ev=>{ev.stopPropagation();openMap(e.item.place);}}><Icon name="pin" size={11}/> {e.item.place}</span>}
         {e.item.type==="expense"&&e.item.amount!=null&&<span className="yl-tlday-note">¥{Number(e.item.amount).toLocaleString()}</span>}
         {e.item.type==="walk"&&(e.item.durationSec||e.item.distanceM)&&<span className="yl-tlday-note">{Math.round((e.item.durationSec||0)/60)}分{e.item.distanceM?` ・ ${(e.item.distanceM/1000).toFixed(1)}km`:""}</span>}
-        {(e.item.type==="event"||e.item.type==="care")&&(()=>{const cm=evCatMeta(evCatOf(e.item));return<span className="yl-tlday-cat"><span className="yl-evcat-dot" style={{background:cm.color}}/>{cm.emoji} {cm.name}</span>;})()}
+        {(e.item.type==="event"||e.item.type==="care")&&(()=>{const cm=evCatMeta(evCatOf(e.item));return<span className="yl-tlday-cat"><span className="yl-evcat-dot" style={{background:cm.color}}/>{cm.emoji} {cm.name}</span>;})()}{e.item.repeat&&e.item.repeat!=="none"&&<span className="yl-tlday-note">{repeatTextOf(e.item)}</span>}
         {(()=>{const sp=itemSpan(e.item);if(!sp||sp.end<=sp.start||!calDay)return null;return<span className="yl-tlday-note">{t("cal.dayOfSpan",{n:daysBetween(sp.start,calDay)+1,total:daysBetween(sp.start,sp.end)+1})}</span>;})()}
       </span>
     </li>
@@ -7454,14 +7476,18 @@ function App(){
   const albumItems=useMemo(()=>albumTag?albumAll.filter(m=>(m.tags||[]).includes(albumTag)):albumAll,[albumAll,albumTag]);
   const monthLabel=lang==="ja"?`${calCursor.y}年${calCursor.m+1}月`:(()=>{try{return new Intl.DateTimeFormat(LOCALES[lang]||"en-US",{year:"numeric",month:"long"}).format(new Date(calCursor.y,calCursor.m,1));}catch(e){return `${calCursor.y}/${calCursor.m+1}`;}})();
   const weekdaysShort=useMemo(()=>{if(lang==="ja")return WEEKDAYS_JA;try{const a=[];for(let i=0;i<7;i++)a.push(new Intl.DateTimeFormat(LOCALES[lang]||"en-US",{weekday:"short"}).format(new Date(2023,0,1+i)));return a;}catch(e){return WEEKDAYS_JA;}},[lang]);
+  // 繰り返しラベル（画面表示用）。曜日指定の毎週は曜日を出し、平日／週末はプリセット名で出す。
+  const repeatTextOf=(x)=>{if(!x||!x.repeat||x.repeat==="none")return"";if(x.repeat==="weekly"){const days=repeatDaysOf(x);if(days){if(days.length===5&&REPEAT_WEEKDAYS.every(d=>days.indexOf(d)>=0))return t("repeat.weekdays");if(days.length===2&&REPEAT_WEEKEND.every(d=>days.indexOf(d)>=0))return t("repeat.weekend");return t("repeat.weeklyDays",{days:days.map(d=>weekdaysShort[d]).join(lang==="ja"?"・":", ")});}return t("repeat.weekly");}return t("repeat."+x.repeat);};
+  // 曜日指定ピッカー（繰り返しが「毎週」の時だけ出す）。days は曜日番号配列。最後の1日は外せない（0日は従来の毎週扱いになるため）。
+  const renderRepeatDays=(rep,days,onDays,anchorDate)=>{if(rep!=="weekly")return null;const cur=Array.isArray(days)&&days.length?days:[dowOf(anchorDate||todayIso)];const toggleDay=(d)=>{onDays(cur.indexOf(d)>=0?(cur.length>1?cur.filter(x=>x!==d):cur):[...cur,d].sort((a,b)=>a-b));};return(<div style={{marginTop:6}}><div className="yl-kindrow">{[0,1,2,3,4,5,6].map(d=>(<button key={d} type="button" className={"yl-chip"+(cur.indexOf(d)>=0?" on":"")} onClick={()=>toggleDay(d)}>{weekdaysShort[d]}</button>))}</div><div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("repeat.weekdayPreset")}</span><button type="button" className="yl-chip" onClick={()=>onDays(REPEAT_WEEKDAYS.slice())}>{t("repeat.weekdays")}</button><button type="button" className="yl-chip" onClick={()=>onDays(REPEAT_WEEKEND.slice())}>{t("repeat.weekend")}</button></div></div>);};
   const moveMonth=(delta)=>setCalCursor(c=>{const d=new Date(c.y,c.m+delta,1);return{y:d.getFullYear(),m:d.getMonth()};});
 
   // もうすぐの記念日：誕生日＋うちの子記念日（ペット）を7日以内で集約
   const upcomingAnniv=useMemo(()=>{
     const list=[];
     const add=(id,name,emoji,date,kind)=>{const dd=daysUntilAnniv(date);if(dd!==null&&dd<=7)list.push({key:id+":"+kind,name,emoji,date,kind,daysUntil:dd,years:yearsSinceAnniv(date)});};
-    members.forEach(m=>{if(m.birthday)add(m.id,m.name,m.emoji,m.birthday,"birthday");if(m.gotchaDay)add(m.id,m.name,m.emoji,m.gotchaDay,"gotcha");});
-    if(meBirthday)add("me","わたし",meEmoji,meBirthday,"birthday");
+    members.forEach(m=>{if(m.birthday)add(m.id,m.name,memberEmojiOf(m),m.birthday,"birthday");if(m.gotchaDay)add(m.id,m.name,memberEmojiOf(m),m.gotchaDay,"gotcha");});
+    if(meBirthday)add("me","わたし",emojiWithTone(meEmoji,meSkinTone),meBirthday,"birthday");
     items.forEach(x=>{if(x.space==="me"&&x.type==="bday"&&x.birthday)add(x.id,x.title,x.emoji||"🎂",x.birthday,"self");});
     return list.sort((a,b)=>a.daysUntil-b.daysUntil);
   },[members,meBirthday,meEmoji,items]);
@@ -7883,7 +7909,7 @@ function App(){
   const allClear=homeData.todos.length===0&&homeData.bombs.length===0&&lowSupplies.length===0;
 
   const exportCalendar=()=>{
-    const content=generateIcal(items,members,meEmoji);
+    const content=generateIcal(items,members,meEmoji,undefined,meSkinTone);
     downloadIcal(content);
     showFlash(t("toast.icsDownloaded"));
   };
@@ -8035,7 +8061,7 @@ function App(){
           <p className="yl-share-desc">{t("share.inviteSendDesc")}</p>
           <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p><p className="yl-share-desc" style={{marginTop:8}}>共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。</p>
           {fsSubError&&(<div className="yl-share-syncerr"><p className="yl-share-syncerr-text">{t("share.syncError")}</p><button className="yl-btn-ghost sm" onClick={retryFsSync}>{t("share.retry")}</button></div>)}
-          {(()=>{const list=members.filter(m=>m&&m.id!=="me");return list.length>0&&(<div className="yl-share-members"><p className="yl-share-members-title">{t("share.memberListTitle")}</p>{list.map(m=>(<div key={m.id} className="yl-share-member-row"><span className="yl-share-member-name">{m.emoji} {m.name}</span><span className={"yl-pill vis"+(visOf(m)==="private"?" private":"")}>{visOf(m)==="private"?t("vis.private"):t("vis.shared")}</span></div>))}</div>);})()}
+          {(()=>{const list=members.filter(m=>m&&m.id!=="me");return list.length>0&&(<div className="yl-share-members"><p className="yl-share-members-title">{t("share.memberListTitle")}</p>{list.map(m=>(<div key={m.id} className="yl-share-member-row"><span className="yl-share-member-name">{memberEmojiOf(m)} {m.name}</span><span className={"yl-pill vis"+(visOf(m)==="private"?" private":"")}>{visOf(m)==="private"?t("vis.private"):t("vis.shared")}</span></div>))}</div>);})()}
           {hasLocalMembers&&(<div className="yl-share-push"><p className="yl-share-desc">{t("share.pushDesc")}</p><button className="yl-btn-primary" onClick={manualPushLocal} disabled={fsPushBusy}>{t("share.pushLocal")}</button></div>)}
           <div className="yl-modal-btns">
             <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
@@ -8148,6 +8174,7 @@ function App(){
             {newKind==="pet"&&newSpecies==="other"&&<label className="yl-opt" style={{width:"100%"}}>{t("member.kindText")}<IMEInput className="yl-input" value={newKindText} onChange={setNewKindText} placeholder={t("ph.kindText")}/></label>}
             {newKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm col"+(newPersonType===pt.k?" on":"")} onClick={()=>{setNewPersonType(pt.k);setNewAvatar("");setNewEmoji(e=>followPersonEmoji(e,newPersonType,pt.k));}}><span className="kb-emoji">{pt.emoji}</span><span className="kb-label">{lOf(pt)}</span></button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(!newAvatar&&newEmoji===e?" on":"")} onClick={()=>{setNewAvatar("");setNewEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(newAvatar?" on":"")} title={t("a11y.photoAsIcon")}>{newAvatar&&photos[newAvatar]?<img className="yl-emoji-photoimg" src={photos[newAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickNewAvatar}/></label></div>
+            {newKind==="person"&&isToneableEmoji(newEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(newSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>setNewSkinTone(tn.key)}>{emojiWithTone(newEmoji,tn.key)}</button>))}</div>}
             <div className="yl-petform-row"><IMEInput className="yl-input" value={newName} onChange={setNewName} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
             <label className="yl-opt" style={{marginTop:10}}>{t("prof.birthday")}<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
             {inHousehold&&<div style={{marginTop:10}}><VisibilityToggle value={newVisibility} onChange={setNewVisibility}/></div>}
@@ -8300,7 +8327,7 @@ function App(){
                 <section className="yl-hero calm">
                   <div className="yl-hero-emoji"><Icon name="sun" size={40} stroke={1.7}/></div>
                   <p className="yl-hero-title">{t("home.calmTitle")}</p>
-                  <p className="yl-hero-sub">{members.length===0?t("home.calmNone"):(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return t("home.calmOnePet",{emoji:pets[0].emoji,name:pets[0].name});if(members.length===1)return t("home.calmOne",{emoji:members[0].emoji,name:members[0].name});return t("home.calmAll",{emojis:members.map(m=>m.emoji).join("")});})()}</p>
+                  <p className="yl-hero-sub">{members.length===0?t("home.calmNone"):(()=>{const pets=members.filter(m=>m.kind==="pet");if(pets.length===1)return t("home.calmOnePet",{emoji:memberEmojiOf(pets[0]),name:pets[0].name});if(members.length===1)return t("home.calmOne",{emoji:memberEmojiOf(members[0]),name:members[0].name});return t("home.calmAll",{emojis:members.map(m=>memberEmojiOf(m)).join("")});})()}</p>
                 </section>
               ):homeData.todos.length>0&&(
                 <section className="yl-todo">
@@ -8716,7 +8743,7 @@ function App(){
               <p className="yl-set-desc">{t("set.memberOrderDesc")}</p>
               {members.length>0&&<ul className="yl-wxmanage">{sortMembersByOrd(members).map((m,i,arr)=>(
                 <li key={m.id} className="yl-wxmrow">
-                  <span className="yl-wxm-name"><span>{m.emoji}</span> <span className="yl-wxm-nametext">{m.name}</span></span>
+                  <span className="yl-wxm-name"><span>{memberEmojiOf(m)}</span> <span className="yl-wxm-nametext">{m.name}</span></span>
                   <span className="yl-wxm-acts">
                     <button className="yl-wxm-btn" onClick={()=>moveMember(m.id,-1)} disabled={i===0} aria-label={t("wx.moveUp")}>↑</button>
                     <button className="yl-wxm-btn" onClick={()=>moveMember(m.id,1)} disabled={i===arr.length-1} aria-label={t("wx.moveDown")}>↓</button>
@@ -8840,7 +8867,7 @@ function App(){
               const sub=isPet
                 ?([(activeMember.species==="other"?activeMember.kindText:""),activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?t("sp.catShort"):activeMember.species==="dog"?t("sp.dogShort"):t("sp.petShort")))
                 :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||ptLabel);
-              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setEditEmoji(activeMember.emoji||"");setEditKindText(activeMember.kindText||"");fillCardEdit(activeMember);setProfileOpen(true);};
+              const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setEditEmoji(activeMember.emoji||"");setEditSkinTone(activeMember.skinTone||"");setEditKindText(activeMember.kindText||"");fillCardEdit(activeMember);setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
                   <button className="yl-hero-photo" onClick={openEdit} aria-label={t("a11y.editPhotoProfile")}>
@@ -8869,7 +8896,7 @@ function App(){
               <button className="yl-profbar-toggle" onClick={()=>setProfileOpen(o=>!o)}>{t("prof.title",{name:isMemberTab?activeMember.name:(meName||t("common.me"))})} {profileOpen?"▲":"▼"}</button>
             </div>
             {(profileOpen||(isMemberTab&&editingId===activeMember.id))&&(<>
-            {!isMemberTab?<section className="yl-hero"><button className="yl-hero-photo" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label={t("a11y.editIconName")}>{meAvatar&&photos[meAvatar]?<img src={photos[meAvatar]} alt=""/>:<span className="yl-hero-emoji">{meEmoji}</span>}</button><div className="yl-hero-body"><h2 className="yl-hero-name">{meName||t("common.me")}</h2><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-btn-primary sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>{t("common.save")}</button><button className="yl-btn-ghost sm" onClick={()=>setMeBdayEdit(false)}>{t("common.cancel")}</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}><Icon name="cake" size={13}/> {meBirthday?`${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:t("me.setBirthday")}</button>}</div></div><button className="yl-hero-edit" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label={t("a11y.editIconName")}><Icon name="pencil" size={17}/></button></section>:(
+            {!isMemberTab?<section className="yl-hero"><button className="yl-hero-photo" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label={t("a11y.editIconName")}>{meAvatar&&photos[meAvatar]?<img src={photos[meAvatar]} alt=""/>:<span className="yl-hero-emoji">{emojiWithTone(meEmoji,meSkinTone)}</span>}</button><div className="yl-hero-body"><h2 className="yl-hero-name">{meName||t("common.me")}</h2><div className="yl-me-bday">{meBdayEdit?<div className="yl-me-bday-edit"><BdayInput value={meBdayDraft} onChange={setMeBdayDraft}/><button className="yl-btn-primary sm" onClick={()=>{persistMeBirthday(meBdayDraft);setMeBdayEdit(false);}}>{t("common.save")}</button><button className="yl-btn-ghost sm" onClick={()=>setMeBdayEdit(false)}>{t("common.cancel")}</button></div>:<button className="yl-me-bday-btn" onClick={()=>{setMeBdayDraft(meBirthday);setMeBdayEdit(true);}}><Icon name="cake" size={13}/> {meBirthday?`${fmtBirthday(meBirthday)}${ageLabel(meBirthday)?`（${ageLabel(meBirthday)}）`:""}`:t("me.setBirthday")}</button>}</div></div><button className="yl-hero-edit" onClick={()=>{setMeNameDraft(meName);setMePicker(true);}} aria-label={t("a11y.editIconName")}><Icon name="pencil" size={17}/></button></section>:(
               <section className="yl-petstatus">
                 <div className="yl-petstatus-head">
                   {editingId===activeMember.id?(
@@ -8877,10 +8904,12 @@ function App(){
                       <div className="yl-editsec">
                         <p className="yl-editsec-title">{t("prof.secBasic")}</p>
                         <div className="yl-editavatar">
-                          {editAvatar&&photos[editAvatar]?<img className="yl-avatar lg" src={photos[editAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{editEmoji||activeMember.emoji}</span>}
+                          {editAvatar&&photos[editAvatar]?<img className="yl-avatar lg" src={photos[editAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{emojiWithTone(editEmoji||activeMember.emoji,editSkinTone)}</span>}
                           <label className="yl-editavatar-btn"><Icon name="camera" size={14}/> {t("prof.usePhoto")}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickAvatar}/></label>
                           {editAvatar&&<button className="yl-editavatar-clear" onClick={()=>setEditAvatar("")}>{t("prof.backToEmoji")}</button>}
                         </div>
+                        <div className="yl-emoji-row" style={{marginTop:8}}>{(activeMember.kind==="person"?personEmojisFor(editPersonType):petEmojisFor(activeMember.species)).map(e=>(<button key={e} type="button" className={"yl-emoji"+(!editAvatar&&editEmoji===e?" on":"")} onClick={()=>{setEditAvatar("");setEditEmoji(e);}}>{e}</button>))}</div>
+                        {activeMember.kind==="person"&&isToneableEmoji(editEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(editSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>setEditSkinTone(tn.key)}>{emojiWithTone(editEmoji,tn.key)}</button>))}</div>}
                         <IMEInput className="yl-input sm" value={editName} onChange={setEditName} onKeyDown={e=>e.key==="Enter"&&saveRename(activeMember.id)} placeholder={t("ph.name")}/>
                         {activeMember.kind==="person"&&<label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="smile" size={14}/> {t("prof.nickname")}<input className="yl-input sm" style={{marginTop:4}} value={editNickname} onChange={e=>setEditNickname(e.target.value)} placeholder={t("ph.nickname")}/></label>}
                         <label className="yl-opt" style={{marginTop:6,width:"100%"}}><Icon name="cake" size={14}/> {t("prof.birthday")}<BdayInput value={editBirthday} onChange={setEditBirthday}/></label>
@@ -8926,7 +8955,7 @@ function App(){
                   ):(
                     <span className="yl-petstatus-title" style={{color:KIND_STYLE[activeMember.kind].fg}}>
                       {avatarNode(activeMember,"sm")} {t("rec.memberTitle",{name:activeMember.name,word:t("word."+activeMember.kind)})}
-                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setEditEmoji(activeMember.emoji||"");setEditKindText(activeMember.kindText||"");fillCardEdit(activeMember);}}><Icon name="pencil" size={15}/></button>
+                      <button className="yl-icon" onClick={()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setEditEmoji(activeMember.emoji||"");setEditSkinTone(activeMember.skinTone||"");setEditKindText(activeMember.kindText||"");fillCardEdit(activeMember);}}><Icon name="pencil" size={15}/></button>
                     </span>
                   )}
                 </div>
@@ -9785,7 +9814,7 @@ function App(){
             <div className="yl-emg-step">
               <div className="yl-emg-stephd"><span className="yl-emg-stepnum">2</span>{t("emg.step2")}</div>
               {emgCards.map(({m,meds,allergy,meta})=>(
-                <div key={m.id} className="yl-emg-dogcard"><span className="yl-emg-dogname">{m.emoji||(m.kind==="pet"?(petEmojisFor(m.species)[0]):"👤")} {m.name}</span><span className="yl-emg-dogmeta">{meta||t("emg.profNone")}</span>{m.kind==="person"&&m.blood&&<span className="yl-emg-dogmeta">{t("ecard.blood")}：{m.blood}{t("blood.suffix")}</span>}{(meds.length>0||allergy.length>0)&&<span className="yl-emg-dogmeds">{meds.length>0&&<p><b>{t("ecard.meds")}：</b>{meds.join("、")}</p>}{allergy.length>0&&<p><b>{t("ecard.allergy")}：</b>{allergy.map(c=>[c.title,c.body].filter(Boolean).join("：")).join("、")}</p>}</span>}</div>
+                <div key={m.id} className="yl-emg-dogcard"><span className="yl-emg-dogname">{memberEmojiOf(m)||(m.kind==="pet"?(petEmojisFor(m.species)[0]):"👤")} {m.name}</span><span className="yl-emg-dogmeta">{meta||t("emg.profNone")}</span>{m.kind==="person"&&m.blood&&<span className="yl-emg-dogmeta">{t("ecard.blood")}：{m.blood}{t("blood.suffix")}</span>}{(meds.length>0||allergy.length>0)&&<span className="yl-emg-dogmeds">{meds.length>0&&<p><b>{t("ecard.meds")}：</b>{meds.join("、")}</p>}{allergy.length>0&&<p><b>{t("ecard.allergy")}：</b>{allergy.map(c=>[c.title,c.body].filter(Boolean).join("：")).join("、")}</p>}</span>}</div>
               ))}
               {ti&&<div className="yl-emg-tox"><div className="yl-emg-toxhd"><Icon name="alert" size={13}/> {t("emg.toxHead")}</div><ul className="yl-emg-toxlist">{ti.what&&<li><span>{t("emg.toxWhat")}</span>{ti.what}</li>}{ti.amount&&<li><span>{t("emg.toxAmount")}</span>{ti.amount}</li>}{ti.when&&<li><span>{t("emg.toxWhen")}</span>{ti.when}</li>}{ti.weight&&<li><span>{t("emg.toxWeight")}</span>{ti.weight}</li>}{ti.symptom&&<li><span>{t("emg.toxSymptom")}</span>{ti.symptom}</li>}</ul></div>}
               <ul className="yl-emg-say"><li>{t("emg.say1")}</li><li>{t("emg.say2")}</li><li>{t("emg.say3")}</li></ul>
@@ -10081,7 +10110,7 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setWhatsNewOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="sparkles" size={18}/> {t("about.whatsNew")}</h2><button className="yl-help-close" onClick={()=>setWhatsNewOpen(false)} aria-label={t("common.close")}>×</button></div>
-            <p className="yl-set-desc" style={{marginBottom:2}}>バージョン：<strong>β版（ビルド 2026.11.20）</strong></p>
+            <p className="yl-set-desc" style={{marginBottom:2}}>バージョン：<strong>β版（ビルド 2026.11.26）</strong></p>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
               <ul className="yl-whatsnew-list">
@@ -10133,7 +10162,7 @@ function App(){
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="paw" size={15}/> LOALIFE</span></div>
               <p className="yl-set-desc">大切な家族の毎日の記録・予定・健康と、もしもの備え（迷子ポスター・緊急カード）を、ひとつに。</p>
-              <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版（ビルド 2026.11.20）</strong></p>
+              <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版（ビルド 2026.11.26）</strong></p>
             </div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> データとプライバシー</span></div>
@@ -10218,7 +10247,7 @@ function App(){
           </div>
         </div>
       )}
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={eEndDate} onChange={e=>setEEndDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div>{(()=>{const cur=items.find(x=>x.id===editItemId);if(!cur||(cur.type!=="event"&&cur.type!=="care"))return null;return(<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(eEvCat===c.key?" on":"")} style={eEvCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setEEvCat(c.key)}>{c.emoji} {c.name}</button>)}</div></div>);})()}<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={eEndDate} onChange={e=>setEEndDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>{const v=e.target.value;setERepeat(v);if(v==="weekly"&&(!eRepeatDays||!eRepeatDays.length))setERepeatDays([dowOf(eDate||todayIso)]);}}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>{renderRepeatDays(eRepeat,eRepeatDays,setERepeatDays,eDate)}</div>{(()=>{const cur=items.find(x=>x.id===editItemId);if(!cur||(cur.type!=="event"&&cur.type!=="care"))return null;return(<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(eEvCat===c.key?" on":"")} style={eEvCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setEEvCat(c.key)}>{c.emoji} {c.name}</button>)}</div></div>);})()}<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
       {viewer&&<div className="yl-pv" role="dialog" aria-label={viewerTitle(viewer)}><div className="yl-pv-head"><span className="yl-pv-title">{viewerTitle(viewer)}</span><button className="yl-pv-close" onClick={()=>setViewer(null)} aria-label={t("viewer.close")}>×</button></div>{viewer.loading?<p className="yl-loading" style={{color:"#FFF7E8"}}>{t("viewer.loading")}</p>:viewer.src?<div className={"yl-pv-scroll"+(pvZoom>1?" zoomed":"")} onDoubleClick={()=>setPvZoom(z=>z>1?1:2.5)}><img className="yl-pv-img" src={viewer.src} alt={viewerTitle(viewer)} style={pvZoom>1?{width:(pvZoom*100)+"%"}:undefined} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setPvZoom(z=>Math.min(4,Math.max(1,z*(e.deltaY<0?1.15:0.87))));}}} onTouchStart={e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pvPinchRef.current={d:Math.hypot(dx,dy),z:pvZoom};}}} onTouchMove={e=>{if(e.touches.length===2&&pvPinchRef.current){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.hypot(dx,dy);if(pvPinchRef.current.d>0)setPvZoom(Math.min(4,Math.max(1,pvPinchRef.current.z*d/pvPinchRef.current.d)));}}} onTouchEnd={()=>{pvPinchRef.current=null;}}/></div>:<p className="yl-empty" style={{color:"#FFF7E8"}}>{t("viewer.notFound")}</p>}{viewer.src&&<p className="yl-pv-hint">{t("viewer.zoomHint")}</p>}{viewer.confirming?<><p className="yl-pv-confirm">{t("viewer.delConfirm")}</p><div className="yl-pv-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-pv-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div>}
       {shareMemory&&(()=>{const it=shareMemory.item;const sp=it?spaces.find(s=>s.id===it.space):null;const dateStr=it&&it.date?fmtFullDateLoc(it.date,lang):"";const cap=it?(it.note||(it.title&&it.title!=="思い出"?it.title:"")):"";const who=it?(it.space==="me"?(meName||t("otd.me")):(nameOf(it.space)||t("otd.me"))):"";return(
         <div className="yl-overlay" onClick={()=>setShareMemory(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
@@ -10504,7 +10533,7 @@ function App(){
           {meAvatar&&<button className="yl-editavatar-clear" onClick={clearMeAvatar}>絵文字に戻す</button>}
         </div>
         <label className="yl-opt" style={{width:"100%",marginBottom:12}}>名前（任意）<input className="yl-input sm" style={{marginTop:4}} value={meNameDraft} onChange={e=>setMeNameDraft(e.target.value)} placeholder={t("ecard.meFallback")}/></label>
-        {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ <button type="button" className="yl-emoji-current" onClick={()=>setMeEmojiOpen(o=>!o)} aria-expanded={meEmojiOpen}>{meEmoji}<span className="yl-colorpick-caret">{meEmojiOpen?"▲":"▼"}</span></button></p>{meEmojiOpen&&<div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMeEmojiOpen(false);}}>{e}</button>)}</div>}</>}
+        {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ <button type="button" className="yl-emoji-current" onClick={()=>setMeEmojiOpen(o=>!o)} aria-expanded={meEmojiOpen}>{emojiWithTone(meEmoji,meSkinTone)}<span className="yl-colorpick-caret">{meEmojiOpen?"▲":"▼"}</span></button></p>{meEmojiOpen&&<div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMeEmojiOpen(false);}}>{e}</button>)}</div>}{meEmojiOpen&&isToneableEmoji(meEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(meSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>persistMeSkinTone(tn.key)}>{emojiWithTone(meEmoji,tn.key)}</button>))}</div>}</>}
         <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色 <button type="button" className="yl-colorpick-btn" onClick={()=>setMeColorOpen(o=>!o)} aria-expanded={meColorOpen}><span className="yl-colordot" style={{background:colorOf("me")}}/><span className="yl-colorpick-caret">{meColorOpen?"▲":"▼"}</span></button></p>{meColorOpen&&<div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>{persistMeColor(col);setMeColorOpen(false);}} aria-label={t("a11y.pickColor")}/>)}</div>}
         <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
       {confirmDiscardAdd&&<div className="yl-overlay" onClick={()=>setConfirmDiscardAdd(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("member.addTitle")}</h3><p className="yl-modal-body">{t("member.discardAddBody")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDiscardAdd(false)}>{t("member.discardKeep")}</button><button className="yl-modal-del" onClick={doCancelAdd}>{t("member.discardDo")}</button></div></div></div>}
@@ -10546,7 +10575,7 @@ function App(){
               );
             })()}
             <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt yl-lost-foundtoggle"><input type="checkbox" checked={lifeDraft.multiOpen!==undefined?!!lifeDraft.multiOpen:!!lifeDraft.endDate} onChange={e=>setLifeDraft(p=>({...p,multiOpen:e.target.checked,endDate:e.target.checked?p.endDate:""}))}/> {t("life.multiDay")}</label>}{lifeDraft.category==="event"&&(lifeDraft.multiOpen!==undefined?!!lifeDraft.multiOpen:!!lifeDraft.endDate)&&<label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={lifeDraft.endDate||""} onChange={e=>setLifeDraft(p=>({...p,endDate:e.target.value}))}/></label>}</div>
-            <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<span style={{alignSelf:"flex-end",paddingBottom:10}}>〜</span>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("edit.endTime")}<TimeInput value={lifeDraft.endTime||""} onChange={tv=>setLifeDraft(p=>({...p,endTime:tv}))}/></label>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
+            <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<span style={{alignSelf:"flex-end",paddingBottom:10}}>〜</span>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("edit.endTime")}<TimeInput value={lifeDraft.endTime||""} onChange={tv=>setLifeDraft(p=>({...p,endTime:tv}))}/></label>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>{const v=e.target.value;setLifeDraft(p=>({...p,repeat:v,repeatDays:v==="weekly"&&(!p.repeatDays||!p.repeatDays.length)?[dowOf(p.date||todayIso)]:p.repeatDays}));}}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}{lifeDraft.category==="event"&&renderRepeatDays(lifeDraft.repeat,lifeDraft.repeatDays,v=>setLifeDraft(p=>({...p,repeatDays:v})),lifeDraft.date)}</div>
             {lifeDraft.category==="event"&&<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(lifeDraft.evCat===c.key?" on":"")} style={lifeDraft.evCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,evCat:c.key}))}>{c.emoji} {c.name}</button>)}</div></div>}
             {/* 通知は「予定」のときだけ。思い出・日記は過去の記録なので事前通知は表示しない */}
             {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("life.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>}
@@ -10654,7 +10683,7 @@ function App(){
             {!(isMemberTab||selfCare)?<div className="yl-typerow me4">{ME_TYPES.map(t=><button key={t} className={"yl-chip"+(draftType===t?" on":"")} style={draftType===t?{background:TYPE_META[t].fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setDraftType(t)}><Icon name={TYPE_ICON[t]} size={15}/> {lblOf(TYPE_META[t])}</button>)}</div>:<div className="yl-typerow">{careKindsFor(activeMember).map(k=><button key={k.key} className={"yl-chip"+(draftKind===k.key?" on":"")} style={draftKind===k.key?{background:(KIND_STYLE[activeMember?activeMember.kind:"person"]||{}).fg,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>pickCareKind(k)}><Icon name={careIcon(k.key)} size={15}/> {careLabel(k)}</button>)}</div>}
             {suggestions.length>0&&<div className="yl-suggest"><span className="yl-suggest-label">{t("sched.frequent")}</span><div className="yl-suggest-chips">{suggestions.map(s=><button key={s} className="yl-suggest-chip" onClick={()=>{setDraft(s);setDraftAuto(false);}}>{s}</button>)}</div></div>}
             <div className="yl-add"><input className="yl-input" value={draft} onChange={e=>{setDraft(e.target.value);setDraftAuto(false);}} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={(isMemberTab||selfCare)?(draftKind==="other"?t("sched.contentPh"):t("sched.addLabelPh",{label:careLabel(careKindsFor(activeMember).find(k=>k.key===draftKind))||t("sched.content")})):t("sched.addLabelPh",{label:lblOf(TYPE_META[draftType])})}/></div>
-            <div className="yl-optrow"><label className="yl-opt">{(isMemberTab||selfCare)?careDateLabel(draftKind):t("sched.dateOptMe")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">{t("sched.time")}<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={draftEndTime} onChange={setDraftEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={draftRepeat} onChange={e=>setDraftRepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div>
+            <div className="yl-optrow"><label className="yl-opt">{(isMemberTab||selfCare)?careDateLabel(draftKind):t("sched.dateOptMe")}<input type="date" className="yl-date" value={draftDate} onChange={e=>setDraftDate(e.target.value)}/></label><label className="yl-opt">{t("sched.time")}<TimeInput value={draftTime} onChange={setDraftTime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={draftEndTime} onChange={setDraftEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={draftRepeat} onChange={e=>{const v=e.target.value;setDraftRepeat(v);if(v==="weekly"&&(!draftRepeatDays||!draftRepeatDays.length))setDraftRepeatDays([dowOf(draftDate||todayIso)]);}}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>{renderRepeatDays(draftRepeat,draftRepeatDays,setDraftRepeatDays,draftDate)}</div>
             {!(isMemberTab||selfCare)&&<p className="yl-foot" style={{marginTop:2}}>{t("sched.dateHint")}</p>}
             {(isMemberTab||selfCare)&&(
               <div className="yl-optrow" style={{marginTop:4}}>
@@ -10669,7 +10698,7 @@ function App(){
             )}
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("sched.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(draftReminders.includes(o.key)?" on":"")} onClick={()=>toggleReminder(o.key)}>{o.label}</button>)}</div>{draftReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>
             <button type="button" className="yl-detail-toggle" onClick={()=>setDraftDetailOpen(o=>!o)} aria-expanded={draftDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{draftDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={draftDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={draftPlace} onChange={e=>setDraftPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={draftUrl} onChange={e=>setDraftUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={draftNote} onChange={e=>setDraftNote(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label><div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{draftChecklist.length>0&&<ul className="yl-clist">{draftChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleDraftCheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeDraftCheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={draftCheckDraft} onChange={e=>setDraftCheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addDraftCheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addDraftCheck}>＋</button></div></div></div>
-            {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">{t("sched.quickAdd")}</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,careLabel(k),activeMember.id,prev?.dueDate,prev?.repeat);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{careLabel(k)}</span><span className="yl-quickbar-prev">{prev?t("sched.lastDate",{date:fmtDate(prev.dueDate)}):"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
+            {isMemberTab&&<div className="yl-quickbar" style={{marginTop:12}}><p className="yl-quickbar-label">{t("sched.quickAdd")}</p><div className="yl-quickbar-grid">{careKindsFor(activeMember).map(k=>{const prev=lastDates[k.key];return(<button key={k.key} className="yl-quickbar-item" onClick={()=>{openQuickAdd(k.key,k.emoji,careLabel(k),activeMember.id,prev?.dueDate,prev?.repeat,prev?.repeatDays);setInputSheet(null);}}><span className="yl-quickbar-ico"><Icon name={careIcon(k.key)} size={20}/></span><span className="yl-quickbar-info"><span className="yl-quickbar-name">{careLabel(k)}</span><span className="yl-quickbar-prev">{prev?t("sched.lastDate",{date:fmtDate(prev.dueDate)}):"─"}</span></span><span className="yl-quickbar-plus">＋</span></button>);})}</div></div>}
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={addItem}>{t("common.add")}</button></div>
           </div>
         </div>
@@ -11261,7 +11290,7 @@ function App(){
       {calPicker&&(()=>{
         const it=calPicker.item;
         const memberName=it?nameOf(it.space):"";
-        const memberEmoji=it?(it.space==="me"?meEmoji:(members.find(m=>m.id===it.space)?.emoji||"")):"";
+        const memberEmoji=it?(it.space==="me"?emojiWithTone(meEmoji,meSkinTone):memberEmojiOf(members.find(m=>m.id===it.space))):"";
         const gcal=it?gcalLink(it,memberName,memberEmoji):null;
         const icsContent=it?generateIcal([it],members,meEmoji,meName):generateIcal(items,members,meEmoji,meName);
         const icsName=it?`${it.title}.ics`:"loalife-calendar.ics";
