@@ -1775,6 +1775,42 @@ function calCategory(it){
 // 日々の記録（タイトルを持たないタイプ）のカレンダー表示名。
 const REC_LABEL_KEY={walk:"rectype.walk",feed:"rectype.feed",health:"rectype.health",diary:"rectype.diary",nursing:"rectype.nursing",expense:"rectype.expense",period:"rectype.period"};
 function recordLabel(it){const k=it&&REC_LABEL_KEY[it.type];return k?tr(APP_LANG,k):"";}
+// ─── 予定カテゴリ（大項目）と複数日予定 ─────────────────────────────
+// カテゴリは「予定側」（type=event / care）の分類。プリセット7種は固定で色だけ
+// 変更できる。カスタムは最大5件まで追加でき、定義は端末ローカル
+// （loalife-calcats-v1）に保存する（端末設定の扱い。本体データには混ぜない）。
+// アイテム側は evCat にキー（プリセットkeyまたはカスタムid）を保持するだけ。
+// evCat が無い旧データは「予定」として表示する（読み取り時の寄せのみ・非破壊）。
+const CALCAT_PRESETS=[
+  {key:"work",emoji:"💼",color:"#5B7A9E"},
+  {key:"plan",emoji:"📅",color:"#C77A2E"},
+  {key:"social",emoji:"🍻",color:"#D9A441"},
+  {key:"medical",emoji:"🏥",color:"#B23A48"},
+  {key:"beauty",emoji:"💇",color:"#E29CC6"},
+  {key:"travel",emoji:"✈️",color:"#3E8E8E"},
+  {key:"other",emoji:"✨",color:"#8A8178"},
+];
+const CALCAT_MAX_CUSTOM=5;
+const CALCATS_KEY="loalife-calcats-v1";
+// 保存値の防御的サニタイズ（壊れた値でも既定に落とす・未知の色上書きはプリセット分のみ）。
+const sanitizeCalCats=(raw)=>{
+  const out={custom:[],colors:{}};
+  if(!raw||typeof raw!=="object")return out;
+  if(Array.isArray(raw.custom))raw.custom.slice(0,CALCAT_MAX_CUSTOM).forEach(c=>{
+    if(c&&typeof c.id==="string"&&c.id&&typeof c.name==="string"&&c.name.trim())out.custom.push({id:c.id,name:c.name,emoji:typeof c.emoji==="string"&&c.emoji?c.emoji:"🏷️",color:typeof c.color==="string"&&c.color?c.color:"#E39A5C"});
+  });
+  if(raw.colors&&typeof raw.colors==="object")Object.keys(raw.colors).forEach(k=>{if(CALCAT_PRESETS.some(p=>p.key===k)&&typeof raw.colors[k]==="string"&&raw.colors[k])out.colors[k]=raw.colors[k];});
+  return out;
+};
+const evCatOf=(it)=>(it&&typeof it.evCat==="string"&&it.evCat)?it.evCat:"plan";
+// 日々の記録（タイトルを持たない日常ログ＋ルーティンの実施）。カレンダー日表示では
+// 予定の後ろに「{name}の記録 {n}件」として畳む対象。それ以外は予定側として出す。
+const DAILY_RECORD_TYPES=["walk","feed","health","diary","nursing","expense","period","toilet"];
+const isDailyRecord=(it)=>!!it&&(DAILY_RECORD_TYPES.includes(it.type)||it.type==="routine");
+// 予定の期間。endDate が開始日より後にある時だけ複数日として扱う（同日・逆転は単日）。
+const itemSpan=(it)=>{const s=itemDate(it);if(!s)return null;const e=(it&&typeof it.endDate==="string"&&it.endDate>s)?it.endDate:s;return{start:s,end:e};};
+const spanCovers=(it,dayIso)=>{const sp=itemSpan(it);return!!sp&&typeof dayIso==="string"&&dayIso>=sp.start&&dayIso<=sp.end;};
+// 日数差は既存の daysBetween（ファイル冒頭）を使う。
 const WEEKDAYS_JA=["日","月","火","水","木","金","土"];
 const MON_EN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmtMonthDay=(s)=>{if(!s||typeof s!=="string")return"";const[,m,d]=s.split("-").map(Number);return`${m}月${d}日`;};
@@ -2744,7 +2780,9 @@ function gcalLink(item, memberName, memberEmoji) {
     dates=`${fmt(st)}/${fmt(en)}`;
   }else{
     const s=`${y}${String(m).padStart(2,"0")}${String(d).padStart(2,"0")}`;
-    const nd=new Date(y,m-1,d+1);
+    // 複数日予定（endDate）は最終日の翌日までを終日範囲にする（Googleの終日は終了排他）。
+    const last=(item.endDate&&item.endDate>item.dueDate)?item.endDate.split("-").map(Number):[y,m,d];
+    const nd=new Date(last[0],last[1]-1,last[2]+1);
     const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
     dates=`${s}/${e}`;
   }
@@ -2780,7 +2818,9 @@ function generateIcal(items, members, meEmoji, meName) {
       lines.push(`DTEND;TZID=Asia/Tokyo:${fmt(en)}`);
     }else{
       const s=`${y}${String(m).padStart(2,"0")}${String(d).padStart(2,"0")}`;
-      const nd=new Date(y,m-1,d+1);
+      // 複数日予定（endDate）は最終日の翌日を DTEND にする（終日イベントは終了排他）。
+      const last=(item.endDate&&item.endDate>item.dueDate)?item.endDate.split("-").map(Number):[y,m,d];
+      const nd=new Date(last[0],last[1]-1,last[2]+1);
       const e=`${nd.getFullYear()}${String(nd.getMonth()+1).padStart(2,"0")}${String(nd.getDate()).padStart(2,"0")}`;
       lines.push(`DTSTART;VALUE=DATE:${s}`);lines.push(`DTEND;VALUE=DATE:${e}`);
     }
@@ -2980,7 +3020,7 @@ const MESSAGES={
     "word.pet":"ケア","word.person":"予定","rec.memberTitle":"{name} の{word}","rec.tapEditDate":"タップで日付を修正",
     "rel.stillNone":"まだ記録なし","rel.weeksAgo":"{n}週間前","rel.monthsAgo":"約{n}か月前",
     "rec.routineTitle":"今日のルーティン","rec.addFromPlus":"右下の ＋ から追加","rec.choreTitlePet":"毎日のお世話","rec.choreTitleMe":"セルフケアの記録","rec.choreTitleOther":"お世話ログ","rec.choreDescPet":"「やった」で記録。前回からの経過が色でわかります。","rec.choreDescOther":"「やった」で記録。前回からの経過がひと目で。","rec.did":"やった","rec.lastDone":"前回 {date}・{txt}","rec.totalCount":"（計{n}回）",
-    "common.all":"すべて","a11y.prevMonth":"前の月","a11y.nextMonth":"次の月","cal.addRecord":"＋ 記録","cal.noRecords":"記録はまだありません","cal.exportIcs":"予定をカレンダーアプリに出力（.ics）","cal.foot":"日付をタップで記録・ふりかえり","cal.dayTitle":"{md}（{wd}）",
+    "common.all":"すべて","a11y.prevMonth":"前の月","a11y.nextMonth":"次の月","cal.addRecord":"＋ 記録","cal.noRecords":"記録はまだありません","cal.exportIcs":"予定をカレンダーアプリに出力（.ics）","cal.foot":"日付をタップで記録・ふりかえり","cal.dayTitle":"{md}（{wd}）","cal.recordsSummary":"{name}の記録 {n}件","cal.dayOfSpan":"{total}日間の{n}日目","calcat.work":"仕事","calcat.plan":"予定","calcat.social":"飲み会","calcat.medical":"通院","calcat.beauty":"美容","calcat.travel":"旅行","calcat.other":"その他","calcat.title":"カテゴリ","calcat.manage":"カテゴリ管理","calcat.presets":"プリセット","calcat.custom":"カスタム","calcat.add":"カテゴリを追加","calcat.namePh":"例：習い事","calcat.emoji":"絵文字","calcat.max":"カスタムカテゴリは最大{n}件までです","calcat.deleteConfirm":"「{name}」を削除しますか？このカテゴリの予定は「その他」に移ります（予定自体は消えません）","calcat.none":"まだありません","life.endDate":"終了日","life.addAnother":"続けて追加","life.endDateOrder":"終了日は開始日以降にしてください",
     "bday.month":"月","bday.day":"日","bday.yearOpt":"年（任意）","bday.monthSuffix":"月","bday.daySuffix":"日",
     "common.close":"とじる","food.editTitle":"フードを編集","food.newTitle":"フード・食事を登録","ph.foodName":"フード・食事名（例：○○チキン ドライ）","ph.brand":"メーカー・ブランド（任意）","food.type":"種類","foodtype.dry":"ドライ","foodtype.wet":"ウェット","foodtype.homemade":"手作り","foodtype.treat":"おやつ","foodtype.supplement":"サプリ","foodtype.other":"その他","food.amountUnit":"1回の量・単位（任意）","food.perServe":"1回 {amt}","food.perDay":"1日{n}回","food.kcalPerDay":"約{kc}kcal/日","ph.amount":"量","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"個","food.timesTime":"1日の回数・時間（任意）","ph.times":"回","ph.feedTime":"時間（例：朝7時・夜19時）","food.kcal":"カロリー（任意・分かる場合）","food.kcalDesc":"登録するとカロリーを自動計算。未入力でも量だけ記録OK。","food.mealTitle":"食事を記録","food.food":"フード","food.when":"いつ","mealslot.morning":"朝","mealslot.noon":"昼","mealslot.night":"夜","mealslot.treat":"おやつ","food.qty":"量","food.approxKcal":"約{kc}kcal","food.logBtn":"記録","bday.addTitle":"誕生日・記念日を追加","ph.bdayName":"名前・予定（例：ゆいの誕生日）","bday.dateYearOpt":"日付（年は任意）",
     "rec.healthTitle":"からだの記録","chart.weight":"体重","chart.height":"身長","chart.bpSys":"血圧（上）","health.chartSoon":"あと1回記録すると、体重の推移グラフが出ます。","health.emptyPlus":"右下の ＋ から体重などを記録。","health.recordOf":"{date}の記録","health.bpPrefix":"血圧 ",
@@ -3077,7 +3117,7 @@ const MESSAGES={
     "word.pet":"care","word.person":"plan","rec.memberTitle":"{name}'s {word}","rec.tapEditDate":"Tap to edit the date",
     "rel.stillNone":"Not recorded yet","rel.weeksAgo":"{n} wk ago","rel.monthsAgo":"~{n} mo ago",
     "rec.routineTitle":"Today's routines","rec.addFromPlus":"Add with the ＋ button","rec.choreTitlePet":"Daily care","rec.choreTitleMe":"Self-care log","rec.choreTitleOther":"Care log","rec.choreDescPet":"Tap \"Done\" to log. Color shows time since last.","rec.choreDescOther":"Tap \"Done\" to log. See time since last at a glance.","rec.did":"Done","rec.lastDone":"Last {date} · {txt}","rec.totalCount":" ({n} total)",
-    "common.all":"All","a11y.prevMonth":"Previous month","a11y.nextMonth":"Next month","cal.addRecord":"＋ Record","cal.noRecords":"No records yet","cal.exportIcs":"Export events to your calendar (.ics)","cal.foot":"Tap a date to log or look back","cal.dayTitle":"{wd}, {md}",
+    "common.all":"All","a11y.prevMonth":"Previous month","a11y.nextMonth":"Next month","cal.addRecord":"＋ Record","cal.noRecords":"No records yet","cal.exportIcs":"Export events to your calendar (.ics)","cal.foot":"Tap a date to log or look back","cal.dayTitle":"{wd}, {md}","cal.recordsSummary":"{name} · {n} records","cal.dayOfSpan":"Day {n} of {total}","calcat.work":"Work","calcat.plan":"Plan","calcat.social":"Drinks & meals","calcat.medical":"Doctor","calcat.beauty":"Beauty","calcat.travel":"Travel","calcat.other":"Other","calcat.title":"Category","calcat.manage":"Manage categories","calcat.presets":"Presets","calcat.custom":"Custom","calcat.add":"Add category","calcat.namePh":"e.g. Lessons","calcat.emoji":"Emoji","calcat.max":"Up to {n} custom categories","calcat.deleteConfirm":"Delete “{name}”? Its events move to “Other” (the events themselves are not deleted).","calcat.none":"None yet","life.endDate":"End date","life.addAnother":"Save & add another","life.endDateOrder":"End date must be on or after the start date",
     "bday.month":"Month","bday.day":"Day","bday.yearOpt":"Year (optional)","bday.monthSuffix":"","bday.daySuffix":"",
     "common.close":"Close","food.editTitle":"Edit food","food.newTitle":"Add food or meal","ph.foodName":"Food or meal name (e.g. Chicken, dry)","ph.brand":"Brand (optional)","food.type":"Type","foodtype.dry":"Dry","foodtype.wet":"Wet","foodtype.homemade":"Homemade","foodtype.treat":"Treat","foodtype.supplement":"Supplement","foodtype.other":"Other","food.amountUnit":"Amount per serving (optional)","food.perServe":"{amt}/serving","food.perDay":"{n}×/day","food.kcalPerDay":"~{kc} kcal/day","ph.amount":"Qty","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"pcs","food.timesTime":"Times/day & time (optional)","ph.times":"×/day","ph.feedTime":"Time (e.g. 7am, 7pm)","food.kcal":"Calories (optional, if known)","food.kcalDesc":"Auto-calculates calories. Amount only is fine too.","food.mealTitle":"Log a meal","food.food":"Food","food.when":"When","mealslot.morning":"Morning","mealslot.noon":"Noon","mealslot.night":"Night","mealslot.treat":"Treat","food.qty":"Amount","food.approxKcal":"~{kc} kcal","food.logBtn":"Log","bday.addTitle":"Add a birthday or anniversary","ph.bdayName":"Name (e.g. Yui's birthday)","bday.dateYearOpt":"Date (year optional)",
     "rec.healthTitle":"Health","chart.weight":"Weight","chart.height":"Height","chart.bpSys":"Blood pressure (sys)","health.chartSoon":"One more entry and the weight trend chart appears.","health.emptyPlus":"Log weight and more with the ＋ button.","health.recordOf":"{date} record","health.bpPrefix":"BP ",
@@ -3174,7 +3214,7 @@ const MESSAGES={
     "word.pet":"cuidados","word.person":"plan","rec.memberTitle":"{word} de {name}","rec.tapEditDate":"Toca para editar la fecha",
     "rel.stillNone":"Aún sin registrar","rel.weeksAgo":"hace {n} sem","rel.monthsAgo":"hace ~{n} mes(es)",
     "rec.routineTitle":"Rutinas de hoy","rec.addFromPlus":"Añade con el botón ＋","rec.choreTitlePet":"Cuidado diario","rec.choreTitleMe":"Registro de autocuidado","rec.choreTitleOther":"Registro de cuidados","rec.choreDescPet":"Toca «Hecho» para registrar. El color muestra el tiempo desde la última vez.","rec.choreDescOther":"Toca «Hecho» para registrar. Ve de un vistazo el tiempo transcurrido.","rec.did":"Hecho","rec.lastDone":"Última vez {date} · {txt}","rec.totalCount":" ({n} en total)",
-    "common.all":"Todos","a11y.prevMonth":"Mes anterior","a11y.nextMonth":"Mes siguiente","cal.addRecord":"＋ Registrar","cal.noRecords":"Aún sin registros","cal.exportIcs":"Exporta los eventos a tu calendario (.ics)","cal.foot":"Toca una fecha para registrar o repasar","cal.dayTitle":"{wd}, {md}",
+    "common.all":"Todos","a11y.prevMonth":"Mes anterior","a11y.nextMonth":"Mes siguiente","cal.addRecord":"＋ Registrar","cal.noRecords":"Aún sin registros","cal.exportIcs":"Exporta los eventos a tu calendario (.ics)","cal.foot":"Toca una fecha para registrar o repasar","cal.dayTitle":"{wd}, {md}","cal.recordsSummary":"Registros de {name} · {n}","cal.dayOfSpan":"Día {n} de {total}","calcat.work":"Trabajo","calcat.plan":"Plan","calcat.social":"Comidas y salidas","calcat.medical":"Médico","calcat.beauty":"Belleza","calcat.travel":"Viajes","calcat.other":"Otros","calcat.title":"Categoría","calcat.manage":"Gestionar categorías","calcat.presets":"Predefinidas","calcat.custom":"Personalizadas","calcat.add":"Añadir categoría","calcat.namePh":"Ej.: Clases","calcat.emoji":"Emoji","calcat.max":"Hasta {n} categorías personalizadas","calcat.deleteConfirm":"¿Eliminar «{name}»? Sus eventos pasan a «Otros» (los eventos no se borran).","calcat.none":"Aún no hay","life.endDate":"Fecha de fin","life.addAnother":"Guardar y añadir otro","life.endDateOrder":"La fecha de fin debe ser igual o posterior a la de inicio",
     "bday.month":"Mes","bday.day":"Día","bday.yearOpt":"Año (opcional)","bday.monthSuffix":"","bday.daySuffix":"",
     "common.close":"Cerrar","food.editTitle":"Editar comida","food.newTitle":"Añadir comida","ph.foodName":"Nombre de la comida (p. ej. Pollo, seco)","ph.brand":"Marca (opcional)","food.type":"Tipo","foodtype.dry":"Seco","foodtype.wet":"Húmedo","foodtype.homemade":"Casero","foodtype.treat":"Premio","foodtype.supplement":"Suplemento","foodtype.other":"Otro","food.amountUnit":"Cantidad por ración (opcional)","food.perServe":"{amt}/toma","food.perDay":"{n}×/día","food.kcalPerDay":"~{kc} kcal/día","ph.amount":"Cant.","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"uds","food.timesTime":"Veces/día y hora (opcional)","ph.times":"×/día","ph.feedTime":"Hora (p. ej. 7:00, 19:00)","food.kcal":"Calorías (opcional, si se conocen)","food.kcalDesc":"Calcula las calorías automáticamente. Solo la cantidad también vale.","food.mealTitle":"Registrar una comida","food.food":"Comida","food.when":"Cuándo","mealslot.morning":"Mañana","mealslot.noon":"Mediodía","mealslot.night":"Noche","mealslot.treat":"Premio","food.qty":"Cantidad","food.approxKcal":"~{kc} kcal","food.logBtn":"Registrar","bday.addTitle":"Añadir un cumpleaños o aniversario","ph.bdayName":"Nombre (p. ej. Cumpleaños de Yui)","bday.dateYearOpt":"Fecha (año opcional)",
     "rec.healthTitle":"Salud","chart.weight":"Peso","chart.height":"Altura","chart.bpSys":"Presión arterial (sist.)","health.chartSoon":"Un registro más y aparecerá la gráfica de peso.","health.emptyPlus":"Registra el peso y más con el botón ＋.","health.recordOf":"registro de {date}","health.bpPrefix":"PA ",
@@ -3271,7 +3311,7 @@ const MESSAGES={
     "word.pet":"照护","word.person":"计划","rec.memberTitle":"{name}的{word}","rec.tapEditDate":"点按编辑日期",
     "rel.stillNone":"尚未记录","rel.weeksAgo":"{n}周前","rel.monthsAgo":"约{n}个月前",
     "rec.routineTitle":"今天的日常","rec.addFromPlus":"用 ＋ 按钮添加","rec.choreTitlePet":"每日照护","rec.choreTitleMe":"自我照护记录","rec.choreTitleOther":"照护记录","rec.choreDescPet":"点按「完成」记录。颜色显示距上次的时间。","rec.choreDescOther":"点按「完成」记录。一眼看出距上次的时间。","rec.did":"完成","rec.lastDone":"上次 {date} · {txt}","rec.totalCount":" （共{n}次）",
-    "common.all":"全部","a11y.prevMonth":"上个月","a11y.nextMonth":"下个月","cal.addRecord":"＋ 记录","cal.noRecords":"暂无记录","cal.exportIcs":"将事件导出到你的日历（.ics）","cal.foot":"点按日期以记录或回顾","cal.dayTitle":"{md} {wd}",
+    "common.all":"全部","a11y.prevMonth":"上个月","a11y.nextMonth":"下个月","cal.addRecord":"＋ 记录","cal.noRecords":"暂无记录","cal.exportIcs":"将事件导出到你的日历（.ics）","cal.foot":"点按日期以记录或回顾","cal.dayTitle":"{md} {wd}","cal.recordsSummary":"{name}的记录 · {n}条","cal.dayOfSpan":"共{total}天 · 第{n}天","calcat.work":"工作","calcat.plan":"计划","calcat.social":"聚餐","calcat.medical":"就诊","calcat.beauty":"美容","calcat.travel":"旅行","calcat.other":"其他","calcat.title":"分类","calcat.manage":"管理分类","calcat.presets":"预设","calcat.custom":"自定义","calcat.add":"添加分类","calcat.namePh":"例：兴趣班","calcat.emoji":"表情","calcat.max":"自定义分类最多{n}个","calcat.deleteConfirm":"删除「{name}」吗？该分类的日程会移到「其他」（日程本身不会被删除）","calcat.none":"暂无","life.endDate":"结束日期","life.addAnother":"保存并继续添加","life.endDateOrder":"结束日期须在开始日期当天或之后",
     "bday.month":"月","bday.day":"日","bday.yearOpt":"年（可选）","bday.monthSuffix":"月","bday.daySuffix":"日",
     "common.close":"关闭","food.editTitle":"编辑食物","food.newTitle":"添加食物","ph.foodName":"食物名称（如 鸡肉、干粮）","ph.brand":"品牌（可选）","food.type":"类型","foodtype.dry":"干粮","foodtype.wet":"湿粮","foodtype.homemade":"自制","foodtype.treat":"零食","foodtype.supplement":"保健品","foodtype.other":"其他","food.amountUnit":"每份分量（可选）","food.perServe":"每次 {amt}","food.perDay":"每天{n}次","food.kcalPerDay":"约{kc}kcal/天","ph.amount":"数量","foodunit.g":"g","foodunit.ml":"ml","foodunit.piece":"个","food.timesTime":"每天次数与时间（可选）","ph.times":"次/天","ph.feedTime":"时间（如 7:00、19:00）","food.kcal":"热量（可选，若知道）","food.kcalDesc":"自动计算热量。只填分量也可以。","food.mealTitle":"记录一餐","food.food":"食物","food.when":"何时","mealslot.morning":"早上","mealslot.noon":"中午","mealslot.night":"晚上","mealslot.treat":"零食","food.qty":"分量","food.approxKcal":"约{kc}kcal","food.logBtn":"记录","bday.addTitle":"添加生日或纪念日","ph.bdayName":"名称（如 Yui的生日）","bday.dateYearOpt":"日期（年份可选）",
     "rec.healthTitle":"健康","chart.weight":"体重","chart.height":"身高","chart.bpSys":"血压（收缩压）","health.chartSoon":"再记录一次就会出现体重趋势图。","health.emptyPlus":"用 ＋ 按钮记录体重等。","health.recordOf":"{date}的记录","health.bpPrefix":"血压 ",
@@ -3988,6 +4028,13 @@ function App(){
   const[calCursor,setCalCursor]=useState(()=>{const d=new Date();return{y:d.getFullYear(),m:d.getMonth()};}); // m:0-11
   const[calDay,setCalDay]=useState(null); // 選択日(ISO)
   const[calFilter,setCalFilter]=useState("all"); // all | me | memberId
+  // 予定カテゴリの定義（端末ローカル設定。本体データとは別キーで永続化する）
+  const[calCatsState,setCalCatsState]=useState(()=>{try{return sanitizeCalCats(JSON.parse(localStorage.getItem(CALCATS_KEY)||"null"));}catch(e){return{custom:[],colors:{}};}});
+  const saveCalCats=(next)=>{const clean=sanitizeCalCats(next);setCalCatsState(clean);try{localStorage.setItem(CALCATS_KEY,JSON.stringify(clean));}catch(e){}};
+  const[calCatsOpen,setCalCatsOpen]=useState(false); // カテゴリ管理モーダル
+  const[catEdit,setCatEdit]=useState(null); // カテゴリ編集フォーム {key(新規はnull),preset,name,emoji,color}
+  const[catDelKey,setCatDelKey]=useState(null); // カテゴリ削除の確認対象（カスタムid）
+  const[calRecOpen,setCalRecOpen]=useState({}); // カレンダー日表示：記録サマリーの展開状態 {spaceId:true}
   // ライフイベント統合エディタ（カレンダーからの登録・編集の単一入力）
   const[lifeDraft,setLifeDraft]=useState(null); // {id?,space,category,title,date,time,note,photoDataUrl,photoChanged,reminders,repeat}
   const[lifeDetailOpen,setLifeDetailOpen]=useState(false); // ライフログ（予定）の詳細の段階開示（値がある時だけ開いて出す）
@@ -4009,6 +4056,8 @@ function App(){
   const[eChecklist,setEChecklist]=useState([]);const[eCheckDraft,setECheckDraft]=useState(""); // 予定のチェックリスト（持ち物など）
   const[eStock,setEStock]=useState(""); // ケアの残り在庫（回分・任意）。フィラリア等の買い足し管理に
   const[eEndTime,setEEndTime]=useState(""); // 予定の終了時刻（任意）
+  const[eEndDate,setEEndDate]=useState(""); // 予定の終了日（複数日予定・任意）
+  const[eEvCat,setEEvCat]=useState("plan"); // 予定カテゴリ（大項目）
   const[onboarding,setOnboarding]=useState(false);
   const[sampleMode,setSampleMode]=useState(()=>{try{return localStorage.getItem("loalife-sample-mode")==="1";}catch(e){return false;}}); // サンプル体験中フラグ
   const clearSampleMode=()=>{try{localStorage.removeItem("loalife-sample-mode");}catch(e){}setSampleMode(false);}; // 自分のデータを登録・編集したらサンプル扱いを終える
@@ -5981,13 +6030,13 @@ function App(){
 
   // --- ライフイベント統合エディタ（カレンダーの単一入力。写真・日記・予定すべて1か所で）---
   const CAL_CATS=[{key:"memory",label:"思い出・日記",emoji:"📸"},{key:"event",label:"予定",emoji:"📅"}];
-  const openLifeNew=(date,space)=>{setLifeDetailOpen(false);setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",endTime:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:""});};
+  const openLifeNew=(date,space)=>{setLifeDetailOpen(false);setLifeDraft({mode:"new",space:space||(activeMember?activeMember.id:"me"),category:"memory",title:"",date:date||todayIso,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:"plan",addAnother:false});};
   const openLifeEdit=async(it)=>{
     const ids=photoIdsOf(it);
     const ph=await Promise.all(ids.map(async id=>{let dataUrl=photos[id]||null;if(!dataUrl){try{dataUrl=await photoStorage.get(`photo:${id}`);}catch(e){}}return{id,dataUrl,isNew:false};}));
     const category=it.type==="memory"?"memory":"event";
     setLifeDetailOpen(!!(it.place||it.url||(Array.isArray(it.checklist)&&it.checklist.length>0)));
-    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",endTime:it.endTime||"",note:it.note||it.memo||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind,tags:it.tags||[],place:it.place||"",url:it.url||"",checklist:Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[],checkDraft:""});
+    setLifeDraft({mode:"edit",id:it.id,space:it.space,category,title:it.title&&it.title!=="思い出"?it.title:"",date:itemDate(it)||todayIso,time:it.time||"",endTime:it.endTime||"",endDate:(it.endDate&&itemDate(it)&&it.endDate>itemDate(it))?it.endDate:"",note:it.note||it.memo||"",photos:ph.filter(p=>p.dataUrl),reminders:it.reminders||[],repeat:it.repeat||"none",origType:it.type,careKind:it.careKind,tags:it.tags||[],place:it.place||"",url:it.url||"",checklist:Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[],checkDraft:"",evCat:evCatOf(it),addAnother:false});
   };
   // lifeDraft 内チェックリスト（編集モーダルと同じ操作感）
   const addLifeCheck=()=>{const v=(lifeDraft&&lifeDraft.checkDraft||"").trim();if(!v)return;setLifeDraft(p=>p?{...p,checklist:[...(p.checklist||[]),{id:"c"+Date.now(),text:v,done:false}],checkDraft:""}:p);};
@@ -6041,7 +6090,8 @@ function App(){
     if(d.category==="event"&&!title){showFlash(t("toast.titleNeeded"));return;}
     if(d.category==="memory"&&!title&&!note&&!hasPhoto){showFlash(t("toast.noteNeed"));return;}
     const id=d.id||((d.category==="memory"?"mem":"x")+Date.now());
-    if(d.category==="event"){const bad=endTimeBad(d.time,d.endTime);if(bad){showFlash(t(bad==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}}
+    if(d.category==="event"){const bad=endTimeBad(d.time,d.endTime);if(bad){showFlash(t(bad==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}
+    if(d.category==="event"&&d.endDate&&d.date&&d.endDate<d.date){showFlash(t("life.endDateOrder"));return;}}
     // 新規写真をIDBへ保存
     for(const p of ph){if(p.isNew&&p.dataUrl){const ok=await photoStorage.set(`photo:${p.id}`,p.dataUrl);if(!ok){showFlash(t("toast.storageFull"));return;}setPhotos(prev=>({...prev,[p.id]:p.dataUrl}));}}
     const photoIds=ph.map(p=>p.id);
@@ -6052,12 +6102,12 @@ function App(){
       // 予定から思い出に切り替えて保存しても、場所・URL・チェックリスト・終了時刻を黙って捨てない。
       const mPlace=(d.place||"").trim(),mUrl=(d.url||"").trim();
       const mCl=(d.checklist||[]).filter(c=>c.text&&c.text.trim());
-      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,title:title||"思い出",note:note||undefined,memo:undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,tags:tags.length?tags:undefined,place:mPlace||undefined,url:mUrl||undefined,checklist:mCl.length?mCl:undefined};
+      base={id,space:d.space,type:"memory",date:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||undefined,title:title||"思い出",note:note||undefined,memo:undefined,emoji:guessEmoji(title,"📸"),photo:hasPhoto,photos:hasPhoto?photoIds:undefined,reminders:rem,repeat:d.repeat&&d.repeat!=="none"?d.repeat:undefined,tags:tags.length?tags:undefined,place:mPlace||undefined,url:mUrl||undefined,checklist:mCl.length?mCl:undefined};
     }else{
       const keepCare=d.origType==="care";
       const place=(d.place||"").trim(),url=(d.url||"").trim();
       const cl=(d.checklist||[]).filter(c=>c.text&&c.text.trim());
-      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,memo:undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined,place:place||undefined,url:url||undefined,checklist:cl.length?cl:undefined};
+      base={id,space:d.space,type:keepCare?"care":"event",title:title,note:note||undefined,memo:undefined,emoji:guessEmoji(title,keepCare?"🏥":"📅"),dueDate:d.date,time:d.time||undefined,endTime:(d.time&&d.endTime)?d.endTime:undefined,endDate:(d.endDate&&d.date&&d.endDate>d.date)?d.endDate:undefined,evCat:d.evCat||"plan",reminders:rem,repeat:d.repeat,photo:hasPhoto?true:undefined,photos:hasPhoto?photoIds:undefined,place:place||undefined,url:url||undefined,checklist:cl.length?cl:undefined};
       if(keepCare)base.careKind=d.careKind;
     }
     let next;
@@ -6065,13 +6115,18 @@ function App(){
     else next=[...items,base];
     persist(members,next);
     const saved=next.find(x=>x.id===id);if(saved)saveItemToFs(saved).catch(()=>{});
-    setLifeDraft(null);showFlash(t("toast.saved"));
+    // 原則は「保存したら自動で閉じる」。「続けて追加」がONの新規作成だけ、
+    // 同じ日付・対象・カテゴリの空フォームを出し直して連続入力できるようにする。
+    if(d.mode==="new"&&d.addAnother){
+      setLifeDraft({mode:"new",space:d.space,category:d.category,title:"",date:d.date,time:"",endTime:"",endDate:"",note:"",photos:[],reminders:[],repeat:"none",tags:[],place:"",url:"",checklist:[],checkDraft:"",evCat:d.evCat||"plan",addAnother:true});
+    }else setLifeDraft(null);
+    showFlash(t("toast.saved"));
   };
   const removeLife=(id)=>{const it=items.find(x=>x.id===id);if(it)photoIdsOf(it).forEach(pid=>{try{photoStorage.delete(`photo:${pid}`);}catch(e){}});deleteItemFromFs(it).catch(()=>{});persist(members,items.filter(x=>x.id!==id));setLifeDraft(null);showFlash(t("toast.deleted"));};
   const snooze=(id)=>{const next=items.map(x=>x.id===id?{...x,dueDate:plusDays(1)}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});showFlash(t("toast.tomorrow"));};
   const setEmoji=(id,emo)=>{const next=items.map(x=>x.id===id?{...x,emoji:emo}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});setPickerId(null);};
-  const openEdit=(it)=>{setEDetailOpen(!!(it.place||it.url||it.note||it.memo||it.stock!=null||(Array.isArray(it.checklist)&&it.checklist.length>0)));setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setEEndTime(it.endTime||"");setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.note||it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
-  const saveEdit=()=>{const curItem=items.find(x=>x.id===editItemId);if(!eTitle.trim()&&!(curItem&&curItem.title&&curItem.title.trim())){showFlash(t("toast.titleNeeded"));return;}const badEnd=endTimeBad(eTime,eEndTime);if(badEnd){showFlash(t(badEnd==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,endTime:(eTime&&eEndTime)?eEndTime:undefined,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,note:memo||undefined,memo:undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
+  const openEdit=(it)=>{setEDetailOpen(!!(it.place||it.url||it.note||it.memo||it.stock!=null||(Array.isArray(it.checklist)&&it.checklist.length>0)));setEditItemId(it.id);setETitle(it.title);setEDate(it.dueDate||"");setETime(it.time||"");setEEndTime(it.endTime||"");setEEndDate((it.endDate&&it.dueDate&&it.endDate>it.dueDate)?it.endDate:"");setEEvCat(evCatOf(it));setERepeat(it.repeat||"none");setEReminders(it.reminders||[]);setEPlace(it.place||"");setEUrl(it.url||"");setEMemo(it.note||it.memo||"");setEChecklist(Array.isArray(it.checklist)?it.checklist.map(c=>({...c})):[]);setECheckDraft("");setEStock(it.stock!=null?String(it.stock):"");};
+  const saveEdit=()=>{const curItem=items.find(x=>x.id===editItemId);if(!eTitle.trim()&&!(curItem&&curItem.title&&curItem.title.trim())){showFlash(t("toast.titleNeeded"));return;}const badEnd=endTimeBad(eTime,eEndTime);if(badEnd){showFlash(t(badEnd==="start"?"toast.endTimeNeedStart":"toast.endTimeOrder"));return;}if(eEndDate&&eDate&&eEndDate<eDate){showFlash(t("life.endDateOrder"));return;}const place=ePlace.trim(),url=eUrl.trim(),memo=eMemo.trim();const cl=eChecklist.filter(c=>c.text&&c.text.trim());const stock=eStock!==""&&!isNaN(+eStock)?Math.max(0,parseInt(eStock,10)):undefined;const next=items.map(x=>x.id===editItemId?{...x,title:eTitle.trim()||x.title,dueDate:eDate||undefined,time:eTime||undefined,endTime:(eTime&&eEndTime)?eEndTime:undefined,endDate:(eDate&&eEndDate&&eEndDate>eDate)?eEndDate:undefined,evCat:eEvCat,repeat:eRepeat,reminders:eReminders.length?eReminders:undefined,place:place||undefined,url:url||undefined,note:memo||undefined,memo:undefined,checklist:cl.length?cl:undefined,stock}:x);persist(members,next);const it=next.find(x=>x.id===editItemId);if(it)saveItemToFs(it).catch(()=>{});setEditItemId(null);};
   // チェックリスト（編集フォーム内）：追加・チェック・削除
   const addECheck=()=>{const t=eCheckDraft.trim();if(!t)return;setEChecklist(prev=>[...prev,{id:"c"+Date.now(),text:t,done:false}]);setECheckDraft("");};
   const toggleECheck=(id)=>setEChecklist(prev=>prev.map(c=>c.id===id?{...c,done:!c.done}:c));
@@ -7124,6 +7179,45 @@ function App(){
 
   // --- カレンダー（ライフログ）の集計 ---
   const calSpaceItems=useMemo(()=>items.filter(x=>calFilter==="all"||x.space===calFilter),[items,calFilter]);
+  // 予定カテゴリの一覧（プリセット＋カスタム）。プリセット名は言語化し、色は上書きを優先。
+  const allEvCats=useMemo(()=>{
+    const presets=CALCAT_PRESETS.map(p=>({key:p.key,name:t("calcat."+p.key),emoji:p.emoji,color:(calCatsState.colors&&calCatsState.colors[p.key])||p.color,preset:true}));
+    const customs=(calCatsState.custom||[]).map(c=>({key:c.id,name:c.name,emoji:c.emoji||"🏷️",color:c.color||"#E39A5C",preset:false}));
+    return[...presets,...customs];
+  },[calCatsState,lang]);
+  // 未知のキー（他端末で消えたカスタム等）は「その他」に寄せて表示する（データは触らない）。
+  const evCatMeta=useCallback((key)=>allEvCats.find(c=>c.key===key)||allEvCats.find(c=>c.key==="other")||allEvCats[1],[allEvCats]);
+  const applyCatEdit=()=>{
+    if(!catEdit)return;
+    const name=(catEdit.name||"").trim();
+    if(catEdit.preset){
+      saveCalCats({...calCatsState,colors:{...(calCatsState.colors||{}),[catEdit.key]:catEdit.color}});
+    }else if(!name){showFlash(t("toast.titleNeeded"));return;}
+    else if(catEdit.key){
+      saveCalCats({...calCatsState,custom:(calCatsState.custom||[]).map(c=>c.id===catEdit.key?{...c,name,emoji:catEdit.emoji||"🏷️",color:catEdit.color}:c)});
+    }else{
+      if((calCatsState.custom||[]).length>=CALCAT_MAX_CUSTOM){showFlash(t("calcat.max",{n:CALCAT_MAX_CUSTOM}));return;}
+      saveCalCats({...calCatsState,custom:[...(calCatsState.custom||[]),{id:"cc"+Date.now(),name,emoji:catEdit.emoji||"🏷️",color:catEdit.color}]});
+    }
+    setCatEdit(null);
+  };
+  const deleteCalCat=(key)=>{
+    // カテゴリだけを消し、そのカテゴリの予定は「その他」へ移す（予定自体は絶対に消さない）。
+    const affected=items.filter(x=>x.evCat===key);
+    if(affected.length){
+      const next=items.map(x=>x.evCat===key?{...x,evCat:"other"}:x);
+      persist(members,next);
+      affected.forEach(a=>{const s=next.find(x=>x.id===a.id);if(s)saveItemToFs(s).catch(()=>{});});
+    }
+    saveCalCats({...calCatsState,custom:(calCatsState.custom||[]).filter(c=>c.id!==key)});
+    setCatDelKey(null);setCatEdit(null);
+  };
+  const moveCalCat=(key,dir)=>{
+    const arr=[...(calCatsState.custom||[])];const i=arr.findIndex(c=>c.id===key);const j=i+dir;
+    if(i<0||j<0||j>=arr.length)return;
+    const tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;
+    saveCalCats({...calCatsState,custom:arr});
+  };
   const annivAll=useMemo(()=>{
     const list=[];
     members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:m.emoji,label:`${m.name}の誕生日`,space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:`${m.name} うちの子記念日`,space:m.id});});
@@ -7143,23 +7237,62 @@ function App(){
     for(let i=0;i<startDow;i++)cells.push(null);
     for(let d=1;d<=daysInMonth;d++){
       const dIso=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-      const di=calSpaceItems.filter(x=>itemDate(x)===dIso);
+      const di=calSpaceItems.filter(x=>spanCovers(x,dIso));
       const ch=choreOn(dIso);
       const an=annivOn(dIso);
-      // 全カテゴリの項目を1件=1ドットで、該当ユーザー色で並べる（カテゴリで表示差はつけない）
-      const dots=[...di.map(x=>colorOf(x.space)),...ch.map(e=>colorOf(e.space)),...an.map(a=>colorOf(a.space))];
-      cells.push({d,iso:dIso,count:dots.length,dots});
+      // 複数日予定はカテゴリ色の帯（バー）で期間を示し、それ以外は従来どおり
+      // 1件=1ドットで該当ユーザー色で並べる（帯の分はドットに数えない）。
+      const bars=[];const dotItems=[];
+      di.forEach(x=>{const sp=itemSpan(x);if(sp&&sp.end>sp.start){if(bars.length<2)bars.push({key:x.id,color:evCatMeta(evCatOf(x)).color,label:dIso===sp.start?(x.title||""):""});}else dotItems.push(x);});
+      const dots=[...dotItems.map(x=>colorOf(x.space)),...ch.map(e=>colorOf(e.space)),...an.map(a=>colorOf(a.space))];
+      cells.push({d,iso:dIso,count:dots.length,dots,bars});
     }
     while(cells.length%7!==0)cells.push(null);
     return cells;
-  },[calCursor,calSpaceItems,annivAll,choreEventsAll,calFilter,colorOf]);
+  },[calCursor,calSpaceItems,annivAll,choreEventsAll,calFilter,colorOf,evCatMeta]);
   const dayTimeline=useMemo(()=>{
     if(!calDay)return[];
-    const list=calSpaceItems.filter(x=>itemDate(x)===calDay).map(x=>({item:x,time:x.time||""}));
+    const list=calSpaceItems.filter(x=>spanCovers(x,calDay)).map(x=>({item:x,time:x.time||""}));
     const anniv=annivOn(calDay).map(a=>({anniv:a,time:""}));
     const chore=choreOn(calDay).map(c=>({chore:c,time:""}));
     return[...anniv,...chore,...list].sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
   },[calDay,calSpaceItems,annivAll,choreEventsAll,calFilter]);
+  // 日表示の分離：予定（主役）はそのまま並べ、日々の記録はメンバーごとの
+  // サマリー（「{name}の記録 {n}件」）に畳む。お世話ログの実施履歴も記録側。
+  const dayPlans=useMemo(()=>dayTimeline.filter(e=>e.anniv||(e.item&&!isDailyRecord(e.item))),[dayTimeline]);
+  const dayRecGroups=useMemo(()=>{
+    const groups=[];const bySpace={};
+    dayTimeline.forEach(e=>{
+      const sp=e.chore?e.chore.space:(e.item&&isDailyRecord(e.item)?e.item.space:null);
+      if(!sp)return;
+      if(!bySpace[sp]){bySpace[sp]={space:sp,entries:[]};groups.push(bySpace[sp]);}
+      bySpace[sp].entries.push(e);
+    });
+    return groups;
+  },[dayTimeline]);
+  // 日一覧の行（予定側・記録側で共用）。予定にはカテゴリチップと複数日の位置を出す。
+  const renderCalItemLi=(e)=>(
+    <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"||e.item.type==="dream"))?" tap":"")} style={{borderLeftColor:colorOf(e.item.space)}} onClick={()=>{if(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")openLifeEdit(e.item);else if(e.item.type==="dream")openEdit(e.item);}}>
+      <span className="yl-tlday-time">{e.item.time||"—"}</span>
+      {firstPhotoId(e.item)&&photos[firstPhotoId(e.item)]?<span className="yl-tlday-thumbwrap"><img className="yl-tlday-thumb" src={photos[firstPhotoId(e.item)]} alt=""/>{photoIdsOf(e.item).length>1&&<span className="yl-photo-badge">+{photoIdsOf(e.item).length-1}</span>}</span>:<span className="yl-tlday-emoji"><Icon name={guessIcon(e.item.title||recordLabel(e.item),"calendar")} size={17}/></span>}
+      <span className="yl-tlday-body">
+        <span className="yl-tlday-text">{e.item.title||recordLabel(e.item)}{nameOf(e.item.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.item.space)}</span>:null}</span>
+        {(e.item.note||e.item.memo)&&<span className="yl-tlday-note">{e.item.note||e.item.memo}</span>}
+        {e.item.place&&<span className="yl-tlday-note yl-tlday-place" onClick={ev=>{ev.stopPropagation();openMap(e.item.place);}}><Icon name="pin" size={11}/> {e.item.place}</span>}
+        {e.item.type==="expense"&&e.item.amount!=null&&<span className="yl-tlday-note">¥{Number(e.item.amount).toLocaleString()}</span>}
+        {e.item.type==="walk"&&(e.item.durationSec||e.item.distanceM)&&<span className="yl-tlday-note">{Math.round((e.item.durationSec||0)/60)}分{e.item.distanceM?` ・ ${(e.item.distanceM/1000).toFixed(1)}km`:""}</span>}
+        {(e.item.type==="event"||e.item.type==="care")&&(()=>{const cm=evCatMeta(evCatOf(e.item));return<span className="yl-tlday-cat"><span className="yl-evcat-dot" style={{background:cm.color}}/>{cm.emoji} {cm.name}</span>;})()}
+        {(()=>{const sp=itemSpan(e.item);if(!sp||sp.end<=sp.start||!calDay)return null;return<span className="yl-tlday-note">{t("cal.dayOfSpan",{n:daysBetween(sp.start,calDay)+1,total:daysBetween(sp.start,sp.end)+1})}</span>;})()}
+      </span>
+    </li>
+  );
+  const renderCalChoreLi=(e,idx)=>(
+    <li key={"c"+idx} className="yl-tlday-item chore" style={{borderLeftColor:colorOf(e.chore.space)}}>
+      <span className="yl-tlday-time"><Icon name="sparkles" size={15}/></span>
+      <span className="yl-tlday-emoji"><Icon name={guessIcon(e.chore.title)} size={17}/></span>
+      <span className="yl-tlday-body"><span className="yl-tlday-text">{e.chore.title}{nameOf(e.chore.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.chore.space)}</span>:null}</span></span>
+    </li>
+  );
   // 思い出アルバム（全スペース・新しい順）。タグで絞り込み可能
   const albumAll=useMemo(()=>items.filter(x=>x.type==="memory").sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||0)-(a.createdAt||0)),[items]);
   const albumTags=useMemo(()=>{const set=[];albumAll.forEach(m=>(m.tags||[]).forEach(t=>{if(t&&!set.includes(t))set.push(t);}));return set;},[albumAll]);
@@ -8320,8 +8453,13 @@ function App(){
             <div className="yl-cal-dow">{weekdaysShort.map((w,i)=><span key={i} className={"yl-cal-dowc"+(i===0?" sun":i===6?" sat":"")}>{w}</span>)}</div>
             <div className="yl-cal-grid">
               {calGrid.map((c,i)=>c?(
-                <button key={c.iso} className={"yl-cal-cell"+(c.iso===todayIso?" today":"")+(c.iso===calDay?" sel":"")} onClick={()=>setCalDay(c.iso===calDay?null:c.iso)}>
+                <button key={c.iso} className={"yl-cal-cell"+(c.iso===todayIso?" today":"")+(c.iso===calDay?" sel":"")} onClick={()=>{setCalDay(c.iso===calDay?null:c.iso);setCalRecOpen({});}}>
                   <span className={"yl-cal-dnum"+(dowOf(c.iso)===0?" sun":dowOf(c.iso)===6?" sat":"")}>{c.d}</span>
+                  {c.bars&&c.bars.length>0&&(
+                    <span className="yl-cal-bars">
+                      {c.bars.map(b=><span key={b.key} className="yl-cal-bar" style={{background:b.color}}>{b.label}</span>)}
+                    </span>
+                  )}
                   {c.count>0&&(()=>{const shown=c.count<=4?c.count:3;return(
                     <span className="yl-cal-dots">
                       {c.dots.slice(0,shown).map((col,ci)=><span key={ci} className="yl-cal-dot" style={{background:col}}/>)}
@@ -8340,36 +8478,37 @@ function App(){
                 {dayTimeline.length===0?(
                   <p className="yl-routine-empty" style={{padding:"8px 0 4px"}}>{t("cal.noRecords")}</p>
                 ):(
-                  <ul className="yl-tlday">
-                    {dayTimeline.map((e,idx)=>e.anniv?(
-                      <li key={"a"+idx} className="yl-tlday-item anniv">
-                        <span className="yl-tlday-time"><Icon name="gift" size={15}/></span>
-                        <span className="yl-tlday-emoji"><Icon name={guessIcon(e.anniv.label,"cake")} size={17}/></span>
-                        <span className="yl-tlday-body"><span className="yl-tlday-text">{e.anniv.label}</span></span>
-                      </li>
-                    ):e.chore?(
-                      <li key={"c"+idx} className="yl-tlday-item chore" style={{borderLeftColor:colorOf(e.chore.space)}}>
-                        <span className="yl-tlday-time"><Icon name="sparkles" size={15}/></span>
-                        <span className="yl-tlday-emoji"><Icon name={guessIcon(e.chore.title)} size={17}/></span>
-                        <span className="yl-tlday-body"><span className="yl-tlday-text">{e.chore.title}{nameOf(e.chore.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.chore.space)}</span>:null}</span></span>
-                      </li>
-                    ):(
-                      <li key={e.item.id} className={"yl-tlday-item cat-"+calCategory(e.item)+(((e.item.type==="memory"||e.item.type==="event"||e.item.type==="care"||e.item.type==="dream"))?" tap":"")} style={{borderLeftColor:colorOf(e.item.space)}} onClick={()=>{if(e.item.type==="memory"||e.item.type==="event"||e.item.type==="care")openLifeEdit(e.item);else if(e.item.type==="dream")openEdit(e.item);}}>
-                        <span className="yl-tlday-time">{e.item.time||"—"}</span>
-                        {firstPhotoId(e.item)&&photos[firstPhotoId(e.item)]?<span className="yl-tlday-thumbwrap"><img className="yl-tlday-thumb" src={photos[firstPhotoId(e.item)]} alt=""/>{photoIdsOf(e.item).length>1&&<span className="yl-photo-badge">+{photoIdsOf(e.item).length-1}</span>}</span>:<span className="yl-tlday-emoji"><Icon name={guessIcon(e.item.title||recordLabel(e.item),"calendar")} size={17}/></span>}
-                        <span className="yl-tlday-body">
-                          <span className="yl-tlday-text">{e.item.title||recordLabel(e.item)}{nameOf(e.item.space)&&calFilter==="all"?<span className="yl-tlday-who"> ・{nameOf(e.item.space)}</span>:null}</span>
-                          {(e.item.note||e.item.memo)&&<span className="yl-tlday-note">{e.item.note||e.item.memo}</span>}
-                          {e.item.place&&<span className="yl-tlday-note yl-tlday-place" onClick={ev=>{ev.stopPropagation();openMap(e.item.place);}}><Icon name="pin" size={11}/> {e.item.place}</span>}
-                          {e.item.type==="expense"&&e.item.amount!=null&&<span className="yl-tlday-note">¥{Number(e.item.amount).toLocaleString()}</span>}
-                          {e.item.type==="walk"&&(e.item.durationSec||e.item.distanceM)&&<span className="yl-tlday-note">{Math.round((e.item.durationSec||0)/60)}分{e.item.distanceM?` ・ ${(e.item.distanceM/1000).toFixed(1)}km`:""}</span>}
-                        </span>
-                      </li>
+                  <>
+                    {dayPlans.length>0&&(
+                      <ul className="yl-tlday">
+                        {dayPlans.map((e,idx)=>e.anniv?(
+                          <li key={"a"+idx} className="yl-tlday-item anniv">
+                            <span className="yl-tlday-time"><Icon name="gift" size={15}/></span>
+                            <span className="yl-tlday-emoji"><Icon name={guessIcon(e.anniv.label,"cake")} size={17}/></span>
+                            <span className="yl-tlday-body"><span className="yl-tlday-text">{e.anniv.label}</span></span>
+                          </li>
+                        ):renderCalItemLi(e))}
+                      </ul>
+                    )}
+                    {dayRecGroups.map(g=>(
+                      <div key={g.space} className="yl-cal-recgroup">
+                        <button type="button" className="yl-cal-recsum" onClick={()=>setCalRecOpen(o=>({...o,[g.space]:!o[g.space]}))} aria-expanded={!!calRecOpen[g.space]}>
+                          <span className="yl-cal-fdot" style={{background:colorOf(g.space)}}/>
+                          <span className="yl-cal-recsum-text">{t("cal.recordsSummary",{name:nameOf(g.space),n:g.entries.length})}</span>
+                          <span className="yl-cal-recsum-arrow">{calRecOpen[g.space]?"▲":"▼"}</span>
+                        </button>
+                        {calRecOpen[g.space]&&(
+                          <ul className="yl-tlday">
+                            {g.entries.map((e,idx)=>e.chore?renderCalChoreLi(e,idx):renderCalItemLi(e))}
+                          </ul>
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </>
                 )}
               </section>
             )}
+            <button className="yl-cal-exportall" onClick={()=>setCalCatsOpen(true)}><Icon name="tag" size={16}/> {t("calcat.manage")}</button>
             <button className="yl-cal-exportall" onClick={()=>setCalPicker({bulk:true})}><Icon name="download" size={16}/> {t("cal.exportIcs")}</button>
             <p className="yl-foot" style={{marginTop:8}}>{t("cal.foot")}</p>
           </div>
@@ -9897,7 +10036,7 @@ function App(){
           </div>
         </div>
       )}
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div><div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={eEndDate} onChange={e=>setEEndDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>setERepeat(e.target.value)}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label></div>{(()=>{const cur=items.find(x=>x.id===editItemId);if(!cur||(cur.type!=="event"&&cur.type!=="care"))return null;return(<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(eEvCat===c.key?" on":"")} style={eEvCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setEEvCat(c.key)}>{c.emoji} {c.name}</button>)}</div></div>);})()}<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
       {viewer&&<div className="yl-pv" role="dialog" aria-label={viewerTitle(viewer)}><div className="yl-pv-head"><span className="yl-pv-title">{viewerTitle(viewer)}</span><button className="yl-pv-close" onClick={()=>setViewer(null)} aria-label={t("viewer.close")}>×</button></div>{viewer.loading?<p className="yl-loading" style={{color:"#FFF7E8"}}>{t("viewer.loading")}</p>:viewer.src?<div className={"yl-pv-scroll"+(pvZoom>1?" zoomed":"")} onDoubleClick={()=>setPvZoom(z=>z>1?1:2.5)}><img className="yl-pv-img" src={viewer.src} alt={viewerTitle(viewer)} style={pvZoom>1?{width:(pvZoom*100)+"%"}:undefined} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setPvZoom(z=>Math.min(4,Math.max(1,z*(e.deltaY<0?1.15:0.87))));}}} onTouchStart={e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pvPinchRef.current={d:Math.hypot(dx,dy),z:pvZoom};}}} onTouchMove={e=>{if(e.touches.length===2&&pvPinchRef.current){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.hypot(dx,dy);if(pvPinchRef.current.d>0)setPvZoom(Math.min(4,Math.max(1,pvPinchRef.current.z*d/pvPinchRef.current.d)));}}} onTouchEnd={()=>{pvPinchRef.current=null;}}/></div>:<p className="yl-empty" style={{color:"#FFF7E8"}}>{t("viewer.notFound")}</p>}{viewer.src&&<p className="yl-pv-hint">{t("viewer.zoomHint")}</p>}{viewer.confirming?<><p className="yl-pv-confirm">{t("viewer.delConfirm")}</p><div className="yl-pv-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-pv-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div>}
       {shareMemory&&(()=>{const it=shareMemory.item;const sp=it?spaces.find(s=>s.id===it.space):null;const dateStr=it&&it.date?fmtFullDateLoc(it.date,lang):"";const cap=it?(it.note||(it.title&&it.title!=="思い出"?it.title:"")):"";const who=it?(it.space==="me"?(meName||t("otd.me")):(nameOf(it.space)||t("otd.me"))):"";return(
         <div className="yl-overlay" onClick={()=>setShareMemory(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
@@ -10216,15 +10355,65 @@ function App(){
                 </div>
               );
             })()}
-            <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("edit.endTime")}<TimeInput value={lifeDraft.endTime||""} onChange={tv=>setLifeDraft(p=>({...p,endTime:tv}))}/></label>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
+            <div className="yl-optrow"><label className="yl-opt">{t("life.date")}<input type="date" className="yl-date" value={lifeDraft.date} onChange={e=>setLifeDraft(p=>({...p,date:e.target.value}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={lifeDraft.endDate||""} onChange={e=>setLifeDraft(p=>({...p,endDate:e.target.value}))}/></label>}<label className="yl-opt">{t("life.time")}<TimeInput value={lifeDraft.time} onChange={tv=>setLifeDraft(p=>({...p,time:tv}))}/></label>{lifeDraft.category==="event"&&<label className="yl-opt">{t("edit.endTime")}<TimeInput value={lifeDraft.endTime||""} onChange={tv=>setLifeDraft(p=>({...p,endTime:tv}))}/></label>}{lifeDraft.category==="event"&&<label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={lifeDraft.repeat} onChange={e=>setLifeDraft(p=>({...p,repeat:e.target.value}))}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>}</div>
+            {lifeDraft.category==="event"&&<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(lifeDraft.evCat===c.key?" on":"")} style={lifeDraft.evCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setLifeDraft(p=>({...p,evCat:c.key}))}>{c.emoji} {c.name}</button>)}</div></div>}
             {/* 通知は「予定」のときだけ。思い出・日記は過去の記録なので事前通知は表示しない */}
             {lifeDraft.category==="event"&&<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("life.notify")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(lifeDraft.reminders.includes(o.key)?" on":"")} onClick={()=>toggleLifeReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{lifeDraft.reminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>}
             {lifeDraft.category==="event"&&<button type="button" className="yl-detail-toggle" onClick={()=>setLifeDetailOpen(o=>!o)} aria-expanded={lifeDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{lifeDetailOpen?"▲":"▼"}</span></button>}{lifeDraft.category==="event"&&<div className="yl-detailfields" style={lifeDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={lifeDraft.place||""} onChange={e=>setLifeDraft(p=>({...p,place:e.target.value}))} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={lifeDraft.url||""} onChange={e=>setLifeDraft(p=>({...p,url:e.target.value}))} placeholder={t("edit.urlPh")}/></label><div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{(lifeDraft.checklist||[]).length>0&&<ul className="yl-clist">{lifeDraft.checklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleLifeCheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeLifeCheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={lifeDraft.checkDraft||""} onChange={e=>setLifeDraft(p=>({...p,checkDraft:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addLifeCheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addLifeCheck}>＋</button></div></div></div>}
+            {lifeDraft.mode==="new"&&<label className="yl-lost-foundtoggle"><input type="checkbox" checked={!!lifeDraft.addAnother} onChange={e=>setLifeDraft(p=>({...p,addAnother:e.target.checked}))}/> {t("life.addAnother")}</label>}
             <div className="yl-modal-btns">
               {lifeDraft.mode==="edit"&&<button className="yl-modal-danger" onClick={()=>askDelete(lifeDraft.title,()=>removeLife(lifeDraft.id))}>{t("common.delete")}</button>}
               <button className="yl-modal-cancel" onClick={()=>setLifeDraft(null)}>{t("common.close")}</button>
               <button className="yl-addbtn modal" onClick={saveLife}>{t("common.save")}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {calCatsOpen&&(
+        <div className="yl-overlay" onClick={()=>{setCalCatsOpen(false);setCatEdit(null);setCatDelKey(null);}}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title"><Icon name="tag" size={18}/> {t("calcat.manage")}</h3>
+            <p className="yl-calcat-sec">{t("calcat.presets")}</p>
+            {allEvCats.filter(c=>c.preset).map(c=>(
+              <div key={c.key} className="yl-calcat-row">
+                <span className="yl-calcat-emoji">{c.emoji}</span>
+                <span className="yl-calcat-name">{c.name}</span>
+                <button type="button" className="yl-colorpick-btn" onClick={()=>setCatEdit({key:c.key,preset:true,name:c.name,emoji:c.emoji,color:c.color})} aria-label={t("a11y.pickColor")}><span className="yl-colordot" style={{background:c.color}}/></button>
+              </div>
+            ))}
+            <p className="yl-calcat-sec">{t("calcat.custom")}</p>
+            {(calCatsState.custom||[]).length===0&&<p className="yl-routine-empty" style={{padding:"2px 0 6px"}}>{t("calcat.none")}</p>}
+            {(calCatsState.custom||[]).map((c,i,arr)=>(
+              <div key={c.id} className="yl-calcat-row">
+                <span className="yl-calcat-emoji">{c.emoji}</span>
+                <span className="yl-calcat-name">{c.name}</span>
+                <button type="button" className="yl-calcat-mini" onClick={()=>moveCalCat(c.id,-1)} disabled={i===0} aria-label={t("wx.moveUp")}>↑</button>
+                <button type="button" className="yl-calcat-mini" onClick={()=>moveCalCat(c.id,1)} disabled={i===arr.length-1} aria-label={t("wx.moveDown")}>↓</button>
+                <button type="button" className="yl-colorpick-btn" onClick={()=>setCatEdit({key:c.id,preset:false,name:c.name,emoji:c.emoji,color:c.color})} aria-label={t("common.edit")}><span className="yl-colordot" style={{background:c.color}}/></button>
+                <button type="button" className="yl-calcat-mini del" onClick={()=>setCatDelKey(c.id)} aria-label={t("common.delete")}>×</button>
+              </div>
+            ))}
+            {catDelKey&&(()=>{const c=(calCatsState.custom||[]).find(x=>x.id===catDelKey);if(!c)return null;return(
+              <div className="yl-calcat-delbox">
+                <p className="yl-modal-body">{t("calcat.deleteConfirm",{name:c.name})}</p>
+                <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCatDelKey(null)}>{t("common.cancel")}</button><button className="yl-modal-del" onClick={()=>deleteCalCat(catDelKey)}>{t("common.delete")}</button></div>
+              </div>);})()}
+            {catEdit?(
+              <div className="yl-calcat-form">
+                {!catEdit.preset&&(
+                  <div className="yl-calcat-formrow">
+                    <input className="yl-input sm" style={{flex:1}} value={catEdit.name} onChange={e=>setCatEdit(p=>({...p,name:e.target.value}))} placeholder={t("calcat.namePh")}/>
+                    <input className="yl-input sm" style={{width:64,textAlign:"center"}} value={catEdit.emoji} onChange={e=>setCatEdit(p=>({...p,emoji:e.target.value}))} placeholder={t("calcat.emoji")} maxLength={4}/>
+                  </div>
+                )}
+                <div className="yl-colorrow" style={{margin:"8px 0"}}>{MEMBER_COLORS.map(col=><button key={col} type="button" className={"yl-colordot"+(catEdit.color===col?" on":"")} style={{background:col}} onClick={()=>setCatEdit(p=>({...p,color:col}))} aria-label={t("a11y.pickColor")}/>)}</div>
+                <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCatEdit(null)}>{t("common.cancel")}</button><button className="yl-addbtn modal" onClick={applyCatEdit}>{t("common.save")}</button></div>
+              </div>
+            ):(
+              <button type="button" className="yl-addbtn sm" style={{marginTop:8}} disabled={(calCatsState.custom||[]).length>=CALCAT_MAX_CUSTOM} onClick={()=>setCatEdit({key:null,preset:false,name:"",emoji:"🏷️",color:MEMBER_COLORS[5]})}>＋ {t("calcat.add")}</button>
+            )}
+            {(calCatsState.custom||[]).length>=CALCAT_MAX_CUSTOM&&<p className="yl-foot" style={{marginTop:6}}>{t("calcat.max",{n:CALCAT_MAX_CUSTOM})}</p>}
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>{setCalCatsOpen(false);setCatEdit(null);setCatDelKey(null);}}>{t("common.close")}</button></div>
           </div>
         </div>
       )}
