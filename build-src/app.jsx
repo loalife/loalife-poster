@@ -1366,7 +1366,7 @@ const TOX_RISK={
   caution:{label:"注意",emoji:"⚠️",desc:"大量摂取など一定の条件で危険"},
   avoid:{label:"基本NG",emoji:"ℹ️",desc:"犬に与えるべきではない"},
 };
-const TOX_CATS=[{k:"all",l:"すべて"},{k:"food",l:"食品"},{k:"medicine",l:"薬"},{k:"plant",l:"植物"},{k:"household",l:"家庭用品"},{k:"safe",l:"🟢 食べてOK"}];
+const TOX_CATS=[{k:"all",l:"すべて",lEn:"All",lEs:"Todo",lZh:"全部"},{k:"food",l:"食品",lEn:"Food",lEs:"Comida",lZh:"食物"},{k:"medicine",l:"薬",lEn:"Medicine",lEs:"Medicinas",lZh:"药物"},{k:"plant",l:"植物",lEn:"Plants",lEs:"Plantas",lZh:"植物"},{k:"household",l:"家庭用品",lEn:"Household",lEs:"Hogar",lZh:"日用品"},{k:"safe",l:"🟢 食べてOK",lEn:"🟢 Safe to eat",lEs:"🟢 Puede comer",lZh:"🟢 可以吃"}];
 const TOX_RANK={emergency:0,high:1,caution:2,avoid:3};
 // 共通の「やってはいけないこと」「病院に伝える情報」「出典」。各項目の追記と合わせて表示。
 const TOX_DONT_CORE=["自己判断で吐かせない（無理な催吐は誤嚥や悪化の恐れ）","牛乳・塩水・下剤などを自己判断で与えない","症状がなくても「元気だから様子見」で放置しない"];
@@ -1778,7 +1778,7 @@ const PERSON_EMOJIS=["👧","🧒","👦","👶","👩","👨"];
 const PERSON_EMOJIS_BY_TYPE={baby:["👶"],child:["👧","🧒","👦"],adult:["👩","👨","🧑"],senior:["👵","👴","🧓"]};
 const personEmojisFor=(pt)=>PERSON_EMOJIS_BY_TYPE[pt]||PERSON_EMOJIS;
 // 人メンバーの種別（記録項目の出し分け）。赤ちゃん→子ども→大人→高齢者の順で提示。
-const PERSON_TYPES=[{k:"baby",l:"赤ちゃん",lEn:"Baby",lZh:"婴儿",lEs:"Bebé",emoji:"👶"},{k:"child",l:"子ども",lEn:"Child",lZh:"儿童",lEs:"Niño/a",emoji:"🧒"},{k:"adult",l:"大人",lEn:"Adult",lZh:"成人",lEs:"Adulto",emoji:"🧑"},{k:"senior",l:"高齢者",lEn:"Senior",lZh:"长者",lEs:"Mayor",emoji:"👵"}];
+const PERSON_TYPES=[{k:"baby",l:"赤ちゃん",lEn:"Baby",lZh:"婴儿",lEs:"Bebé",emoji:"👶"},{k:"child",l:"子ども",lEn:"Child",lZh:"儿童",lEs:"Niño/a",emoji:"🧒"},{k:"adult",l:"おとな",lEn:"Adult",lZh:"成人",lEs:"Adulto",emoji:"🧑"},{k:"senior",l:"シニア",lEn:"Senior",lZh:"长者",lEs:"Mayor",emoji:"👵"}];
 // 種別切替で「初期絵文字のままなら新種別の初期値へ差し替える」ための判定。初期値は personEmojisFor の先頭と
 // PERSON_TYPES の emoji の2系統がある（例：子どもは 👧 と 🧒）ため、両方を「初期値」とみなす。
 // ユーザーが自分で選んだ絵文字はどちらの初期値とも一致しないので、絶対に差し替わらない。
@@ -2226,8 +2226,8 @@ function computeMealKcal(def,amount){
 }
 // 1日のフード量計算（犬・猫）。RER=70×理想体重^0.75、DER=RER×活動係数、フード量=DER÷ME×100。※参考値。
 const LIFESTAGE={
-  dog:[{k:"puppy_s",l:"子犬（〜4ヶ月）",f:3.0},{k:"puppy_l",l:"子犬（4ヶ月〜1歳）",f:2.0},{k:"adult_n",l:"成犬（避妊・去勢済み）",f:1.6},{k:"adult",l:"成犬（未避妊・未去勢）",f:1.8},{k:"senior",l:"高齢犬",f:1.4},{k:"diet",l:"減量が必要",f:1.0}],
-  cat:[{k:"kitten",l:"子猫（成長期）",f:2.5},{k:"adult_n",l:"成猫（避妊・去勢済み）",f:1.2},{k:"adult",l:"成猫（未避妊・未去勢）",f:1.4},{k:"senior",l:"高齢猫",f:1.1},{k:"diet",l:"減量が必要",f:0.8}],
+  dog:[{k:"puppy_s",l:"子犬（〜4ヶ月）",lEn:"Puppy (to 4 months)",lEs:"Cachorro (hasta 4 meses)",lZh:"幼犬（4个月以内）",f:3.0},{k:"puppy_l",l:"子犬（4ヶ月〜1歳）",lEn:"Puppy (4 months–1 year)",lEs:"Cachorro (4 meses–1 año)",lZh:"幼犬（4个月–1岁）",f:2.0},{k:"adult_n",l:"成犬（避妊・去勢済み）",lEn:"Adult (spayed/neutered)",lEs:"Adulto (esterilizado)",lZh:"成犬（已绝育）",f:1.6},{k:"adult",l:"成犬（未避妊・未去勢）",lEn:"Adult (intact)",lEs:"Adulto (sin esterilizar)",lZh:"成犬（未绝育）",f:1.8},{k:"senior",l:"高齢犬",lEn:"Senior dog",lEs:"Perro mayor",lZh:"老年犬",f:1.4},{k:"diet",l:"減量が必要",lEn:"Needs weight loss",lEs:"Necesita bajar de peso",lZh:"需要减肥",f:1.0}],
+  cat:[{k:"kitten",l:"子猫（成長期）",lEn:"Kitten (growing)",lEs:"Gatito (en crecimiento)",lZh:"幼猫（成长期）",f:2.5},{k:"adult_n",l:"成猫（避妊・去勢済み）",lEn:"Adult (spayed/neutered)",lEs:"Adulto (esterilizado)",lZh:"成猫（已绝育）",f:1.2},{k:"adult",l:"成猫（未避妊・未去勢）",lEn:"Adult (intact)",lEs:"Adulto (sin esterilizar)",lZh:"成猫（未绝育）",f:1.4},{k:"senior",l:"高齢猫",lEn:"Senior cat",lEs:"Gato mayor",lZh:"老年猫",f:1.1},{k:"diet",l:"減量が必要",lEn:"Needs weight loss",lEs:"Necesita bajar de peso",lZh:"需要减肥",f:0.8}],
 };
 const bcsAdjust=(bcs)=>1+0.1*(bcs-5); // 補正値（BCS5=適正=1.0、1段階=約10%）
 // BCS（ボディ・コンディション・スコア）9段階。適正は犬BCS4〜5・猫BCS5。犬・猫で説明を分ける。
@@ -2549,7 +2549,7 @@ const HELP_PRESETS=[{task:"お皿はこび",pt:1},{task:"おふろそうじ",pt:
 // おこづかい帳の入出金の向き。
 const ALLOWANCE_DIRS=[{k:"in",l:"もらった",sign:1},{k:"out",l:"つかった",sign:-1},{k:"save",l:"ちょきん",sign:0}];
 // 家族ノート（メッセージ・感謝・きもち）の種別。
-const NOTE_KINDS=[{k:"note",l:"今日のこと",icon:"note"},{k:"thanks",l:"ありがとう",icon:"heart"},{k:"mood",l:"きもち",icon:"smile"}];
+const NOTE_KINDS=[{k:"note",l:"今日のこと",lEn:"Today",lEs:"Hoy",lZh:"今天",icon:"note"},{k:"thanks",l:"ありがとう",lEn:"Thanks",lEs:"Gracias",lZh:"谢谢",icon:"heart"},{k:"mood",l:"きもち",lEn:"Feelings",lEs:"Ánimo",lZh:"心情",icon:"smile"}];
 const noteKindMeta=(k)=>NOTE_KINDS.find(o=>o.k===k)||NOTE_KINDS[0];
 const MILESTONE_PRESETS={
   first:["初めて笑った","初めて寝返りした","初めてハイハイした","初めて立った","初めて歩いた","初めての言葉"],
@@ -3311,7 +3311,7 @@ const MESSAGES={
     "a11y.delete":"削除","a11y.check":"チェック","a11y.done":"完了","remind.before":"{n}分前","status.done":"完了","status.inDays":"あと{d}日","status.today":"今日","status.dreamOver":"また今度でも大丈夫","status.overdue":"期限切れ","care.done":"✅ 完了","care.overdueRenew":"🔴 期限切れ・{d}日超過","care.overdueTodo":"🔴 未対応・{d}日超過","care.plannedDate":"予定日 {date}","care.dueToday":"🟡 今日で期限","care.dueInDays":"🟡 あと{d}日で期限","care.validDays":"🟢 有効・あと{d}日","care.doToday":"🟡 今日やる","care.plannedDays":"🟡 予定・あと{d}日","care.planned":"🟡 予定済み","item.doneOn":"実施 {date}","item.stockLeft":"在庫あと{n}回","item.reminderCount":"{n}件","item.resolveTip":"記録すると次回予定へ自動で進みます","item.resolveBtn":"✓ 完了にして次回へ","item.snooze":"→ 明日へ","item.copyTip":"前回と同じ内容で追加","item.copyBtn":"↩ 前回コピー","item.addToCal":"カレンダーに追加","item.cert":"証明書","item.certAdd":"証明書を追加","item.openMap":"地図で開く","item.openLink":"リンクを開く","item.checklistProg":"持ち物 {done}/{total}","a11y.pickColor":"色を選ぶ","a11y.editProfile":"プロフィールを編集","a11y.editPhotoProfile":"写真・プロフィールを編集","a11y.editIconName":"アイコン・名前を変更",
     "ph.name":"名前","ph.title":"タイトル",
     "gender.boy":"男の子","gender.girl":"女の子","neuter.done":"済み","neuter.not":"まだ",
-    "ptype.baby":"赤ちゃん","ptype.child":"子ども","ptype.adult":"大人","ptype.senior":"高齢者",
+    "ptype.baby":"赤ちゃん","ptype.child":"子ども","ptype.adult":"おとな","ptype.senior":"シニア",
     "toast.saved":"記録しました ✓","toast.added":"追加しました ✓","toast.deleted":"削除しました","common.undo":"元に戻す","toast.nameNeeded":"名前を入力してください","toast.titleNeeded":"タイトルを入力してください",
     "toast.healthSaved":"からだの記録を保存しました 📈","toast.weightNum":"体重は数字で入力してください","toast.healthNeeded":"体重などを入力してください","toast.heightNum":"身長は数字で入力してください",
     "toast.foodSaved":"フードを登録しました 🍚","toast.foodNameNeeded":"フード・食事名を入力してください","toast.pickFood":"フードを選んでください","toast.amountNeeded":"分量を入力してください","toast.qtyNeeded":"量を入力してください","toast.milkNeeded":"ミルクの量(ml)を入力してください",
@@ -3343,14 +3343,14 @@ const MESSAGES={
     "rec.toiletTitle":"トイレ成功率","toilet.peeRate":"おしっこ成功率","toilet.poopRate":"うんち成功率","toilet.none":"記録なし","toilet.count":" ({success}/{total}回)","toilet.logBtn":"トイレを記録する",
     "rec.diaryTitle":"今日のようす","diary.recordedDone":"今日の体調は記録ずみ","diary.editMore":"追記・編集","diary.recordBtn":"体調を記録","chart.energy":"元気の推移（5段階）","chart.sleep":"睡眠時間の推移","chart.appetite":"食欲の推移（3段階）","diary.empty":"「体調を記録」から残せます",
     "life.editTitle":"記録を編集","life.newTitle":"この日を記録","cat.memory":"思い出・日記","cat.event":"予定","ph.eventTitle":"予定のタイトル（例：病院）","ph.memoTitle":"ひとこと（任意・例：はじめて海へ）","common.photo":"写真","ph.diary":"日記","ph.memo":"メモ（場所・持ち物など）","ph.dayNote":"この日のこと","ph.kindText":"例：トカゲ、ハムスター、文鳥","life.tag":"タグ","life.tag.outing":"おでかけ","life.tag.walk":"おさんぽ","life.tag.friends":"お友達","life.tag.family":"家族","life.tag.anniv":"記念日","life.tag.school":"学校","life.tag.lesson":"習い事","life.tag.clinic":"通院","life.tagHint":"タグは思い出アルバムで絞り込むときに使います","life.firstTag":"はじめて","ph.tag":"例：旅行 / 記念日 / お出かけ","life.date":"日付","life.time":"時間","life.repeat":"繰り返し","repeat.none":"なし","repeat.daily":"毎日","repeat.weekly":"毎週","repeat.monthly":"毎月","repeat.yearly":"毎年","repeat.weekdays":"平日のみ","repeat.weekend":"週末のみ","repeat.weeklyDays":"毎週 {days}","repeat.weekdayPreset":"よく使う組み合わせ","life.notify":"通知","notif.allowShort":"許可する","remind.0":"開始時","remind.5":"5分前","remind.30":"30分前","remind.60":"1時間前","remind.1440":"前日","life.notifyHint":"🔔が多いと見落としがち。必要なぶんだけに。",
-    "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間","card.hoursPh":"受付・診療時間（任意 例：24時間／夜間 20:00〜翌8:00）","card.addrPh":"住所（任意）","card.nightToggle":"夜間・救急でまず電話する病院にする",
+    "rec.trayTitle":"大切な情報","rec.trayCount":"（{n}）","rec.trayHint":"緊急連絡先・アレルギー・かかりつけ等をカードで保存。","card.nightTag":"夜間","card.hoursPh":"受付・診療時間（任意・例：24時間／夜間 20:00〜翌8:00）","card.addrPh":"住所（任意）","card.nightToggle":"夜間・救急でまず電話する病院にする",
     "card.editTitle":"カードを編集","card.newTitle":"カードを追加","cardkind.emergency":"緊急連絡先","cardkind.allergy":"アレルギー・禁忌","cardkind.hospital":"かかりつけ・病院メモ","cardkind.shelter":"避難先・防災メモ","cardkind.insurance":"保険証・保険情報","cardkind.insurancePerson":"保険（マイナ保険証・資格確認書）","cardkind.other":"メモ","ph.cardTitle":"タイトル（例：かかりつけ病院）","ph.cardBody":"連絡先・アレルギー・注意点・お薬の残り期間など","card.bodyPh.emergency":"例：母 山田花子 090-0000-0000（緊急時はまずこちらへ）","card.bodyPh.allergy":"例：卵・乳製品は不可。エピペンを携帯しています。そばアレルギーあり","card.bodyPh.hospital":"例：〇〇病院、担当は△△先生。ワクチンと定期健診で通院中","card.bodyPh.shelter":"例：避難先は〇〇小学校の体育館。集合場所は公園前。持ち出し品：フード3日分・水・薬","card.bodyPh.insurance":"例：保険者名〇〇、証券番号12345678、有効期限2027年3月まで","card.bodyPh.other":"例：自由にメモできます（連絡先・注意点・お願いなど）",
     "rec.walkTitle":"お散歩記録","walk.goalTitle":"今月のめやす（参考）","walk.distance":"距離","walk.count":"回数","walk.timesUnit":"回","walk.dcPre":"犬種","walk.dcMid":"と年齢","walk.dcPost1":"からの","walk.dcBold":"一般的な目安（参考値）","walk.dcPost2":"です。必要量は体調・個体差で変わります。","walk.dcBreedUnset":"（未設定→中型で計算）","walk.dcAgeUnset":"（未設定→成犬で計算）","walk.reviewTitle":"おさんぽのふりかえり","walk.vsLast":"先月比 ","walk.summaryThisMonth":"今月 ","walk.walksUnit":"回","walk.summaryMin":"・{m}分","walk.summarySep":"　／　6か月合計 ","walk.time":"時間","walk.gpsRecording":"GPSでルート記録中","walk.gpsStart":"GPSでルートを記録中…歩き出すと距離が増えます","walk.stopSave":"終了して記録","walk.otherRunning":"別のコの散歩を記録中です","walk.startBtn":"お散歩スタート","walk.delLabel":"お散歩の記録","walk.gpsSearching":"GPSを探しています…","walk.gpsDenied":"位置情報が許可されていません（時間は記録できます）","walk.gpsError":"位置情報を取得できませんでした","walk.gpsNoSupport":"この端末では位置情報が使えません（時間は記録できます）","walk.pause":"一時停止","walk.resume":"再開","walk.paused":"一時停止中です","walk.locate":"現在地","walk.noRoute":"この散歩はルートが記録されていません",
     "growth.title":"成長の記録","growth.desc":"はじめてできた瞬間を、写真とともに。","growth.custom":"自分で追加（例：逆上がりができた）","growth.camTitle":"作品・写真を追加","growth.photoSaved":"作品・写真を保存しました","common.plusRecord":"＋ 記録","common.plusAdd":"＋ 追加","rec.choreCustomPh":"自分で追加（例：水そうじ）","rec.routinePh":"やること（例：夜の散歩）","supply.namePh":"品名（例：フード）","common.amount":"金額","common.foot":"大切な家族の毎日を、ひとつの場所で。","a11y.edit":"編集",
     "review.title":"今月のふりかえり","review.daysLabel":"体調の記録（日）","review.sleepLabel":"平均睡眠(h)","review.movesLabel":"運動の記録","review.logsLabel":"やること記録","review.vsPrev":"先月とくらべて：{parts}","review.openTasks":"未完了のやること：{n}件","review.note":"※記録した事実をならべたものです。良し悪しの判定はしません。","review.pDays":"記録 {v}日","review.pSleep":"睡眠 {v}h","review.pLogs":"やること {v}回",
     "album.title":"思い出","album.cancelSel":"選択をやめる","album.select":"選択","album.loading":"読み込み中…","album.bulkAdd":"写真をまとめて追加（撮影日で自動振り分け）","album.selHint":"写真をタップして選択（最大{n}枚）→ 下の「別の子へ移動」で、まとめて他の家族・うちのこへ移せます。","album.empty":"写真とひとことで残せます","album.selCount":"{n}枚を選択中","album.moveBtn":"別の子へ移動","album.moveDesc":"選択した {n}枚 の思い出を、まとめて移動します。",
     "points.title":"お手伝いポイント","points.total":"合計 {n}pt","points.week":"（今週 {n}）","points.custom":"自分で追加（+1pt）",
-    "allow.title":"おこづかい帳","allow.balance":"のこり","allow.memoPh":"メモ（おかし 等・任意）","allowdir.in":"もらった","allowdir.out":"つかった","allowdir.save":"ちょきん",
+    "allow.title":"おこづかい帳","allow.balance":"のこり","allow.memoPh":"メモ（任意・例：おかし等）","allowdir.in":"もらった","allowdir.out":"つかった","allowdir.save":"ちょきん",
     "meds.namePh":"お薬・サプリ名（例：抗生剤・ビタミン）",
     "belong.title":"持ち物（曜日ごと）","belong.empty":"右下の ＋ から持ち物を登録",
     "foodreg.title":"フードの登録","foodreg.desc":"よく使うフードを登録しておく。","foodreg.addFood":"フード・食事を登録","foodreg.calc":"1日のフード量を計算",
@@ -3365,7 +3365,7 @@ const MESSAGES={
     "routine.notToday":"今日は実施日ではないルーティンだけです",
     "sitter.title":"シッター招待（期間限定）","sitter.desc":"家族以外の方に、期間とメンバーと権限を絞って一時的に見てもらうための招待です。期限が切れると自動で見られなくなります。","sitter.needMember":"対象のメンバーを1人以上選んでください","sitter.createFail":"シッター招待を作れませんでした。もう一度お試しください。","sitter.createBtn":"シッター招待コードを作る","sitter.codeLabel":"シッター招待コード","sitter.noSharedMembers":"「共有」に設定したメンバーがいません。メンバーのプロフィール編集で共有に設定してください。","sitter.viewOnly":"閲覧のみ","sitter.canWrite":"記録も可","sitter.days":"{d}日間","sitter.untilLine":"{date} まで","sitter.revokeBtn":"取り消す","sitter.activeTitle":"参加中のシッター","sitter.modeFamily":"家族として参加","sitter.modeSitter":"シッターとして参加","sitter.joinAbout":"シッター招待コードを入力してください。期間中だけ、対象のメンバーの記録が見られます（権限によっては記録もできます）。","sitter.inviteMsg":"LOALIFEのシッター招待です。下のリンクから参加してください（期間限定です）。\n{link}\nコード： {code}","sitter.nowTitle":"シッターとして参加中","sitter.leaveBtn":"シッター参加をやめる","sitter.banner":"シッター共有中（{date}まで）","share.inviteExpiry":"招待コードの有効期限： {date}","share.participantsTitle":"参加者","share.noName":"（名前未登録）","share.you":"あなた","share.removeBtn":"除外","share.accountLine":"あなたのアカウント： {email}","share.removeFail":"除外できませんでした。もう一度お試しください。","note.syncedFoot":"※ 家族スペースのメンバー全員に共有されます。","toast.sitterJoined":"シッターとして参加しました","toast.sitterExpired":"シッター共有の期限が切れたため、共有を終了しました","toast.sitterLeft":"シッター参加をやめました","toast.sitterRevoked":"シッター招待を取り消しました","toast.sitterRemoved":"シッターを外しました","toast.participantRemoved":"参加者を除外しました","toast.noteSyncFail":"ノートを共有できませんでした。通信状態を確認してください。",
     "chart.targetBand":"帯は目標体重の±5%の範囲です","chart.growthNote":"※帯は月齢に対する体重の目安です（診断ではありません）","chart.overlay":"重ねて表示","metric.title":"自由な数値項目（名前と単位を決めて追加できます）","metric.namePh":"項目名（例：腹囲）","metric.unitPh":"単位（例：cm）","metric.add":"項目を追加","docs.title":"書類","docs.addTitle":"書類を追加","docs.addFirst":"書類をしまう","docs.empty":"保険証や証明書を写真でしまっておけます。","docs.deviceOnlyNote":"書類はこの端末の中だけに保存されます。家族共有には送られません。","docs.examplesPerson":"例：健康保険証・資格確認書、母子健康手帳、予防接種の記録、お薬手帳、健診結果、パスポート","docs.examplesPet":"例：ワクチン証明書、鑑札・登録証、検査結果、ペット保険証、血統書","docs.nameLabel":"名前","docs.namePhPerson":"例：健康保険証","docs.namePhPet":"例：ワクチン証明書","docs.dateLabel":"日付","docs.expiryLabel":"有効期限（任意）","docs.noteLabel":"メモ（任意）","docs.notePh":"例：かかりつけで提示","docs.saveBtn":"書類をしまう","docs.expiry":"期限","docs.expired":"期限切れ","docs.expSoon":"あと{d}日で期限","docs.delLabel":"「{title}」を削除しますか？","dockind.insurance":"保険証","dockind.maternal":"母子手帳","dockind.vaccine":"予防接種","dockind.exam":"健診・検査","dockind.prescription":"お薬手帳","dockind.passport":"パスポート","dockind.mynumber":"マイナンバー","dockind.contract":"契約書","dockind.petlicense":"鑑札・登録","dockind.pedigree":"血統書","dockind.other":"その他","toast.metricNameNeeded":"項目名を入れてください","toast.metricMax":"項目は6つまでです","toast.metricAdded":"項目を追加しました","toast.docSaved":"書類をしまいました","toast.docDeleted":"書類を削除しました",
-    "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.moreSymptoms":"ほかの症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"お散歩・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録","diary.exercise":"運動","diary.minSuffix":"分","diary.minPh":"分","diary.sleepCta":"睡眠を記録する","diary.exNamePh":"運動名（例：クロスフィット）","diary.routineTag":"ルーティン",
+    "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.moreSymptoms":"ほかの症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"お散歩・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録","diary.exercise":"運動","diary.minSuffix":"分","diary.minPh":"分","diary.sleepCta":"睡眠を記録する","diary.exNamePh":"運動名（例：クロスフィット）","diary.routineTag":"ルーティン",
     "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
     "sched.titlePet":"ケア・予定を追加","sched.titleSelf":"健康・ケアを追加","sched.titleMe":"予定・ToDoを追加","sched.frequent":"よく使う","sched.contentPh":"内容を入力…","sched.addLabelPh":"{label}を追加…","sched.content":"内容","sched.dateOptMe":"日付・期限","sched.time":"時間","sched.dateHint":"日付・期限を入れると、その日のカレンダーに表示されます。","sched.certPhoto":"証明書・写真","sched.changePhoto":"写真を変更","sched.attachPhoto":"＋ 写真を添付","sched.notify":"通知","sched.quickAdd":"1タップ追加（前回コピー）","sched.lastDate":"前回 {date}","sched.dateDone":"実施日","sched.dateDate":"日付","sched.dateVisit":"受診日","sched.dateDue":"期限","care.fallback":"ケア","filter.all":"すべて",
     "toilet.hint":"タップで記録します。","toilet.pee":"おしっこ","toilet.recordBtn":"記録","toilet.success":"✓ 成功","toilet.fail":"✕ 失敗","toilet.hardness":"うんちの硬さ（7段階）","toilet.guide":"硬さの目安","toilet.bristolNote":"4が健康的。1や7が続くときは獣医さんに相談を。","toilet.alertBody":"気をつけたいこと：消化管異物・腸閉塞・中毒","toilet.alertLink":"危険物リストで詳しく","toilet.ideal":"（理想的）","toilet.disclaimer":"受診の目安です（診断ではありません）。","toilet.trendLoose":"ゆるいうんちが続いています。長引くようなら受診の目安です。","toilet.trendHard":"硬いうんちが続いています。水分や食事、気になるときは受診を。",
@@ -3375,11 +3375,13 @@ const MESSAGES={
     "common.saveImage":"画像で保存","brand.footer":"LOALIFE でつくったよ","df.sectionLabel":"犬友だち","df.sectionNote":"ドッグランやお散歩で出会ったワンちゃんを記録","df.open":"犬友だち一覧","df.add":"新しく登録","df.title":"犬友だち","df.cancel":"とじる","df.empty":"まだ登録がありません","df.emptyAuto":"お散歩で会った子の名刺ページを開くと、ここに自動でたまります","df.openCard":"最新の名刺を開く","df.fromCard":"公開名刺から保存","df.noName":"（名前なし）","df.encN":"出会い{n}回","df.breed":"犬種","df.birthday":"誕生日","df.age":"年齢","df.ownerName":"飼い主の表示名","df.encounters":"出会いの記録","df.encEmpty":"まだ記録がありません","df.back":"もどる","df.delete":"削除","df.edit":"編集","df.pickImage":"画像を選ぶ・撮る","df.scanQr":"QRを読み取る","df.saveImageQ":"この名刺画像を端末内に保存する","df.scanning":"読み取り中…","df.qrFound":"見つかったリンク（確認して追加）","df.qrOther":"対応外のリンク","df.qrBad":"使用できないリンク","df.qrBadShort":"使用不可","df.qrAdd":"追加","df.dogName":"犬の名前","df.dogNamePh":"例：ロア","df.agePh":"例：3歳","df.social":"SNS・リンク","df.addSocial":"追加","df.notes":"メモ","df.eventPh":"イベント名","df.placePh":"場所","df.encNotePh":"出会いのメモ","df.addEncounter":"記録を追加","df.save":"保存","df.openConfirmTitle":"外部サイトを開きます","df.openExternal":"開く","df.deleteTitle":"削除しますか？","df.deleteConfirm":"この犬友だちを削除しますか？名刺画像も削除され、元に戻せません。","df.saveFail":"保存できませんでした","df.imgTooBig":"画像が大きすぎます（20MBまで）","df.imgFail":"画像を処理できませんでした","df.needImage":"先に名刺の画像を選んでください","df.needName":"犬の名前を入力してください","df.qrNone":"QRコードが見つかりませんでした","df.qrFail":"QRコードを読み取れませんでした","df.dangerUrl":"安全でないリンクのため追加できません","df.other":"その他(URL)","df.idPh":"@ID または URL","df.idHint":"{p} の ID（@なしでもOK）だけで追加できます","df.urlHint":"リンク（https://…）を貼り付けてください","df.needUrl":"リンク（https://…）を貼り付けてください","df.badHandle":"IDは英数字・記号(. _ -)で入力してください（またはURLを貼り付け）","df.dupLink":"このリンクはすでに追加されています","df.ocrScan":"文字を読み取る(OCR)","df.ocrRunning":"文字を読み取り中…（数秒かかります）","df.ocrFail":"文字の読み取りに失敗しました（手入力できます）","df.ocrContacts":"見つかった連絡先（確認して追加）","df.ocrResult":"OCR結果（参考・自動入力はしません）","df.contacts":"連絡先","wrap.ctaTitle":"{y}年のふりかえり","wrap.ctaSub":"記録{records}件・写真{photos}枚","wrap.title":"{y}年のふりかえり","wrap.records":"記録","wrap.days":"記録した日","wrap.photos":"写真","wrap.walks":"おさんぽ","wrap.topMonth":"いちばん記録した月は{month}（{n}件）","wrap.walkSum":"おさんぽ {n}回・{h}時間","wrap.memN":"{n}件","poem.title":"今日の一句","poem.another":"別の一句","poem.foot":"今日の記録から自動で作っています","story.photoCap":"今年の思い出","wrapm.ctaTitle":"{month}のふりかえり","wrapm.title":"{y}年{month}のふりかえり","wrapm.ctaSub":"記録{records}件・写真{photos}枚","streak.label":"{n}日連続で記録中","card.unpublished":"未公開","card.previewLabel":"プレビュー（相手にはこう見えます）","card.fieldsTitle":"載せる項目と内容","card.discardBody":"入力した内容は保存されません。名刺の編集をやめますか？","card.loading":"読み込み中…","card.notFound":"この名刺は見つかりませんでした","card.personality":"性格","card.skills":"できること","card.favSnack":"好きなおやつ","card.caution":"気をつけてほしいこと","card.section":"名刺ページ","card.desc":"写真・性格・SNSリンクを載せた公開ページを作れます。公開した内容だけが、リンクを知っている人に見えます。","card.publish":"名刺を公開する","card.published":"公開中です","card.unpublish":"公開をやめる","card.share":"リンクを共有","card.needSignIn":"名刺の公開にはサインインが必要です（メニューの「家族で共有」からサインインできます）","card.publishFail":"公開できませんでした。通信状態を確認してもう一度お試しください","card.showOnCard":"名刺に載せる","card.personalityPh":"例：人が大好きで、初対面でも尻尾ふりふり","card.skillsPh":"例：おすわり・お手・ボールキャッチ","card.favSnackPh":"例：さつまいもクッキー","card.cautionPh":"例：大きな音が苦手です。急に触らないでください","card.instagram":"Instagram","card.tiktok":"TikTok","card.snsPh":"@ID または URL","card.publicNote":"公開すると、この内容がリンクを知っている人に見えます。住所や電話番号は載せないでください（迷子モードの連絡先だけは、ONの間だけ公開されます）。","card.themeLabel":"名刺のデザイン","card.themeDesc":"選んだデザインで公開ページが表示されます","card.theme.pastel":"パステル","card.theme.magazine":"マガジン","card.theme.cheki":"チェキ","card.theme.chic":"シック（今のデザイン）","card.friendSaved":"LOALIFEの犬友だちに保存しました","card.themeInstant":"公開中の名刺にもすぐ反映されます","card.changeTheme":"デザインを変える","card.loadError":"読み込めませんでした。通信状態を確認して、もう一度お試しください","card.retry":"もう一度試す","card.notFoundSub":"リンクが間違っているか、公開が停止された可能性があります","card.youtube":"YouTube","card.youtubePh":"チャンネルのURL","card.photo":"名刺の写真","card.photoDesc":"名刺だけに使う写真を選べます（プロフィール写真とは別にできます）","card.photoPick":"写真を選ぶ","card.photoUseProfile":"プロフィール写真を使うに戻す","card.photoFromAlbum":"この子の写真から選ぶ","card.photoAlbumEmpty":"この子の写真がまだありません","card.theme.cover":"フォトカバー","card.theme.editorial":"エディトリアル","card.photos":"追加の写真","card.photosDesc":"メインの写真に加えて、最大3枚まで載せられます。タップで切り替えて見られます。","card.photoAdd":"＋ 写真を追加","card.video":"動画（YouTube）","card.videoPh":"YouTube動画のURL","card.videoDesc":"動画そのものは載せられないため、YouTubeの動画ページへのリンクボタンとして表示されます。","card.videoWatch":"動画を見る","card.lostTitle":"迷子モード","card.lostDesc":"ONにすると、この名刺がそのまま「探しています」の表示に切り替わります。見つけた人が連絡しやすいよう、連絡先とひとことを大きく出します。","card.lostToggle":"迷子モードにする","card.lostContact":"連絡先（迷子モードの間だけ公開）","card.lostContactPh":"例：090-0000-0000","card.lostNote":"その他の特徴・伝えたいこと（迷子モードの間だけ公開）","card.lostNotePh":"例：人が好きです。見かけたら追いかけず、その場で電話で場所を教えてください","card.lostSighting":"目撃情報","card.lostSns":"連絡先に含めるSNS","card.lostSnsDesc":"迷子モードの間、選んだSNSだけが名刺とポスターの連絡先に表示されます","card.lostSnsNone":"SNSが未登録です。上のSNS欄に登録すると、ここで選べます","card.lostOwner":"飼い主の名前","card.lostOwnerHint":"ポスターに表示される名前です。苗字だけでも大丈夫です","card.lostPrint":"🖨 ポスターを印刷する","card.lostPrintNote":"ポスターは、この迷子モードの内容と名刺の写真から作られます。","lost.guideBody":"ポスターは名刺の迷子モードから作ります。名刺画面で迷子モードをONにして、最後に見かけた場所や日時を入れると、名刺ページが「探しています」表示になり、印刷用ポスターもそこから作れます。","lost.fromCard":"このポスターは、名刺の迷子モードの内容から作られています。","lost.editOnCard":"名刺画面で編集する","card.qrTitle":"QRコードで渡す","card.qrDesc":"相手のスマホのカメラで読み取ってもらうと、この名刺が開きます。画像として保存すれば、印刷して渡すこともできます。","card.qrSave":"QRコードを画像で保存","card.qrNeedPublish":"名刺を公開すると、ここにQRコードが表示されます。その場で読み取って渡せます。","petpage.lostHead":"探しています","petpage.lostSub":"{name}を探しています","petpage.lostContactLabel":"見つけた方はこちらへご連絡ください","petpage.bdayToday":"🎂 今日はお誕生日です！","petpage.bdayIn":"🎂 お誕生日まであと{d}日","ob.cardOnly":"💳 名刺だけ作る","ob.cardOnlyStart":"登録して名刺を作る","petpage.broken":"このリンクは読み込めませんでした","petpage.brokenSub":"リンクが途中で切れている可能性があります。送ってくれた人に、もう一度送ってもらってください","petpage.btn":"公開ページのリンク","petpage.shareBtn":"リンクを共有","petpage.linkDesc":"リンクを開いた人は、サインインなしで名刺を見られます。リンクには名前・犬種・誕生日だけが入ります。","petpage.cta":"LOALIFEではじめる","petpage.open":"LOALIFEを開く","petpage.homeHint":"いつもの記録はホーム画面のアプリにあります。続きはホーム画面のアイコンから開いてください（このブラウザでは家族共有の分だけ表示できます）","petpage.ageY":"{y}歳","petpage.ageM":"{m}か月","petpage.ageNew":"生後まもなく","petpage.born":"{d}生まれ","story.watch":"ストーリーで見る","story.back":"カードに戻る","story.intro":"今年の記録をストーリーでふりかえります","story.thanks":"今年も一緒にいてくれて、ありがとう","storym.intro":"この月の記録をストーリーでふりかえります","storym.photoCap":"この月の思い出","storym.thanks":"今月も一緒にいてくれて、ありがとう","album.makeVideo":"動画をつくる","video.save":"動画で保存","video.recording":"録画中…","video.saved":"保存しました","video.failed":"保存できませんでした","video.unsupported":"この端末・ブラウザでは動画保存に未対応です（再生はできます）","video.titleSub":"思い出スライドショー","video.endBig":"ありがとう","a11y.prevYear":"前の年","a11y.nextYear":"次の年","notif.routineNow":"{name}の時間です","notif.routineBefore":"{name}の{rel}です","notif.schedNow":"{name}の今日の予定です","notif.schedBefore":"{name}の{rel}の予定です","notif.bdayTitle":"🎂 {name}の誕生日！","notif.bdayBody":"今日は{name}の誕生日です","notif.bday3Title":"🎂 {name}の誕生日まであと3日","notif.prepBody":"お祝いの準備はできてますか？","notif.annivTitle":"🎉 {name} うちの子記念日！","notif.annivBodyY":"今日で迎えて{y}年。おめでとう！","notif.annivBody":"今日は{name}をおうちに迎えた記念日です","notif.eventTodayBody":"今日は「{title}」です","notif.event3Title":"🎂 {title}まであと3日","notif.digestTitle":"🔔 今日の見守り","notif.digestMore":"ほか{n}件","notif.memTitle":"📸 {y}年前の今日","notif.memDefault":"思い出をふりかえりましょう","digest.supplyOut":"{title}：そろそろ切れそう","digest.supplyLeft":"{title}：あと{n}日","digest.careOverdue":"{title}：期限切れ","digest.careDueToday":"{title}：今日で期限","digest.careToday":"{title}：今日","digest.careDueInN":"{title}：あと{n}日で期限","digest.careInN":"{title}：あと{n}日","common.print":"印刷","common.addPhotoMax4":"写真を追加（最大4枚）","ecard.meFallback":"わたし","a11y.reorder":"セクションを並び替え","a11y.reorderDrag":"ドラッグで並び替え","a11y.familyShare":"家族共有","a11y.switchFamily":"家族を切り替え","a11y.addFamily":"家族・ペットを追加","a11y.photoAsIcon":"写真をアイコンにする","a11y.exportCal":"カレンダーにエクスポート","a11y.markDone":"完了にする","a11y.photoMemory":"写真で思い出に残す","a11y.deleteDay":"この日をすべて削除","a11y.deleteRecord":"この記録を削除","a11y.addRecord":"記録を追加","auth.emailPh":"メールアドレス","auth.codePh":"招待コード（8文字）",
     "auth.forgot":"パスワードを忘れた方はこちら","auth.resetTitle":"パスワードの再設定","auth.resetDesc":"登録したメールアドレスを入力してください。そのアドレス宛に、再設定用のリンクを送ります。","auth.resetSend":"再設定メールを送る","auth.resetSent":"再設定メールを送りました。メール内のリンクから、新しいパスワードを設定してください。届かない場合は、迷惑メールフォルダと、アドレスの入力ミスを確認してください。","auth.backToSignIn":"サインインに戻る","auth.pwPh":"パスワード","auth.pwPhNew":"パスワード（6文字以上）","auth.processing":"処理中…","auth.loginBtn":"ログイン","auth.signupBtn":"新規登録して確認メールを送る","auth.toLogin":"LOALIFEに登録済みの方はこちら（ログイン）","auth.toSignup":"はじめての方（メールで新規登録）","auth.errGeneric":"メールアドレスかパスワードが違います。","auth.errTooMany":"試行が多すぎます。しばらく待つか、パスワードをリセットしてください。","auth.goReset":"パスワードをリセットする","auth.errInUse":"このメールアドレスは登録済みです。ログインしてください。","auth.errInvalidEmail":"メールアドレスの形式が正しくありません。","auth.errWeakPw":"パスワードは6文字以上にしてください。","auth.errNeedPw6":"メールアドレスと6文字以上のパスワードを入力してください。","auth.errNeedPw":"メールアドレスとパスワードを入力してください。","auth.errNeedEmail":"メールアドレスを入力してください。","auth.errGenericFail":"うまくいきませんでした。もう一度お試しください。","auth.errNotEnabled":"メール＋パスワード登録が有効化されていません（Firebase設定）。","auth.actWorking":"確認しています…","auth.actVerifiedTitle":"メールアドレスを確認しました","auth.actVerifiedBody":"ありがとうございます。そのままサインインして使えます。","auth.actSignIn":"サインインする","auth.actResetTitle":"新しいパスワードを設定","auth.actNewPwPh":"新しいパスワード（6文字以上）","auth.actResetDo":"パスワードを変更する","auth.actResetDoneTitle":"パスワードを変更しました","auth.actResetDoneBody":"新しいパスワードでサインインしてください。","auth.actRecoveredTitle":"メールアドレスを元に戻しました","auth.actRecoveredBody":"変更の取り消しが完了しました。以前のメールアドレスでサインインできます。","auth.actChangedTitle":"新しいメールアドレスを確認しました","auth.actChangedBody":"メールアドレスの変更が完了しました。新しいアドレスでサインインできます。","auth.actInvalidTitle":"このリンクは使えませんでした","auth.actInvalidBody":"リンクの期限が切れているか、すでに使われた可能性があります。もう一度メールを送り直すか、サインイン画面からお試しください。","auth.actResend":"メールを送り直す","auth.actOpenApp":"LOALIFEを開く","note.familyPh":"今日あったこと・ありがとう・きもち…","calc.foodTitle":"1日のフード量 計算","calc.applyTo":"反映先のフード","ph.weight":"体重","ecard.blood":"血液型","ecard.allergy":"アレルギー・禁忌","ecard.meds":"服薬中","ecard.contacts":"緊急連絡先・かかりつけ","ecard.contactsEmpty":"※「大切な情報」に連絡先を登録すると、ここに表示されます","ecard.addInfo":"連絡先・情報を追加","ecard.note":"緊急のときは、この画面を周りの人に見せてください。印刷して持ち歩けます。ネットにつながらない場所でも表示できます。","ecard.fileSuffix":"緊急カード","ecard.hidePhoto":"写真を隠す","ecard.showPhoto":"写真を出す","item.untitled":"（無題）",
     "lost.step0":"場所・日時","lost.step1":"ペット情報","lost.step2":"ポスター","lost.stepFmt":"{n}. {lab}","lost.step0LeadBold":"まず、落ち着いて。","lost.step0LeadRest":"最後に見かけた場所と時間を入れましょう。あとから直せます。","lost.placeLabel":"最後に見かけた場所","lost.placeHint":"迷子になった可能性がある場所を入れてください","lost.placePh":"例：〇〇公園の入口付近 ／ 〇〇駅前","lost.placeNoteLabel":"場所の補足（任意）","lost.placeNotePh":"例：コンビニの向かい ／ 東口","lost.whenLabel":"最後に見かけた日時","lost.whenPh":"例：9月18日 18時ごろ","lost.step1Lead":"この内容でポスターを作ります。写真と特徴を確認してください。","lost.featType":"種類","lost.featCoat":"毛色","lost.featGender":"性別","lost.featAge":"年齢","lost.featWeight":"体重","lost.featCollar":"首輪・ハーネス","lost.collarLabel":"首輪・ハーネス（任意）","lost.collarPh":"例：赤い首輪・迷子札あり","lost.situationLabel":"逃げたときの様子（任意）","lost.situationPh":"例：花火に驚いてリードが外れた","lost.temperLabel":"性格（お願い文を自動で調整）","lost.noteLabel":"その他 伝えたいこと（任意）","lost.notePh":"例：SNSでも拡散のご協力をお願いします","lost.registerContact":"連絡先を登録（見つけた人からの連絡に必要）","lost.found":"発見済み","lost.headDog":"迷子犬を探しています","lost.headOther":"迷子ペットを探しています","lost.sightPlace":"最後に目撃された場所","lost.sightWhen":"最後の目撃日時","lost.situationTitle":"逃げたときの様子","lost.contactPlea":"見かけた方は、こちらまでご連絡ください","lost.ownerNameLine":"飼い主：{name}","lost.contactEmpty":"※「大切な情報」に緊急連絡先を登録すると、ここに表示されます","lost.footNote":"印刷して貼ることも、スマホの画面で見せることもできます。アプリの中のポスターは、電波がなくても表示できます。","lost.afterTitle":"できました。次に、みんなに知らせましょう。","lost.foundToggle":"見つかった（ポスターに「発見済み」を表示）","lost.privacy":"住所やマイクロチップ番号は載せません。連絡先は登録済みのものだけ表示されます。","lost.nextPet":"次へ：ペット情報","lost.back":"もどる","lost.makePoster":"ポスターを作成","lost.share":"共有","lost.fileSuffix":"迷子","lost.plea.normal":"見かけても、追いかけたり、大きな声で呼ばないでください。その場の場所と時間を覚えて、すぐに電話で教えてください。","lost.plea.timid":"怖がりな子です。追いかけたり近づいたりすると、逃げてしまうかもしれません。離れたところから見守って、その場の場所と時間を覚え、すぐに電話で教えてください。","lost.plea.friendly":"人なつっこい子です。できれば、やさしく声をかけてその場で見守ってください。そして、すぐに電話で場所を教えてください。","lost.plea.energetic":"元気いっぱいな子です。遠くまで行っているかもしれません。見かけても追いかけないでください。その場の場所と時間を覚えて、すぐに電話で教えてください。","lost.plea.calm":"おっとりした子です。驚かせなければ、近くで見守れるかもしれません。無理に触ろうとせず、その場の場所と時間を覚えて、すぐに電話で教えてください。","lost.plea.wary":"警戒心が強い子です。近づくと逃げてしまうので、離れたところから見守ってください。その場の場所と時間を覚えて、すぐに電話で教えてください。","lost.webTitle":"リンク・QRコードで共有","lost.webDesc":"公開すると、このポスターがそのまま開けるリンクとQRコードができます。ポスターに表示されている連絡先も公開されます。見つかったら、公開をやめてください。","lost.webPublish":"ポスターを公開する","lost.webPublished":"公開中です（リンクを知っている人が見られます）","lost.webUnpublish":"公開をやめる","lost.webNeedSignIn":"リンク公開にはサインインが必要です（メニューの「家族で共有」からサインインできます）","lost.webAutoUpdate":"ポスターの内容を変えると、公開ページにも自動で反映されます","lost.webQrNote":"QRコードを読み取ると、このポスターが開きます","lost.webQrSave":"QRコードを画像で保存","lost.webGone":"このポスターは見つかりませんでした","lost.webGoneSub":"公開が停止されたか、リンクが間違っている可能性があります","temper.unset":"未設定","temper.friendly":"人なつっこい","temper.normal":"ふつう","temper.timid":"怖がり","temper.energetic":"元気いっぱい","temper.calm":"おっとり","temper.wary":"警戒心が強い",
-    "ob.title":"大切な家族の毎日を、ひとつに。","ob.sub":"ペットも子どもも。記録から、もしもの備えまで。","ob.start":"はじめる","ob.registerStart":"登録してはじめる","ob.trySample":"サンプルで試してみる","ob.haveBackup":"バックアップがある人はこちら","ob.h2":"まず、ひとり登録しましょう","ob.choicePet":"🐶 うちの子（犬・猫など）","ob.choiceMe":"👤 自分（自分のケアも）","ob.choicePerson":"👨‍👩‍👧 家族（人）","ob.skip":"今は追加しない","ob.photoIcon":"写真をアイコンにする","ob.iconHintPre":"絵文字を選ぶか、右端の ","ob.iconHintPost":" から写真も使えます","ob.namePetPh":"名前（例：ぽち）","ob.nameMePh":"あなたの名前（例：あおい）","ob.namePersonPh":"名前（例：ゆうと）","ob.birthday":"誕生日","ob.back":"戻る",
+    "ob.title":"大切な家族の毎日を、ひとつに。","ob.sub":"ペットも子どもも。記録から、もしもの備えまで。","ob.start":"はじめる","ob.registerStart":"登録してはじめる","ob.trySample":"サンプルで試してみる","ob.haveBackup":"バックアップがある人はこちら","ob.h2":"まず、ひとり登録しましょう","ob.choicePet":"🐶 うちの子（犬・猫など）","ob.choiceMe":"👤 自分（自分のケアも）","ob.choicePerson":"👨‍👩‍👧 家族（人）","ob.skip":"今は追加しない","ob.photoIcon":"写真をアイコンにする","ob.iconHintPre":"絵文字を選ぶか、右端の ","ob.iconHintPost":" から写真も使えます","ob.namePetPh":"名前（例：ぽち）","ob.nameMePh":"あなたの名前（例：あおい）","ob.namePersonPh":"名前（例：ゆうと）","ob.birthday":"誕生日","ob.back":"もどる",
     "ob.value1":"📝 毎日の記録：食事・散歩・健康・予定を、家族みんな分まとめて","ob.value2":"🆘 もしもの備え：迷子ポスターと緊急カードが、登録情報からすぐ作れる","ob.value3":"👨‍👩‍👧 家族で共有：招待した家族と、記録を分け合える",
     "tour.headseg.title":"「毎日」と「管理」で切り替え","tour.headseg.body":"上のタブで切り替え。毎日＝その日の記録、管理＝ケアや予定。","tour.fab.title":"記録はここから","tour.fab.body":"右下の＋から、予定・ケア・ごはん・体重などを記録できます。","tour.cal.title":"カレンダー","tour.cal.body":"家族の予定が一覧に。日付タップでふりかえり。","tour.home.title":"家族ごとに","tour.home.body":"家族をタップでその子のページへ。上の一覧で切り替えもできます。","coach.cal.title":"日付をタップ","coach.cal.body":"色つきドットはその日の予定。タップでふりかえり。","coach.record.title":"からだ・ようすを記録","coach.record.body":"右下の＋から、体重・体調・ごはん・日記を記録。","coach.manage.title":"毎日のお世話・予定","coach.manage.body":"やることや予定はここに。「やった」で経過がわかる。","tour.next":"次へ","tour.skip":"スキップ","common.ok":"OK",
     "sheet.rangeDays":"{d}日","sheet.vetTitle":"{name} の記録サマリー","sheet.vetPeriod":"{from}〜{to}（{days}日間）／作成日 {made}","sheet.basicInfo":"基本情報","sheet.species":"種別","sheet.birthday":"誕生日","sheet.microchip":"マイクロチップ","sheet.weightTrend":"体重の推移","sheet.latest":"直近","sheet.periodChange":"期間の増減","sheet.vsDate":"（{date}比）","sheet.noWeightHint":"記録なし（毎日の記録に体重を入れると推移が出ます）","sheet.toilet":"トイレ","sheet.peeRate":"おしっこ成功率","sheet.poopRate":"うんち成功率","sheet.rateVal":"{rate}%（{total}回）","sheet.noRecord":"記録なし","sheet.brAvgLabel":"うんちの硬さ平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・体調","sheet.energyAvgLabel":"元気の平均","sheet.energyAvgVal":"{avg}／5（{n}回）","sheet.symCount":"{label} × {n}回","sheet.medLeft":"のこり{n}日分","sheet.medCourse":"{taken}/{days}回分（{from}〜{to}）","sheet.timeline":"経過","sheet.walkTime":"お散歩の時間","sheet.walkAsk":"お散歩のお願い","sheet.walkHour":"{h}時ごろ","sheet.incompleteWarn":"未登録の項目があります（病院・連絡先・記録）。分かる範囲は口頭でも伝えてください。","sheet.fromProfile":"プロフィールの値","sheet.none":"なし","sheet.careNext":"予防・ワクチン等の次回予定","sheet.noPlans":"予定なし","sheet.recentCare":"最近のお世話","sheet.vetNote":"※本サマリーは飼い主の記録に基づくもので、診断ではありません。","sheet.vetFileSuffix":"記録サマリー","sheet.handTitlePet":"{name} のお世話シート","sheet.handTitleOther":"{name} の引き継ぎシート","sheet.handPeriodPet":"お預け・お留守番の引き継ぎ用","sheet.handPeriodOther":"お預け・共有用（今日のようす）","sheet.madeOn":"／作成日 {date}","sheet.aboutPet":"この子について","sheet.profile":"プロフィール","sheet.name":"名前","sheet.meals":"ごはん","sheet.noFoodHint":"登録なし（口頭で共有してください）","sheet.todayChores":"今日のお世話","sheet.noRecordsYet":"まだ記録がありません","sheet.todayCond":"今日のようす（体調）","sheet.hasRecord":"記録あり","sheet.allergyCaution":"気をつけること（アレルギー・注意）","sheet.nothingSpecial":"特になし","sheet.regularVet":"かかりつけ動物病院","sheet.regularDoctor":"かかりつけ病院","sheet.noHospHint":"未登録（「大切な情報」に病院名・電話・住所を登録できます）","sheet.emergencyContact":"緊急連絡先","sheet.noContactHint":"未登録（「大切な情報」に登録できます）","sheet.familyNotes":"家族からの伝達","sheet.otherMemo":"その他メモ","sheet.handNotePet":"※困ったことや分からないことがあれば、飼い主に連絡してください。","sheet.handNoteOther":"※困ったことや分からないことがあれば、ご家族に連絡してください。","sheet.careFileSuffix":"お世話シート","sheet.careLetterPet":"{name}をお預けします。よろしくお願いします。","sheet.careLetterOther":"{name}のことをよろしくお願いします。","sheet.handoverFileSuffix":"引き継ぎシート","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"病院用サマリー","sum.title":"{name} の病院サマリー","sum.fileSuffix":"病院サマリー","sum.firstThings":"まず伝えること","sum.shareBtn":"リンクで共有","sum.shareTitle":"サマリーをリンクで共有","sum.shareDesc":"リンクを知っている人は、サインインなしで、選んだ項目だけを見られます。有効期限を過ぎると自動で見られなくなります。リンクはいつでも取り消せます。","sum.needSignIn":"リンクを作るにはサインインが必要です。設定の「家族で共有」からサインインしてください。","sum.includeTitle":"リンクに含める項目","sum.sec.basic":"基本情報","sum.sec.caution":"まず伝えること（アレルギー・注意・服薬中）","sum.sec.timeline":"経過","sum.sec.recent":"直近の記録","sum.sec.contacts":"かかりつけ・緊急連絡先","sum.secContactsHint":"電話番号が含まれます","sum.includePhoto":"写真を含める","sum.expiry":"有効期限","sum.create":"リンクを作成","sum.copyLink":"リンクをコピー","sum.activeLinks":"発行したリンク","sum.noLinks":"まだリンクはありません","sum.active":"有効","sum.expired":"期限切れ","sum.until":"{date} まで有効","sum.revoke":"取り消す","sum.revoked":"リンクを取り消しました","sum.createFail":"リンクを作成できませんでした。もう一度お試しください。","sum.needSection":"含める項目を1つ以上選んでください","sum.expiresLine":"このリンクは {date} まで表示されます","sum.expiredTitle":"このリンクは期限切れです","sum.expiredBody":"有効期限を過ぎたため、内容は表示されません。必要な場合は、リンクを作った方に新しいリンクを頼んでください。","sum.invalidTitle":"このリンクは使えません","sum.invalidBody":"期限切れ・取り消し済み、または存在しないリンクのため、内容は表示されません。","sum.footNote":"※このサマリーは、飼い主・ご家族の記録をもとに作成されたものです。診断ではありません。","sum.footNotePerson":"※このサマリーは、ご家族の記録をもとに作成されたものです。診断ではありません。",
     "fam.title":"家族の記録","fam.by":"{name}が記録","fam.you":"あなた","fam.family":"家族","fam.today":"今日","fam.yesterday":"昨日","fam.actWalk":"お散歩","fam.actMeal":"ごはん","fam.actToilet":"トイレ","fam.actDiary":"ようすの記録","fam.actHealth":"からだの記録","fam.actMed":"お薬","fam.actDone":"{title}を完了","fam.actMemory":"思い出","fam.actNursing":"授乳","fam.actMilestone":"成長の記録","fam.tookBy":"今日は{name}が記録済み",
+    "about.betaBuild":"β版（ビルド {v}）","about.dataTitle":"データとプライバシー","about.introBody":"大切な家族の毎日の記録・予定・健康と、もしもの備え（迷子ポスター・緊急カード）を、ひとつに。","about.noticeBodyA":"記録や目安は","about.noticeBodyB":"参考情報","about.noticeBodyC":"です。心配なときは、かかりつけや専門機関へ。","about.noticeTitle":"ご利用にあたって","about.shareTitle":"家族での共有","about.termsBody":"利用規約・プライバシーポリシー・お問い合わせ窓口は準備中です。連絡先は追ってご案内します。","about.termsTitle":"利用規約・お問い合わせ","about.version":"バージョン","album.moveNone":"移動先がいません。先に家族・うちのこを登録してください。","album.moveTitle":"どの子へ移動しますか？","belong.scopeDow":"曜日","belong.scopeOccasion":"場面","cal.addTitle":"カレンダーに追加","cal.apple":"Appleカレンダー（.ics）","cal.appleAll":"カレンダーアプリに出力（.ics）","cal.bdayLabel":"{name}の誕生日","cal.exportAllSub":"これからの予定をまとめて出力します","cal.google":"Googleカレンダー","cal.gotchaLabel":"{name} うちの子記念日","cal.iosNoteA":"💡 iPhoneでAppleカレンダーに追加するには：","cal.iosNoteB":"SafariブラウザでこのサイトをURL直接開く","cal.iosNoteC":" → 📅タップ → .icsをダウンロード → カレンダーで開く","cal.myBday":"わたしの誕生日","calc.applyN":"{n}回 {g}g","calc.applyNew":"この分量で新しいフードを登録。","calc.applyPerLabel":"1回の量をフードに反映","calc.applyRegNamed":"登録フード「{name}」の量・回数に設定。","calc.applyRegPlain":"登録フードの量・回数に設定。","calc.bcsGuideClose":"BCSの見かたを閉じる","calc.bcsGuideOpen":"{sp}のBCSの見かたを見る","calc.bcsIdeal":"適正は{v}","calc.bcsLabel":"BCS（体格）：","calc.bw":"現在の体重（BW）","calc.dailyFood":"1日のフード量","calc.der":"1日に必要なカロリー（DER）","calc.factorSuffix":"（係数{f}）","calc.idealWeight":"理想的な体重","calc.meDesc":"フードの100gあたりkcal（パッケージ記載）。未入力でも計算OK。","calc.meGuideClose":"MEの目安を閉じる","calc.meGuideOpen":"{sp}のMEの目安を見る","calc.meHint":"MEを入れると1日のフード量（g）も計算。","calc.meLabel":"フードの代謝エネルギー（ME）","calc.meNote":"※ 目安です。実際はパッケージの「100gあたり」をご確認ください。","calc.needInput":"体重と BCS を入れると計算します。","calc.species":"動物種","calc.splitN":"{n}回：{g}g","calc.stage":"ライフステージ・活動量","calc.stageSelect":"選択してください","calc.warnRefB":"参考値","calc.warnRefRest":"です。急な食事量の変更は避け、かかりつけの先生にご相談ください。","common.abort":"やめる","common.back":"もどる","day.allRecords":"{date}の記録すべて","day.hospitalChip":"病院","day.moreCount":"・ほか{n}件","day.recordFallback":"記録","day.sleepChip":"睡眠{h}h","day.thisRecord":"この記録","day.todaySuffix":"（今日）","day.walkChip":"さんぽ","drawer.disaster":"防災・避難の備え","drawer.emergency":"夜間・救急の備え","drawer.expense":"支出・費用","drawer.foot":"LOALIFE β版","drawer.help":"使い方・機能紹介","drawer.profile":"家族のプロフィール","drawer.share":"家族で共有","drawer.title":"メニュー","drawer.toxic":"誤食・中毒 危険物リスト","emoji.none":"絵文字なし","emoji.pickTitle":"絵文字を選ぶ","guide.g1":"毎日のこと","guide.g2":"健康・予定の管理","guide.g3":"もしもの備え","guide.i.body.d":"体重の変化をグラフで見守る。好きな数値項目も追加できます。","guide.i.body.t":"からだの記録","guide.i.cal.d":"みんなの予定を色分けで見わたす。","guide.i.cal.t":"カレンダー","guide.i.care.d":"ワクチン・通院・お薬を忘れずに。","guide.i.care.t":"ケア・予定・投薬","guide.i.chore.d":"「やった」をタップ。前回からの日数が色で。","guide.i.chore.t":"毎日のお世話","guide.i.diary.d":"元気・食欲・うんち・写真をそのまま記録。","guide.i.diary.t":"今日のようす","guide.i.docs.d":"保険証や証明書の写真を、この端末の中だけに保存。","guide.i.docs.t":"書類","guide.i.expense.d":"病院代もフード代も、何にいくらか。","guide.i.expense.t":"支出","guide.i.home.d":"今日やること・うっかり忘れをまとめて。","guide.i.home.t":"ホーム","guide.i.info.d":"かかりつけ・緊急連絡先を手元に。","guide.i.info.t":"大切な情報","guide.i.lost.d":"迷子ポスターは、ペットの名刺の「迷子モード」から作れます。緊急カードも登録情報からすぐ。","guide.i.lost.t":"迷子ポスター・緊急カード","guide.i.members.d":"うちの子も家族も自分も。写真や絵文字で。","guide.i.members.t":"メンバー","guide.i.memory.d":"とっておきの一枚とタグで成長をたどる。","guide.i.memory.t":"思い出・はじめて","guide.i.notices.d":"大事な予定や期限は、アプリを開いたときにホームへ表示されます。","guide.i.notices.t":"お知らせ","guide.i.share.d":"招待コードで家族と記録を共有。預け先への期間限定の共有もできます。","guide.i.share.t":"家族で共有","guide.i.stock.d":"切らす前にホームでお知らせ。曜日の持ち物も。","guide.i.stock.t":"ストック・持ち物","guide.lead":"大切な家族の毎日と、もしもの備えを、ひとつに。","guide.title":"LOALIFE の使い方","health.goalLeft":"目標まで あと {v}{unit}","health.goalOk":"目標達成中！この調子で","health.goalOver":"目標を {v}{unit} 超えています","health.goalOverNote":"（食べすぎ・運動量に気をつけて）","home.a2hsText":"ホーム画面に追加すると、データが消えにくく安心です","home.annivBday":"・誕生日","home.annivGotcha":"・うちの子記念日","home.annivToday":"今日！","home.annivYearsAge":"{y}歳！","home.annivYearsGotcha":"迎えて{y}年！","home.bdayAgeSuffix":"（{y}歳）","home.bdayCheerSub":"おめでとうございます。すてきな一日になりますように。","home.bdayCheerTitle":"今日は{names}のお誕生日です","home.later":"あとで","home.registerCta":"うちの子・家族を登録","home.welcome":"ようこそ","home.welcomeBodyA":"大切な家族の毎日と、もしもの備えを、ひとつに。","home.welcomeBodyB":"ペットも子どもも、まずはひとり登録しましょう。","list.doneSection":"完了済み（{n}）","list.loading":"よみこみ中…","list.noUpcoming":"これからの予定はありません。","me.calColor":"カレンダーの色","me.saveClose":"保存して閉じる","me.title":"あなたのアイコン・名前","member.kindPersonBtn":"👤 家族（人）","member.kindPetBtn":"🐾 ペット","member.registerBtn":"登録","note.emptyHint":"今日のことや「ありがとう」をひとことで。","note.localFoot":"※ この端末に保存される、家族の連絡帳です。","note.saveBtn":"保存する","note.title":"家族ノート","notices.empty1":"今日はお知らせはありません。","notices.empty2":"のんびり過ごせそうです。","notices.foot":"大切な家族の毎日を見て、気づいたことをそっとお届けします。","ntc.actCheck":"確認する","ntc.actLog":"記録する","ntc.actMemory":"思い出を見る","ntc.actToilet":"トイレ記録を見る","ntc.actView":"記録を見る","ntc.actWalks":"散歩記録を見る","ntc.actWeight":"体重・フードを見る","ntc.memPhoto":"思い出の1枚","ntc.poopBody":"数日続くようなら受診の目安に。フードや水分もふり返ってみて","ntc.poopTitle":"{name}のうんちがやわらかめの日が続いています","ntc.quietBodyPerson":"最近どうかな？ ひとことでも残しておくと、あとで振り返れます","ntc.quietBodyPet":"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます","ntc.quietTitle":"{name}の記録が{gap}日空いています","ntc.seniorBody":"健診の回数を少し増やしたり、関節・歯・体重を気にかけてあげると安心です","ntc.seniorTitle":"{name}はシニア期","ntc.sleepShortBody":"{name}の直近の睡眠が、以前より短くなっているみたい","ntc.sleepShortTitle":"最近、寝る時間の記録が短めです","ntc.stockBody":"{name}・買い足しのタイミングです","ntc.stockOne":"「{title}」の在庫が残り1回分","ntc.stockOut":"「{title}」の在庫がなくなりました","ntc.tasksBody":"{name}の予定・提出物がたまっています","ntc.tasksTitle":"未完了のやることが{n}件","ntc.tipAutumnBody":"ブラッシングを少し増やすと、抜け毛ケアが楽になります","ntc.tipAutumnTitle":"秋は換毛の季節","ntc.tipColdBody":"シニアの子は特にあたたかく。短めのお散歩でも大丈夫","ntc.tipColdTitle":"冷え込む一日","ntc.tipHeatBody":"お散歩は朝夕の涼しい時間に。肉球のやけど・熱中症に気をつけて","ntc.tipHeatTitle":"日中は暑くなりそう","ntc.tipRainBody":"おうちで、においあて・かくれんぼなどの知育あそびはいかが？","ntc.tipRainTitle":"今日は雨模様","ntc.tipSpringBody":"暖かくなると活発に。予防のタイミングを確認しておきましょう","ntc.tipSpringTitle":"春はノミ・ダニに注意","ntc.tipSummerBody":"日中の散歩や車内でのお留守番は控えめに。水分もこまめに","ntc.tipSummerTitle":"夏は熱中症に注意","ntc.tipWinterBody":"肉球の乾燥ケアや、あたたかい寝床を用意してあげましょう","ntc.tipWinterTitle":"冬は乾燥と冷えに注意","ntc.todoOverdue":"「{title}」の期限が過ぎています","ntc.todoSoon":"もうすぐ「{title}」（あと{d}日）","ntc.todoToday":"今日は「{title}」の日です","ntc.walkShortBody":"{name}の直近のお散歩が、以前より短くなっているみたい","ntc.walkShortTitle":"最近、お散歩の時間が少し短めです","ntc.weightBody":"{from}kg → {to}kg。フード量を見直すタイミングかも","ntc.weightDownTitle":"{name}の体重が減っています","ntc.weightUpTitle":"{name}の体重が増えています","nurse.addRecord":"＋ 記録","nurse.breastItem":"🤱 母乳 {side}・{dur}","nurse.left":"左","nurse.milk":"🍼 ミルク","nurse.milkItem":"🍼 ミルク {ml}ml","nurse.nowLeft":"◀ 左で授乳中","nurse.nowRight":"右で授乳中 ▶","nurse.recordName":"授乳の記録","nurse.right":"右","nurse.startLeft":"◀ 左で授乳","nurse.startRight":"右で授乳 ▶","nurse.stopLog":"終了して記録","nurse.todayCount":"今日 {n}回","prep.tomorrowTitle":"明日（{dow}）の準備","prof.promptBtn":"プロフィールを設定","prof.promptTitle":"プロフィールを設定しませんか？","qa.addBtn":"追加する","qa.lastTime":"前回: {date}","routine.addTitle":"ルーティンを追加","routine.editTitle":"ルーティンを編集","routine.remindLabel":"リマインド","sc.forever":"ずっと、心の中に","sc.overdue":"{title}が期限切れ","sc.supplyLow":"{title} 残りわずか","sc.supplyOut":"{title}が切れているかも","sc.together":"{d}日間、一緒に過ごしました","share.createBtn":"家族スペースを作る","share.createDesc":"「共有」に設定したメンバーのプロフィールと記録を家族スペースへ移します。写真も、共有用に小さくした画像が移ります。","share.createNew":"＋ 新しい家族スペースを作る","share.creating":"作成中…","share.emailNote":"※ メールで作るのはLOALIFE専用のアカウントです（Googleアカウントとは別です）。","share.emailTab":"メール","share.fbNeeded1":"家族共有を使うには、Firebaseの設定が必要です。","share.fbNeeded2":"build-src/firebase.js にFirebaseプロジェクトの設定を入力してください。","share.googleSignIn":"Googleでサインイン","share.inviteCodeLabel":"招待コード","share.joinBtn":"参加する","share.joinWithCode":"招待コードで参加する","share.joining":"参加中…","share.memberChoiceDesc":"共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。","share.memberCount":"家族の人数: {n}人","share.signOut":"サインアウト","share.signedInAs":"{name} でサインイン中","share.signinDesc":"サインインすると、家族スペースを作って、共有設定のメンバーの記録を家族と同期できます。","share.step1":"1. サインインする","share.step2":"2. 家族スペースを作る","share.step3":"3. 招待コードを家族に送って、参加してもらう","share.stepsTitle":"使い方は3ステップ：","share.title":"家族共有","supply.addTitle":"ストックを追加","supply.cycle":"消費サイクル","supply.daysN":"{d}日","supply.editTitle":"ストックを編集","supply.lastBought":"最後に買った日","toast.certSaved":"証明書を保存しました","toilet.avgBristol":"うんちの硬さ平均","toilet.brCountSuffix":"・{n}回","tox.badgeCond":"○ 条件つき","tox.badgeSafe":"○ 大丈夫","tox.cat":"猫","tox.consultBtn":"病院に相談する","tox.dog":"犬","tox.emgFormSub":"これは診断ではありません。この内容を持って、動物病院・夜間救急にご相談ください。","tox.emgFormTitle":"🚑 落ち着いて、この5つを確認","tox.emgSub":"落ち着いて、順番に確認しましょう","tox.emgTitle":"今、食べたかも？","tox.foot":"※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急に相談してください。","tox.notFound":"該当が見つかりませんでした。","tox.notFoundCare":"該当が見つかりませんでした。心当たりが無くても、食べた可能性があれば動物病院にご相談ください。","tox.notFoundQ":"『{q}』はリストにありませんでした。リストにない食品は、安全とは限りません。食べてしまった場合は、量と様子を記録して動物病院に相談を。","tox.phAmount":"例：ひとかけ／1錠／量は不明","tox.phSymptom":"例：元気／嘔吐／ふらつき／けいれん","tox.phWeight":"例：8kg","tox.phWhat":"例：チョコ、玉ねぎ、薬 など","tox.phWhen":"例：10分前／さっき／不明","tox.qAmount":"どのくらい？","tox.qSymptom":"今の症状は？","tox.qWeight":"犬の体重","tox.qWhat":"何を食べた？","tox.qWhen":"いつ？","tox.registeredName":"登録","tox.risk.avoid":"基本NG","tox.risk.caution":"注意","tox.risk.emergency":"緊急","tox.risk.high":"高リスク","tox.safeFoot":"どの食品も、初めてのときは少量から様子を見てください。味付けなしが基本です。持病のある子・療法食の子は、獣医さんに確認してからにしましょう。","tox.safeHeadCond":"○ {name}は条件つきで大丈夫です","tox.safeHeadSafe":"○ {name}は食べて大丈夫です","tox.searchPh":"例：もやし ／ チョコ ／ 玉ねぎ ／ ぶどう","tox.secDont":"やってはいけないこと","tox.secOnset":"発症の目安","tox.secSymptoms":"症状","tox.secUrgent":"すぐ受診したいケース","tox.secVet":"病院に伝える情報","tox.srcBody1":"このリストは、ASPCA中毒管理センター・Pet Poison Helpline・Merck獣医マニュアル 等、一般に公開された獣医毒性の情報を参照して整理しています。","tox.srcBody2Bold":"意図的に掲載していません","tox.srcBody2Post":"。","tox.srcBody2Pre":"具体的な毒性量・致死量・安全量は、量・体重・個体差で大きく変わり誤用の危険があるため、","tox.srcBody3Bold":"診断ではありません","tox.srcBody3Post":"。実際の判断は必ず動物病院・中毒専門の窓口にご確認ください。情報源が確認できない内容は断定的に載せていません。","tox.srcBody3Pre":"掲載は一般的な注意であり、","tox.srcLine":"{src}／最終確認 {date}","tox.srcReviewed":"最終確認：{date}","tox.srcTitle":"情報源について","tox.tabAll":"犬・猫","tox.title":"誤食・中毒","tox.varies":"危険度は {list} で変わります。","tox.variesWeight":"（{name}の体重：{w}）","tox.warn1":"今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子が変わったら、すぐ病院に連絡を。家庭で吐かせないで。","tox.warn2":"今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子見せず、吐かせないで。様子が変わったら、すぐ病院に連絡を。","vis.onlyMeBtn":"🔒 自分のみ","vis.showFamily":"👨‍👩‍👧 家族に見せる","vis.titlePrivate":"自分だけに表示","vis.titleShared":"家族に見せています","walk.hourTitle":"{h}時","wn.comingBody1":"予定していた機能はひととおり公開ずみ 🎉","wn.comingBody2":"「こんな機能がほしい」があれば、ぜひお聞かせください。","wn.comingTitle":"近日対応予定","wn.recentTitle":"最近のアップデート","wn.viewGuide":"使い方・機能紹介を見る",
+    "common.longPressReorder":"長押しで並び替え","health.glucosePrefix":"血糖","me.nameLabel":"名前",
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
@@ -3452,7 +3454,7 @@ const MESSAGES={
     "review.title":"This month's review","review.daysLabel":"Health logs (days)","review.sleepLabel":"Avg sleep (h)","review.movesLabel":"Exercise logs","review.logsLabel":"Task logs","review.vsPrev":"vs last month: {parts}","review.openTasks":"Open tasks: {n}","review.note":"※ Just the facts you logged, listed — no good/bad judgment.","review.pDays":"records {v}d","review.pSleep":"sleep {v}h","review.pLogs":"tasks {v}",
     "album.title":"Memories","album.cancelSel":"Cancel","album.select":"Select","album.loading":"Loading…","album.bulkAdd":"Add photos in bulk (auto-sorted by date taken)","album.selHint":"Tap photos to select (up to {n}) → use “Move to another” below to move them together to another family member.","album.empty":"Keep them with a photo and a note","album.selCount":"{n} selected","album.moveBtn":"Move to another","album.moveDesc":"Move the {n} selected memories together.",
     "points.title":"Helper points","points.total":"Total {n} pt","points.week":" (this week {n})","points.custom":"Add your own (+1pt)",
-    "allow.title":"Allowance book","allow.balance":"Left","allow.memoPh":"Memo (snacks, etc. · optional)","allowdir.in":"Got","allowdir.out":"Spent","allowdir.save":"Saved",
+    "allow.title":"Allowance book","allow.balance":"Left","allow.memoPh":"Memo (optional, e.g. snacks)","allowdir.in":"Got","allowdir.out":"Spent","allowdir.save":"Saved",
     "meds.namePh":"Med or supplement name (e.g. antibiotic, vitamin)",
     "belong.title":"Belongings (by day)","belong.empty":"Tap ＋ at bottom-right to add belongings",
     "foodreg.title":"Food registry","foodreg.desc":"Register foods you use often.","foodreg.addFood":"Register food/meal","foodreg.calc":"Calculate daily food amount",
@@ -3467,7 +3469,7 @@ const MESSAGES={
     "routine.notToday":"No routines are due today",
     "sitter.title":"Sitter invites (time-limited)","sitter.desc":"Invite someone outside the family to view selected members for a limited time, with limited permissions. Access ends automatically when it expires.","sitter.needMember":"Choose at least one member","sitter.createFail":"Couldn't create the sitter invite. Please try again.","sitter.createBtn":"Create a sitter code","sitter.codeLabel":"Sitter invite code","sitter.noSharedMembers":"No members are set to “shared” yet. Set a member to shared in their profile edit screen.","sitter.viewOnly":"View only","sitter.canWrite":"Can also record","sitter.days":"{d} days","sitter.untilLine":"until {date}","sitter.revokeBtn":"Revoke","sitter.activeTitle":"Active sitters","sitter.modeFamily":"Join as family","sitter.modeSitter":"Join as a sitter","sitter.joinAbout":"Enter the sitter invite code. During the period you can view the selected members' records (and record too, if permitted).","sitter.inviteMsg":"Here's a LOALIFE sitter invite (time-limited sharing).\n{link}\nCode: {code}","sitter.nowTitle":"You're sitting (time-limited)","sitter.leaveBtn":"Leave sitter sharing","sitter.banner":"Sitting (until {date})","share.inviteExpiry":"Invite code valid until {date}","share.participantsTitle":"Participants","share.noName":"(no name yet)","share.you":"you","share.removeBtn":"Remove","share.accountLine":"Your account: {email}","share.removeFail":"Couldn't remove them. Please try again.","note.syncedFoot":"* Shared with everyone in the family space.","toast.sitterJoined":"Joined as a sitter","toast.sitterExpired":"The sitting period ended, so sharing has stopped","toast.sitterLeft":"You left the sitter sharing","toast.sitterRevoked":"Sitter invite revoked","toast.sitterRemoved":"Sitter removed","toast.participantRemoved":"Participant removed","toast.noteSyncFail":"Couldn't share the note. Check your connection.",
     "chart.targetBand":"The band is ±5% around the target weight","chart.growthNote":"* The band is a rough guide to weight by age in months (not a diagnosis).","chart.overlay":"Overlay","metric.title":"Custom number fields (add your own name and unit)","metric.namePh":"Name (e.g. waist)","metric.unitPh":"Unit (e.g. cm)","metric.add":"Add field","docs.title":"Documents","docs.addTitle":"Add a document","docs.addFirst":"Store a document","docs.empty":"Keep photos of insurance cards and certificates here.","docs.deviceOnlyNote":"Documents are stored only on this device. They are never sent to family sharing.","docs.examplesPerson":"Examples: health insurance card, eligibility certificate, maternal handbook, vaccination record, medication notebook, checkup results, passport","docs.examplesPet":"Examples: vaccination certificate, license/registration, test results, pet insurance card, pedigree","docs.nameLabel":"Name","docs.namePhPerson":"e.g. Health insurance card","docs.namePhPet":"e.g. Vaccination certificate","docs.dateLabel":"Date","docs.expiryLabel":"Expiry (optional)","docs.noteLabel":"Note (optional)","docs.notePh":"e.g. Show at the clinic","docs.saveBtn":"Store document","docs.expiry":"Expiry","docs.expired":"Expired","docs.expSoon":"Expires in {d} days","docs.delLabel":"Delete “{title}”?","dockind.insurance":"Insurance card","dockind.maternal":"Maternal handbook","dockind.vaccine":"Vaccination","dockind.exam":"Checkup / tests","dockind.prescription":"Medication notebook","dockind.passport":"Passport","dockind.mynumber":"ID number card","dockind.contract":"Contract","dockind.petlicense":"License / registration","dockind.pedigree":"Pedigree","dockind.other":"Other","toast.metricNameNeeded":"Enter a field name","toast.metricMax":"Up to 6 fields","toast.metricAdded":"Field added","toast.docSaved":"Document stored","toast.docDeleted":"Document deleted",
-    "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.moreSymptoms":"More symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes","diary.exercise":"Exercise","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Log sleep","diary.exNamePh":"Activity name (e.g. CrossFit)","diary.routineTag":"routine",
+    "diary.quickHealthy":"Doing well today (one tap)","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.moreSymptoms":"More symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes","diary.exercise":"Exercise","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Log sleep","diary.exNamePh":"Activity name (e.g. CrossFit)","diary.routineTag":"routine",
     "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
     "sched.titlePet":"Add care or plan","sched.titleSelf":"Add health or care","sched.titleMe":"Add plan or to-do","sched.frequent":"Frequent","sched.contentPh":"Enter details…","sched.addLabelPh":"Add {label}…","sched.content":"item","sched.dateOptMe":"Date / deadline","sched.time":"Time","sched.dateHint":"Add a date or deadline and it appears on that day's calendar.","sched.certPhoto":"Certificate / photo","sched.changePhoto":"Change photo","sched.attachPhoto":"＋ Attach photo","sched.notify":"Notify","sched.quickAdd":"One-tap add (copy last)","sched.lastDate":"Last {date}","sched.dateDone":"Date done","sched.dateDate":"Date","sched.dateVisit":"Visit date","sched.dateDue":"Due","care.fallback":"Care","filter.all":"All",
     "toilet.hint":"Tap to log.","toilet.pee":"Pee","toilet.recordBtn":"Log","toilet.success":"✓ Success","toilet.fail":"✕ Miss","toilet.hardness":"Stool firmness (7 levels)","toilet.guide":"Texture guide","toilet.bristolNote":"4 is healthy. If 1 or 7 keeps up, check with your vet.","toilet.alertBody":"Watch for: GI foreign objects, intestinal blockage, poisoning","toilet.alertLink":"See the hazards list","toilet.ideal":" (ideal)","toilet.disclaimer":"A guide for when to see a vet (not a diagnosis).","toilet.trendLoose":"Loose stools have continued. If it lasts, consider seeing a vet.","toilet.trendHard":"Hard stools have continued. Watch hydration and diet; see a vet if concerned.",
@@ -3482,6 +3484,8 @@ const MESSAGES={
     "tour.headseg.title":"Switch between Daily and Manage","tour.headseg.body":"Switch with the tabs above. Daily = today's records; Manage = care and plans.","tour.fab.title":"Record from here","tour.fab.body":"Use the ＋ at the bottom-right to log plans, care, meals, weight, and more.","tour.cal.title":"Calendar","tour.cal.body":"See the family's plans at a glance. Tap a date to look back.","tour.home.title":"Per family member","tour.home.body":"Tap a family member to open their page. Switch from the list at the top.","coach.cal.title":"Tap a date","coach.cal.body":"Colored dots are that day's plans. Tap to look back.","coach.record.title":"Log body & condition","coach.record.body":"Use the ＋ at the bottom-right to log weight, condition, meals, and diary.","coach.manage.title":"Daily chores & plans","coach.manage.body":"To-dos and plans go here. Tap \"Done\" to see time since last.","tour.next":"Next","tour.skip":"Skip","common.ok":"OK",
     "sheet.rangeDays":"{d} days","sheet.vetTitle":"{name}'s Record Summary","sheet.vetPeriod":"{from}–{to} ({days} days) / Created {made}","sheet.basicInfo":"Basic Info","sheet.species":"Species","sheet.birthday":"Birthday","sheet.microchip":"Microchip","sheet.weightTrend":"Weight Trend","sheet.latest":"Latest","sheet.periodChange":"Change over period","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"No records (add weight to daily records to see the trend)","sheet.toilet":"Toilet","sheet.peeRate":"Pee success rate","sheet.poopRate":"Poop success rate","sheet.rateVal":"{rate}% ({total} times)","sheet.noRecord":"No records","sheet.brAvgLabel":"Avg. stool firmness","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Symptoms & Condition","sheet.energyAvgLabel":"Avg. energy","sheet.energyAvgVal":"{avg}/5 ({n} times)","sheet.symCount":"{label} × {n}","sheet.medLeft":"{n} days left","sheet.medCourse":"{taken}/{days} doses ({from} – {to})","sheet.timeline":"Timeline","sheet.walkTime":"Walk times","sheet.walkAsk":"Walk requests","sheet.walkHour":"around {h}:00","sheet.incompleteWarn":"Some items are not registered yet (clinic, contacts, records). Please also share what you know verbally.","sheet.fromProfile":"from profile","sheet.none":"None","sheet.careNext":"Upcoming prevention/vaccines","sheet.noPlans":"No plans","sheet.recentCare":"Recent Care","sheet.vetNote":"* This summary is based on the owner's records and is not a diagnosis.","sheet.vetFileSuffix":"Record Summary","sheet.handTitlePet":"{name}'s Care Sheet","sheet.handTitleOther":"{name}'s Handover Sheet","sheet.handPeriodPet":"For boarding / pet-sitting handover","sheet.handPeriodOther":"For sharing while away (today's status)","sheet.madeOn":" / Created {date}","sheet.aboutPet":"About this pet","sheet.profile":"Profile","sheet.name":"Name","sheet.meals":"Meals","sheet.noFoodHint":"Not registered (please share verbally)","sheet.todayChores":"Today's Care","sheet.noRecordsYet":"No records yet","sheet.todayCond":"Today's status (condition)","sheet.hasRecord":"Recorded","sheet.allergyCaution":"Things to watch (allergies & cautions)","sheet.nothingSpecial":"Nothing in particular","sheet.regularVet":"Regular vet","sheet.regularDoctor":"Regular doctor","sheet.noHospHint":"Not registered (add clinic name, phone, address in 'Important info')","sheet.emergencyContact":"Emergency contact","sheet.noContactHint":"Not registered (you can add it in 'Important info')","sheet.familyNotes":"Notes from family","sheet.otherMemo":"Other notes","sheet.handNotePet":"* If anything is unclear or goes wrong, please contact the owner.","sheet.handNoteOther":"* If anything is unclear or goes wrong, please contact the family.","sheet.careFileSuffix":"Care Sheet","sheet.careLetterPet":"Thank you for looking after {name}.","sheet.careLetterOther":"Thank you for watching over {name}.","sheet.handoverFileSuffix":"Handover Sheet","sheet.appetiteColon":"Appetite: ","sheet.poopColon":"Bowel: ","sheet.sleepH":"Sleep {n}h","rec.medSummary":"Medical summary","sum.title":"{name}'s Medical Summary","sum.fileSuffix":"Medical Summary","sum.firstThings":"First, please know","sum.shareBtn":"Share by link","sum.shareTitle":"Share this summary by link","sum.shareDesc":"Anyone with the link can view only the sections you choose, without signing in. The link stops working automatically once it expires, and you can revoke it at any time.","sum.needSignIn":"You need to be signed in to create a link. Sign in from Family sharing in Settings.","sum.includeTitle":"Include in the link","sum.sec.basic":"Basic info","sum.sec.caution":"Key cautions (allergies, notes, medication)","sum.sec.timeline":"Timeline","sum.sec.recent":"Recent records","sum.sec.contacts":"Clinic & emergency contacts","sum.secContactsHint":"Includes phone numbers","sum.includePhoto":"Include a photo","sum.expiry":"Link expires after","sum.create":"Create link","sum.copyLink":"Copy link","sum.activeLinks":"Your links","sum.noLinks":"No links yet","sum.active":"Active","sum.expired":"Expired","sum.until":"Valid until {date}","sum.revoke":"Revoke","sum.revoked":"Link revoked","sum.createFail":"Couldn't create the link. Please try again.","sum.needSection":"Choose at least one section to include.","sum.expiresLine":"This link can be viewed until {date}.","sum.expiredTitle":"This link has expired","sum.expiredBody":"The link is past its expiry, so the contents aren't shown. If you need it, please ask the person who made the link for a new one.","sum.invalidTitle":"This link isn't available","sum.invalidBody":"The link has expired, was revoked, or doesn't exist, so the contents aren't shown.","sum.footNote":"* This summary is based on the family's own records and is not a diagnosis.","sum.footNotePerson":"* This summary was created from the family's records and is not a diagnosis.",
     "fam.title":"Family records","fam.by":"by {name}","fam.you":"You","fam.family":"Family","fam.today":"Today","fam.yesterday":"Yesterday","fam.actWalk":"Walk","fam.actMeal":"Meal","fam.actToilet":"Toilet","fam.actDiary":"Condition log","fam.actHealth":"Body log","fam.actMed":"Medicine","fam.actDone":"Did: {title}","fam.actMemory":"Memory","fam.actNursing":"Nursing","fam.actMilestone":"Growth record","fam.tookBy":"Logged today by {name}",
+    "about.betaBuild":"Beta (build {v})","about.dataTitle":"Data & privacy","about.introBody":"Daily records, plans and health for your whole family — plus peace of mind for emergencies (lost posters and emergency cards), all in one place.","about.noticeBodyA":"Records and guides here are ","about.noticeBodyB":"for reference only","about.noticeBodyC":". When in doubt, ask your regular vet, doctor or a specialist.","about.noticeTitle":"Please note","about.shareTitle":"Sharing with family","about.termsBody":"Terms of use, privacy policy and contact details are being prepared. We'll share them here soon.","about.termsTitle":"Terms & contact","about.version":"Version","album.moveNone":"No one to move to yet. Add a family member or pet first.","album.moveTitle":"Move to whom?","belong.scopeDow":"Weekday","belong.scopeOccasion":"Occasion","cal.addTitle":"Add to calendar","cal.apple":"Apple Calendar (.ics)","cal.appleAll":"Export to calendar app (.ics)","cal.bdayLabel":"{name}'s birthday","cal.exportAllSub":"Export all upcoming plans at once","cal.google":"Google Calendar","cal.gotchaLabel":"{name} Gotcha Day","cal.iosNoteA":"💡 To add to Apple Calendar on iPhone:","cal.iosNoteB":"Open this site directly by URL in Safari","cal.iosNoteC":" → tap 📅 → download the .ics → open it in Calendar","cal.myBday":"My birthday","calc.applyN":"{n}× {g}g","calc.applyNew":"Register a new food with these amounts.","calc.applyPerLabel":"Apply one serving to a food","calc.applyRegNamed":"Set amounts for the registered food “{name}”.","calc.applyRegPlain":"Set amounts for the registered food.","calc.bcsGuideClose":"Close the BCS guide","calc.bcsGuideOpen":"See the BCS guide for {sp}","calc.bcsIdeal":"Ideal: {v}","calc.bcsLabel":"BCS (body condition):","calc.bw":"Current weight (BW)","calc.dailyFood":"Food per day","calc.der":"Calories needed per day (DER)","calc.factorSuffix":"(factor {f})","calc.idealWeight":"Ideal weight","calc.meDesc":"kcal per 100g of food (from the package). You can calculate without it too.","calc.meGuideClose":"Close the ME guide","calc.meGuideOpen":"See typical ME values for {sp}","calc.meHint":"Enter ME to also calculate daily food amount (g).","calc.meLabel":"Food metabolizable energy (ME)","calc.meNote":"* A rough guide. Check the “per 100g” value on the package.","calc.needInput":"Enter weight and BCS to calculate.","calc.species":"Species","calc.splitN":"{n}×: {g}g","calc.stage":"Life stage & activity","calc.stageSelect":"Select","calc.warnRefB":"Reference values","calc.warnRefRest":". Avoid sudden changes to food amounts — check with your regular vet.","common.abort":"Stop","common.back":"Back","day.allRecords":"All records on {date}","day.hospitalChip":"Clinic","day.moreCount":" + {n} more","day.recordFallback":"Record","day.sleepChip":"Sleep {h}h","day.thisRecord":"This record","day.todaySuffix":" (today)","day.walkChip":"Walk","drawer.disaster":"Disaster & evacuation prep","drawer.emergency":"Night & emergency prep","drawer.expense":"Expenses","drawer.foot":"LOALIFE Beta","drawer.help":"How to use & features","drawer.profile":"Family profiles","drawer.share":"Family sharing","drawer.title":"Menu","drawer.toxic":"Accidental ingestion & toxins list","emoji.none":"No emoji","emoji.pickTitle":"Pick an emoji","guide.g1":"Every day","guide.g2":"Health & plans","guide.g3":"Just in case","guide.i.body.d":"Watch weight changes on a graph. Add your own numeric items too.","guide.i.body.t":"Body records","guide.i.cal.d":"See everyone's plans, color-coded.","guide.i.cal.t":"Calendar","guide.i.care.d":"Never miss vaccines, visits or meds.","guide.i.care.t":"Care, plans & meds","guide.i.chore.d":"Tap when done. Days since last time, in color.","guide.i.chore.t":"Daily care","guide.i.diary.d":"Energy, appetite, poop and photos, just as they are.","guide.i.diary.t":"Today's notes","guide.i.docs.d":"Keep photos of insurance cards and certificates on this device only.","guide.i.docs.t":"Documents","guide.i.expense.d":"Vet bills and food — what cost how much.","guide.i.expense.t":"Expenses","guide.i.home.d":"Today's tasks and things you might forget, together.","guide.i.home.t":"Home","guide.i.info.d":"Your regular vet and emergency contacts, at hand.","guide.i.info.t":"Important info","guide.i.lost.d":"Make a lost poster from Lost mode on your pet's card page. Emergency cards are ready from their info too.","guide.i.lost.t":"Lost poster & emergency card","guide.i.members.d":"Pets, family and you — with a photo or emoji.","guide.i.members.t":"Members","guide.i.memory.d":"Follow their growth with a special photo and tags.","guide.i.memory.t":"Memories & firsts","guide.i.notices.d":"Important plans and deadlines appear on Home when you open the app.","guide.i.notices.t":"Notices","guide.i.share.d":"Share records with family by invite code. Time-limited sharing for a sitter is available too.","guide.i.share.t":"Family sharing","guide.i.stock.d":"Get a heads-up on Home before you run out. Weekday belongings too.","guide.i.stock.t":"Stock & belongings","guide.lead":"Every day with your precious family, and peace of mind for emergencies — in one place.","guide.title":"How to use LOALIFE","health.goalLeft":"{v}{unit} to go to your goal","health.goalOk":"On goal — keep it up!","health.goalOver":"{v}{unit} over goal","health.goalOverNote":"(watch food and exercise)","home.a2hsText":"Add to your home screen so your data stays safer","home.annivBday":" · Birthday","home.annivGotcha":" · Gotcha Day","home.annivToday":"Today!","home.annivYearsAge":"Turns {y}!","home.annivYearsGotcha":"{y} years together!","home.bdayAgeSuffix":" (turns {y})","home.bdayCheerSub":"Congratulations — have a wonderful day.","home.bdayCheerTitle":"Today is {names}'s birthday","home.later":"Later","home.registerCta":"Add a pet or family member","home.welcome":"Welcome","home.welcomeBodyA":"Every day with your precious family, and peace of mind for emergencies — in one place.","home.welcomeBodyB":"Start by adding one pet or family member.","list.doneSection":"Done ({n})","list.loading":"Loading…","list.noUpcoming":"No upcoming plans.","me.calColor":"Calendar color","me.saveClose":"Save & close","me.title":"Your icon & name","member.kindPersonBtn":"👤 Family (person)","member.kindPetBtn":"🐾 Pet","member.registerBtn":"Add","note.emptyHint":"A few words about today, or a “thank you”.","note.localFoot":"* A family notebook saved on this device.","note.saveBtn":"Save","note.title":"Family notes","notices.empty1":"No notices today.","notices.empty2":"Looks like a relaxed day.","notices.foot":"We quietly share what we notice from your family's days.","ntc.actCheck":"Check","ntc.actLog":"Log it","ntc.actMemory":"See the memory","ntc.actToilet":"See toilet logs","ntc.actView":"See records","ntc.actWalks":"See walk logs","ntc.actWeight":"See weight & food","ntc.memPhoto":"A photo from that day","ntc.poopBody":"If it lasts a few days, consider a vet visit. Look back at food and water too","ntc.poopTitle":"{name}'s poop has been soft lately","ntc.quietBodyPerson":"How have they been? Even a short note helps you look back later","ntc.quietBodyPet":"Are they doing well? Even a short note helps you look back later","ntc.quietTitle":"No records for {name} in {gap} days","ntc.seniorBody":"More checkups, and a little attention to joints, teeth and weight, can help","ntc.seniorTitle":"{name} is in their senior years","ntc.sleepShortBody":"{name}'s recent sleep looks shorter than before","ntc.sleepShortTitle":"Sleep records have been shorter lately","ntc.stockBody":"{name} · time to restock","ntc.stockOne":"“{title}” has 1 use left","ntc.stockOut":"“{title}” is out of stock","ntc.tasksBody":"{name}'s plans and hand-ins are piling up","ntc.tasksTitle":"{n} unfinished tasks","ntc.tipAutumnBody":"A little more brushing makes shedding season easier","ntc.tipAutumnTitle":"Autumn is shedding season","ntc.tipColdBody":"Keep seniors especially warm. A shorter walk is fine","ntc.tipColdTitle":"A chilly day","ntc.tipHeatBody":"Walk in the cooler morning/evening. Watch for paw burns and heatstroke","ntc.tipHeatTitle":"It will get hot today","ntc.tipRainBody":"How about indoor scent games or hide-and-seek?","ntc.tipRainTitle":"Rainy day today","ntc.tipSpringBody":"They get active as it warms up. Check prevention timing","ntc.tipSpringTitle":"Spring: watch for fleas & ticks","ntc.tipSummerBody":"Avoid midday walks and leaving them in the car. Offer water often","ntc.tipSummerTitle":"Summer: beware heatstroke","ntc.tipWinterBody":"Care for dry paws and prepare a warm bed","ntc.tipWinterTitle":"Winter: dryness & cold","ntc.todoOverdue":"“{title}” is past its date","ntc.todoSoon":"Coming up: “{title}” (in {d} days)","ntc.todoToday":"Today is “{title}” day","ntc.walkShortBody":"{name}'s recent walks look shorter than before","ntc.walkShortTitle":"Walks have been a little shorter lately","ntc.weightBody":"{from}kg → {to}kg. Maybe time to review food amounts","ntc.weightDownTitle":"{name} has lost weight","ntc.weightUpTitle":"{name} has gained weight","nurse.addRecord":"+ Log","nurse.breastItem":"🤱 Breast {side} · {dur}","nurse.left":"Left","nurse.milk":"🍼 Formula","nurse.milkItem":"🍼 Formula {ml}ml","nurse.nowLeft":"◀ Nursing (left)","nurse.nowRight":"Nursing (right) ▶","nurse.recordName":"Nursing record","nurse.right":"Right","nurse.startLeft":"◀ Nurse left","nurse.startRight":"Nurse right ▶","nurse.stopLog":"Finish & log","nurse.todayCount":"{n} times today","prep.tomorrowTitle":"Getting ready for tomorrow ({dow})","prof.promptBtn":"Set up profile","prof.promptTitle":"Set up this profile?","qa.addBtn":"Add","qa.lastTime":"Last: {date}","routine.addTitle":"Add routine","routine.editTitle":"Edit routine","routine.remindLabel":"Remind","sc.forever":"Forever in our hearts","sc.overdue":"{title} is overdue","sc.supplyLow":"{title} is running low","sc.supplyOut":"{title} may be out","sc.together":"{d} days together","share.createBtn":"Create family space","share.createDesc":"Moves profiles and records of members set to “Shared” into the family space. Photos move as smaller copies made for sharing.","share.createNew":"+ Create a new family space","share.creating":"Creating…","share.emailNote":"* An email account here is only for LOALIFE (separate from your Google account).","share.emailTab":"Email","share.fbNeeded1":"Family sharing needs Firebase to be set up.","share.fbNeeded2":"Enter your Firebase project settings in build-src/firebase.js.","share.googleSignIn":"Sign in with Google","share.inviteCodeLabel":"Invite code","share.joinBtn":"Join","share.joinWithCode":"Join with an invite code","share.joining":"Joining…","share.memberChoiceDesc":"Choose “Shared / Only me” for each member on their profile edit screen.","share.memberCount":"Family members: {n}","share.signOut":"Sign out","share.signedInAs":"Signed in as {name}","share.signinDesc":"Sign in to create a family space and sync records of members set to share with your family.","share.step1":"1. Sign in","share.step2":"2. Create a family space","share.step3":"3. Send the invite code to your family","share.stepsTitle":"Just 3 steps:","share.title":"Family sharing","supply.addTitle":"Add stock","supply.cycle":"Use-up cycle","supply.daysN":"{d} days","supply.editTitle":"Edit stock","supply.lastBought":"Last bought","toast.certSaved":"Certificate saved","toilet.avgBristol":"Average poop firmness","toilet.brCountSuffix":" · {n} times","tox.badgeCond":"○ Conditional","tox.badgeSafe":"○ Safe","tox.cat":"Cat","tox.consultBtn":"Ask a vet","tox.dog":"Dog","tox.emgFormSub":"This is not a diagnosis. Take these notes to a vet or night emergency clinic.","tox.emgFormTitle":"🚑 Stay calm — check these 5 things","tox.emgSub":"Stay calm and check in order","tox.emgTitle":"Did they just eat something?","tox.foot":"* This is not a diagnosis. Risk depends on amount, weight, part eaten, time and the individual. When in doubt, ask a vet or night emergency clinic.","tox.notFound":"Nothing matched.","tox.notFoundCare":"Nothing matched. Even if you're not sure, if they may have eaten it, please ask a vet.","tox.notFoundQ":"“{q}” wasn't in the list. Foods not listed aren't necessarily safe. If eaten, note the amount and how they seem, and ask a vet.","tox.phAmount":"e.g. a bite / 1 tablet / unknown","tox.phSymptom":"e.g. fine / vomiting / wobbly / seizures","tox.phWeight":"e.g. 8kg","tox.phWhat":"e.g. chocolate, onion, medicine","tox.phWhen":"e.g. 10 min ago / just now / unknown","tox.qAmount":"How much?","tox.qSymptom":"Any symptoms now?","tox.qWeight":"Dog's weight","tox.qWhat":"What did they eat?","tox.qWhen":"When?","tox.registeredName":"registered pet","tox.risk.avoid":"Avoid","tox.risk.caution":"Caution","tox.risk.emergency":"Emergency","tox.risk.high":"High risk","tox.safeFoot":"For any food, start with a small amount the first time and watch. No seasoning, as a rule. For pets with conditions or on prescription diets, check with your vet first.","tox.safeHeadCond":"○ {name} is OK with conditions","tox.safeHeadSafe":"○ {name} is safe to eat","tox.searchPh":"e.g. sprouts / chocolate / onion / grapes","tox.secDont":"What NOT to do","tox.secOnset":"Typical onset","tox.secSymptoms":"Symptoms","tox.secUrgent":"See a vet right away if…","tox.secVet":"Tell the vet","tox.srcBody1":"This list is compiled from publicly available veterinary toxicology sources such as the ASPCA Poison Control Center, Pet Poison Helpline and the Merck Veterinary Manual.","tox.srcBody2Bold":"left out on purpose","tox.srcBody2Post":".","tox.srcBody2Pre":"Specific toxic, lethal or safe amounts vary greatly with amount, weight and the individual, and could be misused, so they are ","tox.srcBody3Bold":"not a diagnosis","tox.srcBody3Post":". Always confirm real decisions with a vet or poison specialist. Nothing unverifiable is stated as fact.","tox.srcBody3Pre":"Listings are general cautions, ","tox.srcLine":"{src} / last checked {date}","tox.srcReviewed":"Last checked: {date}","tox.srcTitle":"About the sources","tox.tabAll":"Dogs & cats","tox.title":"Ingestion & toxins","tox.varies":"Risk varies by {list}.","tox.variesWeight":" ({name}'s weight: {w})","tox.warn1":"Even with no symptoms now, they can appear hours to days later. If anything changes, contact a vet right away. Never induce vomiting at home.","tox.warn2":"Even with no symptoms now, they can appear hours to days later. Don't just wait and see, and never induce vomiting. If anything changes, contact a vet right away.","vis.onlyMeBtn":"🔒 Only me","vis.showFamily":"👨‍👩‍👧 Show to family","vis.titlePrivate":"Visible only to you","vis.titleShared":"Shown to family","walk.hourTitle":"{h}:00","wn.comingBody1":"All the features we planned are now live 🎉","wn.comingBody2":"Have a feature you'd love? Tell us!","wn.comingTitle":"Coming soon","wn.recentTitle":"Recent updates","wn.viewGuide":"See how to use & features",
+    "common.longPressReorder":"Long-press to reorder","health.glucosePrefix":"Glucose ","me.nameLabel":"Name",
   },
   es:{
     "nav.home":"Inicio","nav.calendar":"Calendario","nav.settings":"Ajustes","title.daily":"Diario",
@@ -3554,7 +3558,7 @@ const MESSAGES={
     "review.title":"Resumen de este mes","review.daysLabel":"Registros de salud (días)","review.sleepLabel":"Sueño medio (h)","review.movesLabel":"Registros de ejercicio","review.logsLabel":"Registros de tareas","review.vsPrev":"vs el mes pasado: {parts}","review.openTasks":"Tareas pendientes: {n}","review.note":"※ Solo los hechos que registraste — sin juicios de bueno/malo.","review.pDays":"registros {v} d","review.pSleep":"sueño {v} h","review.pLogs":"tareas {v}",
     "album.title":"Recuerdos","album.cancelSel":"Cancelar","album.select":"Seleccionar","album.loading":"Cargando…","album.bulkAdd":"Añadir fotos en lote (ordenadas por fecha de captura)","album.selHint":"Toca fotos para seleccionar (hasta {n}) → usa «Mover a otro» abajo para moverlas juntas a otro miembro de la familia.","album.empty":"Guárdalos con una foto y una nota","album.selCount":"{n} seleccionadas","album.moveBtn":"Mover a otro","album.moveDesc":"Mover juntos los {n} recuerdos seleccionados.",
     "points.title":"Puntos de ayuda","points.total":"Total {n} pt","points.week":" (esta semana {n})","points.custom":"Añade el tuyo (+1 pt)",
-    "allow.title":"Libreta de paga","allow.balance":"Queda","allow.memoPh":"Nota (golosinas, etc. · opcional)","allowdir.in":"Recibió","allowdir.out":"Gastó","allowdir.save":"Ahorró",
+    "allow.title":"Libreta de paga","allow.balance":"Queda","allow.memoPh":"Nota (opcional, p. ej. golosinas)","allowdir.in":"Recibió","allowdir.out":"Gastó","allowdir.save":"Ahorró",
     "meds.namePh":"Nombre del medicamento o suplemento (p. ej. antibiótico, vitamina)",
     "belong.title":"Objetos (por día)","belong.empty":"Toca ＋ abajo a la derecha para añadir objetos",
     "foodreg.title":"Registro de comidas","foodreg.desc":"Registra las comidas que usas a menudo.","foodreg.addFood":"Registrar comida/ración","foodreg.calc":"Calcular la ración diaria",
@@ -3569,7 +3573,7 @@ const MESSAGES={
     "routine.notToday":"Hoy no toca ninguna rutina",
     "sitter.title":"Invitaciones de cuidador (por tiempo limitado)","sitter.desc":"Invita a alguien ajeno a la familia a ver solo ciertos miembros, por un tiempo y con permisos limitados. El acceso termina automáticamente al vencer.","sitter.needMember":"Elige al menos un miembro","sitter.createFail":"No se pudo crear la invitación. Inténtalo de nuevo.","sitter.createBtn":"Crear código de cuidador","sitter.codeLabel":"Código de cuidador","sitter.noSharedMembers":"Aún no hay miembros en «compartido». Actívalo en la edición del perfil del miembro.","sitter.viewOnly":"Solo ver","sitter.canWrite":"También registrar","sitter.days":"{d} días","sitter.untilLine":"hasta el {date}","sitter.revokeBtn":"Revocar","sitter.activeTitle":"Cuidadores activos","sitter.modeFamily":"Unirse como familia","sitter.modeSitter":"Unirse como cuidador","sitter.joinAbout":"Escribe el código de cuidador. Durante el periodo podrás ver los registros de los miembros elegidos (y registrar, si tienes permiso).","sitter.inviteMsg":"Invitación de cuidador de LOALIFE (uso compartido por tiempo limitado).\n{link}\nCódigo: {code}","sitter.nowTitle":"Estás como cuidador","sitter.leaveBtn":"Salir del modo cuidador","sitter.banner":"Como cuidador (hasta el {date})","share.inviteExpiry":"El código vale hasta el {date}","share.participantsTitle":"Participantes","share.noName":"(sin nombre)","share.you":"tú","share.removeBtn":"Quitar","share.accountLine":"Tu cuenta: {email}","share.removeFail":"No se pudo quitar. Inténtalo de nuevo.","note.syncedFoot":"* Se comparte con todos los miembros del espacio familiar.","toast.sitterJoined":"Te uniste como cuidador","toast.sitterExpired":"El periodo terminó y el acceso se cerró","toast.sitterLeft":"Saliste del modo cuidador","toast.sitterRevoked":"Invitación revocada","toast.sitterRemoved":"Cuidador eliminado","toast.participantRemoved":"Participante eliminado","toast.noteSyncFail":"No se pudo compartir la nota. Revisa tu conexión.",
     "chart.targetBand":"La banda es ±5% del peso objetivo","chart.growthNote":"* La banda es una guía aproximada del peso según los meses de edad (no es un diagnóstico).","chart.overlay":"Superponer","metric.title":"Campos numéricos libres (añade nombre y unidad)","metric.namePh":"Nombre (p. ej. cintura)","metric.unitPh":"Unidad (p. ej. cm)","metric.add":"Añadir campo","docs.title":"Documentos","docs.addTitle":"Añadir un documento","docs.addFirst":"Guardar un documento","docs.empty":"Guarda aquí fotos de tarjetas de seguro y certificados.","docs.deviceOnlyNote":"Los documentos se guardan solo en este dispositivo. Nunca se envían al uso compartido familiar.","docs.examplesPerson":"Ejemplos: tarjeta del seguro de salud, certificado de elegibilidad, cartilla materno-infantil, registro de vacunas, cartilla de medicamentos, resultados de chequeos, pasaporte","docs.examplesPet":"Ejemplos: certificado de vacunas, licencia/registro, resultados de análisis, tarjeta de seguro para mascotas, pedigrí","docs.nameLabel":"Nombre","docs.namePhPerson":"p. ej. Tarjeta del seguro","docs.namePhPet":"p. ej. Certificado de vacunas","docs.dateLabel":"Fecha","docs.expiryLabel":"Vencimiento (opcional)","docs.noteLabel":"Nota (opcional)","docs.notePh":"p. ej. Mostrar en la clínica","docs.saveBtn":"Guardar documento","docs.expiry":"Vence","docs.expired":"Vencido","docs.expSoon":"Vence en {d} días","docs.delLabel":"¿Eliminar «{title}»?","dockind.insurance":"Tarjeta de seguro","dockind.maternal":"Cartilla materna","dockind.vaccine":"Vacunas","dockind.exam":"Chequeo / análisis","dockind.prescription":"Cartilla de medicamentos","dockind.passport":"Pasaporte","dockind.mynumber":"Tarjeta de identificación","dockind.contract":"Contrato","dockind.petlicense":"Licencia / registro","dockind.pedigree":"Pedigrí","dockind.other":"Otro","toast.metricNameNeeded":"Escribe un nombre para el campo","toast.metricMax":"Hasta 6 campos","toast.metricAdded":"Campo añadido","toast.docSaved":"Documento guardado","toast.docDeleted":"Documento eliminado",
-    "diary.quickHealthy":"Bien hoy (un toque)","diary.hint":"Solo cuando quieras dar detalles (opcional).","diary.energy":"Energía","diary.appetite":"Apetito","diary.poop":"Caca","diary.sleep":"Sueño","diary.other":"Otro","diary.symptoms":"Síntomas","diary.moreSymptoms":"Más síntomas","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"h","diary.walk":"Paseo / salida","diary.hospital":"Fue a la clínica","diary.periodPriv":"Un registro privado, solo para ti","diary.periodNote":"Última {last} · próxima hacia {next} (ciclo ~{avg} días)","diary.notePh":"Notas del día, visita a la clínica, unas palabras…","diary.delPhoto":"Eliminar foto","diary.addPhoto":"Añadir una foto (medicación, síntomas, etc.)","diary.saveBtn":"Guardar las notas de hoy","diary.exercise":"Ejercicio","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Registrar sueño","diary.exNamePh":"Nombre de la actividad (p. ej. CrossFit)","diary.routineTag":"rutina",
+    "diary.quickHealthy":"Bien hoy (un toque)","diary.energy":"Energía","diary.appetite":"Apetito","diary.poop":"Caca","diary.sleep":"Sueño","diary.other":"Otro","diary.symptoms":"Síntomas","diary.moreSymptoms":"Más síntomas","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"h","diary.walk":"Paseo / salida","diary.hospital":"Fue a la clínica","diary.periodPriv":"Un registro privado, solo para ti","diary.periodNote":"Última {last} · próxima hacia {next} (ciclo ~{avg} días)","diary.notePh":"Notas del día, visita a la clínica, unas palabras…","diary.delPhoto":"Eliminar foto","diary.addPhoto":"Añadir una foto (medicación, síntomas, etc.)","diary.saveBtn":"Guardar las notas de hoy","diary.exercise":"Ejercicio","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Registrar sueño","diary.exNamePh":"Nombre de la actividad (p. ej. CrossFit)","diary.routineTag":"rutina",
     "feed.addTitle":"Registro de comida","feed.servingLabel":"Cantidad por ración","feed.servingPh":"p. ej. 100","feed.hintSet":"1 ración = {g} g, se aplica al total (configúralo una vez y listo)","feed.hintUnset":"Puedes registrar sin configurar esto (configúralo para reflejarlo en el total)","feed.amount":"Cantidad","feed.previewPre":"= unos ","feed.previewPost":" ({n} raciones)","feed.saveBtn":"Registrar comida","feed.today":"Total de hoy ~{g} g ({n})",
     "sched.titlePet":"Añadir cuidado o plan","sched.titleSelf":"Añadir salud o cuidado","sched.titleMe":"Añadir plan o tarea","sched.frequent":"Frecuentes","sched.contentPh":"Escribe los detalles…","sched.addLabelPh":"Añadir {label}…","sched.content":"elemento","sched.dateOptMe":"Fecha / plazo","sched.time":"Hora","sched.dateHint":"Añade una fecha o plazo y aparecerá en el calendario de ese día.","sched.certPhoto":"Certificado / foto","sched.changePhoto":"Cambiar foto","sched.attachPhoto":"＋ Adjuntar foto","sched.notify":"Avisar","sched.quickAdd":"Añadir con un toque (copia el anterior)","sched.lastDate":"Última {date}","sched.dateDone":"Fecha realizada","sched.dateDate":"Fecha","sched.dateVisit":"Fecha de la cita","sched.dateDue":"Plazo","care.fallback":"Cuidado","filter.all":"Todos",
     "toilet.hint":"Toca para registrar.","toilet.pee":"Pipí","toilet.recordBtn":"Registrar","toilet.success":"✓ Acierto","toilet.fail":"✕ Fallo","toilet.hardness":"Firmeza de las heces (7 niveles)","toilet.guide":"Guía de firmeza","toilet.bristolNote":"El 4 es sano. Si el 1 o el 7 se mantienen, consulta a tu veterinario.","toilet.alertBody":"Cuidado con: cuerpos extraños, obstrucción intestinal, intoxicación","toilet.alertLink":"Ver la lista de peligros","toilet.ideal":" (ideal)","toilet.disclaimer":"Una guía de cuándo acudir al veterinario (no un diagnóstico).","toilet.trendLoose":"Las heces blandas han continuado. Si persisten, plantéate ver al veterinario.","toilet.trendHard":"Las heces duras han continuado. Vigila la hidratación y la dieta; ve al veterinario si te preocupa.",
@@ -3584,6 +3588,8 @@ const MESSAGES={
     "tour.headseg.title":"Cambia entre Diario y Gestionar","tour.headseg.body":"Cambia con las pestañas de arriba. Diario = registros de hoy; Gestionar = cuidados y planes.","tour.fab.title":"Registra desde aquí","tour.fab.body":"Usa el ＋ de abajo a la derecha para registrar planes, cuidados, comidas, peso y más.","tour.cal.title":"Calendario","tour.cal.body":"Ve los planes de la familia de un vistazo. Toca una fecha para repasar.","tour.home.title":"Por cada miembro","tour.home.body":"Toca a un miembro para abrir su página. Cambia desde la lista de arriba.","coach.cal.title":"Toca una fecha","coach.cal.body":"Los puntos de color son los planes de ese día. Toca para repasar.","coach.record.title":"Registra cuerpo y estado","coach.record.body":"Usa el ＋ de abajo a la derecha para registrar peso, estado, comidas y diario.","coach.manage.title":"Tareas y planes diarios","coach.manage.body":"Las tareas y planes van aquí. Toca «Hecho» para ver el tiempo desde la última vez.","tour.next":"Siguiente","tour.skip":"Omitir","common.ok":"OK",
     "sheet.rangeDays":"{d} días","sheet.vetTitle":"Resumen de registros de {name}","sheet.vetPeriod":"{from}–{to} ({days} días) / Creado {made}","sheet.basicInfo":"Información básica","sheet.species":"Especie","sheet.birthday":"Cumpleaños","sheet.microchip":"Microchip","sheet.weightTrend":"Evolución del peso","sheet.latest":"Último","sheet.periodChange":"Cambio en el periodo","sheet.vsDate":"(vs {date})","sheet.noWeightHint":"Sin registros (añade el peso en los registros diarios para ver la evolución)","sheet.toilet":"Baño","sheet.peeRate":"Tasa de pipí con éxito","sheet.poopRate":"Tasa de caca con éxito","sheet.rateVal":"{rate}% ({total} veces)","sheet.noRecord":"Sin registros","sheet.brAvgLabel":"Firmeza media de las heces","sheet.brAvgVal":"{avg}/7","sheet.symCond":"Síntomas y estado","sheet.energyAvgLabel":"Energía media","sheet.energyAvgVal":"{avg}/5 ({n} veces)","sheet.symCount":"{label} × {n}","sheet.medLeft":"Quedan {n} días","sheet.medCourse":"{taken}/{days} dosis ({from} – {to})","sheet.timeline":"Evolución","sheet.walkTime":"Hora del paseo","sheet.walkAsk":"Peticiones para el paseo","sheet.walkHour":"hacia las {h}:00","sheet.incompleteWarn":"Faltan datos por registrar (clínica, contactos, registros). Comparte también lo que sepas de palabra.","sheet.fromProfile":"del perfil","sheet.none":"Ninguno","sheet.careNext":"Próximas prevenciones/vacunas","sheet.noPlans":"Sin planes","sheet.recentCare":"Cuidados recientes","sheet.vetNote":"* Este resumen se basa en los registros del dueño y no es un diagnóstico.","sheet.vetFileSuffix":"Resumen de registros","sheet.handTitlePet":"Hoja de cuidados de {name}","sheet.handTitleOther":"Hoja de traspaso de {name}","sheet.handPeriodPet":"Para guardería / cuidador","sheet.handPeriodOther":"Para compartir en ausencia (estado de hoy)","sheet.madeOn":" / Creado {date}","sheet.aboutPet":"Sobre esta mascota","sheet.profile":"Perfil","sheet.name":"Nombre","sheet.meals":"Comidas","sheet.noFoodHint":"Sin registrar (compártelo de palabra)","sheet.todayChores":"Cuidados de hoy","sheet.noRecordsYet":"Aún no hay registros","sheet.todayCond":"Estado de hoy (condición)","sheet.hasRecord":"Registrado","sheet.allergyCaution":"A tener en cuenta (alergias y precauciones)","sheet.nothingSpecial":"Nada en particular","sheet.regularVet":"Veterinario habitual","sheet.regularDoctor":"Médico habitual","sheet.noHospHint":"Sin registrar (añade nombre, teléfono y dirección de la clínica en 'Información importante')","sheet.emergencyContact":"Contacto de emergencia","sheet.noContactHint":"Sin registrar (puedes añadirlo en 'Información importante')","sheet.familyNotes":"Notas de la familia","sheet.otherMemo":"Otras notas","sheet.handNotePet":"* Si algo no está claro o surge un problema, contacta con el dueño.","sheet.handNoteOther":"* Si algo no está claro o surge un problema, contacta con la familia.","sheet.careFileSuffix":"Hoja de cuidados","sheet.careLetterPet":"Gracias por cuidar de {name}.","sheet.careLetterOther":"Gracias por acompañar a {name}.","sheet.handoverFileSuffix":"Hoja de traspaso","sheet.appetiteColon":"Apetito: ","sheet.poopColon":"Heces: ","sheet.sleepH":"Sueño {n}h","rec.medSummary":"Resumen médico","sum.title":"Resumen médico de {name}","sum.fileSuffix":"Resumen médico","sum.firstThings":"Primero, tenga en cuenta","sum.shareBtn":"Compartir por enlace","sum.shareTitle":"Compartir este resumen por enlace","sum.shareDesc":"Quien tenga el enlace puede ver solo las secciones que elijas, sin iniciar sesión. El enlace deja de funcionar automáticamente al caducar, y puedes revocarlo cuando quieras.","sum.needSignIn":"Necesitas iniciar sesión para crear un enlace. Hazlo desde «Compartir en familia» en Ajustes.","sum.includeTitle":"Incluir en el enlace","sum.sec.basic":"Información básica","sum.sec.caution":"Avisos importantes (alergias, notas, medicación)","sum.sec.timeline":"Evolución","sum.sec.recent":"Registros recientes","sum.sec.contacts":"Clínica y contactos de emergencia","sum.secContactsHint":"Incluye números de teléfono","sum.includePhoto":"Incluir una foto","sum.expiry":"El enlace caduca en","sum.create":"Crear enlace","sum.copyLink":"Copiar enlace","sum.activeLinks":"Tus enlaces","sum.noLinks":"Aún no hay enlaces","sum.active":"Activo","sum.expired":"Caducado","sum.until":"Válido hasta el {date}","sum.revoke":"Revocar","sum.revoked":"Enlace revocado","sum.createFail":"No se pudo crear el enlace. Inténtalo de nuevo.","sum.needSection":"Elige al menos una sección para incluir.","sum.expiresLine":"Este enlace se puede ver hasta el {date}.","sum.expiredTitle":"Este enlace ha caducado","sum.expiredBody":"El enlace ya caducó, así que no se muestra el contenido. Si lo necesitas, pide un enlace nuevo a quien lo creó.","sum.invalidTitle":"Este enlace no está disponible","sum.invalidBody":"El enlace caducó, fue revocado o no existe, así que no se muestra el contenido.","sum.footNote":"* Este resumen se basa en los registros de la familia y no es un diagnóstico.","sum.footNotePerson":"* Este resumen se creó a partir de los registros de la familia y no es un diagnóstico.",
     "fam.title":"Registros de la familia","fam.by":"por {name}","fam.you":"Tú","fam.family":"Familia","fam.today":"Hoy","fam.yesterday":"Ayer","fam.actWalk":"Paseo","fam.actMeal":"Comida","fam.actToilet":"Baño","fam.actDiary":"Registro de estado","fam.actHealth":"Registro corporal","fam.actMed":"Medicina","fam.actDone":"Hecho: {title}","fam.actMemory":"Recuerdo","fam.actNursing":"Lactancia","fam.actMilestone":"Registro de crecimiento","fam.tookBy":"Hoy lo registró {name}",
+    "about.betaBuild":"Beta (versión {v})","about.dataTitle":"Datos y privacidad","about.introBody":"Los registros, planes y salud de toda la familia, y la tranquilidad para emergencias (carteles de extravío y tarjetas de emergencia), en un solo lugar.","about.noticeBodyA":"Los registros y las guías son ","about.noticeBodyB":"solo orientativos","about.noticeBodyC":". Si tienes dudas, consulta a tu veterinario, médico o especialista habitual.","about.noticeTitle":"A tener en cuenta","about.shareTitle":"Compartir con la familia","about.termsBody":"Estamos preparando los términos de uso, la política de privacidad y el contacto. Los anunciaremos aquí pronto.","about.termsTitle":"Términos y contacto","about.version":"Versión","album.moveNone":"Aún no hay a quién moverlo. Primero registra a un familiar o mascota.","album.moveTitle":"¿A quién lo mueves?","belong.scopeDow":"Día de semana","belong.scopeOccasion":"Ocasión","cal.addTitle":"Añadir al calendario","cal.apple":"Calendario de Apple (.ics)","cal.appleAll":"Exportar a la app de calendario (.ics)","cal.bdayLabel":"Cumpleaños de {name}","cal.exportAllSub":"Exporta todos los planes próximos a la vez","cal.google":"Google Calendar","cal.gotchaLabel":"{name} · Día de llegada","cal.iosNoteA":"💡 Para añadirlo al Calendario de Apple en iPhone:","cal.iosNoteB":"Abre este sitio directamente por URL en Safari","cal.iosNoteC":" → toca 📅 → descarga el .ics → ábrelo en Calendario","cal.myBday":"Mi cumpleaños","calc.applyN":"{n}× {g}g","calc.applyNew":"Registra una comida nueva con estas cantidades.","calc.applyPerLabel":"Aplicar una ración a una comida","calc.applyRegNamed":"Ajusta las cantidades de la comida registrada «{name}».","calc.applyRegPlain":"Ajusta las cantidades de la comida registrada.","calc.bcsGuideClose":"Cerrar la guía de BCS","calc.bcsGuideOpen":"Ver la guía de BCS de {sp}","calc.bcsIdeal":"Ideal: {v}","calc.bcsLabel":"BCS (condición corporal):","calc.bw":"Peso actual (BW)","calc.dailyFood":"Comida por día","calc.der":"Calorías necesarias al día (DER)","calc.factorSuffix":"(factor {f})","calc.idealWeight":"Peso ideal","calc.meDesc":"kcal por 100 g de comida (según el paquete). También puedes calcular sin esto.","calc.meGuideClose":"Cerrar la guía de ME","calc.meGuideOpen":"Ver valores orientativos de ME de {sp}","calc.meHint":"Introduce ME para calcular también la cantidad diaria (g).","calc.meLabel":"Energía metabolizable (ME)","calc.meNote":"* Es una orientación. Revisa el valor «por 100 g» del paquete.","calc.needInput":"Introduce el peso y el BCS para calcular.","calc.species":"Especie","calc.splitN":"{n}×: {g}g","calc.stage":"Etapa de vida y actividad","calc.stageSelect":"Selecciona","calc.warnRefB":"Valores orientativos","calc.warnRefRest":". Evita cambios bruscos en la cantidad de comida; consúltalo con tu veterinario habitual.","common.abort":"Detener","common.back":"Volver","day.allRecords":"Todos los registros del {date}","day.hospitalChip":"Clínica","day.moreCount":" y {n} más","day.recordFallback":"Registro","day.sleepChip":"Sueño {h} h","day.thisRecord":"Este registro","day.todaySuffix":" (hoy)","day.walkChip":"Paseo","drawer.disaster":"Preparación ante desastres","drawer.emergency":"Preparación nocturna y de emergencia","drawer.expense":"Gastos","drawer.foot":"LOALIFE Beta","drawer.help":"Cómo usar y funciones","drawer.profile":"Perfiles de la familia","drawer.share":"Compartir con la familia","drawer.title":"Menú","drawer.toxic":"Lista de ingestión accidental y tóxicos","emoji.none":"Sin emoji","emoji.pickTitle":"Elige un emoji","guide.g1":"Cada día","guide.g2":"Salud y planes","guide.g3":"Por si acaso","guide.i.body.d":"Sigue los cambios de peso en un gráfico. Añade tus propios valores numéricos.","guide.i.body.t":"Registros del cuerpo","guide.i.cal.d":"Ve los planes de todos por colores.","guide.i.cal.t":"Calendario","guide.i.care.d":"Que no se te pasen vacunas, visitas ni medicinas.","guide.i.care.t":"Cuidado, planes y medicación","guide.i.chore.d":"Toca cuando lo hagas. Los días desde la última vez, en color.","guide.i.chore.t":"Cuidado diario","guide.i.diary.d":"Energía, apetito, caca y fotos, tal cual.","guide.i.diary.t":"Notas de hoy","guide.i.docs.d":"Guarda fotos de tarjetas de seguro y certificados solo en este dispositivo.","guide.i.docs.t":"Documentos","guide.i.expense.d":"Gastos del veterinario y de comida: cuánto costó cada cosa.","guide.i.expense.t":"Gastos","guide.i.home.d":"Las tareas de hoy y lo que podrías olvidar, junto.","guide.i.home.t":"Inicio","guide.i.info.d":"Tu veterinario habitual y contactos de emergencia, a mano.","guide.i.info.t":"Información importante","guide.i.lost.d":"Crea el cartel de extravío desde el modo Perdido de la tarjeta de tu mascota. La tarjeta de emergencia también sale de sus datos.","guide.i.lost.t":"Cartel de extravío y tarjeta de emergencia","guide.i.members.d":"Mascotas, familia y tú, con foto o emoji.","guide.i.members.t":"Miembros","guide.i.memory.d":"Sigue su crecimiento con una foto especial y etiquetas.","guide.i.memory.t":"Recuerdos y primeras veces","guide.i.notices.d":"Los planes y plazos importantes aparecen en Inicio al abrir la app.","guide.i.notices.t":"Avisos","guide.i.share.d":"Comparte registros con la familia con un código. También hay uso compartido por tiempo limitado para un cuidador.","guide.i.share.t":"Compartir con la familia","guide.i.stock.d":"Aviso en Inicio antes de que se acabe. También las cosas por día de semana.","guide.i.stock.t":"Stock y pertenencias","guide.lead":"El día a día de tu familia y la tranquilidad para emergencias, en un solo lugar.","guide.title":"Cómo usar LOALIFE","health.goalLeft":"Faltan {v}{unit} para la meta","health.goalOk":"¡En la meta! Sigue así","health.goalOver":"{v}{unit} por encima de la meta","health.goalOverNote":"(cuida la comida y el ejercicio)","home.a2hsText":"Añádelo a la pantalla de inicio para cuidar mejor tus datos","home.annivBday":" · Cumpleaños","home.annivGotcha":" · Día de llegada","home.annivToday":"¡Hoy!","home.annivYearsAge":"¡Cumple {y}!","home.annivYearsGotcha":"¡{y} años juntos!","home.bdayAgeSuffix":" (cumple {y})","home.bdayCheerSub":"¡Felicidades! Que sea un día precioso.","home.bdayCheerTitle":"Hoy es el cumpleaños de {names}","home.later":"Después","home.registerCta":"Registrar a una mascota o familiar","home.welcome":"Bienvenido/a","home.welcomeBodyA":"El día a día de tu familia y la tranquilidad para emergencias, en un solo lugar.","home.welcomeBodyB":"Empieza registrando a una mascota o un familiar.","list.doneSection":"Hecho ({n})","list.loading":"Cargando…","list.noUpcoming":"No hay planes próximos.","me.calColor":"Color del calendario","me.saveClose":"Guardar y cerrar","me.title":"Tu icono y nombre","member.kindPersonBtn":"👤 Familia (persona)","member.kindPetBtn":"🐾 Mascota","member.registerBtn":"Registrar","note.emptyHint":"Unas palabras sobre hoy, o un «gracias».","note.localFoot":"* Un cuaderno familiar guardado en este dispositivo.","note.saveBtn":"Guardar","note.title":"Notas de la familia","notices.empty1":"Hoy no hay avisos.","notices.empty2":"Parece un día tranquilo.","notices.foot":"Te contamos en voz baja lo que notamos del día a día de tu familia.","ntc.actCheck":"Revisar","ntc.actLog":"Registrar","ntc.actMemory":"Ver el recuerdo","ntc.actToilet":"Ver registros de baño","ntc.actView":"Ver registros","ntc.actWalks":"Ver paseos","ntc.actWeight":"Ver peso y comida","ntc.memPhoto":"Una foto de ese día","ntc.poopBody":"Si dura varios días, considéralo motivo de visita. Revisa también la comida y el agua","ntc.poopTitle":"La caca de {name} ha estado blanda estos días","ntc.quietBodyPerson":"¿Cómo ha estado? Aunque sea una nota corta, ayuda a recordarlo después","ntc.quietBodyPet":"¿Estará bien? Aunque sea una nota corta, ayuda a recordarlo después","ntc.quietTitle":"Sin registros de {name} desde hace {gap} días","ntc.seniorBody":"Aumentar un poco los controles y cuidar articulaciones, dientes y peso da tranquilidad","ntc.seniorTitle":"{name} está en su etapa mayor","ntc.sleepShortBody":"El sueño reciente de {name} parece más corto que antes","ntc.sleepShortTitle":"Los registros de sueño han sido más cortos últimamente","ntc.stockBody":"{name} · momento de reponer","ntc.stockOne":"A «{title}» le queda 1 uso","ntc.stockOut":"«{title}» se acabó","ntc.tasksBody":"Los planes y entregas de {name} se están acumulando","ntc.tasksTitle":"{n} tareas sin terminar","ntc.tipAutumnBody":"Cepillar un poco más facilita la muda","ntc.tipAutumnTitle":"Otoño: época de muda","ntc.tipColdBody":"Abriga sobre todo a los mayores. Un paseo corto está bien","ntc.tipColdTitle":"Un día de frío","ntc.tipHeatBody":"Pasea en las horas frescas. Cuidado con las almohadillas y el golpe de calor","ntc.tipHeatTitle":"Hoy hará calor","ntc.tipRainBody":"¿Qué tal juegos de olfato o escondite en casa?","ntc.tipRainTitle":"Hoy llueve","ntc.tipSpringBody":"Con el calor se activan. Revisa el momento de la prevención","ntc.tipSpringTitle":"Primavera: ojo con pulgas y garrapatas","ntc.tipSummerBody":"Evita paseos al mediodía y dejarlo en el auto. Agua con frecuencia","ntc.tipSummerTitle":"Verano: cuidado con el golpe de calor","ntc.tipWinterBody":"Cuida las almohadillas secas y prepara una cama calentita","ntc.tipWinterTitle":"Invierno: sequedad y frío","ntc.todoOverdue":"«{title}» ya pasó su fecha","ntc.todoSoon":"Pronto: «{title}» (en {d} días)","ntc.todoToday":"Hoy es el día de «{title}»","ntc.walkShortBody":"Los paseos recientes de {name} parecen más cortos que antes","ntc.walkShortTitle":"Los paseos han sido un poco más cortos últimamente","ntc.weightBody":"{from} kg → {to} kg. Quizá sea momento de revisar la comida","ntc.weightDownTitle":"{name} ha bajado de peso","ntc.weightUpTitle":"{name} ha subido de peso","nurse.addRecord":"+ Registrar","nurse.breastItem":"🤱 Pecho {side} · {dur}","nurse.left":"Izquierdo","nurse.milk":"🍼 Fórmula","nurse.milkItem":"🍼 Fórmula {ml} ml","nurse.nowLeft":"◀ Amamantando (izquierdo)","nurse.nowRight":"Amamantando (derecho) ▶","nurse.recordName":"Registro de lactancia","nurse.right":"Derecho","nurse.startLeft":"◀ Pecho izquierdo","nurse.startRight":"Pecho derecho ▶","nurse.stopLog":"Terminar y registrar","nurse.todayCount":"Hoy {n} veces","prep.tomorrowTitle":"Preparación para mañana ({dow})","prof.promptBtn":"Configurar el perfil","prof.promptTitle":"¿Configuras este perfil?","qa.addBtn":"Añadir","qa.lastTime":"Última vez: {date}","routine.addTitle":"Añadir rutina","routine.editTitle":"Editar rutina","routine.remindLabel":"Recordar","sc.forever":"Siempre en nuestro corazón","sc.overdue":"{title} está vencido","sc.supplyLow":"A {title} le queda poco","sc.supplyOut":"{title} puede haberse acabado","sc.together":"{d} días juntos","share.createBtn":"Crear espacio familiar","share.createDesc":"Mueve los perfiles y registros de los miembros marcados como «Compartido» al espacio familiar. Las fotos se mueven en copias reducidas para compartir.","share.createNew":"+ Crear un nuevo espacio familiar","share.creating":"Creando…","share.emailNote":"* La cuenta de correo aquí es solo para LOALIFE (distinta de tu cuenta de Google).","share.emailTab":"Correo","share.fbNeeded1":"Para compartir con la familia hace falta configurar Firebase.","share.fbNeeded2":"Introduce los datos de tu proyecto de Firebase en build-src/firebase.js.","share.googleSignIn":"Entrar con Google","share.inviteCodeLabel":"Código de invitación","share.joinBtn":"Unirme","share.joinWithCode":"Unirme con un código","share.joining":"Uniéndome…","share.memberChoiceDesc":"Elige «Compartido / Solo yo» para cada miembro en su pantalla de edición de perfil.","share.memberCount":"Miembros de la familia: {n}","share.signOut":"Cerrar sesión","share.signedInAs":"Sesión iniciada como {name}","share.signinDesc":"Inicia sesión para crear un espacio familiar y sincronizar con tu familia los registros de los miembros que compartas.","share.step1":"1. Inicia sesión","share.step2":"2. Crea un espacio familiar","share.step3":"3. Envía el código a tu familia","share.stepsTitle":"Solo 3 pasos:","share.title":"Compartir con la familia","supply.addTitle":"Añadir stock","supply.cycle":"Ciclo de consumo","supply.daysN":"{d} días","supply.editTitle":"Editar stock","supply.lastBought":"Última compra","toast.certSaved":"Certificado guardado","toilet.avgBristol":"Firmeza media de la caca","toilet.brCountSuffix":" · {n} veces","tox.badgeCond":"○ Con condiciones","tox.badgeSafe":"○ Seguro","tox.cat":"Gato","tox.consultBtn":"Consultar al veterinario","tox.dog":"Perro","tox.emgFormSub":"Esto no es un diagnóstico. Lleva estas notas a un veterinario o a urgencias nocturnas.","tox.emgFormTitle":"🚑 Con calma: revisa estas 5 cosas","tox.emgSub":"Con calma, revisa en orden","tox.emgTitle":"¿Acaba de comer algo?","tox.foot":"* Esto no es un diagnóstico. El riesgo depende de la cantidad, el peso, la parte ingerida, el tiempo y cada animal. Si dudas, consulta a un veterinario o a urgencias nocturnas.","tox.notFound":"Sin resultados.","tox.notFoundCare":"Sin resultados. Aunque no estés seguro, si pudo haberlo comido, consulta a un veterinario.","tox.notFoundQ":"«{q}» no estaba en la lista. Que un alimento no esté en la lista no significa que sea seguro. Si lo comió, anota la cantidad y cómo está, y consulta a un veterinario.","tox.phAmount":"Ej.: un trozo / 1 pastilla / no sé","tox.phSymptom":"Ej.: bien / vómitos / tambaleo / convulsiones","tox.phWeight":"Ej.: 8 kg","tox.phWhat":"Ej.: chocolate, cebolla, medicina","tox.phWhen":"Ej.: hace 10 min / recién / no sé","tox.qAmount":"¿Cuánto?","tox.qSymptom":"¿Tiene síntomas ahora?","tox.qWeight":"Peso del perro","tox.qWhat":"¿Qué comió?","tox.qWhen":"¿Cuándo?","tox.registeredName":"la mascota registrada","tox.risk.avoid":"Evitar","tox.risk.caution":"Cuidado","tox.risk.emergency":"Emergencia","tox.risk.high":"Riesgo alto","tox.safeFoot":"Con cualquier alimento, la primera vez empieza con poco y observa. Sin condimentos, como regla. Si tiene alguna enfermedad o dieta terapéutica, consúltalo antes con tu veterinario.","tox.safeHeadCond":"○ {name} puede comerlo con condiciones","tox.safeHeadSafe":"○ {name} puede comerlo sin problema","tox.searchPh":"Ej.: brotes / chocolate / cebolla / uvas","tox.secDont":"Lo que NO hay que hacer","tox.secOnset":"Tiempo típico de aparición","tox.secSymptoms":"Síntomas","tox.secUrgent":"Ve al veterinario enseguida si…","tox.secVet":"Qué decir al veterinario","tox.srcBody1":"Esta lista se elaboró a partir de fuentes públicas de toxicología veterinaria, como el Centro de Control de Envenenamiento de la ASPCA, Pet Poison Helpline y el Manual Veterinario Merck.","tox.srcBody2Bold":"se omiten a propósito","tox.srcBody2Post":".","tox.srcBody2Pre":"Las cantidades tóxicas, letales o seguras varían mucho según la cantidad, el peso y cada animal, y podrían usarse mal, así que ","tox.srcBody3Bold":"no es un diagnóstico","tox.srcBody3Post":". Confirma siempre las decisiones reales con un veterinario o especialista en tóxicos. Nada que no se pudo verificar se afirma como hecho.","tox.srcBody3Pre":"La lista es una precaución general, ","tox.srcLine":"{src} / última revisión {date}","tox.srcReviewed":"Última revisión: {date}","tox.srcTitle":"Sobre las fuentes","tox.tabAll":"Perros y gatos","tox.title":"Ingestión y tóxicos","tox.varies":"El riesgo varía según {list}.","tox.variesWeight":" (peso de {name}: {w})","tox.warn1":"Aunque ahora no tenga síntomas, pueden aparecer horas o días después. Si algo cambia, contacta enseguida a un veterinario. Nunca lo hagas vomitar en casa.","tox.warn2":"Aunque ahora no tenga síntomas, pueden aparecer horas o días después. No te quedes solo observando y nunca lo hagas vomitar. Si algo cambia, contacta enseguida a un veterinario.","vis.onlyMeBtn":"🔒 Solo yo","vis.showFamily":"👨‍👩‍👧 Mostrar a la familia","vis.titlePrivate":"Solo lo ves tú","vis.titleShared":"Se muestra a la familia","walk.hourTitle":"{h}:00","wn.comingBody1":"Ya publicamos todas las funciones que planeamos 🎉","wn.comingBody2":"¿Hay alguna función que te gustaría? ¡Cuéntanos!","wn.comingTitle":"Próximamente","wn.recentTitle":"Actualizaciones recientes","wn.viewGuide":"Ver cómo se usa y las funciones",
+    "common.longPressReorder":"Mantén pulsado para reordenar","health.glucosePrefix":"Glucosa ","me.nameLabel":"Nombre",
   },
   zh:{
     "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
@@ -3656,7 +3662,7 @@ const MESSAGES={
     "review.title":"本月回顾","review.daysLabel":"健康记录（天）","review.sleepLabel":"平均睡眠（h）","review.movesLabel":"运动记录","review.logsLabel":"任务记录","review.vsPrev":"较上月：{parts}","review.openTasks":"未完成任务：{n}","review.note":"※ 只是把记录的事实罗列出来，不做好坏判断。","review.pDays":"记录 {v}天","review.pSleep":"睡眠 {v}h","review.pLogs":"任务 {v}",
     "album.title":"回忆","album.cancelSel":"取消","album.select":"选择","album.loading":"加载中…","album.bulkAdd":"批量添加照片（按拍摄日期自动归类）","album.selHint":"点按照片进行选择（最多{n}张）→ 用下方的「移到其他」把它们一起移到其他家庭成员。","album.empty":"用一张照片和一句话留住它","album.selCount":"已选{n}张","album.moveBtn":"移到其他","album.moveDesc":"把选中的{n}个回忆一起移动。",
     "points.title":"帮忙积分","points.total":"合计{n}分","points.week":" （本周{n}）","points.custom":"自定义添加（+1分）",
-    "allow.title":"零花钱账本","allow.balance":"剩余","allow.memoPh":"备注（零食等 · 可选）","allowdir.in":"收入","allowdir.out":"支出","allowdir.save":"存起",
+    "allow.title":"零花钱账本","allow.balance":"剩余","allow.memoPh":"备注（可选，如 零食等）","allowdir.in":"收入","allowdir.out":"支出","allowdir.save":"存起",
     "meds.namePh":"药物或保健品名称（如 抗生素、维生素）",
     "belong.title":"物品（按星期）","belong.empty":"点按右下角的 ＋ 来添加物品",
     "foodreg.title":"食物登记","foodreg.desc":"登记常用的食物。","foodreg.addFood":"登记食物/用餐","foodreg.calc":"计算每日食量",
@@ -3671,7 +3677,7 @@ const MESSAGES={
     "routine.notToday":"今天没有要做的日常事项",
     "sitter.title":"临时照护邀请（限时）","sitter.desc":"邀请家人以外的人在限定时间内、限定成员、限定权限内查看。到期后将自动无法访问。","sitter.needMember":"请至少选择一位成员","sitter.createFail":"无法创建邀请，请重试。","sitter.createBtn":"创建照护邀请码","sitter.codeLabel":"照护邀请码","sitter.noSharedMembers":"还没有设置为“共享”的成员。请在成员档案编辑中设置共享。","sitter.viewOnly":"仅查看","sitter.canWrite":"可记录","sitter.days":"{d}天","sitter.untilLine":"至{date}","sitter.revokeBtn":"撤销","sitter.activeTitle":"参与中的照护人","sitter.modeFamily":"作为家人加入","sitter.modeSitter":"作为照护人加入","sitter.joinAbout":"请输入照护邀请码。在有效期内可以查看所选成员的记录（有权限时也可以记录）。","sitter.inviteMsg":"这是 LOALIFE 的临时照护邀请（限时共享）。\n{link}\n邀请码：{code}","sitter.nowTitle":"正在以照护人身份参与","sitter.leaveBtn":"退出照护共享","sitter.banner":"照护共享中（至{date}）","share.inviteExpiry":"邀请码有效期至{date}","share.participantsTitle":"参与者","share.noName":"（未填写姓名）","share.you":"你","share.removeBtn":"移除","share.accountLine":"你的账号：{email}","share.removeFail":"无法移除，请重试。","note.syncedFoot":"※ 将与家庭空间的所有成员共享。","toast.sitterJoined":"已作为照护人加入","toast.sitterExpired":"照护期限已到，共享已结束","toast.sitterLeft":"已退出照护共享","toast.sitterRevoked":"已撤销照护邀请","toast.sitterRemoved":"已移除照护人","toast.participantRemoved":"已移除参与者","toast.noteSyncFail":"无法共享笔记，请检查网络连接。",
     "chart.targetBand":"带状区域为目标体重的±5%","chart.growthNote":"※带状区域是按月龄的体重参考范围（不是诊断）","chart.overlay":"叠加显示","metric.title":"自定义数值项（可添加名称和单位）","metric.namePh":"名称（例：腹围）","metric.unitPh":"单位（例：cm）","metric.add":"添加项目","docs.title":"文件","docs.addTitle":"添加文件","docs.addFirst":"存放文件","docs.empty":"可以把保险证和证明书的照片存放在这里。","docs.deviceOnlyNote":"文件只保存在这台设备中，不会发送到家庭共享。","docs.examplesPerson":"例：健康保险证、资格确认书、母子健康手册、疫苗接种记录、药历手册、体检结果、护照","docs.examplesPet":"例：疫苗证明、牌照/登记证、检查结果、宠物保险证、血统书","docs.nameLabel":"名称","docs.namePhPerson":"例：健康保险证","docs.namePhPet":"例：疫苗证明","docs.dateLabel":"日期","docs.expiryLabel":"有效期（可选）","docs.noteLabel":"备注（可选）","docs.notePh":"例：就诊时出示","docs.saveBtn":"存放文件","docs.expiry":"有效期","docs.expired":"已过期","docs.expSoon":"还有{d}天到期","docs.delLabel":"要删除「{title}」吗？","dockind.insurance":"保险证","dockind.maternal":"母子手册","dockind.vaccine":"疫苗接种","dockind.exam":"体检・检查","dockind.prescription":"药历手册","dockind.passport":"护照","dockind.mynumber":"个人编号卡","dockind.contract":"合同","dockind.petlicense":"牌照・登记","dockind.pedigree":"血统书","dockind.other":"其他","toast.metricNameNeeded":"请输入项目名称","toast.metricMax":"最多6个项目","toast.metricAdded":"已添加项目","toast.docSaved":"文件已存放","toast.docDeleted":"文件已删除",
-    "diary.quickHealthy":"今天也很好（一键完成）","diary.hint":"只在想详细记录时（可选）。","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.moreSymptoms":"更多症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态","diary.exercise":"运动","diary.minSuffix":"分钟","diary.minPh":"分钟","diary.sleepCta":"记录睡眠","diary.exNamePh":"运动名称（如：CrossFit）","diary.routineTag":"日常任务",
+    "diary.quickHealthy":"今天也很好（一键完成）","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.moreSymptoms":"更多症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态","diary.exercise":"运动","diary.minSuffix":"分钟","diary.minPh":"分钟","diary.sleepCta":"记录睡眠","diary.exNamePh":"运动名称（如：CrossFit）","diary.routineTag":"日常任务",
     "feed.addTitle":"用餐记录","feed.servingLabel":"每份分量","feed.servingPh":"如 100","feed.hintSet":"1份＝{g}g，会计入总量（只需设置一次）","feed.hintUnset":"不设置也可以记录（设置后会计入总量）","feed.amount":"分量","feed.previewPre":"＝ 约 ","feed.previewPost":"（{n}份）","feed.saveBtn":"记录用餐","feed.today":"今天合计 约{g}g（{n}次）",
     "sched.titlePet":"添加照护或计划","sched.titleSelf":"添加健康或照护","sched.titleMe":"添加计划或待办","sched.frequent":"常用","sched.contentPh":"输入内容…","sched.addLabelPh":"添加{label}…","sched.content":"内容","sched.dateOptMe":"日期/期限","sched.time":"时间","sched.dateHint":"填入日期/期限后，会显示在当天的日历上。","sched.certPhoto":"证明/照片","sched.changePhoto":"更换照片","sched.attachPhoto":"＋ 附加照片","sched.notify":"通知","sched.quickAdd":"一键添加（复制上次）","sched.lastDate":"上次 {date}","sched.dateDone":"实施日","sched.dateDate":"日期","sched.dateVisit":"就诊日","sched.dateDue":"期限","care.fallback":"照护","filter.all":"全部",
     "toilet.hint":"点按即可记录。","toilet.pee":"小便","toilet.recordBtn":"记录","toilet.success":"✓ 成功","toilet.fail":"✕ 失败","toilet.hardness":"大便硬度（7级）","toilet.guide":"硬度参考","toilet.bristolNote":"4是健康的。如果1或7持续，请咨询兽医。","toilet.alertBody":"需要注意：消化道异物、肠梗阻、中毒","toilet.alertLink":"查看危险物清单","toilet.ideal":"（理想）","toilet.disclaimer":"就诊的参考（并非诊断）。","toilet.trendLoose":"稀便持续中。如果拖久了，建议就诊。","toilet.trendHard":"硬便持续中。注意补水和饮食，担心时请就诊。",
@@ -3686,6 +3692,8 @@ const MESSAGES={
     "tour.headseg.title":"在「日常」和「管理」之间切换","tour.headseg.body":"用上方标签切换。日常＝当天记录，管理＝照护与计划。","tour.fab.title":"从这里记录","tour.fab.body":"用右下角的 ＋ 记录计划、照护、用餐、体重等。","tour.cal.title":"日历","tour.cal.body":"一览家人的计划。点按日期即可回顾。","tour.home.title":"按家庭成员","tour.home.body":"点按成员打开其页面，也可从上方列表切换。","coach.cal.title":"点按日期","coach.cal.body":"彩色圆点是当天的计划。点按即可回顾。","coach.record.title":"记录身体与状态","coach.record.body":"用右下角的 ＋ 记录体重、状态、用餐和日记。","coach.manage.title":"每日照料与计划","coach.manage.body":"待办和计划都在这里。点按「完成」即可看出距上次的时间。","tour.next":"下一步","tour.skip":"跳过","common.ok":"OK",
     "sheet.rangeDays":"{d}天","sheet.vetTitle":"{name} 的记录摘要","sheet.vetPeriod":"{from}～{to}（共{days}天）／制作日 {made}","sheet.basicInfo":"基本信息","sheet.species":"种类","sheet.birthday":"生日","sheet.microchip":"芯片","sheet.weightTrend":"体重变化","sheet.latest":"最近","sheet.periodChange":"期间增减","sheet.vsDate":"（与{date}相比）","sheet.noWeightHint":"无记录（在每日记录中填入体重即可查看变化）","sheet.toilet":"如厕","sheet.peeRate":"小便成功率","sheet.poopRate":"大便成功率","sheet.rateVal":"{rate}%（{total}次）","sheet.noRecord":"无记录","sheet.brAvgLabel":"大便硬度平均","sheet.brAvgVal":"{avg}／7","sheet.symCond":"症状・状态","sheet.energyAvgLabel":"精神平均","sheet.energyAvgVal":"{avg}／5（{n}次）","sheet.symCount":"{label} × {n}次","sheet.medLeft":"剩余{n}天份","sheet.medCourse":"{taken}/{days}次（{from}～{to}）","sheet.timeline":"经过","sheet.walkTime":"散步时间","sheet.walkAsk":"散步时的请求","sheet.walkHour":"{h}点左右","sheet.incompleteWarn":"有未登记的项目（医院、联系方式、记录）。请也口头告知所知道的内容。","sheet.fromProfile":"来自档案","sheet.none":"无","sheet.careNext":"预防・疫苗等下次预定","sheet.noPlans":"无预定","sheet.recentCare":"最近的照顾","sheet.vetNote":"※本摘要基于主人的记录，并非诊断。","sheet.vetFileSuffix":"记录摘要","sheet.handTitlePet":"{name} 的照顾单","sheet.handTitleOther":"{name} 的交接单","sheet.handPeriodPet":"寄养・看护交接用","sheet.handPeriodOther":"外出共享用（今日状况）","sheet.madeOn":"／制作日 {date}","sheet.aboutPet":"关于这个孩子","sheet.profile":"档案","sheet.name":"名字","sheet.meals":"饮食","sheet.noFoodHint":"未登记（请口头告知）","sheet.todayChores":"今日照顾","sheet.noRecordsYet":"还没有记录","sheet.todayCond":"今日状况（身体）","sheet.hasRecord":"有记录","sheet.allergyCaution":"注意事项（过敏・禁忌）","sheet.nothingSpecial":"无特别","sheet.regularVet":"常去的动物医院","sheet.regularDoctor":"常去的医院","sheet.noHospHint":"未登记（可在“重要信息”中登记医院名称、电话、地址）","sheet.emergencyContact":"紧急联系人","sheet.noContactHint":"未登记（可在“重要信息”中登记）","sheet.familyNotes":"家人的留言","sheet.otherMemo":"其他备注","sheet.handNotePet":"※如有不清楚或为难之处，请联系主人。","sheet.handNoteOther":"※如有不清楚或为难之处，请联系家人。","sheet.careFileSuffix":"照顾单","sheet.careLetterPet":"把{name}拜托给您了，请多关照。","sheet.careLetterOther":"{name}就拜托您多关照了。","sheet.handoverFileSuffix":"交接单","sheet.appetiteColon":"食欲：","sheet.poopColon":"排便：","sheet.sleepH":"睡眠{n}h","rec.medSummary":"医院摘要","sum.title":"{name} 的医院摘要","sum.fileSuffix":"医院摘要","sum.firstThings":"首先请注意","sum.shareBtn":"用链接分享","sum.shareTitle":"用链接分享这份摘要","sum.shareDesc":"拥有链接的人无需登录，只能查看你选择的项目。超过有效期后将自动无法查看。你也可以随时撤销链接。","sum.needSignIn":"创建链接需要先登录。请在设置中的“家人共享”里登录。","sum.includeTitle":"链接中包含的项目","sum.sec.basic":"基本信息","sum.sec.caution":"注意事项（过敏・禁忌・用药中）","sum.sec.timeline":"经过","sum.sec.recent":"最近记录","sum.sec.contacts":"常去医院・紧急联系人","sum.secContactsHint":"包含电话号码","sum.includePhoto":"包含照片","sum.expiry":"有效期","sum.create":"创建链接","sum.copyLink":"复制链接","sum.activeLinks":"已创建的链接","sum.noLinks":"还没有链接","sum.active":"有效","sum.expired":"已过期","sum.until":"有效至{date}","sum.revoke":"撤销","sum.revoked":"链接已撤销","sum.createFail":"无法创建链接，请重试。","sum.needSection":"请至少选择一个要包含的项目。","sum.expiresLine":"此链接可查看至{date}。","sum.expiredTitle":"此链接已过期","sum.expiredBody":"链接已超过有效期，内容不予显示。如有需要，请向创建链接的人索取新链接。","sum.invalidTitle":"此链接无法使用","sum.invalidBody":"链接已过期、已被撤销或不存在，内容不予显示。","sum.footNote":"※本摘要基于主人・家人的记录，并非诊断。","sum.footNotePerson":"※本摘要根据家人的记录创建，并非诊断。",
     "fam.title":"家人记录","fam.by":"{name}记录","fam.you":"你","fam.family":"家人","fam.today":"今天","fam.yesterday":"昨天","fam.actWalk":"散步","fam.actMeal":"用餐","fam.actToilet":"如厕","fam.actDiary":"状态记录","fam.actHealth":"身体记录","fam.actMed":"服药","fam.actDone":"完成了：{title}","fam.actMemory":"回忆","fam.actNursing":"喂奶","fam.actMilestone":"成长记录","fam.tookBy":"今天由{name}记录",
+    "about.betaBuild":"β版（构建 {v}）","about.dataTitle":"数据与隐私","about.introBody":"把全家人的日常记录、日程和健康，以及以防万一的准备（走失海报、紧急卡），都放在一起。","about.noticeBodyA":"这里的记录和参考值","about.noticeBodyB":"仅供参考","about.noticeBodyC":"。有疑问时，请咨询常去的兽医、医生或专业机构。","about.noticeTitle":"使用须知","about.shareTitle":"与家人共享","about.termsBody":"使用条款、隐私政策和联系方式正在准备中，完成后会在这里公布。","about.termsTitle":"条款与联系","about.version":"版本","album.moveNone":"还没有可移动的对象。请先添加家人或宠物。","album.moveTitle":"移动到谁那里？","belong.scopeDow":"星期","belong.scopeOccasion":"场合","cal.addTitle":"添加到日历","cal.apple":"Apple 日历（.ics）","cal.appleAll":"导出到日历应用（.ics）","cal.bdayLabel":"{name}的生日","cal.exportAllSub":"一次性导出接下来的所有日程","cal.google":"Google 日历","cal.gotchaLabel":"{name} 到家纪念日","cal.iosNoteA":"💡 在 iPhone 上添加到 Apple 日历的方法：","cal.iosNoteB":"在 Safari 中直接用网址打开本站","cal.iosNoteC":" → 点 📅 → 下载 .ics → 在日历中打开","cal.myBday":"我的生日","calc.applyN":"{n}次 {g}g","calc.applyNew":"用这个分量登记一份新食物。","calc.applyPerLabel":"把一次的量应用到食物","calc.applyRegNamed":"设置已登记食物「{name}」的量和次数。","calc.applyRegPlain":"设置已登记食物的量和次数。","calc.bcsGuideClose":"关闭 BCS 说明","calc.bcsGuideOpen":"查看{sp}的 BCS 说明","calc.bcsIdeal":"理想值 {v}","calc.bcsLabel":"BCS（体况）：","calc.bw":"当前体重（BW）","calc.dailyFood":"每天的食物量","calc.der":"每天需要的热量（DER）","calc.factorSuffix":"（系数 {f}）","calc.idealWeight":"理想体重","calc.meDesc":"每 100g 食物的 kcal（包装上标注）。不填也可以计算。","calc.meGuideClose":"关闭 ME 参考","calc.meGuideOpen":"查看{sp}的 ME 参考值","calc.meHint":"填入 ME 还能算出每天的食物量（g）。","calc.meLabel":"食物的代谢能（ME）","calc.meNote":"※ 仅为参考。请以包装上的「每 100g」数值为准。","calc.needInput":"输入体重和 BCS 后即可计算。","calc.species":"动物种类","calc.splitN":"{n}次：{g}g","calc.stage":"生命阶段与活动量","calc.stageSelect":"请选择","calc.warnRefB":"参考值","calc.warnRefRest":"。请避免突然改变食量，建议咨询常去的兽医。","common.abort":"取消操作","common.back":"返回","day.allRecords":"{date}的全部记录","day.hospitalChip":"医院","day.moreCount":"・还有{n}条","day.recordFallback":"记录","day.sleepChip":"睡眠{h}h","day.thisRecord":"这条记录","day.todaySuffix":"（今天）","day.walkChip":"散步","drawer.disaster":"防灾与避难准备","drawer.emergency":"夜间与急救准备","drawer.expense":"支出与费用","drawer.foot":"LOALIFE β版","drawer.help":"使用方法与功能介绍","drawer.profile":"家人资料","drawer.share":"与家人共享","drawer.title":"菜单","drawer.toxic":"误食·中毒 危险物清单","emoji.none":"无表情","emoji.pickTitle":"选择表情","guide.g1":"日常","guide.g2":"健康与日程管理","guide.g3":"以防万一","guide.i.body.d":"用图表查看体重变化。还可以添加自己想记的数值项目。","guide.i.body.t":"身体记录","guide.i.cal.d":"用颜色区分查看全家人的日程。","guide.i.cal.t":"日历","guide.i.care.d":"疫苗、就诊、吃药都不会忘。","guide.i.care.t":"护理·日程·用药","guide.i.chore.d":"做完点一下。用颜色显示距上次的天数。","guide.i.chore.t":"日常照料","guide.i.diary.d":"精神、食欲、便便和照片，原样记录。","guide.i.diary.t":"今天的状态","guide.i.docs.d":"把保险证、证明的照片只保存在这台设备里。","guide.i.docs.t":"文件","guide.i.expense.d":"看病花了多少、食物花了多少，一目了然。","guide.i.expense.t":"支出","guide.i.home.d":"今天要做的事和容易忘的事，汇总在一起。","guide.i.home.t":"主页","guide.i.info.d":"常去的医院和紧急联系人，随手可查。","guide.i.info.t":"重要信息","guide.i.lost.d":"走失海报可以从宠物名片的「走失模式」制作。紧急卡也能从登记信息快速生成。","guide.i.lost.t":"走失海报·紧急卡","guide.i.members.d":"宠物、家人和自己，都可以用照片或表情。","guide.i.members.t":"成员","guide.i.memory.d":"用一张珍藏的照片和标签，回顾成长。","guide.i.memory.t":"回忆·第一次","guide.i.notices.d":"重要的日程和期限，会在打开应用时显示在主页。","guide.i.notices.t":"通知","guide.i.share.d":"用邀请码和家人共享记录。也可以给寄养人限时共享。","guide.i.share.t":"与家人共享","guide.i.stock.d":"用完之前会在主页提醒。还有按星期的随身物品。","guide.i.stock.t":"库存·随身物品","guide.lead":"把全家人的日常和以防万一的准备，都放在一起。","guide.title":"LOALIFE 使用方法","health.goalLeft":"距目标还差 {v}{unit}","health.goalOk":"已达目标！保持下去","health.goalOver":"超出目标 {v}{unit}","health.goalOverNote":"（注意食量和运动量）","home.a2hsText":"添加到主屏幕，数据更不容易丢失","home.annivBday":"・生日","home.annivGotcha":"・到家纪念日","home.annivToday":"就是今天！","home.annivYearsAge":"{y}岁啦！","home.annivYearsGotcha":"相伴{y}年啦！","home.bdayAgeSuffix":"（{y}岁）","home.bdayCheerSub":"祝你生日快乐，愿你度过美好的一天。","home.bdayCheerTitle":"今天是{names}的生日","home.later":"以后再说","home.registerCta":"添加宠物或家人","home.welcome":"欢迎","home.welcomeBodyA":"把全家人的日常和以防万一的准备，都放在一起。","home.welcomeBodyB":"先从添加一只宠物或一位家人开始吧。","list.doneSection":"已完成（{n}）","list.loading":"加载中…","list.noUpcoming":"暂无接下来的日程。","me.calColor":"日历颜色","me.saveClose":"保存并关闭","me.title":"你的头像与名字","member.kindPersonBtn":"👤 家人（人）","member.kindPetBtn":"🐾 宠物","member.registerBtn":"添加","note.emptyHint":"用一句话记下今天的事，或一句「谢谢」。","note.localFoot":"※ 保存在这台设备上的家庭留言本。","note.saveBtn":"保存","note.title":"家庭留言","notices.empty1":"今天没有通知。","notices.empty2":"看起来是悠闲的一天。","notices.foot":"我们会从全家人的日常中，悄悄送上注意到的小事。","ntc.actCheck":"查看","ntc.actLog":"去记录","ntc.actMemory":"看回忆","ntc.actToilet":"看如厕记录","ntc.actView":"看记录","ntc.actWalks":"看散步记录","ntc.actWeight":"看体重与食物","ntc.memPhoto":"那一天的照片","ntc.poopBody":"如果持续几天，可以考虑就诊。也可以回顾一下食物和饮水","ntc.poopTitle":"{name}的便便这几天偏软","ntc.quietBodyPerson":"最近怎么样？哪怕记一句话，以后也能回顾","ntc.quietBodyPet":"过得好吗？哪怕记一句话，以后也能回顾","ntc.quietTitle":"{name}已经{gap}天没有记录了","ntc.seniorBody":"稍微增加体检次数，多留意关节、牙齿和体重，会更安心","ntc.seniorTitle":"{name}进入老年期了","ntc.sleepShortBody":"{name}最近的睡眠似乎比以前短","ntc.sleepShortTitle":"最近睡眠记录偏短","ntc.stockBody":"{name}・该补充了","ntc.stockOne":"「{title}」只剩 1 次的量","ntc.stockOut":"「{title}」已经用完","ntc.tasksBody":"{name}的日程和要交的东西积起来了","ntc.tasksTitle":"有{n}件未完成的待办","ntc.tipAutumnBody":"多梳一点毛，换毛季更轻松","ntc.tipAutumnTitle":"秋天是换毛季","ntc.tipColdBody":"老年孩子尤其要注意保暖。散步短一点也没关系","ntc.tipColdTitle":"今天很冷","ntc.tipHeatBody":"在早晚凉爽时散步。注意爪垫烫伤和中暑","ntc.tipHeatTitle":"今天白天会很热","ntc.tipRainBody":"在家玩闻味、躲猫猫之类的益智游戏怎么样？","ntc.tipRainTitle":"今天有雨","ntc.tipSpringBody":"天暖后会更活跃。确认一下预防的时间","ntc.tipSpringTitle":"春天注意跳蚤和蜱虫","ntc.tipSummerBody":"避免正午散步和把孩子留在车里。勤补水","ntc.tipSummerTitle":"夏天注意中暑","ntc.tipWinterBody":"护理干燥的爪垫，准备温暖的窝","ntc.tipWinterTitle":"冬天注意干燥和寒冷","ntc.todoOverdue":"「{title}」已过期限","ntc.todoSoon":"快到了：「{title}」（还有{d}天）","ntc.todoToday":"今天是「{title}」的日子","ntc.walkShortBody":"{name}最近的散步似乎比以前短","ntc.walkShortTitle":"最近散步时间有点短","ntc.weightBody":"{from}kg → {to}kg。也许该调整食量了","ntc.weightDownTitle":"{name}的体重下降了","ntc.weightUpTitle":"{name}的体重增加了","nurse.addRecord":"＋ 记录","nurse.breastItem":"🤱 母乳 {side}・{dur}","nurse.left":"左侧","nurse.milk":"🍼 奶粉","nurse.milkItem":"🍼 奶粉 {ml}ml","nurse.nowLeft":"◀ 正在左侧喂奶","nurse.nowRight":"正在右侧喂奶 ▶","nurse.recordName":"喂奶记录","nurse.right":"右侧","nurse.startLeft":"◀ 左侧喂奶","nurse.startRight":"右侧喂奶 ▶","nurse.stopLog":"结束并记录","nurse.todayCount":"今天 {n} 次","prep.tomorrowTitle":"为明天（{dow}）做准备","prof.promptBtn":"设置资料","prof.promptTitle":"要设置这个资料吗？","qa.addBtn":"添加","qa.lastTime":"上次: {date}","routine.addTitle":"添加日常事项","routine.editTitle":"编辑日常事项","routine.remindLabel":"提醒","sc.forever":"永远在我们心里","sc.overdue":"{title}已过期","sc.supplyLow":"{title}快用完了","sc.supplyOut":"{title}可能已用完","sc.together":"一起度过了{d}天","share.createBtn":"创建家庭空间","share.createDesc":"把设为「共享」的成员资料和记录移到家庭空间。照片会以缩小后的共享用图片移动。","share.createNew":"＋ 新建家庭空间","share.creating":"创建中…","share.emailNote":"※ 用邮箱注册的是 LOALIFE 专用账号（与 Google 账号不同）。","share.emailTab":"邮箱","share.fbNeeded1":"使用家庭共享需要先设置 Firebase。","share.fbNeeded2":"请在 build-src/firebase.js 中填入 Firebase 项目的设置。","share.googleSignIn":"用 Google 登录","share.inviteCodeLabel":"邀请码","share.joinBtn":"加入","share.joinWithCode":"用邀请码加入","share.joining":"加入中…","share.memberChoiceDesc":"在每位成员的资料编辑画面，可以选择「共享／仅自己」。","share.memberCount":"家庭人数: {n}人","share.signOut":"退出登录","share.signedInAs":"已登录为 {name}","share.signinDesc":"登录后可以创建家庭空间，把设为共享的成员记录与家人同步。","share.step1":"1. 登录","share.step2":"2. 创建家庭空间","share.step3":"3. 把邀请码发给家人，请他们加入","share.stepsTitle":"只需 3 步：","share.title":"家庭共享","supply.addTitle":"添加库存","supply.cycle":"消耗周期","supply.daysN":"{d}天","supply.editTitle":"编辑库存","supply.lastBought":"上次购买日","toast.certSaved":"已保存证明","toilet.avgBristol":"便便硬度平均","toilet.brCountSuffix":"・{n}次","tox.badgeCond":"○ 有条件","tox.badgeSafe":"○ 没问题","tox.cat":"猫","tox.consultBtn":"咨询医院","tox.dog":"狗","tox.emgFormSub":"这不是诊断。请带着这些内容去咨询动物医院或夜间急救。","tox.emgFormTitle":"🚑 请冷静，确认这 5 点","tox.emgSub":"请冷静，按顺序确认","tox.emgTitle":"刚刚是不是吃了什么？","tox.foot":"※ 这不是诊断。危险程度会因分量、体重、吃下的部位、经过时间和个体差异而变化。有疑问请咨询动物医院或夜间急救。","tox.notFound":"没有找到符合的条目。","tox.notFoundCare":"没有找到符合的条目。即使不确定，只要有可能吃下去了，请咨询动物医院。","tox.notFoundQ":"「{q}」不在清单中。不在清单中的食物不一定安全。如果已经吃下，请记录分量和状态，并咨询动物医院。","tox.phAmount":"例：一小块／1 片／不清楚","tox.phSymptom":"例：精神好／呕吐／摇晃／抽搐","tox.phWeight":"例：8kg","tox.phWhat":"例：巧克力、洋葱、药物等","tox.phWhen":"例：10 分钟前／刚刚／不清楚","tox.qAmount":"吃了多少？","tox.qSymptom":"现在的症状？","tox.qWeight":"狗的体重","tox.qWhat":"吃了什么？","tox.qWhen":"什么时候？","tox.registeredName":"已登记的宠物","tox.risk.avoid":"基本不可","tox.risk.caution":"注意","tox.risk.emergency":"紧急","tox.risk.high":"高风险","tox.safeFoot":"任何食物第一次都请少量尝试并观察。原则上不加调料。有疾病或在吃处方粮的孩子，请先咨询兽医。","tox.safeHeadCond":"○ {name}在有条件的情况下可以吃","tox.safeHeadSafe":"○ {name}可以吃","tox.searchPh":"例：豆芽／巧克力／洋葱／葡萄","tox.secDont":"不能做的事","tox.secOnset":"发作时间参考","tox.secSymptoms":"症状","tox.secUrgent":"出现这些情况请立即就诊","tox.secVet":"要告诉医院的信息","tox.srcBody1":"本清单参考了 ASPCA 中毒管理中心、Pet Poison Helpline、Merck 兽医手册等公开的兽医毒性信息整理而成。","tox.srcBody2Bold":"有意不刊登","tox.srcBody2Post":"。","tox.srcBody2Pre":"具体的毒性量、致死量、安全量会因分量、体重和个体差异而大幅变化，且有误用风险，因此","tox.srcBody3Bold":"不是诊断","tox.srcBody3Post":"。实际判断请务必咨询动物医院或中毒专业窗口。无法确认来源的内容不会断言刊登。","tox.srcBody3Pre":"所刊内容为一般注意事项，","tox.srcLine":"{src}／最后确认 {date}","tox.srcReviewed":"最后确认：{date}","tox.srcTitle":"关于信息来源","tox.tabAll":"狗·猫","tox.title":"误食·中毒","tox.varies":"危险程度会因 {list} 而变化。","tox.variesWeight":"（{name}的体重：{w}）","tox.warn1":"即使现在没有症状，也可能在几小时到几天后出现。状态有变化请立即联系医院。不要在家催吐。","tox.warn2":"即使现在没有症状，也可能在几小时到几天后出现。不要只是观察，也不要催吐。状态有变化请立即联系医院。","vis.onlyMeBtn":"🔒 仅自己","vis.showFamily":"👨‍👩‍👧 给家人看","vis.titlePrivate":"仅自己可见","vis.titleShared":"正在给家人看","walk.hourTitle":"{h}点","wn.comingBody1":"计划中的功能已全部上线 🎉","wn.comingBody2":"如果你有「想要这个功能」的想法，欢迎告诉我们。","wn.comingTitle":"即将推出","wn.recentTitle":"最近的更新","wn.viewGuide":"查看使用方法与功能介绍",
+    "common.longPressReorder":"长按可排序","health.glucosePrefix":"血糖","me.nameLabel":"名字",
   },
 };
 // ── 天気の地点名の言語別解決 ──
@@ -4132,9 +4140,9 @@ function VisibilityToggle({value, onChange}) {
     <button
       className={"yl-vis-toggle" + (isHousehold ? " household" : " private")}
       onClick={() => onChange(isHousehold ? "private" : "household")}
-      title={isHousehold ? "家族に見せています" : "自分だけに表示"}
+      title={isHousehold ? tr(APP_LANG,"vis.titleShared") : tr(APP_LANG,"vis.titlePrivate")}
     >
-      {isHousehold ? "👨‍👩‍👧 家族に見せる" : "🔒 自分のみ"}
+      {isHousehold ? tr(APP_LANG,"vis.showFamily") : tr(APP_LANG,"vis.onlyMeBtn")}
     </button>
   );
 }
@@ -6634,7 +6642,7 @@ function App(){
     persist(members,items.filter(x=>x.id!==id));
   };
 
-  const onFilePicked=async(e,id,okMsg="証明書を保存しました")=>{
+  const onFilePicked=async(e,id,okMsg=null)=>{
     const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
     if(file.size>20*1024*1024){showFlash(t("toast.fileTooBig"));return;}
     try{
@@ -6644,7 +6652,7 @@ function App(){
       setPhotos(p=>({...p,[id]:dataUrl}));
       const next=items.map(x=>x.id===id?{...x,photo:true}:x);
       persist(members,next);saveItemToFs(next.find(x=>x.id===id)).catch(()=>{});
-      showFlash(okMsg);
+      showFlash(okMsg||t("toast.certSaved"));
     }catch(err){showFlash(t("toast.imgSaveFail"));}
   };
 
@@ -8158,8 +8166,8 @@ function App(){
   };
   const annivAll=useMemo(()=>{
     const list=[];
-    members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:memberEmojiOf(m),label:`${m.name}の誕生日`,space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:`${m.name} うちの子記念日`,space:m.id});});
-    if(meBirthday)list.push({mmdd:mmdd(meBirthday),emoji:emojiWithTone(meEmoji,meSkinTone),label:"わたしの誕生日",space:"me"});
+    members.forEach(m=>{if(m.birthday)list.push({mmdd:mmdd(m.birthday),emoji:memberEmojiOf(m),label:t("cal.bdayLabel",{name:m.name}),space:m.id});if(m.gotchaDay)list.push({mmdd:mmdd(m.gotchaDay),emoji:"🎉",label:t("cal.gotchaLabel",{name:m.name}),space:m.id});});
+    if(meBirthday)list.push({mmdd:mmdd(meBirthday),emoji:emojiWithTone(meEmoji,meSkinTone),label:t("cal.myBday"),space:"me"});
     items.forEach(x=>{if(x.type==="bday"&&x.birthday)list.push({mmdd:mmdd(x.birthday),emoji:x.emoji||"🎂",label:x.title,space:"me"});});
     return list;
   },[members,meBirthday,meEmoji,items]);
@@ -8494,21 +8502,21 @@ function App(){
     const out=[];
     const petsLive=members.filter(m=>m.kind==="pet"&&!m.memorial);
     const dogs=petsLive.filter(m=>m.species==="dog");
-    const nm=(sp)=>nameOf(sp)||"わたし";
+    const nm=(sp)=>nameOf(sp)||t("common.me");
     // 🔴 予定・リマインド：期限が近い/今日/超過（homeData 由来。重複はIDで排除）
     homeData.bombs.forEach(({item,d})=>{
-      out.push({id:`todo:${item.id}:${item.dueDate}`,cat:"todo",title:d<0?`「${item.title}」の期限が過ぎています`:d===0?`今日は「${item.title}」の日です`:`もうすぐ「${item.title}」（あと${d}日）`,body:nm(item.space),actionLabel:"記録する",go:()=>{setTab(item.space);setPersonSeg("manage");}});
+      out.push({id:`todo:${item.id}:${item.dueDate}`,cat:"todo",title:d<0?t("ntc.todoOverdue",{title:item.title}):d===0?t("ntc.todoToday",{title:item.title}):t("ntc.todoSoon",{title:item.title,d}),body:nm(item.space),actionLabel:t("ntc.actLog"),go:()=>{setTab(item.space);setPersonSeg("manage");}});
     });
-    homeData.upcoming.forEach(u=>{ if(u.d>7) out.push({id:`todo:${u.key}:up`,cat:"todo",title:`${u.title}（${u.tag}）`,body:nm(u.space),actionLabel:"確認する",go:()=>{setTab(u.space);setPersonSeg("manage");}}); });
+    homeData.upcoming.forEach(u=>{ if(u.d>7) out.push({id:`todo:${u.key}:up`,cat:"todo",title:`${u.title}（${u.tag}）`,body:nm(u.space),actionLabel:t("ntc.actCheck"),go:()=>{setTab(u.space);setPersonSeg("manage");}}); });
     // 🔴 お薬・予防薬の在庫が残りわずか（買い足しのめやす）
-    items.forEach(x=>{ if(x.type==="care"&&typeof x.stock==="number"&&x.stock<=1&&!x.done) out.push({id:`todo:stock:${x.id}:${x.stock}`,cat:"todo",title:x.stock<=0?`「${x.title}」の在庫がなくなりました`:`「${x.title}」の在庫が残り1回分`,body:`${nm(x.space)}・買い足しのタイミングです`,actionLabel:"確認する",go:()=>{setTab(x.space);setPersonSeg("manage");}}); });
+    items.forEach(x=>{ if(x.type==="care"&&typeof x.stock==="number"&&x.stock<=1&&!x.done) out.push({id:`todo:stock:${x.id}:${x.stock}`,cat:"todo",title:x.stock<=0?t("ntc.stockOut",{title:x.title}):t("ntc.stockOne",{title:x.title}),body:t("ntc.stockBody",{name:nm(x.space)}),actionLabel:t("ntc.actCheck"),go:()=>{setTab(x.space);setPersonSeg("manage");}}); });
     // 🟡 気づき：お散歩時間が短くなった（犬・十分な履歴がある時だけ、そっと。断定はしない）
     dogs.forEach(dog=>{
       const walks=items.filter(x=>x.type==="walk"&&x.space===dog.id&&x.durationSec>0).sort((a,b)=>(b.start||0)-(a.start||0));
       if(walks.length>=6){
         const avg=a=>a.reduce((s,w)=>s+w.durationSec,0)/a.length;
         const r=avg(walks.slice(0,3)),p=avg(walks.slice(3,6));
-        if(p>0&&r<p*0.72) out.push({id:`insight:walk:${dog.id}:${todayIso.slice(0,7)}`,cat:"insight",title:"最近、お散歩の時間が少し短めです",body:`${dog.name}の直近のお散歩が、以前より短くなっているみたい`,actionLabel:"散歩記録を見る",go:()=>{setTab(dog.id);setPersonSeg("record");}});
+        if(p>0&&r<p*0.72) out.push({id:`insight:walk:${dog.id}:${todayIso.slice(0,7)}`,cat:"insight",title:t("ntc.walkShortTitle"),body:t("ntc.walkShortBody",{name:dog.name}),actionLabel:t("ntc.actWalks"),go:()=>{setTab(dog.id);setPersonSeg("record");}});
       }
     });
     // 🟡 気づき：しばらく記録がない（履歴のある子だけ・7〜30日）
@@ -8516,35 +8524,35 @@ function App(){
       const recs=items.filter(x=>x.space===m.id&&(x.type==="health"||x.type==="diary"||x.type==="walk"||x.type==="chore"||x.type==="feed"||x.type==="toilet"));
       if(recs.length>=3){
         let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});
-        if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日空いています`,body:"元気にしてるかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+        if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:t("ntc.quietTitle",{name:m.name,gap}),body:t("ntc.quietBodyPet"),actionLabel:t("ntc.actLog"),go:()=>{setTab(m.id);setPersonSeg("record");}});}
       }
     });
     // 🟡 気づき：子ども・自分（今回の記録データを活用。断定・診断はしない）
     const avgN=a=>a.reduce((s,n)=>s+n,0)/a.length;
-    const persons=[...members.filter(m=>m.kind==="person"),{id:"me",name:meName||"わたし",kind:"me"}];
+    const persons=[...members.filter(m=>m.kind==="person"),{id:"me",name:meName||t("common.me"),kind:"me"}];
     persons.forEach(m=>{
       const drecs=items.filter(x=>x.space===m.id&&x.type==="diary").sort((a,b)=>(b.date||"").localeCompare(a.date||""));
       // 睡眠が以前より短め（十分な記録があるときだけ・そっと）
       const sl=drecs.filter(r=>r.sleep!=null&&r.sleep!=="").map(r=>Number(r.sleep)).filter(n=>!isNaN(n));
-      if(sl.length>=6){const r=avgN(sl.slice(0,3)),p=avgN(sl.slice(3,6));if(p>0&&r<p*0.85&&(p-r)>=0.5) out.push({id:`insight:sleep:${m.id}:${todayIso.slice(0,7)}`,cat:"insight",title:"最近、寝る時間の記録が短めです",body:`${m.name}の直近の睡眠が、以前より短くなっているみたい`,actionLabel:"記録を見る",go:()=>{setTab(m.id);setPersonSeg("record");}});}
+      if(sl.length>=6){const r=avgN(sl.slice(0,3)),p=avgN(sl.slice(3,6));if(p>0&&r<p*0.85&&(p-r)>=0.5) out.push({id:`insight:sleep:${m.id}:${todayIso.slice(0,7)}`,cat:"insight",title:t("ntc.sleepShortTitle"),body:t("ntc.sleepShortBody",{name:m.name}),actionLabel:t("ntc.actView"),go:()=>{setTab(m.id);setPersonSeg("record");}});}
       // しばらく記録がない（履歴のある対象だけ・7〜30日）
       const recs=items.filter(x=>x.space===m.id&&(x.type==="diary"||x.type==="chore"||x.type==="health"||x.type==="milestone"||x.type==="walk"));
-      if(recs.length>=3){let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:`${m.name}の記録が${gap}日空いています`,body:"最近どうかな？ ひとことでも残しておくと、あとで振り返れます",actionLabel:"記録する",go:()=>{setTab(m.id);setPersonSeg("record");}});}}
+      if(recs.length>=3){let last="";recs.forEach(x=>{const d=x.date||x.lastDone||(x.start?iso(new Date(x.start)):"")||"";if(d>last)last=d;});if(last){const gap=-daysUntil(last);if(gap>=7&&gap<=30) out.push({id:`insight:quiet:${m.id}:${last}`,cat:"insight",title:t("ntc.quietTitle",{name:m.name,gap}),body:t("ntc.quietBodyPerson"),actionLabel:t("ntc.actLog"),go:()=>{setTab(m.id);setPersonSeg("record");}});}}
       // 未完了のやることがたまっている（3件以上）
       const open=items.filter(x=>x.space===m.id&&(x.type==="care"||x.type==="event")&&x.dueDate&&!x.done).length;
-      if(open>=3) out.push({id:`insight:tasks:${m.id}:${todayIso}`,cat:"insight",title:`未完了のやることが${open}件`,body:`${m.name}の予定・提出物がたまっています`,actionLabel:"確認する",go:()=>{setTab(m.id);setPersonSeg("manage");}});
+      if(open>=3) out.push({id:`insight:tasks:${m.id}:${todayIso}`,cat:"insight",title:t("ntc.tasksTitle",{n:open}),body:t("ntc.tasksBody",{name:m.name}),actionLabel:t("ntc.actCheck"),go:()=>{setTab(m.id);setPersonSeg("manage");}});
     });
     // 🟢 今日の提案：天気・気温・季節（犬がいる時だけ・1件）
     if(dogs.length>0){
       let tip=null;
       if(hasWalker&&weather&&!weather.error){
         const rain=(weather.precip>0)||(weather.pop!=null&&weather.pop>=60)||(weather.code!=null&&weather.code>=51);
-        if(rain)tip={id:`tip:rain:${todayIso}`,title:"今日は雨模様",body:"おうちで、においあて・かくれんぼなどの知育あそびはいかが？"};
-        else if(weather.temp!=null&&weather.temp>=30)tip={id:`tip:heat:${todayIso}`,title:"日中は暑くなりそう",body:"お散歩は朝夕の涼しい時間に。肉球のやけど・熱中症に気をつけて"};
-        else if(weather.temp!=null&&weather.temp<=3)tip={id:`tip:cold:${todayIso}`,title:"冷え込む一日",body:"シニアの子は特にあたたかく。短めのお散歩でも大丈夫"};
+        if(rain)tip={id:`tip:rain:${todayIso}`,title:t("ntc.tipRainTitle"),body:t("ntc.tipRainBody")};
+        else if(weather.temp!=null&&weather.temp>=30)tip={id:`tip:heat:${todayIso}`,title:t("ntc.tipHeatTitle"),body:t("ntc.tipHeatBody")};
+        else if(weather.temp!=null&&weather.temp<=3)tip={id:`tip:cold:${todayIso}`,title:t("ntc.tipColdTitle"),body:t("ntc.tipColdBody")};
       }
       if(!tip){const mo=new Date().getMonth()+1;const s=mo<=2||mo===12?"winter":mo<=5?"spring":mo<=8?"summer":"autumn";
-        const st={spring:["春はノミ・ダニに注意","暖かくなると活発に。予防のタイミングを確認しておきましょう"],summer:["夏は熱中症に注意","日中の散歩や車内でのお留守番は控えめに。水分もこまめに"],autumn:["秋は換毛の季節","ブラッシングを少し増やすと、抜け毛ケアが楽になります"],winter:["冬は乾燥と冷えに注意","肉球の乾燥ケアや、あたたかい寝床を用意してあげましょう"]}[s];
+        const st={spring:[t("ntc.tipSpringTitle"),t("ntc.tipSpringBody")],summer:[t("ntc.tipSummerTitle"),t("ntc.tipSummerBody")],autumn:[t("ntc.tipAutumnTitle"),t("ntc.tipAutumnBody")],winter:[t("ntc.tipWinterTitle"),t("ntc.tipWinterBody")]}[s];
         tip={id:`tip:season:${s}:${todayIso.slice(0,7)}`,title:st[0],body:st[1]};
       }
       if(tip)out.push({cat:"tip",...tip});
@@ -8556,27 +8564,27 @@ function App(){
         const latest=ws[ws.length-1];let base=null;
         for(let i=ws.length-2;i>=0;i--){if((new Date(latest.date)-new Date(ws[i].date))/86400000>=21){base=ws[i];break;}}
         if(base&&base.weight>0){const diff=(latest.weight-base.weight)/base.weight;if(Math.abs(diff)>=0.05)
-          out.push({id:`insight:weight:${m.id}:${latest.date}`,cat:"insight",title:`${m.name}の体重が${diff>0?"増えて":"減って"}います`,body:`${base.weight}kg → ${latest.weight}kg。フード量を見直すタイミングかも`,actionLabel:"体重・フードを見る",go:()=>{setTab(m.id);setPersonSeg("manage");}});}
+          out.push({id:`insight:weight:${m.id}:${latest.date}`,cat:"insight",title:diff>0?t("ntc.weightUpTitle",{name:m.name}):t("ntc.weightDownTitle",{name:m.name}),body:t("ntc.weightBody",{from:base.weight,to:latest.weight}),actionLabel:t("ntc.actWeight"),go:()=>{setTab(m.id);setPersonSeg("manage");}});}
       }
     });
     // 🟡 気づき：やわらかめのうんちが続く（直近5日で3回以上・受診の目安として。診断はしない）
     petsLive.forEach(m=>{
       const recent=items.filter(x=>x.space===m.id&&x.type==="toilet"&&x.tkind==="poop"&&x.bristol!=null&&x.date&&(-daysUntil(x.date))<=5);
       if(recent.length>=3&&recent.filter(x=>x.bristol>=6).length>=3)
-        out.push({id:`insight:poop:${m.id}:${todayIso}`,cat:"insight",title:`${m.name}のうんちがやわらかめの日が続いています`,body:"数日続くようなら受診の目安に。フードや水分もふり返ってみて",actionLabel:"トイレ記録を見る",go:()=>{setTab(m.id);setPersonSeg("record");}});
+        out.push({id:`insight:poop:${m.id}:${todayIso}`,cat:"insight",title:t("ntc.poopTitle",{name:m.name}),body:t("ntc.poopBody"),actionLabel:t("ntc.actToilet"),go:()=>{setTab(m.id);setPersonSeg("record");}});
     });
     // 🟢 提案：シニア期の子へ（年齢ベース・月1回・やさしい助言）
     petsLive.forEach(m=>{
       if(!m.birthday)return;const mo=monthsOld(m.birthday);if(mo==null)return;
       if(mo>=(m.species==="cat"?132:84))
-        out.push({id:`tip:senior:${m.id}:${todayIso.slice(0,7)}`,cat:"tip",title:`${m.name}はシニア期`,body:"健診の回数を少し増やしたり、関節・歯・体重を気にかけてあげると安心です"});
+        out.push({id:`tip:senior:${m.id}:${todayIso.slice(0,7)}`,cat:"tip",title:t("ntc.seniorTitle",{name:m.name}),body:t("ntc.seniorBody")});
     });
     // 🟢 ギャップ#7：年齢・季節に応じたケアTips（端末内生成・1日最大2件・メンバーごと1件まで）
     //    表示後7日間は同じTipsを出さない（pickCareTips のクールダウン＋日替わりローテーション）。
     {
       const season=careTipSeasonOf(new Date().getMonth()+1);
       const cands=[];
-      [...members.filter(m=>!m.memorial),{id:"me",name:meName||"わたし",kind:"me"}].forEach(m=>{
+      [...members.filter(m=>!m.memorial),{id:"me",name:meName||t("common.me"),kind:"me"}].forEach(m=>{
         const mo=m.kind==="pet"&&m.birthday?monthsOld(m.birthday):null;
         careTipsFor(m,mo,season).forEach(tip=>cands.push({mid:m.id,tip,member:m}));
       });
@@ -8588,7 +8596,7 @@ function App(){
     }
     // 💕 思い出：去年の今日（最大2件）
     onThisDay.slice(0,2).forEach(({item,yearsAgo})=>{
-      out.push({id:`memory:${item.id}:${todayIso}`,cat:"memory",title:`${yearsAgo}年前の今日`,body:item.note||(item.title&&item.title!=="思い出"?item.title:"思い出の1枚")+(item.space?`（${nm(item.space)}）`:""),actionLabel:"思い出を見る",go:()=>{const pid=firstPhotoId(item);if(pid&&photos[pid])viewMemory(pid);else{setTab(item.space);setPersonSeg("manage");}}});
+      out.push({id:`memory:${item.id}:${todayIso}`,cat:"memory",title:t("otd.titleY",{y:yearsAgo}),body:item.note||(item.title&&item.title!=="思い出"?item.title:t("ntc.memPhoto"))+(item.space?`（${nm(item.space)}）`:""),actionLabel:t("ntc.actMemory"),go:()=>{const pid=firstPhotoId(item);if(pid&&photos[pid])viewMemory(pid);else{setTab(item.space);setPersonSeg("manage");}}});
     });
     // 優先順位で並べ、重複IDを除き、最大8件（出しすぎない）
     const ids=new Set(),uniq=[];
@@ -8669,14 +8677,14 @@ function App(){
     return"ok";
   };
   const spaceConcern=(spaceId)=>{
-    if(memorialIds.has(spaceId)){const m=members.find(x=>x.id===spaceId);const dl=m&&m.gotchaDay?daysTogether(m.gotchaDay,m.memorial):null;return dl?`${dl}日間、一緒に過ごしました`:"ずっと、心の中に";}
+    if(memorialIds.has(spaceId)){const m=members.find(x=>x.id===spaceId);const dl=m&&m.gotchaDay?daysTogether(m.gotchaDay,m.memorial):null;return dl?t("sc.together",{d:dl}):t("sc.forever");}
     let overdue=null,soonCare=null;
     items.forEach(x=>{if(x.space!==spaceId||x.done||!x.dueDate)return;const d=daysUntil(x.dueDate);if(isOverdue(x)){if(!overdue||d<overdue.d)overdue={item:x,d};}else if(x.careKind&&HIGH_KINDS.has(x.careKind)&&d>=0&&d<=3){if(!soonCare||d<soonCare.d)soonCare={item:x,d};}});
     const sup=lowSupplies.filter(o=>o.item.space===spaceId).sort((a,b)=>a.st.left-b.st.left)[0];
-    if(sup&&sup.st.tone==="out")return`${sup.item.title}が切れているかも`;
-    if(overdue)return`${overdue.item.title}が期限切れ`;
-    if(sup&&sup.st.tone==="low")return`${sup.item.title} 残りわずか`;
-    if(soonCare)return`${soonCare.item.title}・${soonCare.d===0?"今日":"あと"+soonCare.d+"日"}`;
+    if(sup&&sup.st.tone==="out")return t("sc.supplyOut",{title:sup.item.title});
+    if(overdue)return t("sc.overdue",{title:overdue.item.title});
+    if(sup&&sup.st.tone==="low")return t("sc.supplyLow",{title:sup.item.title});
+    if(soonCare)return`${soonCare.item.title}・${soonCare.d===0?t("rel.today"):t("rel.inDays",{d:soonCare.d})}`;
     return null;
   };
   // ⑤ 小さなふりかえり（軽め）。「今週」＝日曜始まりの暦週。周期ケアの完了は lastDoneAt で数える。
@@ -8705,12 +8713,12 @@ function App(){
       return(
         <div className={"yl-overlay"+(pendingJoin?" yl-overlay-top":"")} onClick={()=>setShowShareModal(false)}>
           <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
+            <h3 className="yl-modal-title"><Icon name="users" size={18}/> {t("share.title")}</h3>
             <div className="yl-share-info">
-              <p className="yl-share-desc">家族共有を使うには、Firebaseの設定が必要です。</p>
-              <p className="yl-share-desc" style={{marginTop:8}}>build-src/firebase.js にFirebaseプロジェクトの設定を入力してください。</p>
+              <p className="yl-share-desc">{t("share.fbNeeded1")}</p>
+              <p className="yl-share-desc" style={{marginTop:8}}>{t("share.fbNeeded2")}</p>
             </div>
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>{t("common.close")}</button></div>
           </div>
         </div>
       );
@@ -8719,20 +8727,20 @@ function App(){
       return(
         <div className={"yl-overlay"+(pendingJoin?" yl-overlay-top":"")} onClick={()=>setShowShareModal(false)}>
           <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
+            <h3 className="yl-modal-title"><Icon name="users" size={18}/> {t("share.title")}</h3>
             {pendingJoin&&(<div className="yl-invite-box"><p className="yl-invite-label">{t("share.inviteArrived")}</p><p className="yl-invite-code">{pendingJoin}</p><p className="yl-share-desc" style={{marginBottom:0}}>{t("share.joinAbout")}</p></div>)}
-            <p className="yl-share-desc">サインインすると、家族スペースを作って、共有設定のメンバーの記録を家族と同期できます。</p><p className="yl-share-desc" style={{marginTop:8}}>使い方は3ステップ：<br/>1. サインインする<br/>2. 家族スペースを作る<br/>3. 招待コードを家族に送って、参加してもらう</p>
+            <p className="yl-share-desc">{t("share.signinDesc")}</p><p className="yl-share-desc" style={{marginTop:8}}>{t("share.stepsTitle")}<br/>{t("share.step1")}<br/>{t("share.step2")}<br/>{t("share.step3")}</p>
             {authView==="main"&&(<>
             <div className="yl-auth-tabs">
               <button className={"yl-auth-tab"+(authTab==="google"?" on":"")} onClick={()=>{setAuthTab("google");setShareError("");setAuthErrorCode("");}}>Google</button>
-              <button className={"yl-auth-tab"+(authTab==="email"?" on":"")} onClick={()=>{setAuthTab("email");setShareError("");setAuthErrorCode("");}}>メール</button>
+              <button className={"yl-auth-tab"+(authTab==="email"?" on":"")} onClick={()=>{setAuthTab("email");setShareError("");setAuthErrorCode("");}}>{t("share.emailTab")}</button>
             </div>
             {shareError&&<p className="yl-share-error">{shareError}</p>}
             {authErrorCode.indexOf("too-many-requests")>=0&&authTab==="email"&&!authIsSignup&&<div style={{textAlign:"center",marginBottom:10}}><button className="yl-linkbtn" onClick={openResetView}>{t("auth.goReset")}</button></div>}
             {authTab==="google"?(
               <button className="yl-google-btn" onClick={signInWithGoogle} disabled={shareLoading}>
                 <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
-                Googleでサインイン
+                {t("share.googleSignIn")}
               </button>
             ):(
               <div className="yl-auth-email">
@@ -8743,7 +8751,7 @@ function App(){
                 {!authIsSignup&&<button className="yl-linkbtn" style={{marginTop:2,alignSelf:"center"}} onClick={openResetView}>{t("auth.forgot")}</button>}
               </div>
             )}
-            {authTab==="email"&&<p className="yl-share-desc" style={{marginTop:10}}>※ メールで作るのはLOALIFE専用のアカウントです（Googleアカウントとは別です）。</p>}
+            {authTab==="email"&&<p className="yl-share-desc" style={{marginTop:10}}>{t("share.emailNote")}</p>}
             </>)}
             {authView==="reset"&&(
               <div className="yl-auth-email">
@@ -8762,7 +8770,7 @@ function App(){
                 <button className="yl-share-choice primary" onClick={()=>{setAuthView("main");setShareError("");}}>{t("auth.backToSignIn")}</button>
               </div>
             )}
-            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button></div>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>{t("common.close")}</button></div>
           </div>
         </div>
       );
@@ -8772,8 +8780,8 @@ function App(){
       return(
         <div className={"yl-overlay"+(pendingJoin?" yl-overlay-top":"")} onClick={()=>setShowShareModal(false)}>
           <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
-            <p className="yl-share-desc">{fireUser.displayName||fireUser.email} でサインイン中</p>
+            <h3 className="yl-modal-title"><Icon name="users" size={18}/> {t("share.title")}</h3>
+            <p className="yl-share-desc">{t("share.signedInAs",{name:fireUser.displayName||fireUser.email})}</p>
             {sitterCtx&&(
               <div className="yl-invite-box" style={{textAlign:"left"}}>
                 <p className="yl-invite-label">{t("sitter.nowTitle")}</p>
@@ -8783,18 +8791,18 @@ function App(){
             )}
             {shareStep==="menu"&&(
               <>
-                <button className="yl-share-choice" onClick={()=>setShareStep("create")}>＋ 新しい家族スペースを作る</button>
-                <button className="yl-share-choice" onClick={()=>setShareStep("join")}><Icon name="hash" size={14}/> 招待コードで参加する</button>
+                <button className="yl-share-choice" onClick={()=>setShareStep("create")}>{t("share.createNew")}</button>
+                <button className="yl-share-choice" onClick={()=>setShareStep("join")}><Icon name="hash" size={14}/> {t("share.joinWithCode")}</button>
               </>
             )}
             {shareStep==="create"&&(
               <>
-                <p className="yl-share-desc">「共有」に設定したメンバーのプロフィールと記録を家族スペースへ移します。写真も、共有用に小さくした画像が移ります。</p>
+                <p className="yl-share-desc">{t("share.createDesc")}</p>
                 <p className="yl-share-desc">{t("share.createWarn")}</p>
                 {shareError&&<p className="yl-share-error">{shareError}</p>}
                 <div className="yl-btn-row">
-                  <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>戻る</button>
-                  <button className="yl-btn-primary" onClick={createHousehold} disabled={shareLoading}>{shareLoading?"作成中…":"家族スペースを作る"}</button>
+                  <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>{t("common.back")}</button>
+                  <button className="yl-btn-primary" onClick={createHousehold} disabled={shareLoading}>{shareLoading?t("share.creating"):t("share.createBtn")}</button>
                 </div>
               </>
             )}
@@ -8808,25 +8816,25 @@ function App(){
                 <p className="yl-share-desc">{joinMode==="sitter"?t("sitter.joinAbout"):t("share.joinAbout")}</p>
                 {shareError&&<p className="yl-share-error">{shareError}</p>}
                 <div className="yl-btn-row">
-                  <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>戻る</button>
-                  <button className="yl-btn-primary" onClick={joinMode==="sitter"?joinSitter:joinHousehold} disabled={shareLoading||!joinCodeInput.trim()}>{shareLoading?"参加中…":"参加する"}</button>
+                  <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>{t("common.back")}</button>
+                  <button className="yl-btn-primary" onClick={joinMode==="sitter"?joinSitter:joinHousehold} disabled={shareLoading||!joinCodeInput.trim()}>{shareLoading?t("share.joining"):t("share.joinBtn")}</button>
                 </div>
               </>
             )}
             {shareStep==="created"&&(
               <>
                 <div className="yl-invite-box">
-                  <p className="yl-invite-label">招待コード</p>
+                  <p className="yl-invite-label">{t("share.inviteCodeLabel")}</p>
                   <p className="yl-invite-code">{household?.inviteCode}</p>
                   <p className="yl-invite-link">{inviteLinkFor(household?.inviteCode)}</p>
                   <button className="yl-copy-btn" onClick={shareInvite}>{copiedCode?t("share.inviteCopied"):t("share.inviteBtn")}</button>
                 </div>
-                <p className="yl-share-desc">{t("share.inviteSendDesc")}</p><p className="yl-share-desc" style={{marginTop:8}}>共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。</p>
+                <p className="yl-share-desc">{t("share.inviteSendDesc")}</p><p className="yl-share-desc" style={{marginTop:8}}>{t("share.memberChoiceDesc")}</p>
               </>
             )}
             <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
-              <button className="yl-modal-danger" onClick={signOutUser}>サインアウト</button>
+              <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>{t("common.close")}</button>
+              <button className="yl-modal-danger" onClick={signOutUser}>{t("share.signOut")}</button>
             </div>
           </div>
         </div>
@@ -8836,20 +8844,20 @@ function App(){
     return(
       <div className={"yl-overlay"+(pendingJoin?" yl-overlay-top":"")} onClick={()=>setShowShareModal(false)}>
         <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
-          <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
+          <h3 className="yl-modal-title"><Icon name="users" size={18}/> {t("share.title")}</h3>
           <div className="yl-share-status">
             <span className="yl-share-dot"/>
             <span>{fireUser.displayName||fireUser.email}</span>
           </div>
           <div className="yl-invite-box">
-            <p className="yl-invite-label">招待コード</p>
+            <p className="yl-invite-label">{t("share.inviteCodeLabel")}</p>
             <p className="yl-invite-code">{household.inviteCode}</p>
             <p className="yl-invite-link">{inviteLinkFor(household.inviteCode)}</p>
             <button className="yl-copy-btn" onClick={shareInvite}>{copiedCode?t("share.inviteCopied"):t("share.inviteBtn")}</button>
           </div>
           <p className="yl-share-desc">{t("share.inviteSendDesc")}</p>
           {inviteExp&&<p className="yl-share-desc">{t("share.inviteExpiry",{date:fmtDate(iso(new Date(inviteExp)))})}</p>}
-          <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p><p className="yl-share-desc" style={{marginTop:8}}>共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。</p>
+          <p className="yl-share-desc">{t("share.memberCount",{n:household.memberUids?.length||1})}</p><p className="yl-share-desc" style={{marginTop:8}}>{t("share.memberChoiceDesc")}</p>
           {(()=>{const uids=household.memberUids||[];const profs=household.memberProfiles||{};const isOwner=household.ownerUid===fireUser.uid;return(
             <div className="yl-share-members">
               <p className="yl-share-members-title">{t("share.participantsTitle")}</p>
@@ -8889,8 +8897,8 @@ function App(){
           {(()=>{const list=members.filter(m=>m&&m.id!=="me");return list.length>0&&(<div className="yl-share-members"><p className="yl-share-members-title">{t("share.memberListTitle")}</p>{list.map(m=>(<div key={m.id} className="yl-share-member-row"><span className="yl-share-member-name">{memberEmojiOf(m)} {m.name}</span><span className={"yl-pill vis"+(visOf(m)==="private"?" private":"")}>{visOf(m)==="private"?t("vis.private"):t("vis.shared")}</span></div>))}</div>);})()}
           {hasLocalMembers&&(<div className="yl-share-push"><p className="yl-share-desc">{t("share.pushDesc")}</p><button className="yl-btn-primary" onClick={manualPushLocal} disabled={fsPushBusy}>{t("share.pushLocal")}</button></div>)}
           <div className="yl-modal-btns">
-            <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>とじる</button>
-            <button className="yl-modal-danger" onClick={signOutUser}>サインアウト</button>
+            <button className="yl-modal-cancel" onClick={()=>setShowShareModal(false)}>{t("common.close")}</button>
+            <button className="yl-modal-danger" onClick={signOutUser}>{t("share.signOut")}</button>
           </div>
         </div>
       </div>
@@ -8997,13 +9005,13 @@ function App(){
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
           <div className="yl-petform">
             <div className="yl-petform-head"><span className="yl-petform-title">{t("member.addTitle")}</span><button type="button" className="yl-petform-x" onClick={cancelAdd} aria-label={t("common.cancel")}>×</button></div>
-            <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(petEmojisFor(newSpecies)[0]);setNewAvatar("");}}>🐾 ペット</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(personEmojisFor(newPersonType)[0]);setNewAvatar("");}}>👤 家族（人）</button></div>
+            <div className="yl-kindrow"><button className={"yl-kindbtn"+(newKind==="pet"?" on":"")} onClick={()=>{setNewKind("pet");setNewEmoji(petEmojisFor(newSpecies)[0]);setNewAvatar("");}}>{t("member.kindPetBtn")}</button><button className={"yl-kindbtn"+(newKind==="person"?" on":"")} onClick={()=>{setNewKind("person");setNewEmoji(personEmojisFor(newPersonType)[0]);setNewAvatar("");}}>{t("member.kindPersonBtn")}</button></div>
             {newKind==="pet"&&<div className="yl-kindrow">{SPECIES.map(s=><button key={s.key} className={"yl-kindbtn sm"+(newSpecies===s.key?" on":"")} onClick={()=>{setNewSpecies(s.key);setNewEmoji(prev=>petEmojisFor(s.key).includes(prev)?prev:petEmojisFor(s.key)[0]);}}>{s.emoji} {lblOf(s)}</button>)}</div>}
             {newKind==="pet"&&newSpecies==="other"&&<label className="yl-opt" style={{width:"100%"}}>{t("member.kindText")}<IMEInput className="yl-input" value={newKindText} onChange={setNewKindText} placeholder={t("ph.kindText")}/></label>}
             {newKind==="person"&&<div className="yl-kindrow">{PERSON_TYPES.map(pt=><button key={pt.k} className={"yl-kindbtn sm col"+(newPersonType===pt.k?" on":"")} onClick={()=>{setNewPersonType(pt.k);setNewAvatar("");setNewEmoji(e=>followPersonEmoji(e,newPersonType,pt.k));}}><span className="kb-emoji">{pt.emoji}</span><span className="kb-label">{lOf(pt)}</span></button>)}</div>}
             <div className="yl-emoji-row">{emojiSet.map(e=><button key={e} className={"yl-emoji"+(!newAvatar&&newEmoji===e?" on":"")} onClick={()=>{setNewAvatar("");setNewEmoji(e);}}>{e}</button>)}<label className={"yl-emoji yl-emoji-photo"+(newAvatar?" on":"")} title={t("a11y.photoAsIcon")}>{newAvatar&&photos[newAvatar]?<img className="yl-emoji-photoimg" src={photos[newAvatar]} alt=""/>:<Icon name="camera" size={17}/>}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickNewAvatar}/></label></div>
             {newKind==="person"&&isToneableEmoji(newEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(newSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>setNewSkinTone(tn.key)}>{emojiWithTone(newEmoji,tn.key)}</button>))}</div>}
-            <div className="yl-petform-row"><IMEInput className="yl-input" value={newName} onChange={setNewName} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?"名前（例：ゆうと）":"名前（例：ぽち）"}/><button className="yl-addbtn" onClick={addMember}>登録</button></div>
+            <div className="yl-petform-row"><IMEInput className="yl-input" value={newName} onChange={setNewName} onKeyDown={e=>e.key==="Enter"&&addMember()} placeholder={newKind==="person"?t("ob.namePersonPh"):t("ob.namePetPh")}/><button className="yl-addbtn" onClick={addMember}>{t("member.registerBtn")}</button></div>
             <label className="yl-opt" style={{marginTop:10}}>{t("prof.birthday")}<BdayInput value={newBirthday} onChange={setNewBirthday}/></label>
             {inHousehold&&<div style={{marginTop:10}}><VisibilityToggle value={newVisibility} onChange={setNewVisibility}/></div>}
             <button type="button" className="yl-petform-cancel" onClick={cancelAdd}>{t("common.cancel")}</button>
@@ -9072,9 +9080,9 @@ function App(){
             {members.length===0&&!(inHousehold&&!sampleMode)&&(
               <section style={{background:"var(--card)",borderRadius:22,padding:"26px 20px",textAlign:"center",boxShadow:"0 6px 18px rgba(120,80,160,.1)"}}>
                 <div style={{fontSize:34,lineHeight:1.1,marginBottom:10}}>🐶🐱</div>
-                <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"var(--text)"}}>ようこそ</p>
-                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"var(--text-sub)"}}>大切な家族の毎日と、もしもの備えを、ひとつに。<br/>ペットも子どもも、まずはひとり登録しましょう。</p>
-                <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> うちの子・家族を登録</button>
+                <p style={{margin:"0 0 6px",fontSize:18,fontWeight:800,color:"var(--text)"}}>{t("home.welcome")}</p>
+                <p style={{margin:"0 0 16px",fontSize:13.5,fontWeight:700,lineHeight:1.7,color:"var(--text-sub)"}}>{t("home.welcomeBodyA")}<br/>{t("home.welcomeBodyB")}</p>
+                <button className="yl-quick-big" onClick={()=>setAdding(true)}><Icon name="plus" size={18}/> {t("home.registerCta")}</button>
               </section>
             )}
             {members.length>0&&(
@@ -9093,8 +9101,8 @@ function App(){
               </div>
             );if(a2hsHint)return(
               <div className="yl-notif-banner">
-                <span>ホーム画面に追加すると、データが消えにくく安心です</span>
-                <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>あとで</button>
+                <span>{t("home.a2hsText")}</span>
+                <button className="yl-notif-allow" onClick={()=>{setA2hsHint(false);try{localStorage.setItem("loalife-a2hs-snooze",String(Date.now()+3*86400000));}catch(e){}}}>{t("home.later")}</button>
               </div>
             );return null;})()}
 
@@ -9139,8 +9147,8 @@ function App(){
                 <section className="yl-bday-cheer">
                   <span className="yl-bday-cheer-ico">🎂</span>
                   <div className="yl-bday-cheer-body">
-                    <p className="yl-bday-cheer-title">今日は{todayBirthdays.map(a=>`${a.name}${a.years?`（${a.years}歳）`:""}`).join("・")}のお誕生日です</p>
-                    <p className="yl-bday-cheer-sub">おめでとうございます。すてきな一日になりますように。</p>
+                    <p className="yl-bday-cheer-title">{t("home.bdayCheerTitle",{names:todayBirthdays.map(a=>a.name+(a.years?t("home.bdayAgeSuffix",{y:a.years}):"")).join("・")})}</p>
+                    <p className="yl-bday-cheer-sub">{t("home.bdayCheerSub")}</p>
                   </div>
                 </section>
               )}
@@ -9149,8 +9157,8 @@ function App(){
                   {upcomingAnnivRest.slice(0,3).map(a=>(
                     <div key={a.key} className="yl-bday-row">
                       <span className="yl-bday-emoji">{a.emoji}</span>
-                      <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?"・うちの子記念日":a.kind==="self"?"":"・誕生日"}</span></span>
-                      <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.years?(a.kind==="gotcha"?`迎えて${a.years}年！`:`${a.years}歳！`):"今日！"):`あと${a.daysUntil}日`}</span>
+                      <span className="yl-bday-name">{a.name}<span className="yl-bday-kind">{a.kind==="gotcha"?t("home.annivGotcha"):a.kind==="self"?"":t("home.annivBday")}</span></span>
+                      <span className={"yl-bday-tag"+(a.daysUntil===0?" today":"")}>{a.daysUntil===0?(a.years?(a.kind==="gotcha"?t("home.annivYearsGotcha",{y:a.years}):t("home.annivYearsAge",{y:a.years})):t("home.annivToday")):t("rel.inDays",{d:a.daysUntil})}</span>
                     </div>
                   ))}
                 </section>
@@ -9364,7 +9372,7 @@ function App(){
                         {(()=>{const isT=walkDay==="tomorrow"&&wtT;const active=isT?wtT:wt;if(!active)return<p className="yl-walktime-empty">{t("walk.tmrNA")}</p>;const tc=isT&&tmr&&tmr.code!=null?weatherCodeMeta(tmr.code):null;return(<>
                           {isT&&tmr&&<div className="yl-walk-tmrwx">{tc&&<span className="yl-walk-tmrcond">{tc.label}</span>}{(tmr.hi!=null||tmr.lo!=null)&&<span className="yl-walk-tmrhilo">{tmr.hi!=null?`↑${Math.round(tmr.hi)}°`:""}{tmr.lo!=null?` ↓${Math.round(tmr.lo)}°`:""}</span>}{tmr.uv!=null&&<span className="yl-walk-tmruv"><Icon name="sun" size={12}/> UV {Math.round(tmr.uv)}</span>}</div>}
                           {active.best?<span className="yl-walktime-badge"><Icon name="sun" size={12}/> {(active.best.from===active.best.to?t("walk.timeAround",{h:active.best.from}):t("walk.timeRange",{from:active.best.from,to:active.best.to}))+t("walk.bestSuffix")}</span>:<span className="yl-walktime-badge none">{isT?t("walk.stayInTomorrow"):t("walk.stayInToday")}</span>}
-                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={`${s.h}時`}/>)}</div>
+                          <div className="yl-walktime-bar">{active.segs.map(s=><span key={s.h} className={"yl-wt-seg lv-"+s.level} title={t("walk.hourTitle",{h:s.h})}/>)}</div>
                           <div className="yl-walktime-axis"><span>{t("walk.axisMorning")}</span><span>{t("walk.axis9")}</span><span>{t("walk.axisNoon")}</span><span>{t("walk.axis17")}</span><span>{t("walk.axisNight")}</span></div>
                           <div className="yl-walktime-legend"><span className="yl-wt-lg"><span className="yl-wt-dot good"/> {t("walk.legGood")}</span><span className="yl-wt-lg"><span className="yl-wt-dot caution"/> {t("walk.legMid")}</span><span className="yl-wt-lg"><span className="yl-wt-dot avoid"/> {t("walk.legAvoid")}</span></div>
                         </>);})()}
@@ -9680,10 +9688,9 @@ function App(){
               const photo=activeMember.avatar&&photos[activeMember.avatar];
               const memo=!!activeMember.memorial;
               const together=activeMember.gotchaDay?daysTogether(activeMember.gotchaDay,activeMember.memorial):null;
-              const ptLabel=t("ptype."+(activeMember.personType||"child"))||t("prof.familyDefault");
               const sub=isPet
                 ?([(activeMember.species==="other"?activeMember.kindText:""),activeMember.breed,activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||(activeMember.species==="cat"?t("sp.catShort"):activeMember.species==="dog"?t("sp.dogShort"):t("sp.petShort")))
-                :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · ")||ptLabel);
+                :([activeMember.birthday&&ageLabel(activeMember.birthday)].filter(Boolean).join(" · "));
               const openEdit=()=>{setEditingId(activeMember.id);setEditName(activeMember.name);setEditNickname(activeMember.nickname||"");setEditBirthday(activeMember.birthday||"");setEditGotcha(activeMember.gotchaDay||"");setEditGroup(activeMember.group||"");setEditMicrochip(activeMember.microchip||"");setEditBreed(activeMember.breed||"");setEditCoat(activeMember.coat||"");setEditNeuter(activeMember.neuter||"");setEditMemorial(activeMember.memorial||"");setEditAvatar(activeMember.avatar||"");setEditVisibility(visOf(activeMember));setEditPersonType(activeMember.personType||"child");setEditGender(activeMember.gender||"");setEditBlood(activeMember.blood||"");setEditEmoji(activeMember.emoji||"");setEditSkinTone(activeMember.skinTone||"");setEditKindText(activeMember.kindText||"");fillCardEdit(activeMember);setProfileOpen(true);};
               return(
                 <section className={"yl-hero"+(memo?" memorial":"")}>
@@ -9692,7 +9699,7 @@ function App(){
                   </button>
                   <div className="yl-hero-body">
                     <h2 className="yl-hero-name">{activeMember.name}{activeMember.nickname?`（${activeMember.nickname}）`:""}</h2>
-                    <p className="yl-hero-sub">{sub}</p>
+                    {sub&&<p className="yl-hero-sub">{sub}</p>}
                     {memo?<span className="yl-hero-memorial"><Icon name="sparkles" size={13}/> {t("hero.rainbow")} {fmtBirthday(activeMember.memorial)}{together?t("hero.togetherThanks",{n:together}):""}</span>:<span className={"yl-hero-status lv-"+lv}><span className="yl-hero-dot"/>{statusText}</span>}
                   </div>
                   <button className="yl-hero-edit" onClick={openEdit} aria-label={t("a11y.editProfile")}><Icon name="pencil" size={17}/></button>
@@ -9883,7 +9890,7 @@ function App(){
                   <button className="yl-secadd" onClick={()=>setInputSheet("schedule")}><Icon name="plus" size={14}/> {t("rec.listTitle")}</button>
                   {tab==="me"&&<button className="yl-secadd" onClick={()=>setInputSheet("bday")}><Icon name="plus" size={14}/> {t("hub.bday")}</button>}
                   {hasListItems&&<div className="yl-sort">{filterChips.map(f=><button key={f.key} className={"yl-sortbtn"+(filter===f.key?" on":"")} onClick={()=>setFilter(f.key)}>{isMemberTab&&f.key!=="all"&&<Icon name={careIcon(f.key)} size={13}/>}{f.label}</button>)}</div>}
-                  {!loaded?<p className="yl-loading">よみこみ中…</p>:visible.length===0?<p className="yl-empty">{t("rec.listEmpty")}</p>:(()=>{
+                  {!loaded?<p className="yl-loading">{t("list.loading")}</p>:visible.length===0?<p className="yl-empty">{t("rec.listEmpty")}</p>:(()=>{
                     const actList=visible.filter(x=>!x.done);const doneList=visible.filter(x=>x.done);
                     return(<>
                       <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={onCardDragEnd}>
@@ -9893,11 +9900,11 @@ function App(){
                           </ul>
                         </SortableContext>
                       </DndContext>
-                      {actList.length===0&&<p className="yl-empty" style={{marginTop:2}}>これからの予定はありません。</p>}
+                      {actList.length===0&&<p className="yl-empty" style={{marginTop:2}}>{t("list.noUpcoming")}</p>}
                       {doneList.length>0&&(
                         <div className="yl-donesec">
                           <button className="yl-donesec-head" onClick={()=>setDoneOpen(o=>!o)} aria-expanded={doneOpen}>
-                            <Icon name="check" size={14}/> 完了済み（{doneList.length}）
+                            <Icon name="check" size={14}/> {t("list.doneSection",{n:doneList.length})}
                             <span className={"yl-donesec-caret"+(doneOpen?" open":"")}>⌄</span>
                           </button>
                           {doneOpen&&<ul className="yl-list yl-donesec-list">{doneList.map(it=><li key={it.id} className="yl-card is-done">{cardInner(it)}</li>)}</ul>}
@@ -9905,12 +9912,12 @@ function App(){
                       )}
                     </>);
                   })()}
-                  {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>長押しで並び替え</p>}
+                  {visible.filter(x=>!x.done).length>1&&<p className="yl-foot" style={{marginTop:2}}>{t("common.longPressReorder")}</p>}
                 </section>
               )});
               if(curKind==="person"&&tomorrowBelongings.length>0)defs.push({key:"prep",el:(
                 <section className="yl-belong">
-                  <h2 className="yl-routine-title" style={{marginBottom:10}}>明日（{WEEKDAYS_JA[tomorrowDow]}）の準備</h2>
+                  <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("prep.tomorrowTitle",{dow:fmtWeekdayLoc(tomorrowIso,lang)})}</h2>
                   <div className="yl-prep">
                     <ul className="yl-prep-list">
                       {tomorrowBelongings.map(b=>(
@@ -10126,7 +10133,7 @@ function App(){
                 <section className="yl-health">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.healthTitle")}</h2>
                   <button className="yl-secadd" onClick={()=>setInputSheet("health")}><Icon name="plus" size={14}/> {t("rec.healthTitle")}</button>
-                  {isMemberTab&&weightGoalOk&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?<><Icon name="sparkles" size={13}/> 目標達成中！この調子で</>:weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
+                  {isMemberTab&&weightGoalOk&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?<><Icon name="sparkles" size={13}/> {t("health.goalOk")}</>:weightDiff>0?<>{t("health.goalOver",{v:Math.abs(weightDiff).toFixed(1),unit:weightUnit})}<span className="yl-nowrap">{t("health.goalOverNote")}</span></>:<>{t("health.goalLeft",{v:Math.abs(weightDiff).toFixed(1),unit:weightUnit})}</>}</p>)}
                   {weightPts.length>=2?(()=>{
                     const wUnit=weightPts[weightPts.length-1].unit;
                     const tBand=(isMemberTab&&weightGoalOk&&targetWeight!=="")?{lo:Number(targetWeight)*0.95,hi:Number(targetWeight)*1.05,target:Number(targetWeight)}:null;
@@ -10156,7 +10163,7 @@ function App(){
                       {[...healthRecords].reverse().slice(0,6).map(r=>(
                         <li key={r.id} className="yl-health-item">
                           <span className="yl-health-date">{fmtDate(r.date)}</span>
-                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.headCirc!=null&&<span>{t("health.headCirc")} {r.headCirc}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.metrics&&customDefs.map(d=>r.metrics[d.id]!=null?<span key={d.id}>{d.name} {r.metrics[d.id]}{d.unit}</span>:null)}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.headCirc!=null&&<span>{t("health.headCirc")} {r.headCirc}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>{t("health.glucosePrefix")}{r.glucose}</span>}{r.metrics&&customDefs.map(d=>r.metrics[d.id]!=null?<span key={d.id}>{d.name} {r.metrics[d.id]}{d.unit}</span>:null)}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
                           {recBySpan(r)}
                           <button className="yl-health-del" onClick={()=>askDelete(t("health.recordOf",{date:fmtDate(r.date)}),()=>removeHealth(r.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
@@ -10193,25 +10200,25 @@ function App(){
               )});
               if(curKind==="person"&&activeMember.personType==="baby")defs.push({key:"nursing",el:(
                 <section className="yl-nursing">
-                  <div className="yl-routine-head"><h2 className="yl-routine-title">{t("rec.nursingTitle")}</h2>{lastNursingTs&&!nursing&&<span className="yl-nursing-since">前回から {sinceLabel(lastNursingTs)}</span>}</div>
+                  <div className="yl-routine-head"><h2 className="yl-routine-title">{t("rec.nursingTitle")}</h2>{lastNursingTs&&!nursing&&<span className="yl-nursing-since">{t("baby.since",{x:sinceLabel(lastNursingTs)})}</span>}</div>
                   {nursing&&nursing.space===tab?(
                     <div className="yl-nursing-run">
-                      <div className="yl-nursing-runinfo"><span className="yl-nursing-runside">{nursing.side==="left"?"◀ 左で授乳中":"右で授乳中 ▶"}</span><span className="yl-nursing-time">{fmtDur(Math.max(0,Math.round((nursingNow-nursing.start)/1000)))}</span></div>
-                      <div className="yl-nursing-runbtns"><button className="yl-nursing-stop" onClick={stopNursing}><Icon name="check" size={16}/> 終了して記録</button><button className="yl-nursing-cancel" onClick={cancelNursing}>やめる</button></div>
+                      <div className="yl-nursing-runinfo"><span className="yl-nursing-runside">{nursing.side==="left"?t("nurse.nowLeft"):t("nurse.nowRight")}</span><span className="yl-nursing-time">{fmtDur(Math.max(0,Math.round((nursingNow-nursing.start)/1000)))}</span></div>
+                      <div className="yl-nursing-runbtns"><button className="yl-nursing-stop" onClick={stopNursing}><Icon name="check" size={16}/> {t("nurse.stopLog")}</button><button className="yl-nursing-cancel" onClick={cancelNursing}>{t("common.abort")}</button></div>
                     </div>
                   ):(
-                    <div className="yl-nursing-start"><button className="yl-nursing-btn" onClick={()=>startNursing("left")}>◀ 左で授乳</button><button className="yl-nursing-btn" onClick={()=>startNursing("right")}>右で授乳 ▶</button></div>
+                    <div className="yl-nursing-start"><button className="yl-nursing-btn" onClick={()=>startNursing("left")}>{t("nurse.startLeft")}</button><button className="yl-nursing-btn" onClick={()=>startNursing("right")}>{t("nurse.startRight")}</button></div>
                   )}
-                  <div className="yl-nursing-milk"><span className="yl-nursing-milklabel">🍼 ミルク</span><span className="yl-nursing-mlbox"><input type="number" inputMode="numeric" min="0" className="yl-health-num" value={milkMl} onChange={e=>setMilkMl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&logMilk()} placeholder={t("ph.amount")}/><span className="yl-nursing-unit">ml</span></span><button className="yl-addbtn sm" onClick={logMilk}>＋ 記録</button></div>
-                  {nursingToday.length>0&&<p className="yl-nursing-todaysub">今日 {nursingToday.length}回</p>}
+                  <div className="yl-nursing-milk"><span className="yl-nursing-milklabel">{t("nurse.milk")}</span><span className="yl-nursing-mlbox"><input type="number" inputMode="numeric" min="0" className="yl-health-num" value={milkMl} onChange={e=>setMilkMl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&logMilk()} placeholder={t("ph.amount")}/><span className="yl-nursing-unit">ml</span></span><button className="yl-addbtn sm" onClick={logMilk}>{t("nurse.addRecord")}</button></div>
+                  {nursingToday.length>0&&<p className="yl-nursing-todaysub">{t("nurse.todayCount",{n:nursingToday.length})}</p>}
                   {nursingRecords.length>0&&(
                     <ul className="yl-nursing-list">
                       {nursingRecords.slice(0,6).map(x=>(
                         <li key={x.id} className="yl-nursing-item">
                           <span className="yl-nursing-itime">{fmtClock(x.ts)}</span>
-                          <span className="yl-nursing-ibody">{x.side==="milk"?<>🍼 ミルク {x.amountMl}ml</>:<>🤱 母乳 {x.side==="left"?"左":"右"}・{fmtDur(x.durationSec)}</>}</span>
+                          <span className="yl-nursing-ibody">{x.side==="milk"?<>{t("nurse.milkItem",{ml:x.amountMl})}</>:<>{t("nurse.breastItem",{side:t(x.side==="left"?"nurse.left":"nurse.right"),dur:fmtDur(x.durationSec)})}</>}</span>
                           <span className="yl-nursing-idate">{fmtDate(x.date)}</span>
-                          <button className="yl-health-del" onClick={()=>askDelete("授乳の記録",()=>removeNursing(x.id))} aria-label={t("a11y.delete")}>×</button>
+                          <button className="yl-health-del" onClick={()=>askDelete(t("nurse.recordName"),()=>removeNursing(x.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
                       ))}
                     </ul>
@@ -10319,7 +10326,7 @@ function App(){
                     <h2 className="yl-routine-title" style={{margin:0}}>{t("rec.toiletTitle")}</h2>
                     <span className="yl-toilet-ranges">{[7,14,30].map(d=><button key={d} className={"yl-toilet-range"+(toiletRange===d?" on":"")} onClick={()=>setToiletRange(d)}>{d}{t("unit.dShort")}</button>)}</span>
                   </div>
-                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,ico,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label"><Icon name={ico} size={14}/> {label}</span>{s.total===0?<span className="yl-toilet-stat-none">{t("toilet.none")}</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt">{t("toilet.count",{success:s.success,total:s.total})}</span></span></>}</div>);return(<><Row label={t("toilet.peeRate")} ico="droplet" s={st.pee}/><Row label={t("toilet.poopRate")} ico="droplet" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg"><Icon name="droplet" size={13}/> うんちの硬さ平均 <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${bristolMeta(Math.round(st.poop.avgBristol)).label}）`:""}・{st.poop.brCount}回</p>}</>);})()}
+                  {(()=>{const st=toiletStats[toiletRange];const Row=({label,ico,s})=>(<div className="yl-toilet-stat"><span className="yl-toilet-stat-label"><Icon name={ico} size={14}/> {label}</span>{s.total===0?<span className="yl-toilet-stat-none">{t("toilet.none")}</span>:<><span className="yl-toilet-bar"><span className="yl-toilet-fill" style={{width:s.rate+"%"}}/></span><span className="yl-toilet-pct">{s.rate}%<span className="yl-toilet-cnt">{t("toilet.count",{success:s.success,total:s.total})}</span></span></>}</div>);return(<><Row label={t("toilet.peeRate")} ico="droplet" s={st.pee}/><Row label={t("toilet.poopRate")} ico="droplet" s={st.poop}/>{st.poop.avgBristol!=null&&<p className="yl-toilet-avg"><Icon name="droplet" size={13}/> {t("toilet.avgBristol")} <b>{st.poop.avgBristol}／7</b>{bristolMeta(Math.round(st.poop.avgBristol))?`（${lblOf(bristolMeta(Math.round(st.poop.avgBristol)))}）`:""}{t("toilet.brCountSuffix",{n:st.poop.brCount})}</p>}</>);})()}
                   {poopTrend&&<p className={"yl-bristol-warn tone-"+poopTrend.tone} style={{marginTop:2}}><Icon name="alert" size={13}/> {poopTrend.txt}</p>}
                   <button className="yl-quick-big" style={{marginTop:10}} onClick={()=>setInputSheet("toilet")}><Icon name="paw" size={18}/> {t("toilet.logBtn")}</button>
                 </section>
@@ -10344,37 +10351,37 @@ function App(){
                         const energyRecs=recs.filter(r=>r.energy&&energyMetaOf(r.energy));
                         const rep=energyRecs.length?energyMetaOf(energyRecs[energyRecs.length-1].energy):null;
                         const daySyms=[...new Set(recs.flatMap(r=>r.symptoms||[]))];
-                        const sumLabel=recs.length===1?(rep?rep.label:(recs[0].note?recs[0].note.slice(0,14):"記録")):recs.length>1?`${rep?rep.label:"記録"}・ほか${recs.length-1}件`:(routineDones.length?routineDones[0].title+(routineDones.length>1?`・ほか${routineDones.length-1}件`:""):"記録");
+                        const recFb=t("day.recordFallback");const sumLabel=recs.length===1?(rep?rep.label:(recs[0].note?recs[0].note.slice(0,14):recFb)):recs.length>1?`${rep?rep.label:recFb}${t("day.moreCount",{n:recs.length-1})}`:(routineDones.length?routineDones[0].title+(routineDones.length>1?t("day.moreCount",{n:routineDones.length-1}):""):recFb);
                         return(
                           <li key={date} className={"yl-daycard"+(open?" open":"")}>
                             <div className="yl-daycard-head">
                               <button className="yl-daycard-toggle" onClick={()=>setDiaryOpen(o=>({...o,[date]:!open}))}>
                                 <span className="yl-daycard-caret">{open?"▾":"▸"}</span>
-                                <span className="yl-daycard-date">{fmtDate(date)}{date===todayIso?"（今日）":""}</span>
+                                <span className="yl-daycard-date">{fmtDate(date)}{date===todayIso?t("day.todaySuffix"):""}</span>
                                 <span className="yl-daycard-rep"><Icon name={rep?(ENERGY_ICON[rep.key]||"note"):"note"} size={14}/> {sumLabel}</span>
                                 {!open&&daySyms.length>0&&<span className="yl-daycard-symbadges">{daySyms.slice(0,3).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-symbadge"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/></span>)}</span>}
                               </button>
-                              {recs.length>0&&<button className="yl-daycard-del" onClick={()=>askDelete(`${fmtDate(date)}の記録すべて`,()=>removeDiaryDay(date))} aria-label={t("a11y.deleteDay")}>×</button>}
+                              {recs.length>0&&<button className="yl-daycard-del" onClick={()=>askDelete(t("day.allRecords",{date:fmtDate(date)}),()=>removeDiaryDay(date))} aria-label={t("a11y.deleteDay")}>×</button>}
                             </div>
                             {open&&(
                               <ul className="yl-dayrecs">
-                                {recs.map(r=>{const tod=recs.length>1&&r.createdAt?(()=>{const h=new Date(r.createdAt).getHours();return h<11?"朝":h<17?"昼":"夜";})():"";return(
+                                {recs.map(r=>{const tod=recs.length>1&&r.createdAt?(()=>{const h=new Date(r.createdAt).getHours();return h<11?t("med.slot.morning"):h<17?t("med.slot.noon"):t("med.slot.night");})():"";return(
                                   <li key={r.id} className="yl-dayrec">
                                     <span className="yl-dayrec-vals">
                                       {tod&&<span className="yl-dayrec-tod">{tod}</span>}
                                       {r.energy&&energyMetaOf(r.energy)&&<span className="yl-dayrec-chip"><Icon name={ENERGY_ICON[r.energy]||"meh"} size={13}/> {lblOf(energyMetaOf(r.energy))}</span>}
                                       {r.appetite&&appetiteMetaOf(r.appetite)&&<span className="yl-dayrec-chip"><Icon name={appetiteIcon(r.appetite)} size={13}/> {lblOf(appetiteMetaOf(r.appetite))}</span>}
                                       {r.poop&&diaryMeta(DIARY_POOP,r.poop)&&<span className="yl-dayrec-chip"><Icon name={POOP_DIARY_ICON[r.poop]||"droplet"} size={13}/> {lblOf(diaryMeta(DIARY_POOP,r.poop))}</span>}
-                                      {r.sleep&&<span className="yl-dayrec-chip"><Icon name="moon" size={13}/> 睡眠{r.sleep}h</span>}
+                                      {r.sleep&&<span className="yl-dayrec-chip"><Icon name="moon" size={13}/> {t("day.sleepChip",{h:r.sleep})}</span>}
                                       {r.exAct&&exerciseMeta(r.exAct)&&<span className="yl-dayrec-chip"><Icon name="activity" size={13}/> {exerciseLabelOf(r)}{r.exMin?` ${r.exMin}${t("diary.minSuffix")}`:""}</span>}
-                                      {r.walk&&<span className="yl-dayrec-chip"><Icon name="paw" size={13}/> さんぽ</span>}
-                                      {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> 病院</span>}
-                                      {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/> {symptomMeta(sk).label}</span>)}
+                                      {r.walk&&<span className="yl-dayrec-chip"><Icon name="paw" size={13}/> {t("day.walkChip")}</span>}
+                                      {r.hospital&&<span className="yl-dayrec-chip"><Icon name="stethoscope" size={13}/> {t("day.hospitalChip")}</span>}
+                                      {(r.symptoms||[]).map(sk=>symptomMeta(sk)&&<span key={sk} className={"yl-dayrec-chip sym"+(sk==="period"?" period":"")}><Icon name={symIcon(sk)} size={13}/> {lblOf(symptomMeta(sk))}</span>)}
                                       {r.note&&<span className="yl-dayrec-note">{r.note}</span>}
                                       {recBySpan(r)}
                                       {firstPhotoId(r)&&photos[firstPhotoId(r)]&&<img className="yl-diary-rthumb" src={photos[firstPhotoId(r)]} alt="" onClick={()=>setViewer({id:firstPhotoId(r),src:photos[firstPhotoId(r)],isMemory:false,kind:"diary"})}/>}
                                     </span>
-                                    <button className="yl-dayrec-del" onClick={()=>askDelete("この記録",()=>removeDiary(r.id))} aria-label={t("a11y.deleteRecord")}>×</button>
+                                    <button className="yl-dayrec-del" onClick={()=>askDelete(t("day.thisRecord"),()=>removeDiary(r.id))} aria-label={t("a11y.deleteRecord")}>×</button>
                                   </li>
                                 );})}
                               </ul>
@@ -10609,45 +10616,45 @@ function App(){
       {menuOpen&&(
         <div className="yl-drawer-ov" onClick={()=>setMenuOpen(false)}>
           <div className="yl-drawer" onClick={e=>e.stopPropagation()}>
-            <div className="yl-drawer-head"><span className="yl-drawer-title">メニュー</span><button className="yl-help-close" onClick={()=>setMenuOpen(false)}>×</button></div>
+            <div className="yl-drawer-head"><span className="yl-drawer-title">{t("drawer.title")}</span><button className="yl-help-close" onClick={()=>setMenuOpen(false)}>×</button></div>
             <div className="yl-drawer-group">
-              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={19}/> 誤食・中毒 危険物リスト</button>
-              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setEmergencyOpen(true);}}><Icon name="activity" size={19}/> 夜間・救急の備え</button>
-              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setDisasterOpen(true);}}><Icon name="home" size={19}/> 防災・避難の備え</button>
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setToxicSp("all");setToxicQ("");setToxicOpen(true);}}><Icon name="alert" size={19}/> {t("drawer.toxic")}</button>
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setEmergencyOpen(true);}}><Icon name="activity" size={19}/> {t("drawer.emergency")}</button>
+              <button className="yl-drawer-item danger" onClick={()=>{setMenuOpen(false);setDisasterOpen(true);}}><Icon name="home" size={19}/> {t("drawer.disaster")}</button>
             </div>
             <div className="yl-drawer-sep"/>
             <div className="yl-drawer-group">
-              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";const m=members.find(x=>x.id===t);if(m)startMemberEdit(m);else{setTab("me");setPersonSeg("manage");}}}><Icon name="users" size={19}/> 家族のプロフィール</button>
-              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");setTimeout(()=>{const el=document.getElementById("sec-expense");if(el)el.scrollIntoView?.({block:"start"});},350);}}><Icon name="wallet" size={19}/> 支出・費用</button>
-              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setNotesOpen(true);}}><Icon name="note" size={19}/> 家族ノート</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";const m=members.find(x=>x.id===t);if(m)startMemberEdit(m);else{setTab("me");setPersonSeg("manage");}}}><Icon name="users" size={19}/> {t("drawer.profile")}</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);const t=members.some(m=>m.id===memberSel)||memberSel==="me"?memberSel:"me";setTab(t);setMemberSel(t);setPersonSeg("manage");setTimeout(()=>{const el=document.getElementById("sec-expense");if(el)el.scrollIntoView?.({block:"start"});},350);}}><Icon name="wallet" size={19}/> {t("drawer.expense")}</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setNotesOpen(true);}}><Icon name="note" size={19}/> {t("note.title")}</button>
               {DOGFRIENDS_ENABLED&&petMembers.some(m=>m.species==="dog")&&<button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);openDogFriends("list");}}><Icon name="paw" size={19}/> {t("df.title")}{dogFriends.length>0?`（${dogFriends.length}）`:""}</button>}
-              {FB_READY&&<button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setShowShareModal(true);setShareStep("menu");setShareError("");setAuthView("main");setAuthErrorCode("");}}><Icon name="users" size={19}/> 家族で共有</button>}
+              {FB_READY&&<button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setShowShareModal(true);setShareStep("menu");setShareError("");setAuthView("main");setAuthErrorCode("");}}><Icon name="users" size={19}/> {t("drawer.share")}</button>}
             </div>
             <div className="yl-drawer-sep"/>
             <div className="yl-drawer-group">
-              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setHelpOpen(true);}}><Icon name="help" size={19}/> 使い方・機能紹介</button>
+              <button className="yl-drawer-item" onClick={()=>{setMenuOpen(false);setHelpOpen(true);}}><Icon name="help" size={19}/> {t("drawer.help")}</button>
             </div>
-            <p className="yl-drawer-foot">LOALIFE β版</p>
+            <p className="yl-drawer-foot">{t("drawer.foot")}</p>
           </div>
         </div>
       )}
       {notesOpen&&(
         <div className="yl-help-ov" onClick={()=>setNotesOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
-            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> 家族ノート</h2><button className="yl-help-close" onClick={()=>setNotesOpen(false)}>×</button></div>
+            <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> {t("note.title")}</h2><button className="yl-help-close" onClick={()=>setNotesOpen(false)}>×</button></div>
             <div className="yl-note-compose">
-              <div className="yl-note-kinds">{NOTE_KINDS.map(k=><button key={k.k} className={"yl-note-kind"+(noteKind===k.k?" on":"")} onClick={()=>setNoteKind(k.k)}><Icon name={k.icon} size={14}/> {k.l}</button>)}</div>
-              <div className="yl-note-inputrow"><input className="yl-input" value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFamilyNote()} placeholder={t("note.familyPh")}/><button className="yl-addbtn sm" onClick={addFamilyNote}>保存する</button></div>
+              <div className="yl-note-kinds">{NOTE_KINDS.map(k=><button key={k.k} className={"yl-note-kind"+(noteKind===k.k?" on":"")} onClick={()=>setNoteKind(k.k)}><Icon name={k.icon} size={14}/> {lOf(k)}</button>)}</div>
+              <div className="yl-note-inputrow"><input className="yl-input" value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addFamilyNote()} placeholder={t("note.familyPh")}/><button className="yl-addbtn sm" onClick={addFamilyNote}>{t("note.saveBtn")}</button></div>
             </div>
-            {familyNotes.length===0?<p className="yl-set-desc" style={{padding:"12px 4px"}}>今日のことや「ありがとう」をひとことで。</p>:(
+            {familyNotes.length===0?<p className="yl-set-desc" style={{padding:"12px 4px"}}>{t("note.emptyHint")}</p>:(
               <ul className="yl-note-list">{familyNotes.map(n=>{const km=noteKindMeta(n.kind);return(
                 <li key={n.id} className={"yl-note-item kind-"+n.kind}>
                   <span className="yl-note-ic"><Icon name={km.icon} size={15}/></span>
-                  <span className="yl-note-body"><span className="yl-note-text">{n.text}</span><span className="yl-note-meta">{km.l}・{n.author}・{fmtDate(n.date)}</span></span>
+                  <span className="yl-note-body"><span className="yl-note-text">{n.text}</span><span className="yl-note-meta">{lOf(km)}・{n.author}・{fmtDate(n.date)}</span></span>
                   <button className="yl-health-del" onClick={()=>removeFamilyNote(n.id)} aria-label={t("a11y.delete")}>×</button>
                 </li>);})}</ul>
             )}
-            <p className="yl-toxic-foot">{household?t("note.syncedFoot"):"※ この端末に保存される、家族の連絡帳です。"}</p>
+            <p className="yl-toxic-foot">{household?t("note.syncedFoot"):t("note.localFoot")}</p>
           </div>
         </div>
       )}
@@ -10666,7 +10673,7 @@ function App(){
           const w=wl?`${wl.weight}${wl.wunit||"kg"}`:null;
           const meds=items.filter(x=>x.space===m.id&&x.type==="medcourse"&&(x.taken||[]).length<(x.days||0)).map(c=>c.name).filter(Boolean);
           const allergy=items.filter(x=>x.space===m.id&&x.type==="card"&&x.kind==="allergy");
-          const meta=(m.kind==="pet"?[m.breed||"",ageLabel(m.birthday),w]:[t("ptype."+(m.personType||"child")),ageLabel(m.birthday),w]).filter(Boolean).join("・");
+          const meta=(m.kind==="pet"?[m.breed||"",ageLabel(m.birthday),w]:[ageLabel(m.birthday),w]).filter(Boolean).join("・");
           return{m,w,meds,allergy,meta};
         });
         // 「電話で伝える」：世帯構成で出し分け（ペットのみ＝ペット版／人のみ＝人間版／両方＝両方の筆頭を並べる）。
@@ -10883,61 +10890,61 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setToxicOpen(false)}>
           <div className="yl-help-page yl-tox" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="alert" size={18}/> 誤食・中毒</h2>
+              <h2 className="yl-help-title"><Icon name="alert" size={18}/> {t("tox.title")}</h2>
               <button className="yl-help-close" onClick={()=>setToxicOpen(false)}>×</button>
             </div>
-            <button className="yl-tox-emg" onClick={()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];let w="";if(m){const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();if(wl)w=`${wl.weight}${wl.wunit||"kg"}`;}setToxicEmgForm({what:"",amount:"",when:"",weight:w,symptom:""});setToxicEmgOpen(true);}}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>今、食べたかも？</b><span>落ち着いて、順番に確認しましょう</span></span><Icon name="chevron" size={18}/></button>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子が変わったら、すぐ病院に連絡を。家庭で吐かせないで。</p>
+            <button className="yl-tox-emg" onClick={()=>{const m=(activeMember&&activeMember.kind==="pet")?activeMember:petMembers[0];let w="";if(m){const wl=items.filter(x=>x.space===m.id&&x.type==="health"&&x.weight!=null).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).pop();if(wl)w=`${wl.weight}${wl.wunit||"kg"}`;}setToxicEmgForm({what:"",amount:"",when:"",weight:w,symptom:""});setToxicEmgOpen(true);}}><span className="yl-tox-emg-ico">🚑</span><span className="yl-tox-emg-txt"><b>{t("tox.emgTitle")}</b><span>{t("tox.emgSub")}</span></span><Icon name="chevron" size={18}/></button>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> {t("tox.warn1")}</p>
             <div className="yl-tox-controls">
-              <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder="例：もやし ／ チョコ ／ 玉ねぎ ／ ぶどう"/>
-              <div className="yl-tox-cats">{TOX_CATS.map(c=><button key={c.k} className={"yl-tox-cat"+(toxicCat===c.k?" on":"")} onClick={()=>setToxicCat(c.k)}>{c.l}</button>)}</div>
-              <div className="yl-tox-tabs">{[{k:"all",l:"犬・猫"},{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-tox-tab"+(toxicSp===o.k?" on":"")} onClick={()=>setToxicSp(o.k)}>{o.l}</button>)}</div>
+              <input className="yl-input sm yl-tox-search" value={toxicQ} onChange={e=>setToxicQ(e.target.value)} placeholder={t("tox.searchPh")}/>
+              <div className="yl-tox-cats">{TOX_CATS.map(c=><button key={c.k} className={"yl-tox-cat"+(toxicCat===c.k?" on":"")} onClick={()=>setToxicCat(c.k)}>{lOf(c)}</button>)}</div>
+              <div className="yl-tox-tabs">{[{k:"all",lk:"tox.tabAll"},{k:"dog",lk:"tox.dog"},{k:"cat",lk:"tox.cat"}].map(o=><button key={o.k} className={"yl-tox-tab"+(toxicSp===o.k?" on":"")} onClick={()=>setToxicSp(o.k)}>{t(o.lk)}</button>)}</div>
             </div>
             {safeCard&&<div className="yl-tox-safe">
-              <p className="yl-tox-safe-head">🟢 ○ {safeCard.name}は{safeCard.verdict==="safe"?"食べて大丈夫です":"条件つきで大丈夫です"}</p>
+              <p className="yl-tox-safe-head">🟢 {safeCard.verdict==="safe"?t("tox.safeHeadSafe",{name:safeCard.name}):t("tox.safeHeadCond",{name:safeCard.name})}</p>
               <p className="yl-tox-safe-cond">{safeCard.conditions}</p>
               {safeCard.note&&<p className="yl-tox-safe-note">{safeCard.note}</p>}
-              <p className="yl-tox-safe-foot">どの食品も、初めてのときは少量から様子を見てください。味付けなしが基本です。持病のある子・療法食の子は、獣医さんに確認してからにしましょう。</p>
+              <p className="yl-tox-safe-foot">{t("tox.safeFoot")}</p>
             </div>}
             <ul className="yl-tox-list">
               {toxicCat==="safe"&&safeList.map(f=>(
                 <li key={f.id} className="yl-tox-item safe">
                   <div className="yl-tox-row" style={{cursor:"default"}}>
-                    <span className="yl-tox-badge safe">{f.verdict==="safe"?"○ 大丈夫":"○ 条件つき"}</span>
-                    <span className="yl-tox-name">{f.name}{f.species!=="both"&&<span className="yl-tox-sp">{f.species==="dog"?"犬":"猫"}</span>}</span>
+                    <span className="yl-tox-badge safe">{f.verdict==="safe"?t("tox.badgeSafe"):t("tox.badgeCond")}</span>
+                    <span className="yl-tox-name">{f.name}{f.species!=="both"&&<span className="yl-tox-sp">{f.species==="dog"?t("tox.dog"):t("tox.cat")}</span>}</span>
                   </div>
                   <p className="yl-tox-lead"><b>{f.conditions}</b>{f.note?`　${f.note}`:""}</p>
                 </li>
               ))}
-              {toxicCat!=="safe"&&list.map(t=>{const R=TOX_RISK[t.risk];const open=toxicExpanded===t.id;const donts=[...(t.dont||[]),...TOX_DONT_CORE];const vets=[...(t.vet||[]),...TOX_VET_CORE];return(
-                <li key={t.id} className={"yl-tox-item r-"+t.risk}>
-                  <button className="yl-tox-row" onClick={()=>setToxicExpanded(open?null:t.id)} aria-expanded={open}>
-                    <span className={"yl-tox-badge r-"+t.risk}>{R.emoji} {R.label}</span>
-                    <span className="yl-tox-name">{t.name}{t.species!=="both"&&<span className="yl-tox-sp">{t.species==="dog"?"犬":"猫"}</span>}</span>
+              {toxicCat!=="safe"&&list.map(tx=>{const R=TOX_RISK[tx.risk];const open=toxicExpanded===tx.id;const donts=[...(tx.dont||[]),...TOX_DONT_CORE];const vets=[...(tx.vet||[]),...TOX_VET_CORE];return(
+                <li key={tx.id} className={"yl-tox-item r-"+tx.risk}>
+                  <button className="yl-tox-row" onClick={()=>setToxicExpanded(open?null:tx.id)} aria-expanded={open}>
+                    <span className={"yl-tox-badge r-"+tx.risk}>{R.emoji} {t("tox.risk."+tx.risk)}</span>
+                    <span className="yl-tox-name">{tx.name}{tx.species!=="both"&&<span className="yl-tox-sp">{tx.species==="dog"?t("tox.dog"):t("tox.cat")}</span>}</span>
                     <Icon name="chevron" size={16} className={open?"yl-rot90":""}/>
                   </button>
-                  <p className="yl-tox-lead">{t.toxic}</p>
+                  <p className="yl-tox-lead">{tx.toxic}</p>
                   {open&&<div className="yl-tox-detail">
-                    <div className="yl-tox-d"><h4>症状</h4><p>{t.symptoms.join("・")}</p></div>
-                    <div className="yl-tox-d"><h4>発症の目安</h4><p>{t.onset}</p></div>
-                    <div className="yl-tox-d urg"><h4><Icon name="activity" size={12}/> すぐ受診したいケース</h4><p>{t.urgency}</p></div>
-                    <div className="yl-tox-d dont"><h4><Icon name="ban" size={12}/> やってはいけないこと</h4><ul>{donts.map((d,i)=><li key={i}>{d}</li>)}</ul></div>
-                    <div className="yl-tox-d"><h4><Icon name="phone" size={12}/> 病院に伝える情報</h4><ul>{vets.map((v,i)=><li key={i}>{v}</li>)}</ul></div>
-                    {t.variesBy&&<p className="yl-tox-varies">危険度は {t.variesBy.join("・")} で変わります。{petW?`（${(activeMember&&activeMember.kind==="pet")?activeMember.name:"登録"}の体重：${petW}）`:""}</p>}
-                    <p className="yl-tox-src">{t.source||TOX_SOURCE}／最終確認 {t.lastReviewedAt||TOX_REVIEWED}</p>
+                    <div className="yl-tox-d"><h4>{t("tox.secSymptoms")}</h4><p>{tx.symptoms.join("・")}</p></div>
+                    <div className="yl-tox-d"><h4>{t("tox.secOnset")}</h4><p>{tx.onset}</p></div>
+                    <div className="yl-tox-d urg"><h4><Icon name="activity" size={12}/> {t("tox.secUrgent")}</h4><p>{tx.urgency}</p></div>
+                    <div className="yl-tox-d dont"><h4><Icon name="ban" size={12}/> {t("tox.secDont")}</h4><ul>{donts.map((d,i)=><li key={i}>{d}</li>)}</ul></div>
+                    <div className="yl-tox-d"><h4><Icon name="phone" size={12}/> {t("tox.secVet")}</h4><ul>{vets.map((v,i)=><li key={i}>{v}</li>)}</ul></div>
+                    {tx.variesBy&&<p className="yl-tox-varies">{t("tox.varies",{list:tx.variesBy.join("・")})}{petW?t("tox.variesWeight",{name:(activeMember&&activeMember.kind==="pet")?activeMember.name:t("tox.registeredName"),w:petW}):""}</p>}
+                    <p className="yl-tox-src">{t("tox.srcLine",{src:tx.source||TOX_SOURCE,date:tx.lastReviewedAt||TOX_REVIEWED})}</p>
                   </div>}
                 </li>
               );})}
-              {toxicCat==="safe"?(safeList.length===0&&(q?<li className="yl-tox-empty">『{toxicQ.trim()}』はリストにありませんでした。リストにない食品は、安全とは限りません。食べてしまった場合は、量と様子を記録して動物病院に相談を。</li>:<li className="yl-tox-empty">該当が見つかりませんでした。</li>)):(list.length===0&&!safeCard&&(q?<li className="yl-tox-empty">『{toxicQ.trim()}』はリストにありませんでした。リストにない食品は、安全とは限りません。食べてしまった場合は、量と様子を記録して動物病院に相談を。</li>:<li className="yl-tox-empty">該当が見つかりませんでした。心当たりが無くても、食べた可能性があれば動物病院にご相談ください。</li>))}
+              {toxicCat==="safe"?(safeList.length===0&&(q?<li className="yl-tox-empty">{t("tox.notFoundQ",{q:toxicQ.trim()})}</li>:<li className="yl-tox-empty">{t("tox.notFound")}</li>)):(list.length===0&&!safeCard&&(q?<li className="yl-tox-empty">{t("tox.notFoundQ",{q:toxicQ.trim()})}</li>:<li className="yl-tox-empty">{t("tox.notFoundCare")}</li>))}
             </ul>
-            <p className="yl-toxic-foot">※ これは診断ではありません。量・体重・部位・経過・個体差で判断が変わります。迷ったら動物病院・夜間救急に相談してください。</p>
+            <p className="yl-toxic-foot">{t("tox.foot")}</p>
             <div className="yl-tox-srcbox">
-              <button className="yl-tox-srchead" onClick={()=>setToxicSrcOpen(o=>!o)} aria-expanded={toxicSrcOpen}><Icon name="shield" size={13}/> 情報源について<Icon name="chevron" size={15} className={toxicSrcOpen?"yl-rot90":""}/></button>
+              <button className="yl-tox-srchead" onClick={()=>setToxicSrcOpen(o=>!o)} aria-expanded={toxicSrcOpen}><Icon name="shield" size={13}/> {t("tox.srcTitle")}<Icon name="chevron" size={15} className={toxicSrcOpen?"yl-rot90":""}/></button>
               {toxicSrcOpen&&<div className="yl-tox-srcbody">
-                <p>このリストは、ASPCA中毒管理センター・Pet Poison Helpline・Merck獣医マニュアル 等、一般に公開された獣医毒性の情報を参照して整理しています。</p>
-                <p>具体的な毒性量・致死量・安全量は、量・体重・個体差で大きく変わり誤用の危険があるため、<b>意図的に掲載していません</b>。</p>
-                <p>掲載は一般的な注意であり、<b>診断ではありません</b>。実際の判断は必ず動物病院・中毒専門の窓口にご確認ください。情報源が確認できない内容は断定的に載せていません。</p>
-                <p className="yl-tox-src">最終確認：{TOX_REVIEWED}</p>
+                <p>{t("tox.srcBody1")}</p>
+                <p>{t("tox.srcBody2Pre")}<b>{t("tox.srcBody2Bold")}</b>{t("tox.srcBody2Post")}</p>
+                <p>{t("tox.srcBody3Pre")}<b>{t("tox.srcBody3Bold")}</b>{t("tox.srcBody3Post")}</p>
+                <p className="yl-tox-src">{t("tox.srcReviewed",{date:TOX_REVIEWED})}</p>
               </div>}
             </div>
           </div>
@@ -10948,19 +10955,19 @@ function App(){
         return(
         <div className="yl-help-ov" onClick={()=>setToxicEmgOpen(false)}>
           <div className="yl-modal vetmodal yl-tox-emgmodal" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title" style={{textAlign:"left"}}>🚑 落ち着いて、この5つを確認</h3>
-            <p className="yl-tox-emg-sub">これは診断ではありません。この内容を持って、動物病院・夜間救急にご相談ください。</p>
+            <h3 className="yl-modal-title" style={{textAlign:"left"}}>{t("tox.emgFormTitle")}</h3>
+            <p className="yl-tox-emg-sub">{t("tox.emgFormSub")}</p>
             <ol className="yl-tox-emg-list">
-              <li><span className="yl-tox-emg-q">何を食べた？</span><input className="yl-input sm" value={toxicEmgForm.what} onChange={e=>setToxicEmgForm(f=>({...f,what:e.target.value}))} placeholder="例：チョコ、玉ねぎ、薬 など"/></li>
-              <li><span className="yl-tox-emg-q">どのくらい？</span><input className="yl-input sm" value={toxicEmgForm.amount} onChange={e=>setToxicEmgForm(f=>({...f,amount:e.target.value}))} placeholder="例：ひとかけ／1錠／量は不明"/></li>
-              <li><span className="yl-tox-emg-q">いつ？</span><input className="yl-input sm" value={toxicEmgForm.when} onChange={e=>setToxicEmgForm(f=>({...f,when:e.target.value}))} placeholder="例：10分前／さっき／不明"/></li>
-              <li><span className="yl-tox-emg-q">犬の体重{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" value={toxicEmgForm.weight} onChange={e=>setToxicEmgForm(f=>({...f,weight:e.target.value}))} placeholder="例：8kg"/></li>
-              <li><span className="yl-tox-emg-q">今の症状は？</span><input className="yl-input sm" value={toxicEmgForm.symptom} onChange={e=>setToxicEmgForm(f=>({...f,symptom:e.target.value}))} placeholder="例：元気／嘔吐／ふらつき／けいれん"/></li>
+              <li><span className="yl-tox-emg-q">{t("tox.qWhat")}</span><input className="yl-input sm" value={toxicEmgForm.what} onChange={e=>setToxicEmgForm(f=>({...f,what:e.target.value}))} placeholder={t("tox.phWhat")}/></li>
+              <li><span className="yl-tox-emg-q">{t("tox.qAmount")}</span><input className="yl-input sm" value={toxicEmgForm.amount} onChange={e=>setToxicEmgForm(f=>({...f,amount:e.target.value}))} placeholder={t("tox.phAmount")}/></li>
+              <li><span className="yl-tox-emg-q">{t("tox.qWhen")}</span><input className="yl-input sm" value={toxicEmgForm.when} onChange={e=>setToxicEmgForm(f=>({...f,when:e.target.value}))} placeholder={t("tox.phWhen")}/></li>
+              <li><span className="yl-tox-emg-q">{t("tox.qWeight")}{petW?<span className="yl-tox-emg-w">（{petW}）</span>:""}</span><input className="yl-input sm" value={toxicEmgForm.weight} onChange={e=>setToxicEmgForm(f=>({...f,weight:e.target.value}))} placeholder={t("tox.phWeight")}/></li>
+              <li><span className="yl-tox-emg-q">{t("tox.qSymptom")}</span><input className="yl-input sm" value={toxicEmgForm.symptom} onChange={e=>setToxicEmgForm(f=>({...f,symptom:e.target.value}))} placeholder={t("tox.phSymptom")}/></li>
             </ol>
-            <p className="yl-tox-warn"><Icon name="alert" size={14}/> 今は症状がなくても、数時間〜数日たってから症状が出ることがあります。様子見せず、吐かせないで。様子が変わったら、すぐ病院に連絡を。</p>
+            <p className="yl-tox-warn"><Icon name="alert" size={14}/> {t("tox.warn2")}</p>
             <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={()=>{const f=toxicEmgForm;const has=f.what||f.amount||f.when||f.symptom;setToxicEmgInfo(has?{...f}:null);setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> 病院に相談する</button>
+              <button className="yl-modal-cancel" onClick={()=>setToxicEmgOpen(false)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" onClick={()=>{const f=toxicEmgForm;const has=f.what||f.amount||f.when||f.symptom;setToxicEmgInfo(has?{...f}:null);setToxicEmgOpen(false);setToxicOpen(false);setEmergencyOpen(true);}}><Icon name="phone" size={16}/> {t("tox.consultBtn")}</button>
             </div>
           </div>
         </div>
@@ -10986,7 +10993,7 @@ function App(){
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="paw" size={18}/> {t("notices.title")}</h2><button className="yl-help-close" onClick={()=>setNoticesOpen(false)} aria-label={t("common.close")}>×</button></div>
             {notices.length===0?(
-              <p className="yl-notice-empty">今日はお知らせはありません。<br/>のんびり過ごせそうです。</p>
+              <p className="yl-notice-empty">{t("notices.empty1")}<br/>{t("notices.empty2")}</p>
             ):(
               <ul className="yl-notice-list">
                 {notices.map(n=>{const m=NOTICE_META[n.cat];return(
@@ -11000,7 +11007,7 @@ function App(){
                 );})}
               </ul>
             )}
-            <p className="yl-notice-foot">大切な家族の毎日を見て、気づいたことをそっとお届けします。</p>
+            <p className="yl-notice-foot">{t("notices.foot")}</p>
           </div>
         </div>
       )}
@@ -11008,14 +11015,24 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setWhatsNewOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="sparkles" size={18}/> {t("about.whatsNew")}</h2><button className="yl-help-close" onClick={()=>setWhatsNewOpen(false)} aria-label={t("common.close")}>×</button></div>
-            <p className="yl-set-desc" style={{marginBottom:2}}>バージョン：<strong>β版（ビルド 2026.11.26）</strong></p>
+            <p className="yl-set-desc" style={{marginBottom:2}}>{t("about.version")}：<strong>{t("about.betaBuild",{v:"2026.11.26"})}</strong></p>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> 最近のアップデート</span></div>
+              <div className="yl-emg-sectitle"><span><Icon name="sparkles" size={15}/> {t("wn.recentTitle")}</span></div>
               <ul className="yl-whatsnew-list">
                 {[
+                  ["📈","体重グラフと数値項目が充実","体重グラフに目標の目安帯がつきました。好きな数値項目を追加して、記録とグラフで見られます（2026-11-26）"],
+                  ["🗂️","書類を端末の中に保存","保険証や証明書の写真を、この端末の中だけに保存できます。期限が近づくとお知らせします（2026-11-26）"],
+                  ["🐾","シッターへの期間限定共有","預け先へ、期間を決めて記録を共有できるように。見られる子や、記録できるかどうかも選べます（2026-11-26）"],
+                  ["👨‍👩‍👧","家族共有が使いやすく","家族ノートが家族で同期するように。参加者の管理や招待コードの期限表示も追加（2026-11-26）"],
+                  ["🏠","ホームの「今日の画面」","今日やることと家族の様子が、ホームでひと目で分かる形になりました（2026-11-26）"],
+                  ["📅","カレンダーを刷新","予定が見やすくなりました。予定の繰り返しに曜日指定も追加（2026-11-25）"],
+                  ["🆘","迷子ポスターは名刺から","迷子ポスターを、名刺の迷子モードから作る形に統一。出す情報はSNSごとに選べます（2026-11-25）"],
+                  ["🍚","食事の記録と証明書が充実","食事フォームが動物種ごとに合った形に。証明書の写真は複数枚保存できます（2026-11-25）"],
+                  ["🏷️","種別に合った記録項目","赤ちゃん・子ども・おとな・シニア・ペット、それぞれに合った記録項目を表示します（2026-11-25）"],
+                  ["🎨","肌色とデザイン","絵文字の肌色が選べるように。名刺テーマは6種類に、書類やサマリーの見た目も整えました（2026-11-25）"],
                   ["🖼️","名刺に専用写真とYouTubeリンク","名刺だけに使う写真を選べるように。YouTubeチャンネルのリンクも載せられます。名刺リンクの表示も見直しました"],
                   ["☁️","クラウドバックアップ","設定でオンにすると、自分のデータの控えをアカウントに自動保存。別の端末やブラウザでも、サインインすれば復元できます（写真は対象外）"],
-                  ["🎨","名刺のデザインと犬友だち保存","名刺ページのデザインを4つのテーマから選べるように。開いてもらった名刺は、見る側の犬友だちに自動で保存されます"],
+                  ["🎨","名刺のデザインと犬友だち保存","名刺ページのデザインを6つのテーマから選べるように。開いてもらった名刺は、見る側の犬友だちに自動で保存されます"],
                   ["💳","名刺ページができました","写真と性格、InstagramやTikTokのリンクを載せたページを公開できます"],
                   ["🚑","救急・防災が家族みんなに対応","子どもや家族だけの世帯でも、内容が合うように出し分けました。子どもの体温も記録できます"],
                   ["📅","予定に場所と終了時刻を入れられるように","どの画面から作っても場所・URL・チェックリストまで入力でき、カレンダーへの出力にも全部反映されます。メモも1つに統一しました"],
@@ -11045,11 +11062,11 @@ function App(){
               </ul>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> 近日対応予定</span></div>
-              <p className="yl-set-desc" style={{marginTop:2}}>予定していた機能はひととおり公開ずみ 🎉<br/>「こんな機能がほしい」があれば、ぜひお聞かせください。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="clock" size={15}/> {t("wn.comingTitle")}</span></div>
+              <p className="yl-set-desc" style={{marginTop:2}}>{t("wn.comingBody1")}<br/>{t("wn.comingBody2")}</p>
             </div>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>{setWhatsNewOpen(false);setHelpOpen(true);}}><Icon name="note" size={15}/> 使い方・機能紹介を見る</button>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"var(--line3)",color:"var(--ink2)"}} onClick={()=>setWhatsNewOpen(false)}>とじる</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>{setWhatsNewOpen(false);setHelpOpen(true);}}><Icon name="note" size={15}/> {t("wn.viewGuide")}</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:8,background:"var(--line3)",color:"var(--ink2)"}} onClick={()=>setWhatsNewOpen(false)}>{t("common.close")}</button>
           </div>
         </div>
       )}
@@ -11059,27 +11076,27 @@ function App(){
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="note" size={18}/> {t("about.aboutApp")}</h2><button className="yl-help-close" onClick={()=>setAboutOpen(false)} aria-label={t("common.close")}>×</button></div>
             <div className="yl-emg-sec">
               <div className="yl-emg-sectitle"><span><Icon name="paw" size={15}/> LOALIFE</span></div>
-              <p className="yl-set-desc">大切な家族の毎日の記録・予定・健康と、もしもの備え（迷子ポスター・緊急カード）を、ひとつに。</p>
-              <p className="yl-set-desc" style={{marginTop:6}}>バージョン：<strong>β版（ビルド 2026.11.26）</strong></p>
+              <p className="yl-set-desc">{t("about.introBody")}</p>
+              <p className="yl-set-desc" style={{marginTop:6}}>{t("about.version")}：<strong>{t("about.betaBuild",{v:"2026.11.26"})}</strong></p>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> データとプライバシー</span></div>
+              <div className="yl-emg-sectitle"><span><Icon name="download" size={15}/> {t("about.dataTitle")}</span></div>
               <p className="yl-set-desc">{t("about.privacyBody")}</p>
               <p className="yl-set-desc" style={{marginTop:6}}>{t("about.analyticsBody")}</p>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="users" size={15}/> 家族での共有</span></div>
+              <div className="yl-emg-sectitle"><span><Icon name="users" size={15}/> {t("about.shareTitle")}</span></div>
               <p className="yl-set-desc">{t("about.shareBody")}</p>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="alert" size={15}/> ご利用にあたって</span></div>
-              <p className="yl-set-desc">記録や目安は<strong>参考情報</strong>です。心配なときは、かかりつけや専門機関へ。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="alert" size={15}/> {t("about.noticeTitle")}</span></div>
+              <p className="yl-set-desc">{t("about.noticeBodyA")}<strong>{t("about.noticeBodyB")}</strong>{t("about.noticeBodyC")}</p>
             </div>
             <div className="yl-emg-sec">
-              <div className="yl-emg-sectitle"><span><Icon name="note" size={15}/> 利用規約・お問い合わせ</span></div>
-              <p className="yl-set-desc">利用規約・プライバシーポリシー・お問い合わせ窓口は準備中です。連絡先は追ってご案内します。</p>
+              <div className="yl-emg-sectitle"><span><Icon name="note" size={15}/> {t("about.termsTitle")}</span></div>
+              <p className="yl-set-desc">{t("about.termsBody")}</p>
             </div>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setAboutOpen(false)}>とじる</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setAboutOpen(false)}>{t("common.close")}</button>
           </div>
         </div>
       )}
@@ -11105,29 +11122,31 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setHelpOpen(false)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head">
-              <h2 className="yl-help-title"><Icon name="note" size={18}/> LOALIFE の使い方</h2>
+              <h2 className="yl-help-title"><Icon name="note" size={18}/> {t("guide.title")}</h2>
               <button className="yl-help-close" onClick={()=>setHelpOpen(false)} aria-label={t("common.close")}>×</button>
             </div>
-            <p className="yl-help-lead">大切な家族の毎日と、もしもの備えを、ひとつに。</p>
+            <p className="yl-help-lead">{t("guide.lead")}</p>
             {[
-              {group:"毎日のこと",items:[
-                {emoji:"🏠",title:"ホーム",desc:"今日やること・うっかり忘れをまとめて。"},
-                {emoji:"👨‍👩‍👧",title:"メンバー",desc:"うちの子も家族も自分も。写真や絵文字で。"},
-                {emoji:"📅",title:"カレンダー",desc:"みんなの予定を色分けで見わたす。"},
-                {emoji:"📝",title:"今日のようす",desc:"元気・食欲・うんち・写真をそのまま記録。"},
-                {emoji:"📸",title:"思い出・はじめて",desc:"とっておきの一枚とタグで成長をたどる。"},
+              {group:t("guide.g1"),items:[
+                {emoji:"🏠",title:t("guide.i.home.t"),desc:t("guide.i.home.d")},
+                {emoji:"👨‍👩‍👧",title:t("guide.i.members.t"),desc:t("guide.i.members.d")},
+                {emoji:"📅",title:t("guide.i.cal.t"),desc:t("guide.i.cal.d")},
+                {emoji:"📝",title:t("guide.i.diary.t"),desc:t("guide.i.diary.d")},
+                {emoji:"📸",title:t("guide.i.memory.t"),desc:t("guide.i.memory.d")},
+                {emoji:"🤝",title:t("guide.i.share.t"),desc:t("guide.i.share.d")},
               ]},
-              {group:"健康・予定の管理",items:[
-                {emoji:"💉",title:"ケア・予定・投薬",desc:"ワクチン・通院・お薬を忘れずに。"},
-                {emoji:"🧹",title:"毎日のお世話",desc:"「やった」をタップ。前回からの日数が色で。"},
-                {emoji:"📈",title:"からだの記録",desc:"体重の変化をグラフで見守る。"},
-                {emoji:"💰",title:"支出",desc:"病院代もフード代も、何にいくらか。"},
-                {emoji:"🛍",title:"ストック・持ち物",desc:"切らす前にホームでお知らせ。曜日の持ち物も。"},
+              {group:t("guide.g2"),items:[
+                {emoji:"💉",title:t("guide.i.care.t"),desc:t("guide.i.care.d")},
+                {emoji:"🧹",title:t("guide.i.chore.t"),desc:t("guide.i.chore.d")},
+                {emoji:"📈",title:t("guide.i.body.t"),desc:t("guide.i.body.d")},
+                {emoji:"💰",title:t("guide.i.expense.t"),desc:t("guide.i.expense.d")},
+                {emoji:"🛍",title:t("guide.i.stock.t"),desc:t("guide.i.stock.d")},
+                {emoji:"🗂️",title:t("guide.i.docs.t"),desc:t("guide.i.docs.d")},
               ]},
-              {group:"もしもの備え",items:[
-                {emoji:"📌",title:"大切な情報",desc:"かかりつけ・緊急連絡先を手元に。"},
-                {emoji:"🆘",title:"迷子ポスター・緊急カード",desc:"いざという時、登録情報からすぐ作れる。"},
-                {emoji:"🔔",title:"お知らせ",desc:"大事な予定や期限は、アプリを開いたときにホームへ表示されます。"},
+              {group:t("guide.g3"),items:[
+                {emoji:"📌",title:t("guide.i.info.t"),desc:t("guide.i.info.d")},
+                {emoji:"🆘",title:t("guide.i.lost.t"),desc:t("guide.i.lost.d")},
+                {emoji:"🔔",title:t("guide.i.notices.t"),desc:t("guide.i.notices.d")},
               ]},
             ].map((g,gi)=>(
               <div key={gi} className="yl-help-group">
@@ -11140,8 +11159,7 @@ function App(){
                 ))}
               </div>
             ))}
-            <p className="yl-help-note">長押しで並び替えできます。</p>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setHelpOpen(false)}>とじる</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:6}} onClick={()=>setHelpOpen(false)}>{t("common.close")}</button>
           </div>
         </div>
       )}
@@ -11316,10 +11334,10 @@ function App(){
       );})()}
       {albumMoveOpen&&(()=>{const targets=spaces.filter(s=>s.id!==tab);return(
         <div className="yl-overlay" onClick={()=>setAlbumMoveOpen(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
-          <h3 className="yl-modal-title">どの子へ移動しますか？</h3>
+          <h3 className="yl-modal-title">{t("album.moveTitle")}</h3>
           <p className="yl-modal-body" style={{margin:"0 0 14px"}}>{t("album.moveDesc",{n:(albumSel||[]).length})}</p>
           {targets.length===0?(
-            <p className="yl-empty" style={{marginBottom:14}}>移動先がいません。先に家族・うちのこを登録してください。</p>
+            <p className="yl-empty" style={{marginBottom:14}}>{t("album.moveNone")}</p>
           ):(
             <div className="yl-album-movelist">{targets.map(s=>(
               <button key={s.id} className="yl-album-moverow" onClick={()=>moveMemoriesTo(s.id)}>
@@ -11329,10 +11347,10 @@ function App(){
               </button>
             ))}</div>
           )}
-          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setAlbumMoveOpen(false)}>やめる</button></div>
+          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setAlbumMoveOpen(false)}>{t("common.abort")}</button></div>
         </div></div>
       );})()}
-      {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">絵文字を選ぶ</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>絵文字なし</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>とじる</button></div></div></div>}
+      {pickerId&&<div className="yl-overlay" onClick={()=>setPickerId(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("emoji.pickTitle")}</h3><div className="yl-emoji-grid">{PICKER_EMOJIS.map(e=><button key={e} className="yl-emoji-pick" onClick={()=>setEmoji(pickerId,e)}>{e}</button>)}</div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEmoji(pickerId,"")}>{t("emoji.none")}</button><button className="yl-modal-cancel" onClick={()=>setPickerId(null)}>{t("common.close")}</button></div></div></div>}
       {cardScreenId&&(()=>{const cm=members.find(m=>m.id===cardScreenId);if(!cm)return null;
         const formM=cardMemberFromForm(cm);
         const regSns=[{kind:"instagram",ok:!!snsHandle(formM.instagram,"instagram")},{kind:"tiktok",ok:!!snsHandle(formM.tiktok,"tiktok")},{kind:"youtube",ok:!!youtubeUrl(formM.youtube)}].filter(x=>x.ok);
@@ -11430,16 +11448,16 @@ function App(){
         );})()}
       {confirmDiscardEdit&&<div className="yl-overlay" onClick={()=>setConfirmDiscardEdit(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("prof.editTitle")}</h3><p className="yl-modal-body">{t("prof.discardBody")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDiscardEdit(false)}>{t("member.discardKeep")}</button><button className="yl-modal-del" onClick={doDiscardEdit}>{t("member.discardDo")}</button></div></div></div>}
       {confirmDiscardCard&&<div className="yl-overlay" onClick={()=>setConfirmDiscardCard(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("card.section")}</h3><p className="yl-modal-body">{t("card.discardBody")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDiscardCard(false)}>{t("member.discardKeep")}</button><button className="yl-modal-del" onClick={doDiscardCard}>{t("member.discardDo")}</button></div></div></div>}
-      {mePicker&&<div className="yl-overlay" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">あなたのアイコン・名前</h3>
+      {mePicker&&<div className="yl-overlay" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("me.title")}</h3>
         <div className="yl-editavatar">
           {meAvatar&&photos[meAvatar]?<img className="yl-avatar lg" src={photos[meAvatar]} alt=""/>:<span className="yl-editavatar-emoji">{meEmoji}</span>}
-          <label className="yl-editavatar-btn"><Icon name="camera" size={14}/> 写真にする<input type="file" accept="image/*" style={{display:"none"}} onChange={pickMeAvatar}/></label>
-          {meAvatar&&<button className="yl-editavatar-clear" onClick={clearMeAvatar}>絵文字に戻す</button>}
+          <label className="yl-editavatar-btn"><Icon name="camera" size={14}/> {t("prof.usePhoto")}<input type="file" accept="image/*" style={{display:"none"}} onChange={pickMeAvatar}/></label>
+          {meAvatar&&<button className="yl-editavatar-clear" onClick={clearMeAvatar}>{t("prof.backToEmoji")}</button>}
         </div>
-        <label className="yl-opt" style={{width:"100%",marginBottom:12}}>名前（任意）<input className="yl-input sm" style={{marginTop:4}} value={meNameDraft} onChange={e=>setMeNameDraft(e.target.value)} placeholder={t("ecard.meFallback")}/></label>
-        {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>絵文字を選ぶ <button type="button" className="yl-emoji-current" onClick={()=>setMeEmojiOpen(o=>!o)} aria-expanded={meEmojiOpen}>{emojiWithTone(meEmoji,meSkinTone)}<span className="yl-colorpick-caret">{meEmojiOpen?"▲":"▼"}</span></button></p>{meEmojiOpen&&<div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMeEmojiOpen(false);}}>{e}</button>)}</div>}{meEmojiOpen&&isToneableEmoji(meEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(meSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>persistMeSkinTone(tn.key)}>{emojiWithTone(meEmoji,tn.key)}</button>))}</div>}</>}
-        <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> カレンダーの色 <button type="button" className="yl-colorpick-btn" onClick={()=>setMeColorOpen(o=>!o)} aria-expanded={meColorOpen}><span className="yl-colordot" style={{background:colorOf("me")}}/><span className="yl-colorpick-caret">{meColorOpen?"▲":"▼"}</span></button></p>{meColorOpen&&<div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>{persistMeColor(col);setMeColorOpen(false);}} aria-label={t("a11y.pickColor")}/>)}</div>}
-        <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>保存して閉じる</button></div></div></div>}
+        <label className="yl-opt" style={{width:"100%",marginBottom:12}}>{t("me.nameLabel")}{t("common.optional")}<input className="yl-input sm" style={{marginTop:4}} value={meNameDraft} onChange={e=>setMeNameDraft(e.target.value)} placeholder={t("ecard.meFallback")}/></label>
+        {!meAvatar&&<><p className="yl-modal-body" style={{margin:"0 0 8px"}}>{t("emoji.pickTitle")} <button type="button" className="yl-emoji-current" onClick={()=>setMeEmojiOpen(o=>!o)} aria-expanded={meEmojiOpen}>{emojiWithTone(meEmoji,meSkinTone)}<span className="yl-colorpick-caret">{meEmojiOpen?"▲":"▼"}</span></button></p>{meEmojiOpen&&<div className="yl-emoji-grid">{ME_EMOJIS.map(e=><button key={e} className={"yl-emoji-pick"+(meEmoji===e?" on":"")} onClick={()=>{persistMeEmoji(e);setMeEmojiOpen(false);}}>{e}</button>)}</div>}{meEmojiOpen&&isToneableEmoji(meEmoji)&&<div className="yl-kindrow" style={{marginTop:6}}><span className="yl-set-desc">{t("prof.skinTone")}</span>{SKIN_TONES.map(tn=>(<button key={tn.key||"def"} type="button" className={"yl-emoji"+(meSkinTone===tn.key?" on":"")} title={tn.key?t(toneTitleKey(tn.key)):""} onClick={()=>persistMeSkinTone(tn.key)}>{emojiWithTone(meEmoji,tn.key)}</button>))}</div>}</>}
+        <p className="yl-modal-body" style={{margin:"4px 0 8px"}}><Icon name="palette" size={14}/> {t("me.calColor")} <button type="button" className="yl-colorpick-btn" onClick={()=>setMeColorOpen(o=>!o)} aria-expanded={meColorOpen}><span className="yl-colordot" style={{background:colorOf("me")}}/><span className="yl-colorpick-caret">{meColorOpen?"▲":"▼"}</span></button></p>{meColorOpen&&<div className="yl-colorrow" style={{justifyContent:"center",marginBottom:14}}>{MEMBER_COLORS.map(col=><button key={col} className={"yl-colordot"+(colorOf("me")===col?" on":"")} style={{background:col}} onClick={()=>{persistMeColor(col);setMeColorOpen(false);}} aria-label={t("a11y.pickColor")}/>)}</div>}
+        <div className="yl-modal-btns"><button className="yl-addbtn modal" onClick={()=>{persistMeName(meNameDraft.trim());setMePicker(false);}}>{t("me.saveClose")}</button></div></div></div>}
       {confirmDiscardAdd&&<div className="yl-overlay" onClick={()=>setConfirmDiscardAdd(false)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("member.addTitle")}</h3><p className="yl-modal-body">{t("member.discardAddBody")}</p><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDiscardAdd(false)}>{t("member.discardKeep")}</button><button className="yl-modal-del" onClick={doCancelAdd}>{t("member.discardDo")}</button></div></div></div>}
       {confirmDel&&<div className="yl-overlay" onClick={()=>setConfirmDel(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">{confirmDel.emoji}</div><h3 className="yl-modal-title">{t("member.deleteConfirm",{name:confirmDel.name})}</h3><p className="yl-modal-body">{(()=>{const n=items.filter(x=>x.space===confirmDel.id).length;return n>0?t("member.deleteConfirmRecords",{n}):t("member.deleteConfirmBody");})()}</p><div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={delWord} onChange={setDelWord} placeholder={t("type.word")}/></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setConfirmDel(null)}>{t("common.cancel")}</button><button className="yl-modal-del" disabled={delWord.trim()!==t("type.word")} onClick={()=>removeMember(confirmDel.id)}>{t("member.deleteDo")}</button></div></div></div>}
       {lifeDraft&&(
@@ -12105,7 +12123,7 @@ function App(){
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title"><Icon name="bag" size={18}/> {t("belong.addTitle")}</h3>
             {(()=>{const pt=tab==="me"?"adult":(activeMember?activeMember.personType:null);const isPet=curKind==="pet";const scopes=isPet||pt==="baby"?["always"]:pt==="senior"?["always","occasion"]:["always","dow"];const effScope=scopes.includes(belongScope)?belongScope:scopes[0];return(<>
-            {scopes.length>1&&<div className="yl-belong-scopes"><span className="yl-med-optlabel">{t("belong.scopeLabel")}</span>{scopes.map(sc=><button key={sc} className={"yl-diary-chip"+(effScope===sc?" on":"")} onClick={()=>setBelongScope(sc)}>{sc==="always"?t("belong.always"):sc==="occasion"?"場面":"曜日"}</button>)}</div>}
+            {scopes.length>1&&<div className="yl-belong-scopes"><span className="yl-med-optlabel">{t("belong.scopeLabel")}</span>{scopes.map(sc=><button key={sc} className={"yl-diary-chip"+(effScope===sc?" on":"")} onClick={()=>setBelongScope(sc)}>{sc==="always"?t("belong.always"):sc==="occasion"?t("belong.scopeOccasion"):t("belong.scopeDow")}</button>)}</div>}
             <div className="yl-belong-add">
               {effScope==="dow"&&<select className="yl-select" value={belongDow} onChange={e=>setBelongDow(Number(e.target.value))}>{weekdaysShort.map((w,i)=><option key={i} value={i}>{w}{t("belong.dowSuffix")}</option>)}</select>}
               {effScope==="occasion"&&<select className="yl-select" value={belongOcc} onChange={e=>setBelongOcc(e.target.value)}>{[["dayservice",t("belong.occDay")],["clinic",t("belong.occClinic")],["outing",t("belong.occOut")]].map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>}
@@ -12122,39 +12140,39 @@ function App(){
         <div className="yl-help-ov" onClick={()=>setFoodCalc(null)}>
           <div className="yl-help-page" onClick={e=>e.stopPropagation()}>
             <div className="yl-help-head"><h2 className="yl-help-title"><Icon name="scale" size={18}/> {t("calc.foodTitle")}</h2><button className="yl-help-close" onClick={()=>setFoodCalc(null)} aria-label={t("common.close")}>×</button></div>
-            <p className="yl-set-desc" style={{background:"#FBEEE2",color:"#8A5A3A",borderRadius:10,padding:"8px 10px"}}>⚠ <strong>参考値</strong>です。急な食事量の変更は避け、かかりつけの先生にご相談ください。</p>
-            <div className="yl-opt" style={{marginTop:12,width:"100%"}}>動物種<span className="yl-seg-mini">{[{k:"dog",l:"犬"},{k:"cat",l:"猫"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodCalc.species===o.k?" on":"")} onClick={()=>setFoodCalc(f=>({...f,species:o.k,stage:""}))}>{o.l}</button>)}</span></div>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>現在の体重（BW）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.bw} onChange={e=>setFoodCalc(f=>({...f,bw:e.target.value}))} placeholder={t("ph.weight")}/><span className="yl-food-unit">kg</span></div></div>
-            <label className="yl-opt" style={{marginTop:10,width:"100%"}}>ライフステージ・活動量<select className="yl-input sm" style={{marginTop:4}} value={foodCalc.stage} onChange={e=>setFoodCalc(f=>({...f,stage:e.target.value}))}><option value="">選択してください</option>{stages.map(s=><option key={s.k} value={s.k}>{s.l}（係数{s.f}）</option>)}</select></label>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>BCS（体格）：<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"var(--text-sub)",fontSize:12}}>適正は{foodCalc.species==="cat"?"5":"4〜5"}</span>
+            <p className="yl-set-desc" style={{background:"#FBEEE2",color:"#8A5A3A",borderRadius:10,padding:"8px 10px"}}>⚠ <strong>{t("calc.warnRefB")}</strong>{t("calc.warnRefRest")}</p>
+            <div className="yl-opt" style={{marginTop:12,width:"100%"}}>{t("calc.species")}<span className="yl-seg-mini">{[{k:"dog",lk:"tox.dog"},{k:"cat",lk:"tox.cat"}].map(o=><button key={o.k} className={"yl-seg-mini-btn"+(foodCalc.species===o.k?" on":"")} onClick={()=>setFoodCalc(f=>({...f,species:o.k,stage:""}))}>{t(o.lk)}</button>)}</span></div>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("calc.bw")}<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.bw} onChange={e=>setFoodCalc(f=>({...f,bw:e.target.value}))} placeholder={t("ph.weight")}/><span className="yl-food-unit">kg</span></div></div>
+            <label className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("calc.stage")}<select className="yl-input sm" style={{marginTop:4}} value={foodCalc.stage} onChange={e=>setFoodCalc(f=>({...f,stage:e.target.value}))}><option value="">{t("calc.stageSelect")}</option>{stages.map(s=><option key={s.k} value={s.k}>{lOf(s)}{t("calc.factorSuffix",{f:s.f})}</option>)}</select></label>
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("calc.bcsLabel")}<strong>{foodCalc.bcs}</strong> / 9　<span style={{color:"var(--text-sub)",fontSize:12}}>{t("calc.bcsIdeal",{v:foodCalc.species==="cat"?"5":"4〜5"})}</span>
               <span className="yl-bcs-row">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className={"yl-bcs-btn"+(foodCalc.bcs===n?" on":"")+(bcsIdeal(foodCalc.species,n)?" ideal":"")} onClick={()=>setFoodCalc(f=>({...f,bcs:n}))}>{n}</button>)}</span>
-              <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?"BCSの見かたを閉じる":`${foodCalc.species==="cat"?"猫":"犬"}のBCSの見かたを見る`}</button>
+              <button className="yl-linkbtn" onClick={()=>setFoodCalcGuide(g=>!g)}>{foodCalcGuide?t("calc.bcsGuideClose"):t("calc.bcsGuideOpen",{sp:t(foodCalc.species==="cat"?"tox.cat":"tox.dog")})}</button>
               {foodCalcGuide&&<ul className="yl-bcs-guide">{(BCS_GUIDE[foodCalc.species]||BCS_GUIDE.dog).map(g=><li key={g[0]} className={bcsIdeal(foodCalc.species,g[0])?"ideal":""}><b>{g[0]}：{g[1]}</b>{g[2]}</li>)}</ul>}
             </div>
-            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>フードの代謝エネルギー（ME）<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.me} onChange={e=>setFoodCalc(f=>({...f,me:e.target.value}))} placeholder="kcal"/><span className="yl-food-unit">kcal / 100g</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4,fontSize:12}}>フードの100gあたりkcal（パッケージ記載）。未入力でも計算OK。</span>
-              <button className="yl-linkbtn" onClick={()=>setFoodCalcMeGuide(g=>!g)}>{foodCalcMeGuide?"MEの目安を閉じる":`${foodCalc.species==="cat"?"猫":"犬"}のMEの目安を見る`}</button>
-              {foodCalcMeGuide&&<><ul className="yl-me-guide">{(ME_GUIDE[foodCalc.species]||ME_GUIDE.dog).map((r,i)=><li key={i}><span>{r[0]}</span><b>{r[1]}</b></li>)}</ul><p className="yl-set-desc" style={{fontSize:11.5,marginTop:4}}>※ 目安です。実際はパッケージの「100gあたり」をご確認ください。</p></>}
+            <div className="yl-opt" style={{marginTop:10,width:"100%"}}>{t("calc.meLabel")}<div className="yl-food-amtrow"><input type="number" inputMode="decimal" className="yl-health-num" value={foodCalc.me} onChange={e=>setFoodCalc(f=>({...f,me:e.target.value}))} placeholder="kcal"/><span className="yl-food-unit">kcal / 100g</span></div><span className="yl-set-desc" style={{width:"100%",marginTop:4,fontSize:12}}>{t("calc.meDesc")}</span>
+              <button className="yl-linkbtn" onClick={()=>setFoodCalcMeGuide(g=>!g)}>{foodCalcMeGuide?t("calc.meGuideClose"):t("calc.meGuideOpen",{sp:t(foodCalc.species==="cat"?"tox.cat":"tox.dog")})}</button>
+              {foodCalcMeGuide&&<><ul className="yl-me-guide">{(ME_GUIDE[foodCalc.species]||ME_GUIDE.dog).map((r,i)=><li key={i}><span>{r[0]}</span><b>{r[1]}</b></li>)}</ul><p className="yl-set-desc" style={{fontSize:11.5,marginTop:4}}>{t("calc.meNote")}</p></>}
             </div>
             <div className="yl-foodcalc-res">
               {res?(<>
-                <div className="yl-fcr-row"><span className="yl-fcr-l">理想的な体重</span><span className="yl-fcr-v">{res.ideal} kg</span></div>
-                <div className="yl-fcr-row"><span className="yl-fcr-l">1日に必要なカロリー（DER）</span><span className="yl-fcr-v">{res.der} kcal</span></div>
+                <div className="yl-fcr-row"><span className="yl-fcr-l">{t("calc.idealWeight")}</span><span className="yl-fcr-v">{res.ideal} kg</span></div>
+                <div className="yl-fcr-row"><span className="yl-fcr-l">{t("calc.der")}</span><span className="yl-fcr-v">{res.der} kcal</span></div>
                 {res.grams!=null?(<>
-                  <div className="yl-fcr-row big"><span className="yl-fcr-l">1日のフード量</span><span className="yl-fcr-v">{res.grams} g</span></div>
-                  <div className="yl-fcr-splits"><span>2回：{res.per2}g</span><span>3回：{res.per3}g</span><span>4回：{res.per4}g</span></div>
+                  <div className="yl-fcr-row big"><span className="yl-fcr-l">{t("calc.dailyFood")}</span><span className="yl-fcr-v">{res.grams} g</span></div>
+                  <div className="yl-fcr-splits"><span>{t("calc.splitN",{n:2,g:res.per2})}</span><span>{t("calc.splitN",{n:3,g:res.per3})}</span><span>{t("calc.splitN",{n:4,g:res.per4})}</span></div>
                   {(()=>{const cands=foodDefs.filter(f=>f.kcalBasis==="per100"&&f.kcal!==""&&f.kcal!=null);return cands.length>1?(<><p className="yl-fcr-apply-label">{t("calc.applyTo")}</p><div className="yl-fcr-apply">{cands.map(f=><button key={f.id} className={"yl-fcr-applybtn"+(foodCalc.foodId===f.id?" on":"")} onClick={()=>setFoodCalc(c=>({...c,foodId:f.id,me:String(f.kcal)}))}>{f.name}</button>)}</div></>):null;})()}
-                  <p className="yl-fcr-apply-label">1回の量をフードに反映</p>
+                  <p className="yl-fcr-apply-label">{t("calc.applyPerLabel")}</p>
                   <div className="yl-fcr-apply">
-                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.grams,1)}>1回 {res.grams}g</button>
-                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per2,2)}>2回 {res.per2}g</button>
-                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per3,3)}>3回 {res.per3}g</button>
-                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per4,4)}>4回 {res.per4}g</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.grams,1)}>{t("calc.applyN",{n:1,g:res.grams})}</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per2,2)}>{t("calc.applyN",{n:2,g:res.per2})}</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per3,3)}>{t("calc.applyN",{n:3,g:res.per3})}</button>
+                    <button className="yl-fcr-applybtn" onClick={()=>applyCalcToFood(res.per4,4)}>{t("calc.applyN",{n:4,g:res.per4})}</button>
                   </div>
-                  <p className="yl-set-desc" style={{fontSize:11.5,marginTop:6}}>{foodDefs.some(f=>f.kcalBasis==="per100")?`登録フード${foodCalc.foodId?`「${(foodDefs.find(f=>f.id===foodCalc.foodId)||{}).name||""}」`:""}の量・回数に設定。`:"この分量で新しいフードを登録。"}</p>
-                </>):(<p className="yl-set-desc" style={{marginTop:6}}>MEを入れると1日のフード量（g）も計算。</p>)}
-              </>):(<p className="yl-set-desc">体重と BCS を入れると計算します。</p>)}
+                  <p className="yl-set-desc" style={{fontSize:11.5,marginTop:6}}>{foodDefs.some(f=>f.kcalBasis==="per100")?(foodCalc.foodId?t("calc.applyRegNamed",{name:(foodDefs.find(f=>f.id===foodCalc.foodId)||{}).name||""}):t("calc.applyRegPlain")):t("calc.applyNew")}</p>
+                </>):(<p className="yl-set-desc" style={{marginTop:6}}>{t("calc.meHint")}</p>)}
+              </>):(<p className="yl-set-desc">{t("calc.needInput")}</p>)}
             </div>
-            <button className="yl-addbtn" style={{width:"100%",marginTop:12,background:"#F3EFE8",color:"#6E6862"}} onClick={()=>setFoodCalc(null)}>とじる</button>
+            <button className="yl-addbtn" style={{width:"100%",marginTop:12,background:"#F3EFE8",color:"#6E6862"}} onClick={()=>setFoodCalc(null)}>{t("common.close")}</button>
           </div>
         </div>
       );})()}
@@ -12240,9 +12258,9 @@ function App(){
       {profilePrompt&&(()=>{const m=members.find(x=>x.id===profilePrompt);return(
         <div className="yl-overlay" onClick={()=>setProfilePrompt(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
           <div className="yl-modal-emoji"><Icon name="sparkles" size={28}/></div>
-          <h3 className="yl-modal-title">プロフィールを設定しませんか？</h3>
+          <h3 className="yl-modal-title">{t("prof.promptTitle")}</h3>
           <p className="yl-modal-body">{m&&m.kind==="pet"?(m.species==="cat"?t("prof.promptBodyPetCat"):m.species==="other"?t("prof.promptBodyPetOther"):t("prof.promptBodyPet")):t("prof.promptBody")}</p>
-          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>あとで</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>プロフィールを設定</button></div>
+          <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setProfilePrompt(null)}>{t("home.later")}</button><button className="yl-addbtn modal" onClick={()=>{const mm=members.find(x=>x.id===profilePrompt);setProfilePrompt(null);startMemberEdit(mm);}}>{t("prof.promptBtn")}</button></div>
         </div></div>
       );})()}
       {cbOffer&&<div className="yl-overlay" onClick={()=>setCbOffer(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}><div className="yl-modal-emoji">☁️</div><h3 className="yl-modal-title">{t(cbOffer.auto?"cb.foundTitle":"cb.restoreTitle")}</h3><p className="yl-modal-body">{t(cbOffer.auto?"cb.foundBody":"cb.restoreBody",{date:fmtBackupDate(cbOffer.updatedAt)})}</p>{!cbOffer.auto&&<div className="yl-typecheck"><p className="yl-typecheck-hint">{t("type.delHint",{word:t("type.word")})}</p><IMEInput className="yl-input yl-typecheck-input" value={cbWord} onChange={setCbWord} placeholder={t("type.word")}/></div>}<div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCbOffer(null)}>{t("common.cancel")}</button><button className="yl-btn-primary" disabled={!cbOffer.auto&&cbWord.trim()!==t("type.word")} onClick={applyCloudRestore}>{t("cb.doRestore")}</button></div></div></div>}
@@ -12257,22 +12275,22 @@ function App(){
         return(
           <div className="yl-overlay" onClick={()=>setCalPicker(null)}>
             <div className="yl-modal cal-picker" onClick={e=>e.stopPropagation()}>
-              <h3 className="yl-modal-title"><Icon name="calendar" size={18}/> カレンダーに追加</h3>
-              {it?<p className="yl-cal-picker-sub">{it.emoji} {it.title}</p>:<p className="yl-cal-picker-sub">これからの予定をまとめて出力します</p>}
+              <h3 className="yl-modal-title"><Icon name="calendar" size={18}/> {t("cal.addTitle")}</h3>
+              {it?<p className="yl-cal-picker-sub">{it.emoji} {it.title}</p>:<p className="yl-cal-picker-sub">{t("cal.exportAllSub")}</p>}
               {it&&gcal&&(
                 <a className="yl-cal-choice-btn google" href={gcal} target="_blank" rel="noopener noreferrer" onClick={()=>setCalPicker(null)}>
                   <svg width="18" height="18" viewBox="0 0 48 48" style={{flexShrink:0}}><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.7 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.5 13.3l8 6.2C12.4 13 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.5 2.8-2.1 5.2-4.4 6.8l7 5.4C43.3 37.1 46.5 31.3 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3-.8-4.5s.3-3 .8-4.5l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l8-6.2z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7-5.4c-2 1.3-4.5 2.1-8.2 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
-                  Googleカレンダー
+                  {t("cal.google")}
                 </a>
               )}
               <button className="yl-cal-choice-btn apple" onClick={()=>{downloadIcal(icsContent,icsName);setCalPicker(null);}}>
-                🍎 {it?"Appleカレンダー（.ics）":"カレンダーアプリに出力（.ics）"}
+                🍎 {it?t("cal.apple"):t("cal.appleAll")}
               </button>
               <p className="yl-cal-note">
-                💡 iPhoneでAppleカレンダーに追加するには：<br/>
-                <strong>SafariブラウザでこのサイトをURL直接開く</strong> → 📅タップ → .icsをダウンロード → カレンダーで開く
+                {t("cal.iosNoteA")}<br/>
+                <strong>{t("cal.iosNoteB")}</strong>{t("cal.iosNoteC")}
               </p>
-              <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCalPicker(null)}>とじる</button></div>
+              <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setCalPicker(null)}>{t("common.close")}</button></div>
             </div>
           </div>
         );
@@ -12295,11 +12313,11 @@ function App(){
               <span className="yl-quickadd-ico">{quickAdd.emoji}</span>
               <div>
                 <p className="yl-quickadd-name">{quickAdd.title}</p>
-                {quickAdd.lastDate&&<p className="yl-quickadd-prev">前回: {fmtDate(quickAdd.lastDate)}</p>}
+                {quickAdd.lastDate&&<p className="yl-quickadd-prev">{t("qa.lastTime",{date:fmtDate(quickAdd.lastDate)})}</p>}
               </div>
             </div>
             <label className="yl-opt" style={{display:"block",marginBottom:14}}>
-              日付
+              {t("life.date")}
               <input type="date" className="yl-date" style={{display:"block",width:"100%",marginTop:6}} value={quickDate} onChange={e=>setQuickDate(e.target.value)} autoFocus/>
             </label>
             <div className="yl-optrow">
@@ -12307,8 +12325,8 @@ function App(){
               <label className="yl-opt">{t("edit.place")}{t("common.optional")}<input className="yl-input" value={quickPlace} onChange={e=>setQuickPlace(e.target.value)} placeholder={t("edit.placePh")}/></label>
             </div>
             <div className="yl-modal-btns">
-              <button className="yl-modal-cancel" onClick={()=>setQuickAdd(null)}>キャンセル</button>
-              <button className="yl-addbtn modal" onClick={saveQuickAdd}>追加する</button>
+              <button className="yl-modal-cancel" onClick={()=>setQuickAdd(null)}>{t("common.cancel")}</button>
+              <button className="yl-addbtn modal" onClick={saveQuickAdd}>{t("qa.addBtn")}</button>
             </div>
           </div>
         </div>
@@ -12316,16 +12334,16 @@ function App(){
       {routineEdit&&(
         <div className="yl-overlay" onClick={()=>setRoutineEdit(null)}>
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
+            <h3 className="yl-modal-title">{routineEdit.id?t("routine.editTitle"):t("routine.addTitle")}</h3>
             <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[normKind(routineEdit.space==="me"?"me":(members.find(m=>m.id===routineEdit.space)||{}).kind)]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>{const kind=normKind(p.space==="me"?"me":(members.find(m=>m.id===p.space)||{}).kind);const nt=presetTitleFollow(p.title,routineEmojiTitle(kind,p.emoji),routineEmojiTitle(kind,e));return{...p,emoji:e,title:nt};})}>{e}</button>)}</div>
             <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder={(routineEdit.space==="me"||(members.find(m=>m.id===routineEdit.space)||{}).kind==="person")?t("rec.routinePhPerson"):t("rec.routinePh")}/>
             <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={routineEdit.repeat||"daily"} onChange={e=>{const v=e.target.value;setRoutineEdit(p=>({...p,repeat:v,repeatDays:v==="weekly"&&(!p.repeatDays||!p.repeatDays.length)?[dowOf(todayIso)]:p.repeatDays}));}}>{["daily","weekly"].map(k=><option key={k} value={k}>{t("repeat."+k)}</option>)}</select></label></div>
             {renderRepeatDays(routineEdit.repeat||"daily",routineEdit.repeatDays||null,v=>setRoutineEdit(p=>({...p,repeatDays:v})),todayIso)}
-            <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> リマインド{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div>{routineEdit.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
+            <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("routine.remindLabel")}{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>{t("notif.allowShort")}</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{routineEdit.reminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div>
             <div className="yl-modal-btns">
-              {routineEdit.id&&<button className="yl-modal-danger" onClick={()=>askDelete(routineEdit.title,()=>removeRoutine(routineEdit.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={saveRoutine}>保存</button>
+              {routineEdit.id&&<button className="yl-modal-danger" onClick={()=>askDelete(routineEdit.title,()=>removeRoutine(routineEdit.id))}>{t("common.delete")}</button>}
+              <button className="yl-modal-cancel" onClick={()=>setRoutineEdit(null)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" onClick={saveRoutine}>{t("common.save")}</button>
             </div>
           </div>
         </div>
@@ -12333,20 +12351,20 @@ function App(){
       {supplyEdit&&(
         <div className="yl-overlay" onClick={()=>setSupplyEdit(null)}>
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
-            <h3 className="yl-modal-title">{supplyEdit.id?"ストックを編集":"ストックを追加"}</h3>
+            <h3 className="yl-modal-title">{supplyEdit.id?t("supply.editTitle"):t("supply.addTitle")}</h3>
             <div style={{marginBottom:12}}><button type="button" className="yl-emoji-current" onClick={()=>setSupplyEmojiOpen(o=>!o)} aria-expanded={supplyEmojiOpen}>{supplyEdit.emoji}<span className="yl-colorpick-caret">{supplyEmojiOpen?"▲":"▼"}</span></button>{supplyEmojiOpen&&<div className="yl-emoji-grid" style={{marginTop:8}}>{supplyEmojisFor(supplyEdit.space==="me"?"me":normKind((members.find(m=>m.id===supplyEdit.space)||{}).kind)).map(e=><button key={e} type="button" className={"yl-emoji-pick"+(supplyEdit.emoji===e?" on":"")} onClick={()=>{setSupplyEdit(p=>{const mem=p.space==="me"?null:(members.find(m=>m.id===p.space)||{});const kind=normKind(p.space==="me"?"me":(mem||{}).kind);const tpls=supplyTemplatesFor(kind,mem?mem.personType:null);const nt=presetTitleFollow(p.title,presetTitleForEmoji(tpls,p.emoji),presetTitleForEmoji(tpls,e));return{...p,emoji:e,title:nt};});setSupplyEmojiOpen(false);}}>{e}</button>)}</div>}</div>
             <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={supplyNamePhOf(supplyEdit.space)}/>
             <div className="yl-optrow">
-              <label className="yl-opt">最後に買った日<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
-              <label className="yl-opt">消費サイクル<select className="yl-select" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:Number(e.target.value)}))}>{SUPPLY_CYCLES.map(d=><option key={d} value={d}>{d}日</option>)}</select></label>
+              <label className="yl-opt">{t("supply.lastBought")}<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
+              <label className="yl-opt">{t("supply.cycle")}<select className="yl-select" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:Number(e.target.value)}))}>{SUPPLY_CYCLES.map(d=><option key={d} value={d}>{t("supply.daysN",{d})}</option>)}</select></label>
               <label className="yl-opt">{t("supply.cycleCustom")}<input type="number" inputMode="numeric" min="1" className="yl-health-num" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:e.target.value}))}/></label>
             </div>
             {supplyEdit.lastBought&&<p className="yl-supply-preview">{supplyLine({lastBought:supplyEdit.lastBought,cycleDays:Number(supplyEdit.cycleDays)})}</p>}
             {(()=>{const orig=supplyEdit.id?items.find(x=>x.id===supplyEdit.id):null;const sug=orig?supplySuggestedCycle(orig):null;return sug&&sug!==Number(supplyEdit.cycleDays)?(<p className="yl-supply-preview">{t("supply.suggest",{n:sug})} <button className="yl-btn-ghost sm" onClick={()=>setSupplyEdit(p=>({...p,cycleDays:sug}))}>{t("supply.useSuggest")}</button></p>):null;})()}
             <div className="yl-modal-btns">
-              {supplyEdit.id&&<button className="yl-modal-danger" onClick={()=>askDelete(supplyEdit.title,()=>removeSupply(supplyEdit.id))}>削除</button>}
-              <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>とじる</button>
-              <button className="yl-addbtn modal" onClick={saveSupply}>保存</button>
+              {supplyEdit.id&&<button className="yl-modal-danger" onClick={()=>askDelete(supplyEdit.title,()=>removeSupply(supplyEdit.id))}>{t("common.delete")}</button>}
+              <button className="yl-modal-cancel" onClick={()=>setSupplyEdit(null)}>{t("common.close")}</button>
+              <button className="yl-addbtn modal" onClick={saveSupply}>{t("common.save")}</button>
             </div>
           </div>
         </div>
