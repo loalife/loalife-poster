@@ -13,7 +13,8 @@ import {
 import {
   doc, setDoc, getDoc, updateDoc, deleteDoc,
   collection, onSnapshot, serverTimestamp,
-  arrayUnion, arrayRemove, writeBatch, getDocs, query, where
+  arrayUnion, arrayRemove, writeBatch, getDocs, query, where,
+  Timestamp, deleteField
 } from "firebase/firestore";
 // データ永続性・スキーマ移行レイヤー（生活インフラの安全装置）。詳細は schema.js のヘッダ参照。
 import {
@@ -32,6 +33,14 @@ const REPEAT_WEEKDAYS=[1,2,3,4,5]; // 平日（月〜金）
 const REPEAT_WEEKEND=[0,6]; // 週末（土・日）
 const BYDAY2=["SU","MO","TU","WE","TH","FR","SA"];
 const repeatDaysOf=(x)=>{if(!x||x.repeat!=="weekly")return null;if(!Array.isArray(x.repeatDays))return null;const d=x.repeatDays.filter(n=>typeof n==="number"&&n>=0&&n<=6);return d.length?d:null;};
+// ルーティンがその日に実施対象か（追加項目・2026-11-26）。repeat:"daily"/未設定は毎日。
+// weekly は repeatDays を優先し、無い旧データは作成日の曜日をアンカーにする（後方互換）。
+const routineDueOn=(r,dateIso)=>{if(!r||!r.repeat||r.repeat==="daily")return true;if(r.repeat==="weekly"){const days=repeatDaysOf(r);const dow=dowOf(dateIso);if(days)return days.indexOf(dow)>=0;if(r.createdAt)return dowOf(iso(new Date(r.createdAt)))===dow;return true;}return true;};
+// 赤ちゃんの成長曲線の「目安」帯（月齢→体重kgの下限/上限）。公的な発育目安をもとにした
+// 概ねの範囲で、医療助言ではない。男女の平均寄りの値を補間して使う。
+const BABY_WEIGHT_BAND=[[0,2.5,4.4],[1,3.4,5.8],[2,4.3,7.1],[3,5.0,8.0],[4,5.6,8.7],[5,6.1,9.3],[6,6.5,9.8],[7,6.8,10.3],[8,7.1,10.7],[9,7.4,11.1],[10,7.6,11.5],[11,7.8,11.8],[12,8.0,12.1],[15,8.5,13.0],[18,9.0,13.9],[21,9.5,14.7],[24,10.0,15.5]];
+const ageMonthsAt=(birthday,dateIso)=>{if(!birthday||!dateIso)return null;const b=new Date(birthday+"T00:00:00"),d=new Date(dateIso+"T00:00:00");if(isNaN(b.getTime())||isNaN(d.getTime()))return null;let m=(d.getFullYear()-b.getFullYear())*12+(d.getMonth()-b.getMonth());if(d.getDate()<b.getDate())m-=1;return m<0?null:m;};
+const babyWeightBandAt=(birthday,dateIso)=>{const m=ageMonthsAt(birthday,dateIso);if(m==null||m>24)return null;const T=BABY_WEIGHT_BAND;if(m<=T[0][0])return{lo:T[0][1],hi:T[0][2]};for(let i=1;i<T.length;i++){if(m<=T[i][0]){const a=T[i-1],b=T[i];const f=(m-a[0])/(b[0]-a[0]);return{lo:a[1]+(b[1]-a[1])*f,hi:a[2]+(b[2]-a[2])*f};}}const last=T[T.length-1];return{lo:last[1],hi:last[2]};};
 const nextWeeklyDate=(fromIso,days)=>{const[y,m,d]=fromIso.split("-").map(Number);const dt=new Date(y,m-1,d);for(let i=0;i<7;i++){dt.setDate(dt.getDate()+1);if(days.indexOf(dt.getDay())>=0)return iso(dt);}return iso(dt);};
 const rruleFor=(item)=>{if(!item||!item.repeat||item.repeat==="none")return null;const rmap={daily:"DAILY",weekly:"WEEKLY",monthly:"MONTHLY",yearly:"YEARLY"};let r=`RRULE:FREQ=${rmap[item.repeat]||"WEEKLY"}`;if(item.repeat==="weekly"){const days=repeatDaysOf(item);if(days)r+=`;BYDAY=${days.map(d=>BYDAY2[d]).join(",")}`;}return r;};
 // ISO日付に n ヶ月を足す（防災備蓄の「交換・賞味の目安」初期値の計算用）。不正な日付なら ""。
@@ -212,6 +221,9 @@ const summaryIdFromSearch=()=>{try{const q=new URLSearchParams(location.search);
 const lostPosterIdFromSearch=()=>{try{const q=new URLSearchParams(location.search);const id=q.get("lost");return id&&/^[A-Za-z0-9_-]{6,40}$/.test(id)?id:null;}catch(e){return null;}};
 // 招待リンク（?join=CODE）：コードは genCode の8文字（紛らわしい文字なし）。多少の前後は許容して大文字化する。
 const joinCodeFromSearch=()=>{try{const q=new URLSearchParams(location.search);const c=q.get("join");if(!c)return null;const up=c.trim().toUpperCase();return /^[A-Z0-9]{6,10}$/.test(up)?up:null;}catch(e){return null;}};
+// シッター招待リンク（?sitter=CODE）：家族招待とは別の導線（期間限定共有）。
+const sitterCodeFromSearch=()=>{try{const q=new URLSearchParams(location.search);const c=q.get("sitter");if(!c)return null;const up=c.trim().toUpperCase();return /^[A-Z0-9]{6,10}$/.test(up)?up:null;}catch(e){return null;}};
+const sitterLinkFor=(code)=>{try{return location.origin+location.pathname+"?sitter="+code;}catch(e){return "";}};
 // 認証アクションリンク（メール内リンク：mode + oobCode）。コンソールでアクションURLを
 // アプリに向けた場合に着地する。設定前は firebaseapp.com の汎用ページに着地するため、
 // この判定が発火するのは設定後のみ（設定前でも既存フローは壊れない）。
@@ -372,6 +384,7 @@ const docTimelineOf=(member,items,opts)=>{
     if(x.weight!=null&&x.weight!=="")parts.push({t:"weight",v:String(x.weight)+(x.wunit||"kg")});
     if(x.bpSys!=null&&x.bpSys!=="")parts.push({t:"bp",v:String(x.bpSys)+"/"+String(x.bpDia!=null?x.bpDia:"")});
     if(x.glucose!=null&&x.glucose!=="")parts.push({t:"glucose",v:String(x.glucose)});
+    if(x.metrics&&Array.isArray(member.customMetrics))member.customMetrics.forEach(d=>{if(x.metrics[d.id]!=null)parts.push({t:"metric",v:d.name+" "+x.metrics[d.id]+(d.unit||"")});});
     if((x.condition||"").trim())parts.push({t:"cond",v:String(x.condition).trim()});
     if((x.note||"").trim())parts.push({t:"note",v:String(x.note).trim()});
     if(parts.length)evs.push({date:x.date,kind:"health",parts});
@@ -1706,7 +1719,7 @@ const loadCareTipState=()=>{ try{ const s=JSON.parse(localStorage.getItem(CARE_T
 // この順序＝各タブでの既定の並び。SECSEG は key→どちらのタブに出すか。
 const SEC_DEF={
   record:["diary","routine","chore","walk","toilet","nursing","feed","meds","help","prep"],
-  manage:["list","certs","health","growth","review","supply","expense","belong","allowance","foodreg","album","vet","sheet1","cards"],
+  manage:["list","certs","docs","health","growth","review","supply","expense","belong","allowance","foodreg","album","vet","sheet1","cards"],
 };
 const SECSEG=Object.fromEntries(Object.entries(SEC_DEF).flatMap(([seg,keys])=>keys.map(k=>[k,seg])));
 // 迷子ポスターの「見かけた場合のお願い」定型文。性格(temper)に応じて自動で切り替える。
@@ -2482,10 +2495,10 @@ const diaryConfigFor=(t)=>DIARY_CONFIG[t]||DIARY_CONFIG.adult;
 // ペットの性別は「男の子/女の子」の文字列保存だが、ペット設定には元々 period が無いので影響しない。
 const diarySymptomsFor=(type,gender)=>{
   if(type==="pet")return ["fever","cough","vomit","diarrhea","noappetite","itch","eye","limp"];
-  if(type==="baby")return ["fever","cough","nose","vomit","diarrhea","rash"];
-  if(type==="child")return ["fever","cough","nose","throat","vomit","diarrhea","rash","headache"];
-  if(type==="senior")return ["fall","fever","cough","swell","breath","pain","dazed","headache","fatigue","thirst"];
-  return ["headache","fever","cough","nose","throat","stomach","fatigue","back"];
+  if(type==="baby")return ["fever","cough","nose","vomit","diarrhea","rash","limp"];
+  if(type==="child")return ["fever","cough","nose","throat","vomit","diarrhea","rash","headache","limp"];
+  if(type==="senior")return ["fall","fever","cough","swell","breath","pain","dazed","headache","fatigue","thirst","limp"];
+  return ["headache","fever","cough","nose","throat","stomach","fatigue","back","limp"];
 };
 // 人の運動の種目マスタ（体調記録の「運動」行で使う）。犬の運動は散歩記録（walk）が担うので、ここは人専用。
 // 記録は diary レコードの exAct（種目キー）＋ exMin（分）として保存し、月次ふりかえりの「運動の記録」が数える。
@@ -2914,6 +2927,11 @@ function genId() {
 // ============================================================================
 const DOGFRIENDS_ENABLED = true;
 const DF_KEY = "loalife-dogfriends-v1";
+// #6 書類ドキュメント：保存先は端末ローカルのみ（DOCS_KEY）。家族共有・クラウド
+// バックアップ・写真共有のいずれにも載せない（comprehensive-analysis §④の原則）。
+const DOCS_KEY = "loalife-docs-v1";
+const DOC_KINDS_PERSON=[["insurance","🪪"],["maternal","📖"],["vaccine","💉"],["exam","🧾"],["prescription","💊"],["passport","🛂"],["mynumber","🔢"],["contract","📄"],["other","🗂"]];
+const DOC_KINDS_PET=[["petlicense","🐾"],["vaccine","💉"],["exam","🧾"],["insurance","🪪"],["pedigree","📜"],["contract","📄"],["other","🗂"]];
 const DF_IMG_PREFIX = "dogcard:"; // IndexedDB(photoStorage)上の名刺画像キー接頭辞
 // OCR（任意・端末内）：tesseract.js(jpn_fast) を自己ホスト・遅延ロード。失敗しても手入力で完結。
 //  名前・犬種などは推測補完せず、確実に抽出できるもの（URL/メール/電話）だけ候補化し、全文は参考表示。
@@ -3263,7 +3281,7 @@ let APP_LANG="ja";
 const MESSAGES={
   ja:{
     "nav.home":"ホーム","nav.calendar":"カレンダー","nav.settings":"設定","title.daily":"毎日",
-    "home.tipSeasonal":"季節のケアヒント","home.tipDismiss":"もう出さない","home.tipClose":"今日は閉じる","walk.goBtn":"散歩に行く","walk.pickTitle":"だれと散歩する？","walk.todayLine":"今日の散歩：{n}回{dist}","sec.hideBtn":"非表示にする","sec.hiddenTitle":"非表示中の項目","sec.hiddenDesc":"隠した項目はここからいつでも戻せます。記録は消えません。","sec.hiddenEmpty":"非表示中の項目はありません","sec.showBtn":"表示する","rec.listTitle":"ケア・予定","rec.nursingTitle":"授乳・ミルク","rec.prepTitle":"明日の準備","med.slot.morning":"朝","med.slot.noon":"昼","med.slot.night":"夜","med.meal.before":"食前","med.meal.after":"食後","med.meal.none":"指定なし","med.perDay":"1日の回数","med.todayCount":"今日 {done}/{total}回","med.doseDone":"済","diary.dangerSign":"ぐったりしている時は、無理をせず早めの受診を検討してください","diary.clinicRow":"通院・予防接種","diary.vaccinated":"予防接種した","diary.tempLabel":"体温","diary.periodRow":"生理","health.headCirc":"頭囲","belong.scopeLabel":"セットの種類","belong.always":"定番セット","belong.occDay":"デイサービスに行く日","belong.occClinic":"通院","belong.occOut":"外出","belong.presets":"よく使う物","supply.suggest":"購入の間隔から、約{n}日が目安です","supply.useSuggest":"この日数にする","supply.estNote":"※ 残り日数は目安です","supply.cycleCustom":"日数を直接入力","growth.hidePreset":"候補を隠す","baby.panelTitle":"前回からの経過","baby.since":"前回から {x}","baby.actNurse":"授乳・ミルク","baby.actDiaper":"おむつ替え","baby.actSleep":"ねんね","points.desc":"お手伝いをするとポイントがたまります。目標とごほうびを決めて、楽しみながら続けましょう。","points.goalPt":"目標ポイント","points.reward":"ごほうび","points.rewardPh":"例：おでかけ・好きなおやつ","points.reached":"目標達成！","points.editPt":"ポイントを変更","df.lastMet":"最後に会った日","df.metBtn":"会った","df.details":"詳細","df.nameHint":"名前だけでも登録できます","df.metToast":"会った記録をつけました","home.feedCount":"{n}件の記録",
+    "home.tipSeasonal":"季節のケアヒント","home.tipDismiss":"もう出さない","home.tipClose":"今日は閉じる","walk.goBtn":"散歩に行く","walk.pickTitle":"だれと散歩する？","walk.todayLine":"今日の散歩：{n}回{dist}","sec.hideBtn":"非表示にする","sec.hiddenTitle":"非表示中の項目","sec.hiddenDesc":"隠した項目はここからいつでも戻せます。記録は消えません。","sec.hiddenEmpty":"非表示中の項目はありません","sec.showBtn":"表示する","rec.listTitle":"ケア・予定","rec.nursingTitle":"授乳・ミルク","rec.prepTitle":"明日の準備","med.slot.morning":"朝","med.slot.noon":"昼","med.slot.night":"夜","med.meal.before":"食前","med.meal.after":"食後","med.meal.none":"指定なし","med.perDay":"1日の回数","med.todayCount":"今日 {done}/{total}回","med.doseDone":"済","diary.dangerSign":"ぐったりしている時は、無理をせず早めの受診を検討してください","diary.dangerSignPet":"ぐったりしている・反応が鈍いときは、早めに動物病院へ相談してください。","diary.clinicRow":"通院・予防接種","diary.vaccinated":"予防接種した","diary.tempLabel":"体温","diary.periodRow":"生理","health.headCirc":"頭囲","belong.scopeLabel":"セットの種類","belong.always":"定番セット","belong.occDay":"デイサービスに行く日","belong.occClinic":"通院","belong.occOut":"外出","belong.presets":"よく使う物","supply.suggest":"購入の間隔から、約{n}日が目安です","supply.useSuggest":"この日数にする","supply.estNote":"※ 残り日数は目安です","supply.cycleCustom":"日数を直接入力","growth.hidePreset":"候補を隠す","baby.panelTitle":"前回からの経過","baby.since":"前回から {x}","baby.actNurse":"授乳・ミルク","baby.actDiaper":"おむつ替え","baby.actSleep":"ねんね","points.desc":"お手伝いをするとポイントがたまります。目標とごほうびを決めて、楽しみながら続けましょう。","points.goalPt":"目標ポイント","points.reward":"ごほうび","points.rewardPh":"例：おでかけ・好きなおやつ","points.reached":"目標達成！","points.editPt":"ポイントを変更","df.lastMet":"最後に会った日","df.metBtn":"会った","df.details":"詳細","df.nameHint":"名前だけでも登録できます","df.metToast":"会った記録をつけました","home.feedCount":"{n}件の記録",
     "tipc.actCheck":"確認する","tipc.dogYoungSocial.t":"{name}は社会化の時期","tipc.dogYoungSocial.b":"いろんな音・人・場所に少しずつ慣らしてあげましょう。短い時間から、無理のない範囲で大丈夫です","tipc.dogYoungTeeth.t":"歯みがきに慣らすなら今の時期","tipc.dogYoungTeeth.b":"歯の生え変わりの時期です。口元を触る練習から始めて、少しずつ慣らしてあげましょう","tipc.dogYoungVaccine.t":"ワクチン・予防の予定を確認","tipc.dogYoungVaccine.b":"子犬の時期はワクチンや予防の予定が多めです。{name}の予定が入っているか確認しておきましょう","tipc.dogAdultPrevent.t":"春は予防薬のシーズン","tipc.dogAdultPrevent.b":"暖かくなるとノミ・ダニや蚊が活発になります。{name}の予防薬の予定を確認しておきましょう","tipc.dogAdultWeight.t":"秋は体重チェックの見直しどき","tipc.dogAdultWeight.b":"涼しくなると食欲が増える子もいます。{name}の体重を測って、フード量の目安を確認してみましょう","tipc.dogAdultPaw.t":"冬は肉球と関節のケア","tipc.dogAdultPaw.b":"寒さで体がこわばりがちです。お散歩の後は肉球の乾燥やひび割れをチェックしてあげましょう","tipc.dogSeniorFloor.t":"シニア期は足もと対策を","tipc.dogSeniorFloor.b":"足腰の負担を減らすため、滑りやすい床にマットを敷く、段差を減らすなどの工夫がおすすめです","tipc.dogSeniorSummer.t":"シニアの夏は無理をしない","tipc.dogSeniorSummer.b":"体温調節が苦手になりがちな時期です。涼しい室内で過ごす時間を増やしてあげましょう","tipc.catYoungPlay.t":"{name}は遊びで育つ時期","tipc.catYoungPlay.b":"短い遊び時間を何回か作ってあげましょう。爪とぎ場所を用意しておくと、家具対策にもなります","tipc.catAdultBrush.t":"春は換毛と毛玉ケア","tipc.catAdultBrush.b":"抜け毛が増える時期です。ブラッシングを少し増やすと、毛玉の予防に役立ちます","tipc.catAdultHeat.t":"猫も熱中症に注意","tipc.catAdultHeat.b":"涼しい居場所と、新鮮な水を何か所かに用意してあげましょう。お留守番の室温にも気をつけて","tipc.catAdultWater.t":"冬は飲水量が減りがち","tipc.catAdultWater.b":"水飲み場を増やしたり、水をこまめに替えるなど、飲みやすい工夫をしてみましょう","tipc.catSeniorStep.t":"シニア猫は上り下りに注意","tipc.catSeniorStep.b":"高い場所へのステップを用意したり、よく使う場所を低めに移すと、足腰の負担が減ります","tipc.petOtherHeat.t":"小動物も暑さに弱いです","tipc.petOtherHeat.b":"ケージや水槽は直射日光を避けた場所に。室温と換気にも気をつけてあげましょう","tipc.petOtherCold.t":"冬は保温の確認を","tipc.petOtherCold.b":"その子に合った保温ができているか確認しましょう。ヒーター周りの安全も一緒にチェックを","tipc.babyVaccine.t":"予防接種の予定を確認","tipc.babyVaccine.b":"月齢に合わせて予防接種の予定が進みます。{name}の次の予定を確認しておきましょう","tipc.babyHeat.t":"赤ちゃんの夏は暑さ対策","tipc.babyHeat.b":"室温と服装でこまめに調整を。お出かけは涼しい時間帯が安心です","tipc.babyDry.t":"赤ちゃんの冬は乾燥対策","tipc.babyDry.b":"室内の加湿と保湿ケアを心がけましょう。肌の様子を見ながら続けてください","tipc.childPollen.t":"春は花粉と紫外線に注意","tipc.childPollen.b":"外遊びの後は手洗い・うがいを習慣に。帽子などで日差し対策もしてあげましょう","tipc.childHeat.t":"子どもの熱中症予防","tipc.childHeat.b":"遊びに夢中だと水分補給を忘れがちです。時間を決めて声をかけてあげましょう","tipc.childHands.t":"冬は手洗いの習慣づけ","tipc.childHands.b":"感染症が増える季節です。手洗いと、室内の換気・加湿を心がけましょう","tipc.adultSleep.t":"春は生活リズムの切り替えどき","tipc.adultSleep.b":"環境が変わりやすい季節です。睡眠時間を意識して確保してみましょう","tipc.adultSummer.t":"夏バテ対策は睡眠と水分","tipc.adultSummer.b":"冷房の効いた室内と外との温度差も負担になります。こまめな水分補給を","tipc.adultDry.t":"冬の乾燥と冷え対策","tipc.adultDry.b":"加湿と保湿を心がけて。冷えやすい手足は、入浴で温めるのもおすすめです","tipc.seniorFall.t":"足もと安全と転倒予防","tipc.seniorFall.b":"段差や滑りやすい場所を見直してみましょう。無理のない範囲の運動も大切です","tipc.seniorHeat.t":"高齢者の熱中症は室内でも","tipc.seniorHeat.b":"喉の渇きを感じにくくなります。時間を決めた水分補給と、室温の管理を心がけましょう","tipc.seniorBath.t":"冬の入浴は温度差に注意","tipc.seniorBath.b":"脱衣所と浴室を温めてから入浴すると安心です",
     "seg.daily":"毎日","seg.manage":"管理",
     "home.family":"家族のようす",
@@ -3343,6 +3361,10 @@ const MESSAGES={
     "hub.title":"何を記録しますか？","hub.addable":"追加できる機能","hub.schedulePet":"ケア・予定","hub.scheduleMe":"予定・ToDo","hub.toilet":"トイレ記録","hub.routine":"ルーティン（習慣）","hub.health":"体重・からだ","hub.belong":"持ち物（曜日）","hub.bday":"誕生日・記念日",
     "del.confirmTitle":"本当に削除しますか？","del.confirmBody":"「{label}」を削除します。この操作は元に戻せません。","del.confirmBodyPlain":"この操作は元に戻せません。","del.confirmBtn":"削除する",
     "health.addTitle":"からだの記録","health.bp":"血圧","health.temp":"体温","health.glucose":"血糖値","health.bpHigh":"上","health.bpLow":"下","health.optionalPh":"任意","health.smallAnimalHint":"小動物は0.1g単位","health.condLabel":"体調","health.saveBtn":"からだを記録","health.targetWeight":"目標体重","health.targetHint":"目標との差を表示。",
+    "supply.namePhPet":"品名（例：フード）","supply.namePhBaby":"品名（例：おむつ・粉ミルク）","supply.namePhChild":"品名（例：おしりふき・歯ブラシ）","supply.namePhAdult":"品名（例：シャンプー・洗剤）","supply.namePhSenior":"品名（例：介護用おむつ・ウェットティッシュ）","belong.addPhPet":"例：おやつ / ウンチ袋 / 予備リード","belong.addPhBaby":"例：おむつ / 着替え / 哺乳瓶","belong.addPhSenior":"例：着替え / タオル / 連絡帳","rec.routinePhPerson":"やること（例：朝の薬）","edit.stockPhPerson":"例：3（薬などの買い足しめやすに）",
+    "routine.notToday":"今日は実施日ではないルーティンだけです",
+    "sitter.title":"シッター招待（期間限定）","sitter.desc":"家族以外の方に、期間とメンバーと権限を絞って一時的に見てもらうための招待です。期限が切れると自動で見られなくなります。","sitter.needMember":"対象のメンバーを1人以上選んでください","sitter.createFail":"シッター招待を作れませんでした。もう一度お試しください。","sitter.createBtn":"シッター招待コードを作る","sitter.codeLabel":"シッター招待コード","sitter.noSharedMembers":"「共有」に設定したメンバーがいません。メンバーのプロフィール編集で共有に設定してください。","sitter.viewOnly":"閲覧のみ","sitter.canWrite":"記録も可","sitter.days":"{d}日間","sitter.untilLine":"{date} まで","sitter.revokeBtn":"取り消す","sitter.activeTitle":"参加中のシッター","sitter.modeFamily":"家族として参加","sitter.modeSitter":"シッターとして参加","sitter.joinAbout":"シッター招待コードを入力してください。期間中だけ、対象のメンバーの記録が見られます（権限によっては記録もできます）。","sitter.inviteMsg":"LOALIFEのシッター招待です。下のリンクから参加してください（期間限定です）。\n{link}\nコード： {code}","sitter.nowTitle":"シッターとして参加中","sitter.leaveBtn":"シッター参加をやめる","sitter.banner":"シッター共有中（{date}まで）","share.inviteExpiry":"招待コードの有効期限： {date}","share.participantsTitle":"参加者","share.noName":"（名前未登録）","share.you":"あなた","share.removeBtn":"除外","share.accountLine":"あなたのアカウント： {email}","share.removeFail":"除外できませんでした。もう一度お試しください。","note.syncedFoot":"※ 家族スペースのメンバー全員に共有されます。","toast.sitterJoined":"シッターとして参加しました","toast.sitterExpired":"シッター共有の期限が切れたため、共有を終了しました","toast.sitterLeft":"シッター参加をやめました","toast.sitterRevoked":"シッター招待を取り消しました","toast.sitterRemoved":"シッターを外しました","toast.participantRemoved":"参加者を除外しました","toast.noteSyncFail":"ノートを共有できませんでした。通信状態を確認してください。",
+    "chart.targetBand":"帯は目標体重の±5%の範囲です","chart.growthNote":"※帯は月齢に対する体重の目安です（診断ではありません）","chart.overlay":"重ねて表示","metric.title":"自由な数値項目（名前と単位を決めて追加できます）","metric.namePh":"項目名（例：腹囲）","metric.unitPh":"単位（例：cm）","metric.add":"項目を追加","docs.title":"書類","docs.addTitle":"書類を追加","docs.addFirst":"書類をしまう","docs.empty":"保険証や証明書を写真でしまっておけます。","docs.deviceOnlyNote":"書類はこの端末の中だけに保存されます。家族共有には送られません。","docs.examplesPerson":"例：健康保険証・資格確認書、母子健康手帳、予防接種の記録、お薬手帳、健診結果、パスポート","docs.examplesPet":"例：ワクチン証明書、鑑札・登録証、検査結果、ペット保険証、血統書","docs.nameLabel":"名前","docs.namePhPerson":"例：健康保険証","docs.namePhPet":"例：ワクチン証明書","docs.dateLabel":"日付","docs.expiryLabel":"有効期限（任意）","docs.noteLabel":"メモ（任意）","docs.notePh":"例：かかりつけで提示","docs.saveBtn":"書類をしまう","docs.expiry":"期限","docs.expired":"期限切れ","docs.expSoon":"あと{d}日で期限","docs.delLabel":"「{title}」を削除しますか？","dockind.insurance":"保険証","dockind.maternal":"母子手帳","dockind.vaccine":"予防接種","dockind.exam":"健診・検査","dockind.prescription":"お薬手帳","dockind.passport":"パスポート","dockind.mynumber":"マイナンバー","dockind.contract":"契約書","dockind.petlicense":"鑑札・登録","dockind.pedigree":"血統書","dockind.other":"その他","toast.metricNameNeeded":"項目名を入れてください","toast.metricMax":"項目は6つまでです","toast.metricAdded":"項目を追加しました","toast.docSaved":"書類をしまいました","toast.docDeleted":"書類を削除しました",
     "diary.quickHealthy":"今日も元気（ワンタップで完了）","diary.hint":"くわしく残すときだけ（任意）。","diary.energy":"元気","diary.appetite":"食欲","diary.poop":"うんち","diary.sleep":"睡眠","diary.other":"その他","diary.symptoms":"症状","diary.moreSymptoms":"ほかの症状","diary.hours":"{h}時間","diary.hoursSuffix":"時間","diary.hoursPh":"時間","diary.walk":"お散歩・おでかけ","diary.hospital":"病院に行った","diary.periodPriv":"本人だけの記録です","diary.periodNote":"前回 {last}・次はそろそろ {next}ごろ（約{avg}日周期）","diary.notePh":"日々の様子・病院でのこと・ひとこと…","diary.delPhoto":"写真を削除","diary.addPhoto":"写真を追加（お薬・症状など）","diary.saveBtn":"今日のようすを記録","diary.exercise":"運動","diary.minSuffix":"分","diary.minPh":"分","diary.sleepCta":"睡眠を記録する","diary.exNamePh":"運動名（例：クロスフィット）","diary.routineTag":"ルーティン",
     "feed.addTitle":"ごはんの記録","feed.servingLabel":"1回分の量","feed.servingPh":"例：100","feed.hintSet":"1回分＝{g}g として総量に反映します（初回だけ設定すればOK）","feed.hintUnset":"未設定でも記録できます（設定すると総量に反映）","feed.amount":"分量","feed.previewPre":"＝ 約 ","feed.previewPost":"（{n}回分）","feed.saveBtn":"ごはんを記録","feed.today":"今日の合計 約{g}g（{n}回）",
     "sched.titlePet":"ケア・予定を追加","sched.titleSelf":"健康・ケアを追加","sched.titleMe":"予定・ToDoを追加","sched.frequent":"よく使う","sched.contentPh":"内容を入力…","sched.addLabelPh":"{label}を追加…","sched.content":"内容","sched.dateOptMe":"日付・期限","sched.time":"時間","sched.dateHint":"日付・期限を入れると、その日のカレンダーに表示されます。","sched.certPhoto":"証明書・写真","sched.changePhoto":"写真を変更","sched.attachPhoto":"＋ 写真を添付","sched.notify":"通知","sched.quickAdd":"1タップ追加（前回コピー）","sched.lastDate":"前回 {date}","sched.dateDone":"実施日","sched.dateDate":"日付","sched.dateVisit":"受診日","sched.dateDue":"期限","care.fallback":"ケア","filter.all":"すべて",
@@ -3361,7 +3383,7 @@ const MESSAGES={
   },
   en:{
     "nav.home":"Home","nav.calendar":"Calendar","nav.settings":"Settings","title.daily":"Daily",
-    "home.tipSeasonal":"Seasonal care tip","home.tipDismiss":"Don't show again","home.tipClose":"Hide for today","walk.goBtn":"Go for a walk","walk.pickTitle":"Who's going for a walk?","walk.todayLine":"Today's walks: {n}{dist}","sec.hideBtn":"Hide","sec.hiddenTitle":"Hidden sections","sec.hiddenDesc":"You can bring hidden sections back here anytime. Records are never deleted.","sec.hiddenEmpty":"No hidden sections","sec.showBtn":"Show","rec.listTitle":"Care & plans","rec.nursingTitle":"Feeding","rec.prepTitle":"Tomorrow's prep","med.slot.morning":"Morning","med.slot.noon":"Midday","med.slot.night":"Night","med.meal.before":"Before meals","med.meal.after":"After meals","med.meal.none":"Any time","med.perDay":"Times a day","med.todayCount":"Today {done}/{total}","med.doseDone":"Done","diary.dangerSign":"If they seem limp or unresponsive, please consider seeing a doctor soon.","diary.clinicRow":"Clinic & vaccines","diary.vaccinated":"Got a vaccine","diary.tempLabel":"Temperature","diary.periodRow":"Period","health.headCirc":"Head circumference","belong.scopeLabel":"Set type","belong.always":"Everyday set","belong.occDay":"Day service days","belong.occClinic":"Clinic visits","belong.occOut":"Outings","belong.presets":"Common items","supply.suggest":"From your purchase rhythm, about {n} days","supply.useSuggest":"Use this","supply.estNote":"* Remaining days are an estimate","supply.cycleCustom":"Enter days directly","growth.hidePreset":"Hide suggestion","baby.panelTitle":"Since last time","baby.since":"{x} since last","baby.actNurse":"Feeding","baby.actDiaper":"Diaper","baby.actSleep":"Sleep","points.desc":"Helping out earns points. Set a goal and a reward, and have fun collecting them.","points.goalPt":"Goal points","points.reward":"Reward","points.rewardPh":"e.g. A day out, a favorite snack","points.reached":"Goal reached!","points.editPt":"Change points","df.lastMet":"Last met","df.metBtn":"Met","df.details":"Details","df.nameHint":"Just a name is enough","df.metToast":"Marked as met today","home.feedCount":"{n} records",
+    "home.tipSeasonal":"Seasonal care tip","home.tipDismiss":"Don't show again","home.tipClose":"Hide for today","walk.goBtn":"Go for a walk","walk.pickTitle":"Who's going for a walk?","walk.todayLine":"Today's walks: {n}{dist}","sec.hideBtn":"Hide","sec.hiddenTitle":"Hidden sections","sec.hiddenDesc":"You can bring hidden sections back here anytime. Records are never deleted.","sec.hiddenEmpty":"No hidden sections","sec.showBtn":"Show","rec.listTitle":"Care & plans","rec.nursingTitle":"Feeding","rec.prepTitle":"Tomorrow's prep","med.slot.morning":"Morning","med.slot.noon":"Midday","med.slot.night":"Night","med.meal.before":"Before meals","med.meal.after":"After meals","med.meal.none":"Any time","med.perDay":"Times a day","med.todayCount":"Today {done}/{total}","med.doseDone":"Done","diary.dangerSign":"If they seem limp or unresponsive, please consider seeing a doctor soon.","diary.dangerSignPet":"If they seem limp or unresponsive, please consider contacting a vet soon.","diary.clinicRow":"Clinic & vaccines","diary.vaccinated":"Got a vaccine","diary.tempLabel":"Temperature","diary.periodRow":"Period","health.headCirc":"Head circumference","belong.scopeLabel":"Set type","belong.always":"Everyday set","belong.occDay":"Day service days","belong.occClinic":"Clinic visits","belong.occOut":"Outings","belong.presets":"Common items","supply.suggest":"From your purchase rhythm, about {n} days","supply.useSuggest":"Use this","supply.estNote":"* Remaining days are an estimate","supply.cycleCustom":"Enter days directly","growth.hidePreset":"Hide suggestion","baby.panelTitle":"Since last time","baby.since":"{x} since last","baby.actNurse":"Feeding","baby.actDiaper":"Diaper","baby.actSleep":"Sleep","points.desc":"Helping out earns points. Set a goal and a reward, and have fun collecting them.","points.goalPt":"Goal points","points.reward":"Reward","points.rewardPh":"e.g. A day out, a favorite snack","points.reached":"Goal reached!","points.editPt":"Change points","df.lastMet":"Last met","df.metBtn":"Met","df.details":"Details","df.nameHint":"Just a name is enough","df.metToast":"Marked as met today","home.feedCount":"{n} records",
     "tipc.actCheck":"Check","tipc.dogYoungSocial.t":"Socialization time for {name}","tipc.dogYoungSocial.b":"Let them get used to different sounds, people and places, a little at a time. Short sessions are fine — no need to push.","tipc.dogYoungTeeth.t":"A good time to start tooth-brushing habits","tipc.dogYoungTeeth.b":"Puppy teeth are being replaced around now. Start by gently touching around the mouth and build up little by little.","tipc.dogYoungVaccine.t":"Check vaccination and prevention plans","tipc.dogYoungVaccine.b":"Puppies tend to have several vaccinations and preventive treatments scheduled. Check that {name}'s are on the calendar.","tipc.dogAdultPrevent.t":"Spring is prevention season","tipc.dogAdultPrevent.b":"As it warms up, fleas, ticks and mosquitoes become active. Check {name}'s preventive medication schedule.","tipc.dogAdultWeight.t":"Autumn is a good time to check weight","tipc.dogAdultWeight.b":"Some dogs eat more as it cools down. Weigh {name} and check whether the food amount still fits.","tipc.dogAdultPaw.t":"Winter paw and joint care","tipc.dogAdultPaw.b":"Cold weather can make bodies stiff. After walks, check paw pads for dryness or cracks.","tipc.dogSeniorFloor.t":"Senior tip: safer footing","tipc.dogSeniorFloor.b":"To ease the load on legs and hips, try mats on slippery floors and fewer steps where possible.","tipc.dogSeniorSummer.t":"Take summer gently for seniors","tipc.dogSeniorSummer.b":"Older dogs regulate body temperature less easily. Let them spend more time in a cool indoor spot.","tipc.catYoungPlay.t":"Play is how {name} grows now","tipc.catYoungPlay.b":"Offer several short play sessions a day. A scratching spot also helps protect the furniture.","tipc.catAdultBrush.t":"Spring shedding and hairball care","tipc.catAdultBrush.b":"Shedding increases around now. A little extra brushing helps prevent hairballs.","tipc.catAdultHeat.t":"Cats need heat care too","tipc.catAdultHeat.b":"Keep cool resting spots and fresh water in a few places. Mind the room temperature when you're out, too.","tipc.catAdultWater.t":"Cats drink less in winter","tipc.catAdultWater.b":"Try adding more water bowls or refreshing the water often so drinking stays easy.","tipc.catSeniorStep.t":"Senior cats and high places","tipc.catSeniorStep.b":"A step up to favorite high spots, or moving essentials lower, can ease the strain on legs.","tipc.petOtherHeat.t":"Small pets are heat-sensitive too","tipc.petOtherHeat.b":"Keep cages and tanks out of direct sunlight, and watch room temperature and ventilation.","tipc.petOtherCold.t":"Check winter warmth","tipc.petOtherCold.b":"Check that the warmth setup suits your pet, and that heaters are placed safely.","tipc.babyVaccine.t":"Check the vaccination schedule","tipc.babyVaccine.b":"Vaccinations follow the baby's age. Check what's next on {name}'s schedule.","tipc.babyHeat.t":"Summer heat care for babies","tipc.babyHeat.b":"Adjust room temperature and clothing often. Outings are easier in the cooler hours.","tipc.babyDry.t":"Winter dryness care for babies","tipc.babyDry.b":"Keep indoor air moist and skin moisturized, watching how the skin responds.","tipc.childPollen.t":"Spring pollen and sun care","tipc.childPollen.b":"Make hand-washing and gargling a habit after playing outside. A hat helps with the sun, too.","tipc.childHeat.t":"Preventing heatstroke in kids","tipc.childHeat.b":"Kids forget to drink when they're absorbed in play. Set times and remind them.","tipc.childHands.t":"Winter hand-washing habits","tipc.childHands.b":"Infections spread more in this season. Keep up hand-washing, ventilation and humid air.","tipc.adultSleep.t":"Spring rhythm reset","tipc.adultSleep.b":"Routines often change in spring. Try to protect your sleep time.","tipc.adultSummer.t":"Beat summer fatigue with sleep and water","tipc.adultSummer.b":"Big gaps between air-conditioned rooms and the heat outside add strain. Drink water regularly.","tipc.adultDry.t":"Winter dryness and chill care","tipc.adultDry.b":"Keep air and skin moisturized. A warm bath helps cold hands and feet, too.","tipc.seniorFall.t":"Safer footing, fewer falls","tipc.seniorFall.b":"Review steps and slippery spots at home. Gentle exercise within comfort also matters.","tipc.seniorHeat.t":"Heatstroke can happen indoors","tipc.seniorHeat.b":"Thirst is felt less with age. Drink on a schedule and keep an eye on room temperature.","tipc.seniorBath.t":"Mind temperature gaps at bath time","tipc.seniorBath.b":"Warming the changing room and bathroom before a bath makes it safer.",
     "seg.daily":"Daily","seg.manage":"Manage",
     "home.family":"Family",
@@ -3441,6 +3463,10 @@ const MESSAGES={
     "hub.title":"What would you like to record?","hub.addable":"Add a feature","hub.schedulePet":"Care & plans","hub.scheduleMe":"Plans & to-dos","hub.toilet":"Toilet log","hub.routine":"Routines (habits)","hub.health":"Weight & body","hub.belong":"Belongings (by day)","hub.bday":"Birthdays & anniversaries",
     "del.confirmTitle":"Delete this?","del.confirmBody":"Delete “{label}”. This can’t be undone.","del.confirmBodyPlain":"This can’t be undone.","del.confirmBtn":"Delete",
     "health.addTitle":"Body record","health.bp":"Blood pressure","health.temp":"Temperature","health.glucose":"Blood glucose","health.bpHigh":"Sys","health.bpLow":"Dia","health.optionalPh":"optional","health.smallAnimalHint":"Small animals: 0.1 g steps","health.condLabel":"Condition","health.saveBtn":"Log body","health.targetWeight":"Target weight","health.targetHint":"Shows the gap to your target.",
+    "supply.namePhPet":"Item name (e.g. Food)","supply.namePhBaby":"Item name (e.g. Diapers, formula)","supply.namePhChild":"Item name (e.g. Wipes, toothbrush)","supply.namePhAdult":"Item name (e.g. Shampoo, detergent)","supply.namePhSenior":"Item name (e.g. Care diapers, wet wipes)","belong.addPhPet":"e.g. treats / poop bags / spare leash","belong.addPhBaby":"e.g. diapers / change of clothes / bottle","belong.addPhSenior":"e.g. change of clothes / towel / contact notebook","rec.routinePhPerson":"Task (e.g. Morning meds)","edit.stockPhPerson":"e.g. 3 (restock guide for meds)",
+    "routine.notToday":"No routines are due today",
+    "sitter.title":"Sitter invites (time-limited)","sitter.desc":"Invite someone outside the family to view selected members for a limited time, with limited permissions. Access ends automatically when it expires.","sitter.needMember":"Choose at least one member","sitter.createFail":"Couldn't create the sitter invite. Please try again.","sitter.createBtn":"Create a sitter code","sitter.codeLabel":"Sitter invite code","sitter.noSharedMembers":"No members are set to “shared” yet. Set a member to shared in their profile edit screen.","sitter.viewOnly":"View only","sitter.canWrite":"Can also record","sitter.days":"{d} days","sitter.untilLine":"until {date}","sitter.revokeBtn":"Revoke","sitter.activeTitle":"Active sitters","sitter.modeFamily":"Join as family","sitter.modeSitter":"Join as a sitter","sitter.joinAbout":"Enter the sitter invite code. During the period you can view the selected members' records (and record too, if permitted).","sitter.inviteMsg":"Here's a LOALIFE sitter invite (time-limited sharing).\n{link}\nCode: {code}","sitter.nowTitle":"You're sitting (time-limited)","sitter.leaveBtn":"Leave sitter sharing","sitter.banner":"Sitting (until {date})","share.inviteExpiry":"Invite code valid until {date}","share.participantsTitle":"Participants","share.noName":"(no name yet)","share.you":"you","share.removeBtn":"Remove","share.accountLine":"Your account: {email}","share.removeFail":"Couldn't remove them. Please try again.","note.syncedFoot":"* Shared with everyone in the family space.","toast.sitterJoined":"Joined as a sitter","toast.sitterExpired":"The sitting period ended, so sharing has stopped","toast.sitterLeft":"You left the sitter sharing","toast.sitterRevoked":"Sitter invite revoked","toast.sitterRemoved":"Sitter removed","toast.participantRemoved":"Participant removed","toast.noteSyncFail":"Couldn't share the note. Check your connection.",
+    "chart.targetBand":"The band is ±5% around the target weight","chart.growthNote":"* The band is a rough guide to weight by age in months (not a diagnosis).","chart.overlay":"Overlay","metric.title":"Custom number fields (add your own name and unit)","metric.namePh":"Name (e.g. waist)","metric.unitPh":"Unit (e.g. cm)","metric.add":"Add field","docs.title":"Documents","docs.addTitle":"Add a document","docs.addFirst":"Store a document","docs.empty":"Keep photos of insurance cards and certificates here.","docs.deviceOnlyNote":"Documents are stored only on this device. They are never sent to family sharing.","docs.examplesPerson":"Examples: health insurance card, eligibility certificate, maternal handbook, vaccination record, medication notebook, checkup results, passport","docs.examplesPet":"Examples: vaccination certificate, license/registration, test results, pet insurance card, pedigree","docs.nameLabel":"Name","docs.namePhPerson":"e.g. Health insurance card","docs.namePhPet":"e.g. Vaccination certificate","docs.dateLabel":"Date","docs.expiryLabel":"Expiry (optional)","docs.noteLabel":"Note (optional)","docs.notePh":"e.g. Show at the clinic","docs.saveBtn":"Store document","docs.expiry":"Expiry","docs.expired":"Expired","docs.expSoon":"Expires in {d} days","docs.delLabel":"Delete “{title}”?","dockind.insurance":"Insurance card","dockind.maternal":"Maternal handbook","dockind.vaccine":"Vaccination","dockind.exam":"Checkup / tests","dockind.prescription":"Medication notebook","dockind.passport":"Passport","dockind.mynumber":"ID number card","dockind.contract":"Contract","dockind.petlicense":"License / registration","dockind.pedigree":"Pedigree","dockind.other":"Other","toast.metricNameNeeded":"Enter a field name","toast.metricMax":"Up to 6 fields","toast.metricAdded":"Field added","toast.docSaved":"Document stored","toast.docDeleted":"Document deleted",
     "diary.quickHealthy":"Doing well today (one tap)","diary.hint":"Only when you want details (optional).","diary.energy":"Energy","diary.appetite":"Appetite","diary.poop":"Poop","diary.sleep":"Sleep","diary.other":"Other","diary.symptoms":"Symptoms","diary.moreSymptoms":"More symptoms","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"hrs","diary.walk":"Walk / outing","diary.hospital":"Went to the clinic","diary.periodPriv":"A private record, just for you","diary.periodNote":"Last {last} · next around {next} (~{avg}-day cycle)","diary.notePh":"Daily notes, clinic visit, a quick word…","diary.delPhoto":"Delete photo","diary.addPhoto":"Add a photo (meds, symptoms, etc.)","diary.saveBtn":"Save today's notes","diary.exercise":"Exercise","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Log sleep","diary.exNamePh":"Activity name (e.g. CrossFit)","diary.routineTag":"routine",
     "feed.addTitle":"Meal log","feed.servingLabel":"Amount per serving","feed.servingPh":"e.g. 100","feed.hintSet":"1 serving = {g}g, applied to the total (set once and you're done)","feed.hintUnset":"You can log without setting this (set it to reflect in the total)","feed.amount":"Amount","feed.previewPre":"= about ","feed.previewPost":" ({n} servings)","feed.saveBtn":"Log meal","feed.today":"Today's total ~{g}g ({n})",
     "sched.titlePet":"Add care or plan","sched.titleSelf":"Add health or care","sched.titleMe":"Add plan or to-do","sched.frequent":"Frequent","sched.contentPh":"Enter details…","sched.addLabelPh":"Add {label}…","sched.content":"item","sched.dateOptMe":"Date / deadline","sched.time":"Time","sched.dateHint":"Add a date or deadline and it appears on that day's calendar.","sched.certPhoto":"Certificate / photo","sched.changePhoto":"Change photo","sched.attachPhoto":"＋ Attach photo","sched.notify":"Notify","sched.quickAdd":"One-tap add (copy last)","sched.lastDate":"Last {date}","sched.dateDone":"Date done","sched.dateDate":"Date","sched.dateVisit":"Visit date","sched.dateDue":"Due","care.fallback":"Care","filter.all":"All",
@@ -3459,7 +3485,7 @@ const MESSAGES={
   },
   es:{
     "nav.home":"Inicio","nav.calendar":"Calendario","nav.settings":"Ajustes","title.daily":"Diario",
-    "home.tipSeasonal":"Consejo de temporada","home.tipDismiss":"No mostrar más","home.tipClose":"Ocultar hoy","walk.goBtn":"Salir a pasear","walk.pickTitle":"¿Quién sale a pasear?","walk.todayLine":"Paseos de hoy: {n}{dist}","sec.hideBtn":"Ocultar","sec.hiddenTitle":"Secciones ocultas","sec.hiddenDesc":"Puedes volver a mostrarlas aquí cuando quieras. Los registros no se borran.","sec.hiddenEmpty":"No hay secciones ocultas","sec.showBtn":"Mostrar","rec.listTitle":"Cuidados y planes","rec.nursingTitle":"Lactancia","rec.prepTitle":"Preparación de mañana","med.slot.morning":"Mañana","med.slot.noon":"Mediodía","med.slot.night":"Noche","med.meal.before":"Antes de comer","med.meal.after":"Después de comer","med.meal.none":"Sin especificar","med.perDay":"Veces al día","med.todayCount":"Hoy {done}/{total}","med.doseDone":"Listo","diary.dangerSign":"Si se ve decaído o sin reaccionar, consideren ir al médico pronto.","diary.clinicRow":"Médico y vacunas","diary.vaccinated":"Se vacunó","diary.tempLabel":"Temperatura","diary.periodRow":"Regla","health.headCirc":"Perímetro craneal","belong.scopeLabel":"Tipo de set","belong.always":"Set de siempre","belong.occDay":"Días de centro de día","belong.occClinic":"Visitas médicas","belong.occOut":"Salidas","belong.presets":"Artículos frecuentes","supply.suggest":"Según tus compras, unos {n} días","supply.useSuggest":"Usar este número","supply.estNote":"* Los días restantes son una estimación","supply.cycleCustom":"Ingresar los días","growth.hidePreset":"Ocultar sugerencia","baby.panelTitle":"Desde la última vez","baby.since":"Hace {x}","baby.actNurse":"Lactancia","baby.actDiaper":"Pañal","baby.actSleep":"Sueño","points.desc":"Ayudar suma puntos. Define una meta y una recompensa, y a divertirse juntándolos.","points.goalPt":"Puntos meta","points.reward":"Recompensa","points.rewardPh":"Ej.: Una salida, su dulce favorito","points.reached":"¡Meta alcanzada!","points.editPt":"Cambiar puntos","df.lastMet":"Último encuentro","df.metBtn":"Se vieron","df.details":"Detalles","df.nameHint":"Con el nombre basta","df.metToast":"Encuentro registrado","home.feedCount":"{n} registros",
+    "home.tipSeasonal":"Consejo de temporada","home.tipDismiss":"No mostrar más","home.tipClose":"Ocultar hoy","walk.goBtn":"Salir a pasear","walk.pickTitle":"¿Quién sale a pasear?","walk.todayLine":"Paseos de hoy: {n}{dist}","sec.hideBtn":"Ocultar","sec.hiddenTitle":"Secciones ocultas","sec.hiddenDesc":"Puedes volver a mostrarlas aquí cuando quieras. Los registros no se borran.","sec.hiddenEmpty":"No hay secciones ocultas","sec.showBtn":"Mostrar","rec.listTitle":"Cuidados y planes","rec.nursingTitle":"Lactancia","rec.prepTitle":"Preparación de mañana","med.slot.morning":"Mañana","med.slot.noon":"Mediodía","med.slot.night":"Noche","med.meal.before":"Antes de comer","med.meal.after":"Después de comer","med.meal.none":"Sin especificar","med.perDay":"Veces al día","med.todayCount":"Hoy {done}/{total}","med.doseDone":"Listo","diary.dangerSign":"Si se ve decaído o sin reaccionar, consideren ir al médico pronto.","diary.dangerSignPet":"Si parece decaído o responde poco, considera consultar pronto a un veterinario.","diary.clinicRow":"Médico y vacunas","diary.vaccinated":"Se vacunó","diary.tempLabel":"Temperatura","diary.periodRow":"Regla","health.headCirc":"Perímetro craneal","belong.scopeLabel":"Tipo de set","belong.always":"Set de siempre","belong.occDay":"Días de centro de día","belong.occClinic":"Visitas médicas","belong.occOut":"Salidas","belong.presets":"Artículos frecuentes","supply.suggest":"Según tus compras, unos {n} días","supply.useSuggest":"Usar este número","supply.estNote":"* Los días restantes son una estimación","supply.cycleCustom":"Ingresar los días","growth.hidePreset":"Ocultar sugerencia","baby.panelTitle":"Desde la última vez","baby.since":"Hace {x}","baby.actNurse":"Lactancia","baby.actDiaper":"Pañal","baby.actSleep":"Sueño","points.desc":"Ayudar suma puntos. Define una meta y una recompensa, y a divertirse juntándolos.","points.goalPt":"Puntos meta","points.reward":"Recompensa","points.rewardPh":"Ej.: Una salida, su dulce favorito","points.reached":"¡Meta alcanzada!","points.editPt":"Cambiar puntos","df.lastMet":"Último encuentro","df.metBtn":"Se vieron","df.details":"Detalles","df.nameHint":"Con el nombre basta","df.metToast":"Encuentro registrado","home.feedCount":"{n} registros",
     "tipc.actCheck":"Revisar","tipc.dogYoungSocial.t":"Tiempo de socialización para {name}","tipc.dogYoungSocial.b":"Acostúmbralo poco a poco a distintos sonidos, personas y lugares. Con sesiones cortas es suficiente, sin forzarlo.","tipc.dogYoungTeeth.t":"Buen momento para acostumbrarlo al cepillado","tipc.dogYoungTeeth.b":"Es la época del cambio de dientes. Empieza tocando suavemente su hocico y avanza poco a poco.","tipc.dogYoungVaccine.t":"Revisa el plan de vacunas y prevención","tipc.dogYoungVaccine.b":"En la etapa de cachorro hay varias vacunas y tratamientos preventivos. Revisa que los de {name} estén en el calendario.","tipc.dogAdultPrevent.t":"La primavera es época de prevención","tipc.dogAdultPrevent.b":"Con el calor se activan pulgas, garrapatas y mosquitos. Revisa el calendario de prevención de {name}.","tipc.dogAdultWeight.t":"El otoño es buen momento para revisar el peso","tipc.dogAdultWeight.b":"Con el frescor, algunos perros comen más. Pesa a {name} y revisa si la cantidad de comida sigue siendo la adecuada.","tipc.dogAdultPaw.t":"En invierno, cuida patas y articulaciones","tipc.dogAdultPaw.b":"El frío puede agarrotar el cuerpo. Después del paseo, revisa las almohadillas por sequedad o grietas.","tipc.dogSeniorFloor.t":"Consejo senior: suelo seguro","tipc.dogSeniorFloor.b":"Para cuidar piernas y cadera, prueba alfombras en suelos resbaladizos y reduce los escalones.","tipc.dogSeniorSummer.t":"Verano sin excesos para los mayores","tipc.dogSeniorSummer.b":"Los perros mayores regulan peor su temperatura. Déjalo pasar más tiempo en un lugar fresco.","tipc.catYoungPlay.t":"{name} crece jugando","tipc.catYoungPlay.b":"Dedica varias sesiones cortas de juego al día. Un rascador también protege los muebles.","tipc.catAdultBrush.t":"Primavera: muda y bolas de pelo","tipc.catAdultBrush.b":"Es época de muda. Un poco más de cepillado ayuda a prevenir las bolas de pelo.","tipc.catAdultHeat.t":"Los gatos también sufren el calor","tipc.catAdultHeat.b":"Prepara lugares frescos y agua fresca en varios sitios. Cuida también la temperatura cuando no estés.","tipc.catAdultWater.t":"En invierno beben menos agua","tipc.catAdultWater.b":"Prueba añadir más bebederos o cambiar el agua a menudo para que beba con facilidad.","tipc.catSeniorStep.t":"Gatos mayores y las alturas","tipc.catSeniorStep.b":"Un escalón para sus sitios altos favoritos, o bajar lo esencial, alivia sus patas.","tipc.petOtherHeat.t":"Las mascotas pequeñas también sufren el calor","tipc.petOtherHeat.b":"Mantén jaulas y terrarios lejos del sol directo, y cuida la temperatura y la ventilación.","tipc.petOtherCold.t":"Revisa el calor en invierno","tipc.petOtherCold.b":"Comprueba que la calefacción sea la adecuada y que los calefactores estén seguros.","tipc.babyVaccine.t":"Revisa el calendario de vacunas","tipc.babyVaccine.b":"Las vacunas siguen la edad del bebé. Revisa cuál es la siguiente para {name}.","tipc.babyHeat.t":"Cuidados de verano para el bebé","tipc.babyHeat.b":"Ajusta a menudo la temperatura y la ropa. Salir en las horas frescas es más seguro.","tipc.babyDry.t":"En invierno, cuida la sequedad del bebé","tipc.babyDry.b":"Mantén la humedad en casa y la piel hidratada, observando cómo responde.","tipc.childPollen.t":"Primavera: polen y sol","tipc.childPollen.b":"Que lavarse las manos y hacer gárgaras sea un hábito tras jugar fuera. Un sombrero ayuda con el sol.","tipc.childHeat.t":"Prevenir el golpe de calor en niños","tipc.childHeat.b":"Jugando, los niños olvidan beber. Marca horarios y recuérdaselo.","tipc.childHands.t":"En invierno, hábito de lavarse las manos","tipc.childHands.b":"Es época de infecciones. Mantén el lavado de manos, la ventilación y la humedad.","tipc.adultSleep.t":"Primavera: reajusta el ritmo","tipc.adultSleep.b":"En primavera cambian las rutinas. Intenta reservar tus horas de sueño.","tipc.adultSummer.t":"Contra el cansancio veraniego: sueño y agua","tipc.adultSummer.b":"El contraste entre el aire acondicionado y el calor exterior también cansa. Bebe agua a menudo.","tipc.adultDry.t":"En invierno, sequedad y frío","tipc.adultDry.b":"Mantén la humedad y la piel hidratada. Un baño caliente ayuda a manos y pies fríos.","tipc.seniorFall.t":"Pies seguros, menos caídas","tipc.seniorFall.b":"Revisa escalones y zonas resbaladizas en casa. El ejercicio suave también importa.","tipc.seniorHeat.t":"El golpe de calor también ocurre en casa","tipc.seniorHeat.b":"Con la edad se siente menos la sed. Bebe con horario y vigila la temperatura.","tipc.seniorBath.t":"En invierno, cuidado con el contraste al bañarse","tipc.seniorBath.b":"Calentar el vestidor y el baño antes de bañarse es más seguro.",
     "seg.daily":"Diario","seg.manage":"Gestionar",
     "home.family":"Familia",
@@ -3539,6 +3565,10 @@ const MESSAGES={
     "hub.title":"¿Qué quieres registrar?","hub.addable":"Añadir una función","hub.schedulePet":"Cuidados y planes","hub.scheduleMe":"Planes y tareas","hub.toilet":"Registro de baño","hub.routine":"Rutinas (hábitos)","hub.health":"Peso y cuerpo","hub.belong":"Objetos (por día)","hub.bday":"Cumpleaños y aniversarios",
     "del.confirmTitle":"¿Eliminar esto?","del.confirmBody":"Eliminar «{label}». No se puede deshacer.","del.confirmBodyPlain":"No se puede deshacer.","del.confirmBtn":"Eliminar",
     "health.addTitle":"Registro corporal","health.bp":"Presión arterial","health.temp":"Temperatura","health.glucose":"Glucosa","health.bpHigh":"Sist.","health.bpLow":"Diast.","health.optionalPh":"opcional","health.smallAnimalHint":"Animales pequeños: pasos de 0,1 g","health.condLabel":"Estado","health.saveBtn":"Registrar cuerpo","health.targetWeight":"Peso objetivo","health.targetHint":"Muestra la diferencia con tu objetivo.",
+    "supply.namePhPet":"Nombre (p. ej. Comida)","supply.namePhBaby":"Nombre (p. ej. Pañales, leche de fórmula)","supply.namePhChild":"Nombre (p. ej. Toallitas, cepillo de dientes)","supply.namePhAdult":"Nombre (p. ej. Champú, detergente)","supply.namePhSenior":"Nombre (p. ej. Pañales de cuidado, toallitas húmedas)","belong.addPhPet":"p. ej. premios / bolsas / correa de repuesto","belong.addPhBaby":"p. ej. pañales / ropa de cambio / biberón","belong.addPhSenior":"p. ej. ropa de cambio / toalla / libreta de contacto","rec.routinePhPerson":"Tarea (p. ej. Medicina de la mañana)","edit.stockPhPerson":"p. ej. 3 (guía de reposición)",
+    "routine.notToday":"Hoy no toca ninguna rutina",
+    "sitter.title":"Invitaciones de cuidador (por tiempo limitado)","sitter.desc":"Invita a alguien ajeno a la familia a ver solo ciertos miembros, por un tiempo y con permisos limitados. El acceso termina automáticamente al vencer.","sitter.needMember":"Elige al menos un miembro","sitter.createFail":"No se pudo crear la invitación. Inténtalo de nuevo.","sitter.createBtn":"Crear código de cuidador","sitter.codeLabel":"Código de cuidador","sitter.noSharedMembers":"Aún no hay miembros en «compartido». Actívalo en la edición del perfil del miembro.","sitter.viewOnly":"Solo ver","sitter.canWrite":"También registrar","sitter.days":"{d} días","sitter.untilLine":"hasta el {date}","sitter.revokeBtn":"Revocar","sitter.activeTitle":"Cuidadores activos","sitter.modeFamily":"Unirse como familia","sitter.modeSitter":"Unirse como cuidador","sitter.joinAbout":"Escribe el código de cuidador. Durante el periodo podrás ver los registros de los miembros elegidos (y registrar, si tienes permiso).","sitter.inviteMsg":"Invitación de cuidador de LOALIFE (uso compartido por tiempo limitado).\n{link}\nCódigo: {code}","sitter.nowTitle":"Estás como cuidador","sitter.leaveBtn":"Salir del modo cuidador","sitter.banner":"Como cuidador (hasta el {date})","share.inviteExpiry":"El código vale hasta el {date}","share.participantsTitle":"Participantes","share.noName":"(sin nombre)","share.you":"tú","share.removeBtn":"Quitar","share.accountLine":"Tu cuenta: {email}","share.removeFail":"No se pudo quitar. Inténtalo de nuevo.","note.syncedFoot":"* Se comparte con todos los miembros del espacio familiar.","toast.sitterJoined":"Te uniste como cuidador","toast.sitterExpired":"El periodo terminó y el acceso se cerró","toast.sitterLeft":"Saliste del modo cuidador","toast.sitterRevoked":"Invitación revocada","toast.sitterRemoved":"Cuidador eliminado","toast.participantRemoved":"Participante eliminado","toast.noteSyncFail":"No se pudo compartir la nota. Revisa tu conexión.",
+    "chart.targetBand":"La banda es ±5% del peso objetivo","chart.growthNote":"* La banda es una guía aproximada del peso según los meses de edad (no es un diagnóstico).","chart.overlay":"Superponer","metric.title":"Campos numéricos libres (añade nombre y unidad)","metric.namePh":"Nombre (p. ej. cintura)","metric.unitPh":"Unidad (p. ej. cm)","metric.add":"Añadir campo","docs.title":"Documentos","docs.addTitle":"Añadir un documento","docs.addFirst":"Guardar un documento","docs.empty":"Guarda aquí fotos de tarjetas de seguro y certificados.","docs.deviceOnlyNote":"Los documentos se guardan solo en este dispositivo. Nunca se envían al uso compartido familiar.","docs.examplesPerson":"Ejemplos: tarjeta del seguro de salud, certificado de elegibilidad, cartilla materno-infantil, registro de vacunas, cartilla de medicamentos, resultados de chequeos, pasaporte","docs.examplesPet":"Ejemplos: certificado de vacunas, licencia/registro, resultados de análisis, tarjeta de seguro para mascotas, pedigrí","docs.nameLabel":"Nombre","docs.namePhPerson":"p. ej. Tarjeta del seguro","docs.namePhPet":"p. ej. Certificado de vacunas","docs.dateLabel":"Fecha","docs.expiryLabel":"Vencimiento (opcional)","docs.noteLabel":"Nota (opcional)","docs.notePh":"p. ej. Mostrar en la clínica","docs.saveBtn":"Guardar documento","docs.expiry":"Vence","docs.expired":"Vencido","docs.expSoon":"Vence en {d} días","docs.delLabel":"¿Eliminar «{title}»?","dockind.insurance":"Tarjeta de seguro","dockind.maternal":"Cartilla materna","dockind.vaccine":"Vacunas","dockind.exam":"Chequeo / análisis","dockind.prescription":"Cartilla de medicamentos","dockind.passport":"Pasaporte","dockind.mynumber":"Tarjeta de identificación","dockind.contract":"Contrato","dockind.petlicense":"Licencia / registro","dockind.pedigree":"Pedigrí","dockind.other":"Otro","toast.metricNameNeeded":"Escribe un nombre para el campo","toast.metricMax":"Hasta 6 campos","toast.metricAdded":"Campo añadido","toast.docSaved":"Documento guardado","toast.docDeleted":"Documento eliminado",
     "diary.quickHealthy":"Bien hoy (un toque)","diary.hint":"Solo cuando quieras dar detalles (opcional).","diary.energy":"Energía","diary.appetite":"Apetito","diary.poop":"Caca","diary.sleep":"Sueño","diary.other":"Otro","diary.symptoms":"Síntomas","diary.moreSymptoms":"Más síntomas","diary.hours":"{h} h","diary.hoursSuffix":"h","diary.hoursPh":"h","diary.walk":"Paseo / salida","diary.hospital":"Fue a la clínica","diary.periodPriv":"Un registro privado, solo para ti","diary.periodNote":"Última {last} · próxima hacia {next} (ciclo ~{avg} días)","diary.notePh":"Notas del día, visita a la clínica, unas palabras…","diary.delPhoto":"Eliminar foto","diary.addPhoto":"Añadir una foto (medicación, síntomas, etc.)","diary.saveBtn":"Guardar las notas de hoy","diary.exercise":"Ejercicio","diary.minSuffix":" min","diary.minPh":"min","diary.sleepCta":"Registrar sueño","diary.exNamePh":"Nombre de la actividad (p. ej. CrossFit)","diary.routineTag":"rutina",
     "feed.addTitle":"Registro de comida","feed.servingLabel":"Cantidad por ración","feed.servingPh":"p. ej. 100","feed.hintSet":"1 ración = {g} g, se aplica al total (configúralo una vez y listo)","feed.hintUnset":"Puedes registrar sin configurar esto (configúralo para reflejarlo en el total)","feed.amount":"Cantidad","feed.previewPre":"= unos ","feed.previewPost":" ({n} raciones)","feed.saveBtn":"Registrar comida","feed.today":"Total de hoy ~{g} g ({n})",
     "sched.titlePet":"Añadir cuidado o plan","sched.titleSelf":"Añadir salud o cuidado","sched.titleMe":"Añadir plan o tarea","sched.frequent":"Frecuentes","sched.contentPh":"Escribe los detalles…","sched.addLabelPh":"Añadir {label}…","sched.content":"elemento","sched.dateOptMe":"Fecha / plazo","sched.time":"Hora","sched.dateHint":"Añade una fecha o plazo y aparecerá en el calendario de ese día.","sched.certPhoto":"Certificado / foto","sched.changePhoto":"Cambiar foto","sched.attachPhoto":"＋ Adjuntar foto","sched.notify":"Avisar","sched.quickAdd":"Añadir con un toque (copia el anterior)","sched.lastDate":"Última {date}","sched.dateDone":"Fecha realizada","sched.dateDate":"Fecha","sched.dateVisit":"Fecha de la cita","sched.dateDue":"Plazo","care.fallback":"Cuidado","filter.all":"Todos",
@@ -3557,7 +3587,7 @@ const MESSAGES={
   },
   zh:{
     "nav.home":"首页","nav.calendar":"日历","nav.settings":"设置","title.daily":"日常",
-    "home.tipSeasonal":"季节护理小贴士","home.tipDismiss":"不再显示","home.tipClose":"今天关闭","walk.goBtn":"去散步","walk.pickTitle":"谁去散步？","walk.todayLine":"今天的散步：{n}次{dist}","sec.hideBtn":"隐藏","sec.hiddenTitle":"已隐藏的项目","sec.hiddenDesc":"随时可以在这里恢复显示，记录不会被删除。","sec.hiddenEmpty":"没有已隐藏的项目","sec.showBtn":"显示","rec.listTitle":"护理与计划","rec.nursingTitle":"喂奶","rec.prepTitle":"明天的准备","med.slot.morning":"早上","med.slot.noon":"中午","med.slot.night":"晚上","med.meal.before":"饭前","med.meal.after":"饭后","med.meal.none":"不限","med.perDay":"每天次数","med.todayCount":"今天 {done}/{total}次","med.doseDone":"完成","diary.dangerSign":"如果显得无精打采、反应迟钝，请尽早考虑就医。","diary.clinicRow":"就诊与疫苗","diary.vaccinated":"打了疫苗","diary.tempLabel":"体温","diary.periodRow":"生理期","health.headCirc":"头围","belong.scopeLabel":"套装类型","belong.always":"日常套装","belong.occDay":"日间照料日","belong.occClinic":"就诊","belong.occOut":"外出","belong.presets":"常用物品","supply.suggest":"根据购买间隔，约{n}天","supply.useSuggest":"使用这个天数","supply.estNote":"※ 剩余天数为估算","supply.cycleCustom":"直接输入天数","growth.hidePreset":"隐藏候选","baby.panelTitle":"距上次","baby.since":"距上次 {x}","baby.actNurse":"喂奶","baby.actDiaper":"换尿布","baby.actSleep":"睡觉","points.desc":"帮忙可以攒积分。设定目标和奖励，开心地积累吧。","points.goalPt":"目标积分","points.reward":"奖励","points.rewardPh":"例：出去玩、喜欢的零食","points.reached":"达成目标！","points.editPt":"修改积分","df.lastMet":"上次见面","df.metBtn":"见过面","df.details":"详情","df.nameHint":"只填名字也可以","df.metToast":"已记录今天见面","home.feedCount":"{n}条记录",
+    "home.tipSeasonal":"季节护理小贴士","home.tipDismiss":"不再显示","home.tipClose":"今天关闭","walk.goBtn":"去散步","walk.pickTitle":"谁去散步？","walk.todayLine":"今天的散步：{n}次{dist}","sec.hideBtn":"隐藏","sec.hiddenTitle":"已隐藏的项目","sec.hiddenDesc":"随时可以在这里恢复显示，记录不会被删除。","sec.hiddenEmpty":"没有已隐藏的项目","sec.showBtn":"显示","rec.listTitle":"护理与计划","rec.nursingTitle":"喂奶","rec.prepTitle":"明天的准备","med.slot.morning":"早上","med.slot.noon":"中午","med.slot.night":"晚上","med.meal.before":"饭前","med.meal.after":"饭后","med.meal.none":"不限","med.perDay":"每天次数","med.todayCount":"今天 {done}/{total}次","med.doseDone":"完成","diary.dangerSign":"如果显得无精打采、反应迟钝，请尽早考虑就医。","diary.dangerSignPet":"如果显得无力、反应迟钝，请尽早咨询兽医。","diary.clinicRow":"就诊与疫苗","diary.vaccinated":"打了疫苗","diary.tempLabel":"体温","diary.periodRow":"生理期","health.headCirc":"头围","belong.scopeLabel":"套装类型","belong.always":"日常套装","belong.occDay":"日间照料日","belong.occClinic":"就诊","belong.occOut":"外出","belong.presets":"常用物品","supply.suggest":"根据购买间隔，约{n}天","supply.useSuggest":"使用这个天数","supply.estNote":"※ 剩余天数为估算","supply.cycleCustom":"直接输入天数","growth.hidePreset":"隐藏候选","baby.panelTitle":"距上次","baby.since":"距上次 {x}","baby.actNurse":"喂奶","baby.actDiaper":"换尿布","baby.actSleep":"睡觉","points.desc":"帮忙可以攒积分。设定目标和奖励，开心地积累吧。","points.goalPt":"目标积分","points.reward":"奖励","points.rewardPh":"例：出去玩、喜欢的零食","points.reached":"达成目标！","points.editPt":"修改积分","df.lastMet":"上次见面","df.metBtn":"见过面","df.details":"详情","df.nameHint":"只填名字也可以","df.metToast":"已记录今天见面","home.feedCount":"{n}条记录",
     "tipc.actCheck":"去确认","tipc.dogYoungSocial.t":"{name}正处于社会化时期","tipc.dogYoungSocial.b":"让它慢慢习惯各种声音、人和场所。从短时间开始，不勉强也没关系。","tipc.dogYoungTeeth.t":"现在是习惯刷牙的好时期","tipc.dogYoungTeeth.b":"现在是换牙的时期。从轻轻触碰嘴边开始，一点点让它习惯吧。","tipc.dogYoungVaccine.t":"确认疫苗和预防计划","tipc.dogYoungVaccine.b":"幼犬时期疫苗和预防安排较多。确认一下{name}的计划是否已经安排好。","tipc.dogAdultPrevent.t":"春天是预防药的季节","tipc.dogAdultPrevent.b":"天气变暖，跳蚤、蜱虫和蚊子开始活跃。确认一下{name}的预防药安排吧。","tipc.dogAdultWeight.t":"秋天适合复查体重","tipc.dogAdultWeight.b":"天气凉爽后，有些狗狗食欲会增加。给{name}称一下体重，确认一下喂食量是否合适。","tipc.dogAdultPaw.t":"冬天注意肉垫和关节护理","tipc.dogAdultPaw.b":"寒冷时身体容易僵硬。散步后检查一下肉垫是否干燥或开裂吧。","tipc.dogSeniorFloor.t":"老年期注意脚下安全","tipc.dogSeniorFloor.b":"为减轻腿脚和腰部负担，可以在光滑的地板上铺垫子，并尽量减少台阶。","tipc.dogSeniorSummer.t":"老年狗狗夏天不要勉强","tipc.dogSeniorSummer.b":"老年狗狗调节体温的能力较弱。让它多在凉爽的室内休息吧。","tipc.catYoungPlay.t":"{name}正是在玩耍中成长的时期","tipc.catYoungPlay.b":"每天安排几次短时间的玩耍。准备好猫抓板，也能保护家具。","tipc.catAdultBrush.t":"春天是换毛和毛球护理的季节","tipc.catAdultBrush.b":"这段时间掉毛增多。多梳几次毛，有助于预防毛球。","tipc.catAdultHeat.t":"猫咪也要注意中暑","tipc.catAdultHeat.b":"准备几处凉爽的休息地和新鲜的水。外出时也要注意室温。","tipc.catAdultWater.t":"冬天饮水量容易减少","tipc.catAdultWater.b":"可以多放几个水碗或勤换水，让它更容易喝水。","tipc.catSeniorStep.t":"老年猫注意上下高处","tipc.catSeniorStep.b":"为常去的高处准备台阶，或把常用物品放低一些，可以减轻腿脚负担。","tipc.petOtherHeat.t":"小动物也怕热","tipc.petOtherHeat.b":"笼子或水族箱要避开直射阳光，也要注意室温和通风。","tipc.petOtherCold.t":"冬天确认保温","tipc.petOtherCold.b":"确认保温方式适合它，也一起检查加热器周围是否安全。","tipc.babyVaccine.t":"确认疫苗接种计划","tipc.babyVaccine.b":"疫苗会按照月龄推进。确认一下{name}下一次的安排吧。","tipc.babyHeat.t":"宝宝夏天注意防暑","tipc.babyHeat.b":"经常调节室温和衣物。外出选择凉爽的时段更安心。","tipc.babyDry.t":"宝宝冬天注意保湿","tipc.babyDry.b":"注意室内加湿和皮肤保湿，一边观察皮肤状态一边坚持。","tipc.childPollen.t":"春天注意花粉和紫外线","tipc.childPollen.b":"在外面玩后养成洗手、漱口的习惯。戴帽子也能防晒。","tipc.childHeat.t":"预防儿童中暑","tipc.childHeat.b":"玩得投入时容易忘记喝水。定好时间，提醒孩子补充水分。","tipc.childHands.t":"冬天养成洗手习惯","tipc.childHands.b":"这是感染增多的季节。注意洗手、室内通风和加湿。","tipc.adultSleep.t":"春天是调整生活节奏的时候","tipc.adultSleep.b":"春天环境变化多。有意识地保证睡眠时间吧。","tipc.adultSummer.t":"防夏日疲乏靠睡眠和水分","tipc.adultSummer.b":"空调房与室外的温差也会增加负担。注意勤喝水。","tipc.adultDry.t":"冬天注意干燥和保暖","tipc.adultDry.b":"注意加湿和保湿。手脚容易冷的话，泡澡暖一暖也不错。","tipc.seniorFall.t":"注意脚下安全，预防跌倒","tipc.seniorFall.b":"检查一下家里的台阶和易滑处。在不勉强的范围内运动也很重要。","tipc.seniorHeat.t":"老年人室内也会中暑","tipc.seniorHeat.b":"年龄大了不容易感到口渴。定时喝水，并注意室温管理。","tipc.seniorBath.t":"冬天洗澡注意温差","tipc.seniorBath.b":"洗澡前先把更衣室和浴室暖起来，会更安心。",
     "seg.daily":"日常","seg.manage":"管理",
     "home.family":"家人",
@@ -3637,6 +3667,10 @@ const MESSAGES={
     "hub.title":"想记录什么？","hub.addable":"可添加的功能","hub.schedulePet":"照护与计划","hub.scheduleMe":"计划与待办","hub.toilet":"如厕记录","hub.routine":"日常（习惯）","hub.health":"体重与身体","hub.belong":"物品（按星期）","hub.bday":"生日与纪念日",
     "del.confirmTitle":"确定要删除吗？","del.confirmBody":"删除「{label}」。此操作无法撤销。","del.confirmBodyPlain":"此操作无法撤销。","del.confirmBtn":"删除",
     "health.addTitle":"身体记录","health.bp":"血压","health.temp":"体温","health.glucose":"血糖","health.bpHigh":"高压","health.bpLow":"低压","health.optionalPh":"可选","health.smallAnimalHint":"小动物以0.1g为单位","health.condLabel":"状态","health.saveBtn":"记录身体","health.targetWeight":"目标体重","health.targetHint":"显示与目标的差距。",
+    "supply.namePhPet":"品名（如 食物）","supply.namePhBaby":"品名（如 尿布、奶粉）","supply.namePhChild":"品名（如 湿巾、牙刷）","supply.namePhAdult":"品名（如 洗发水、洗涤剂）","supply.namePhSenior":"品名（如 护理尿布、湿纸巾）","belong.addPhPet":"如 零食 / 便便袋 / 备用牵引绳","belong.addPhBaby":"如 尿布 / 换洗衣服 / 奶瓶","belong.addPhSenior":"如 换洗衣服 / 毛巾 / 联络本","rec.routinePhPerson":"事项（如 早晨的药）","edit.stockPhPerson":"如 3（补货参考）",
+    "routine.notToday":"今天没有要做的日常事项",
+    "sitter.title":"临时照护邀请（限时）","sitter.desc":"邀请家人以外的人在限定时间内、限定成员、限定权限内查看。到期后将自动无法访问。","sitter.needMember":"请至少选择一位成员","sitter.createFail":"无法创建邀请，请重试。","sitter.createBtn":"创建照护邀请码","sitter.codeLabel":"照护邀请码","sitter.noSharedMembers":"还没有设置为“共享”的成员。请在成员档案编辑中设置共享。","sitter.viewOnly":"仅查看","sitter.canWrite":"可记录","sitter.days":"{d}天","sitter.untilLine":"至{date}","sitter.revokeBtn":"撤销","sitter.activeTitle":"参与中的照护人","sitter.modeFamily":"作为家人加入","sitter.modeSitter":"作为照护人加入","sitter.joinAbout":"请输入照护邀请码。在有效期内可以查看所选成员的记录（有权限时也可以记录）。","sitter.inviteMsg":"这是 LOALIFE 的临时照护邀请（限时共享）。\n{link}\n邀请码：{code}","sitter.nowTitle":"正在以照护人身份参与","sitter.leaveBtn":"退出照护共享","sitter.banner":"照护共享中（至{date}）","share.inviteExpiry":"邀请码有效期至{date}","share.participantsTitle":"参与者","share.noName":"（未填写姓名）","share.you":"你","share.removeBtn":"移除","share.accountLine":"你的账号：{email}","share.removeFail":"无法移除，请重试。","note.syncedFoot":"※ 将与家庭空间的所有成员共享。","toast.sitterJoined":"已作为照护人加入","toast.sitterExpired":"照护期限已到，共享已结束","toast.sitterLeft":"已退出照护共享","toast.sitterRevoked":"已撤销照护邀请","toast.sitterRemoved":"已移除照护人","toast.participantRemoved":"已移除参与者","toast.noteSyncFail":"无法共享笔记，请检查网络连接。",
+    "chart.targetBand":"带状区域为目标体重的±5%","chart.growthNote":"※带状区域是按月龄的体重参考范围（不是诊断）","chart.overlay":"叠加显示","metric.title":"自定义数值项（可添加名称和单位）","metric.namePh":"名称（例：腹围）","metric.unitPh":"单位（例：cm）","metric.add":"添加项目","docs.title":"文件","docs.addTitle":"添加文件","docs.addFirst":"存放文件","docs.empty":"可以把保险证和证明书的照片存放在这里。","docs.deviceOnlyNote":"文件只保存在这台设备中，不会发送到家庭共享。","docs.examplesPerson":"例：健康保险证、资格确认书、母子健康手册、疫苗接种记录、药历手册、体检结果、护照","docs.examplesPet":"例：疫苗证明、牌照/登记证、检查结果、宠物保险证、血统书","docs.nameLabel":"名称","docs.namePhPerson":"例：健康保险证","docs.namePhPet":"例：疫苗证明","docs.dateLabel":"日期","docs.expiryLabel":"有效期（可选）","docs.noteLabel":"备注（可选）","docs.notePh":"例：就诊时出示","docs.saveBtn":"存放文件","docs.expiry":"有效期","docs.expired":"已过期","docs.expSoon":"还有{d}天到期","docs.delLabel":"要删除「{title}」吗？","dockind.insurance":"保险证","dockind.maternal":"母子手册","dockind.vaccine":"疫苗接种","dockind.exam":"体检・检查","dockind.prescription":"药历手册","dockind.passport":"护照","dockind.mynumber":"个人编号卡","dockind.contract":"合同","dockind.petlicense":"牌照・登记","dockind.pedigree":"血统书","dockind.other":"其他","toast.metricNameNeeded":"请输入项目名称","toast.metricMax":"最多6个项目","toast.metricAdded":"已添加项目","toast.docSaved":"文件已存放","toast.docDeleted":"文件已删除",
     "diary.quickHealthy":"今天也很好（一键完成）","diary.hint":"只在想详细记录时（可选）。","diary.energy":"精神","diary.appetite":"食欲","diary.poop":"大便","diary.sleep":"睡眠","diary.other":"其他","diary.symptoms":"症状","diary.moreSymptoms":"更多症状","diary.hours":"{h}小时","diary.hoursSuffix":"小时","diary.hoursPh":"小时","diary.walk":"散步/外出","diary.hospital":"去了医院","diary.periodPriv":"只属于本人的记录","diary.periodNote":"上次 {last} · 下次大约 {next}（周期约{avg}天）","diary.notePh":"日常状态、就诊情况、一句话…","diary.delPhoto":"删除照片","diary.addPhoto":"添加照片（药物、症状等）","diary.saveBtn":"保存今日状态","diary.exercise":"运动","diary.minSuffix":"分钟","diary.minPh":"分钟","diary.sleepCta":"记录睡眠","diary.exNamePh":"运动名称（如：CrossFit）","diary.routineTag":"日常任务",
     "feed.addTitle":"用餐记录","feed.servingLabel":"每份分量","feed.servingPh":"如 100","feed.hintSet":"1份＝{g}g，会计入总量（只需设置一次）","feed.hintUnset":"不设置也可以记录（设置后会计入总量）","feed.amount":"分量","feed.previewPre":"＝ 约 ","feed.previewPost":"（{n}份）","feed.saveBtn":"记录用餐","feed.today":"今天合计 约{g}g（{n}次）",
     "sched.titlePet":"添加照护或计划","sched.titleSelf":"添加健康或照护","sched.titleMe":"添加计划或待办","sched.frequent":"常用","sched.contentPh":"输入内容…","sched.addLabelPh":"添加{label}…","sched.content":"内容","sched.dateOptMe":"日期/期限","sched.time":"时间","sched.dateHint":"填入日期/期限后，会显示在当天的日历上。","sched.certPhoto":"证明/照片","sched.changePhoto":"更换照片","sched.attachPhoto":"＋ 附加照片","sched.notify":"通知","sched.quickAdd":"一键添加（复制上次）","sched.lastDate":"上次 {date}","sched.dateDone":"实施日","sched.dateDate":"日期","sched.dateVisit":"就诊日","sched.dateDue":"期限","care.fallback":"照护","filter.all":"全部",
@@ -4000,13 +4034,16 @@ function CoachMark({sel,title,body,step,total,nextLabel,onNext,onSkip,single}){
 
 // 体重・身長の推移グラフ（軽量SVG折れ線）。points=[{date,value}]（古い→新しい順）
 // 2点以上でのみ折れ線を描く（1点以下は呼び出し側で空状態メッセージ）。
-function MiniChart({points,unit,color,label}){
+function MiniChart({points,unit,color,label,band,bandPts,bandLabel}){
   if(!points||points.length<2)return null;
   // 描画エリアを分離：左＝Y軸ラベルの余白、下＝X軸ラベルの余白。折れ線はその内側だけに描く。
   const W=300,H=120,padL=40,padR=14,padTop=14,padBot=22;
   const plotB=H-padBot; // プロット領域の下端（X軸ラベルはこれより下に描く）
   const vals=points.map(p=>p.value);
-  const dataMin=Math.min(...vals),dataMax=Math.max(...vals);
+  const ptMin=Math.min(...vals),ptMax=Math.max(...vals);
+  // 帯（目標範囲・成長曲線の目安）がある場合は帯もスケールに含める。
+  const extra=[];if(band){extra.push(band.lo,band.hi);}if(bandPts)bandPts.forEach(b=>{if(b){extra.push(b.lo,b.hi);}});
+  const dataMin=Math.min(ptMin,...extra),dataMax=Math.max(ptMax,...extra);
   // Y軸に余白：最小レンジと上下パディングを確保し、0.1kg差が画面端から端まで振れないように。
   let min=dataMin,max=dataMax,span=max-min;
   const floor=Math.max((Math.abs(max)||1)*0.12,unit==="cm"?2:(unit==="kg"?1:0.4));
@@ -4023,15 +4060,67 @@ function MiniChart({points,unit,color,label}){
       <svg className="yl-chart" viewBox={`0 0 ${W} ${H}`}>
         {/* プロット領域の枠（下端の基準線） */}
         <line x1={padL} y1={plotB} x2={W-padR} y2={plotB} stroke="#E7E1D8" strokeWidth="1"/>
+        {/* 目標範囲の帯（一定範囲）＋目標値の破線 */}
+        {band&&<rect x={padL} y={yAt(band.hi).toFixed(1)} width={W-padL-padR} height={Math.max(0,yAt(band.lo)-yAt(band.hi)).toFixed(1)} fill={color} opacity="0.10"/>}
+        {band&&band.target!=null&&<line x1={padL} y1={yAt(band.target).toFixed(1)} x2={W-padR} y2={yAt(band.target).toFixed(1)} stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.55"/>}
+        {/* 成長曲線の目安帯（点ごとに範囲が変わる） */}
+        {bandPts&&bandPts.some(b=>b)&&(()=>{const idxs=points.map((p,i)=>i).filter(i=>bandPts[i]);const up=idxs.map(i=>`${xAt(i).toFixed(1)},${yAt(bandPts[i].hi).toFixed(1)}`);const dn=idxs.slice().reverse().map(i=>`${xAt(i).toFixed(1)},${yAt(bandPts[i].lo).toFixed(1)}`);return<polygon points={[...up,...dn].join(" ")} fill={color} opacity="0.10"/>;})()}
         <polyline points={points.map((p,i)=>`${xAt(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ")} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
         {points.map((p,i)=><circle key={i} cx={xAt(i).toFixed(1)} cy={yAt(p.value).toFixed(1)} r="3" fill={color}/>)}
         {/* Y軸：左の余白に上＝データ最大・下＝データ最小（右寄せ） */}
-        <text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{fmtV(dataMax)}{unit}</text>
-        <text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{fmtV(dataMin)}{unit}</text>
+        <text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{fmtV(ptMax)}{unit}</text>
+        <text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{fmtV(ptMin)}{unit}</text>
         {/* X軸：下の余白に起点（左寄せ）と最新（右寄せ） */}
         {n>1&&<text x={padL} y={H-6} textAnchor="start" className="yl-chart-ax">{fmtDate(first.date)}</text>}
         <text x={W-padR} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(latest.date)}</text>
       </svg>
+      {bandLabel&&<p className="yl-chart-bandnote">{bandLabel}</p>}
+    </div>
+  );
+}
+
+// 重ねグラフ（#9/#5）：日付軸を共有し、複数系列を重ねる。左軸=主系列（体重など）、
+// 右軸=副系列（身長・カスタム項目など単位の違うもの）。band は左軸の目標範囲。
+// series=[{points:[{date,value}],color,label,unit,axis:"l"|"r"}]
+function MultiChart({series,band,bandLabel}){
+  const all=(series||[]).filter(s=>s.points&&s.points.length>=2);
+  if(!all.length)return null;
+  const W=300,H=120,padL=40,padR=40,padTop=14,padBot=22;
+  const plotB=H-padBot;
+  const dates=all.flatMap(s=>s.points.map(p=>p.date)).sort();
+  const t0=new Date(dates[0]+"T00:00:00").getTime();let t1=new Date(dates[dates.length-1]+"T00:00:00").getTime();if(!(t1>t0))t1=t0+86400000;
+  const xAt=(date)=>padL+((new Date(date+"T00:00:00").getTime()-t0)/(t1-t0))*(W-padL-padR);
+  const scaleFor=(axis)=>{
+    const vs=all.filter(s=>(s.axis||"l")===axis).flatMap(s=>s.points.map(p=>p.value));
+    if(axis==="l"&&band)vs.push(band.lo,band.hi);
+    if(!vs.length)return null;
+    const dmin=Math.min(...vs),dmax=Math.max(...vs);
+    let min=dmin,max=dmax,span=max-min;
+    const floor=Math.max((Math.abs(max)||1)*0.12,0.4);
+    if(span<floor){const c=(min+max)/2;min=c-floor/2;max=c+floor/2;span=floor;}
+    const padv=span*0.2;min-=padv;max+=padv;
+    return{min,max,span:max-min,dmin,dmax};
+  };
+  const sl=scaleFor("l"),sr=scaleFor("r");
+  const yAt=(v,sc)=>padTop+(1-(v-sc.min)/sc.span)*(plotB-padTop);
+  const fmtV=(v)=>Number.isInteger(v)?v:Math.round(v*10)/10;
+  const primary=all.find(s=>(s.axis||"l")==="l")||all[0];
+  return(
+    <div className="yl-chart-wrap">
+      <div className="yl-chart-head yl-chart-legend">{all.map((s,i)=>{const lp=s.points[s.points.length-1];return(<span key={i} className="yl-chart-legitem"><span className="yl-chart-dot" style={{background:s.color}}/>{s.label} <b style={{color:s.color}}>{lp.value}{s.unit}</b></span>);})}</div>
+      <svg className="yl-chart" viewBox={`0 0 ${W} ${H}`}>
+        <line x1={padL} y1={plotB} x2={W-padR} y2={plotB} stroke="#E7E1D8" strokeWidth="1"/>
+        {band&&sl&&<rect x={padL} y={yAt(band.hi,sl).toFixed(1)} width={W-padL-padR} height={Math.max(0,yAt(band.lo,sl)-yAt(band.hi,sl)).toFixed(1)} fill={primary.color} opacity="0.10"/>}
+        {band&&sl&&band.target!=null&&<line x1={padL} y1={yAt(band.target,sl).toFixed(1)} x2={W-padR} y2={yAt(band.target,sl).toFixed(1)} stroke={primary.color} strokeWidth="1" strokeDasharray="4 3" opacity="0.55"/>}
+        {all.map((s,i)=>{const sc=(s.axis||"l")==="r"?sr:sl;if(!sc)return null;return(<g key={i}><polyline points={s.points.map(p=>`${xAt(p.date).toFixed(1)},${yAt(p.value,sc).toFixed(1)}`).join(" ")} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>{s.points.map((p,j)=><circle key={j} cx={xAt(p.date).toFixed(1)} cy={yAt(p.value,sc).toFixed(1)} r="3" fill={s.color}/>)}</g>);})}
+        {sl&&<text x={padL-6} y={padTop+4} textAnchor="end" className="yl-chart-ax">{fmtV(sl.dmax)}{primary.unit}</text>}
+        {sl&&<text x={padL-6} y={plotB} textAnchor="end" className="yl-chart-ax">{fmtV(sl.dmin)}{primary.unit}</text>}
+        {sr&&<text x={W-padR+6} y={padTop+4} textAnchor="start" className="yl-chart-ax">{fmtV(sr.dmax)}{(all.find(s=>s.axis==="r")||{}).unit||""}</text>}
+        {sr&&<text x={W-padR+6} y={plotB} textAnchor="start" className="yl-chart-ax">{fmtV(sr.dmin)}{(all.find(s=>s.axis==="r")||{}).unit||""}</text>}
+        <text x={padL} y={H-6} textAnchor="start" className="yl-chart-ax">{fmtDate(dates[0])}</text>
+        <text x={W-padR} y={H-6} textAnchor="end" className="yl-chart-ax">{fmtDate(dates[dates.length-1])}</text>
+      </svg>
+      {bandLabel&&<p className="yl-chart-bandnote">{bandLabel}</p>}
     </div>
   );
 }
@@ -4241,6 +4330,11 @@ function App(){
   const[memberSel,setMemberSel]=useState(()=>{try{return localStorage.getItem("loalife-membersel")||"me";}catch(e){return"me";}}); // メンバーモードで選択中の人（再訪時に復元）
   const[friendBdayName,setFriendBdayName]=useState(""); // 友達の誕生日・記念日（わくわく）
   const[healthW,setHealthW]=useState("");const[healthH,setHealthH]=useState("");const[healthCond,setHealthCond]=useState(""); // からだの記録の入力
+  // #5 カスタム数値項目：入力中の値（defId→文字列）と項目定義の追加フォーム、重ねグラフの選択。
+  const[healthMetrics,setHealthMetrics]=useState({});
+  const[metricName,setMetricName]=useState("");const[metricUnit,setMetricUnit]=useState("");
+  const[chartOverlay,setChartOverlay]=useState([]); // "member:<id>" | "height" | "metric:<defId>"
+  const[meCustomMetrics,setMeCustomMetrics]=useState(()=>{try{const a=JSON.parse(localStorage.getItem("loalife-memetrics-v1")||"[]");return Array.isArray(a)?a.filter(d=>d&&d.id&&d.name):[];}catch(e){return[];}});
   const[healthBpS,setHealthBpS]=useState("");const[healthBpD,setHealthBpD]=useState("");const[healthTemp,setHealthTemp]=useState("");const[healthGlucose,setHealthGlucose]=useState("");const[healthHead,setHealthHead]=useState(""); // 監査バッチ C14: 頭囲（赤ちゃんのみ） // 高齢者バイタル（血圧上/下・体温・血糖値）
   const[feedUnit,setFeedUnit]=useState("serving");const[feedAmt,setFeedAmt]=useState("");const[feedMult,setFeedMult]=useState(1);const[feedServing,setFeedServing]=useState(""); // ごはん記録（回/g/ml/粒・1回分基準g・倍率）
   const[foodForm,setFoodForm]=useState(null); // フード詳細の登録フォーム null|{id?,name,brand,foodType,amount,unit,times,feedTimes,feedTime,kcal,kcalBasis}
@@ -4597,6 +4691,17 @@ function App(){
   const[shareStep,setShareStep]=useState("menu");
   const[joinCodeInput,setJoinCodeInput]=useState("");
   const[pendingJoin,setPendingJoin]=useState(()=>joinCodeFromSearch()); // 招待リンク（?join=）で届いたコード
+  // #4 シッター期間限定共有：自分がシッターとして参加している文脈（家族共有とは別）。
+  const[sitterCtx,setSitterCtx]=useState(null); // {hid, memberIds, canWrite, expiresAt(ms), code}
+  const[pendingSitter,setPendingSitter]=useState(()=>sitterCodeFromSearch()); // シッター招待リンク（?sitter=）のコード
+  const[joinMode,setJoinMode]=useState("family"); // 参加ステップの切替: "family" | "sitter"
+  const[sitSel,setSitSel]=useState([]); // シッター招待で対象にするメンバーID
+  const[sitWrite,setSitWrite]=useState(false); // シッター権限（false=閲覧のみ）
+  const[sitDays,setSitDays]=useState(3); // シッター招待の期間（日）
+  const[sitMade,setSitMade]=useState(null); // 作ったばかりのシッター招待 {code, expiresAt}
+  const[myGrants,setMyGrants]=useState(()=>{try{const a=JSON.parse(localStorage.getItem("loalife-sittergrants-v1")||"[]");return Array.isArray(a)?a:[];}catch(e){return[];}}); // 自分が発行したシッター招待の控え（端末内）
+  const[inviteExp,setInviteExp]=useState(null); // 家族招待コードの有効期限（ms・表示用）
+  const[fsNotes,setFsNotes]=useState([]); // #8 家族ノートの世帯同期分（Firestore 由来）
   const[shareError,setShareError]=useState("");
   const[shareLoading,setShareLoading]=useState(false);
   const[copiedCode,setCopiedCode]=useState(false);
@@ -4738,6 +4843,22 @@ function App(){
               if(hhSnap.exists()){
                 setHousehold({id:ud.householdId,...hhSnap.data()});
               }
+            }else if(ud.sitterHouseholdId){
+              // シッター参加中：世帯ドキュメントは有効なシッターだけが読める。
+              // 読めない／エントリが無い／期限切れなら参加状態を静かに解除する
+              // （期限切れの強制はルール側。ここは表示状態の後始末）。
+              try{
+                const hhSnap=await getDoc(doc(fbDb,"households",ud.sitterHouseholdId));
+                const entry=hhSnap.exists()?((hhSnap.data().sitters||{})[user.uid]):null;
+                const expMs=entry&&entry.expiresAt&&typeof entry.expiresAt.toMillis==="function"?entry.expiresAt.toMillis():0;
+                if(entry&&expMs>Date.now()){
+                  setSitterCtx({hid:ud.sitterHouseholdId,memberIds:Array.isArray(entry.memberIds)?entry.memberIds:[],canWrite:!!entry.canWrite,expiresAt:expMs,code:entry.grantCode||""});
+                }else{
+                  await setDoc(doc(fbDb,"users",user.uid),{sitterHouseholdId:null},{merge:true});
+                }
+              }catch(e){
+                await setDoc(doc(fbDb,"users",user.uid),{sitterHouseholdId:null},{merge:true}).catch(()=>{});
+              }
             }
           }
         }catch(e){}
@@ -4761,6 +4882,15 @@ function App(){
   useEffect(()=>{
     if(pendingJoin&&fireUser&&!household){setJoinCodeInput(pendingJoin);setShareStep("join");setShowShareModal(true);}
   },[pendingJoin,fireUser,household]);
+  // シッター招待リンク（?sitter=CODE）で開いた時：コードを参加欄に入れ、シッター参加モードで開く。
+  useEffect(()=>{
+    if(!pendingSitter)return;
+    setJoinCodeInput(pendingSitter);setJoinMode("sitter");setShowShareModal(true);
+    try{const u=new URL(location.href);u.searchParams.delete("sitter");history.replaceState(null,"",u.pathname+u.search+u.hash);}catch(e){}
+  },[]);
+  useEffect(()=>{
+    if(pendingSitter&&fireUser&&!household&&!sitterCtx){setJoinCodeInput(pendingSitter);setJoinMode("sitter");setShareStep("join");setShowShareModal(true);}
+  },[pendingSitter,fireUser,household,sitterCtx]);
 
   // Firestore members real-time subscription
   // 読み取りルール（resource.data.visibility / ownerUid）は、クエリ側の制約で「証明できる」
@@ -4786,6 +4916,54 @@ function App(){
     const unsubAll=()=>{u1();u2();};
     householdUnsub.current=unsubAll;
     return()=>{disposed=true;unsubAll();householdUnsub.current=null;};
+  },[household,fireUser]);
+
+  // #4 シッター購読：対象メンバーとその記録だけを購読し、通常の状態へ「重ねる」
+  // （家族共有の applyFsSnapshot のような全置換はしない。シッター自身のデータを守る）。
+  // 世帯ドキュメントも購読し、失効・期限切れを検知したら自動で抜ける。
+  // 購読エラー（権限喪失）時も同様に抜ける（期限の強制はルール側が担う）。
+  const sitterUnsub=useRef(null);
+  useEffect(()=>{
+    if(sitterUnsub.current){sitterUnsub.current();sitterUnsub.current=null;}
+    if(!sitterCtx||!fireUser)return;
+    const hid=sitterCtx.hid;
+    let disposed=false;
+    const unsubs=[];
+    const memDocs={};const itemDocs={};
+    const applySitter=()=>{
+      if(disposed)return;
+      const mems=Object.values(memDocs).map(d=>normalizeMember({id:d.id,...d.data})).filter(Boolean);
+      setMembers(prev=>[...prev.filter(m=>!sitterCtx.memberIds.includes(m.id)),...mems]);
+      const flat=Object.values(itemDocs).flat();
+      setItems(prev=>[...prev.filter(x=>!sitterCtx.memberIds.includes(x.space)),...flat]);
+      if(mems.length)fetchSharedPhotos(hid,mems,flat).catch(()=>{});
+    };
+    sitterCtx.memberIds.forEach(mid=>{
+      unsubs.push(onSnapshot(doc(fbDb,"households",hid,"members",mid),(snap)=>{if(snap.exists()){memDocs[mid]={id:mid,data:snap.data()};applySitter();}},()=>{if(!disposed)exitSitterMode(true);}));
+      unsubs.push(onSnapshot(collection(fbDb,"households",hid,"members",mid,"items"),(snap)=>{itemDocs[mid]=snap.docs.map(d=>normalizeItem({id:d.id,...d.data(),space:mid})).filter(Boolean);applySitter();},()=>{if(!disposed)exitSitterMode(true);}));
+    });
+    unsubs.push(onSnapshot(doc(fbDb,"households",hid),(snap)=>{
+      if(disposed)return;
+      const entry=snap.exists()?((snap.data().sitters||{})[fireUser.uid]):null;
+      const expMs=entry&&entry.expiresAt&&typeof entry.expiresAt.toMillis==="function"?entry.expiresAt.toMillis():0;
+      if(!entry||expMs<=Date.now())exitSitterMode(true);
+    },()=>{if(!disposed)exitSitterMode(true);}));
+    const all=()=>unsubs.forEach(u=>{try{u();}catch(e){}});
+    sitterUnsub.current=all;
+    return()=>{disposed=true;all();if(sitterUnsub.current===all)sitterUnsub.current=null;};
+  },[sitterCtx,fireUser]);
+
+  // #8 家族ノートの世帯同期：世帯にいる間は notes サブコレクションを購読する。
+  const notesUnsub=useRef(null);
+  useEffect(()=>{
+    if(notesUnsub.current){notesUnsub.current();notesUnsub.current=null;}
+    if(!household||!fireUser){setFsNotes([]);return;}
+    const hid=household.id;
+    const u=onSnapshot(collection(fbDb,"households",hid,"notes"),(snap)=>{
+      setFsNotes(snap.docs.map(d=>({id:d.id,...d.data()})));
+    },()=>{});
+    notesUnsub.current=u;
+    return()=>{u();if(notesUnsub.current===u)notesUnsub.current=null;};
   },[household,fireUser]);
 
   // 世帯の初期プッシュ（自己修復）：作成時の移行（createHousehold フェーズ2）は、
@@ -5209,9 +5387,12 @@ function App(){
 
   // Firestore: save item
   const saveItemToFs=async(item)=>{
-    if(!household||!fireUser)return;
+    if(!fireUser)return;
     if(item.space==="me")return; // Me items stay local
-    const hid=household.id;
+    // 書き込み先の世帯：通常は自分の世帯。世帯が無い場合はシッター文脈
+    // （対象メンバー＋記録可のときだけ、その世帯へ書く。それ以外は端末内のみ）。
+    const hid=household?household.id:((sitterCtx&&sitterCtx.canWrite&&sitterCtx.memberIds.includes(item.space))?sitterCtx.hid:null);
+    if(!hid)return;
     const{id,space,...rest}=item;
     // 記録者をドキュメントにも刻む（ルール上、書けるのは作成者本人だけなので
     // fireUser.uid がそのまま記録者になる）。byName が無い旧データは、自分の保存の
@@ -6037,7 +6218,7 @@ function App(){
       //  （members/items の作成ルールは isMember（＝household の get）を見るため、
       //    同一バッチでは household 未コミットで false になる。先に household を確定させる。）
       const b1=writeBatch(fbDb);
-      b1.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],createdAt:serverTimestamp(),version:SCHEMA_VERSION});
+      b1.set(doc(fbDb,"households",hid),{ownerUid:fireUser.uid,inviteCode:code,memberUids:[fireUser.uid],memberProfiles:{[fireUser.uid]:{name:(meName&&meName.trim())||fireUser.displayName||"",email:fireUser.email||""}},createdAt:serverTimestamp(),version:SCHEMA_VERSION});
       b1.set(doc(fbDb,"inviteCodes",code),{householdId:hid,createdAt:serverTimestamp(),expiresAt:Date.now()+INVITE_TTL_MS});
       b1.set(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meSkinTone,meBirthday},{merge:true});
       await b1.commit();
@@ -6081,6 +6262,7 @@ function App(){
       await setDoc(doc(fbDb,"users",fireUser.uid),{householdId:hid,meEmoji,meSkinTone,meBirthday},{merge:true});
       const hhSnap=await getDoc(doc(fbDb,"households",hid));
       setHousehold({id:hid,...hhSnap.data()});
+      ensureMyProfile({id:hid,...hhSnap.data()});
       setPendingJoin(null);
       setShowShareModal(false);
       setOnboarding(false); // 参加できた人は家族のデータが入るので、初回オンボーディングは不要
@@ -6117,11 +6299,176 @@ function App(){
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>{setCopiedCode(true);setTimeout(()=>setCopiedCode(false),2000);}).catch(()=>{});}
   };
 
+  // ── #4 シッター期間限定共有 ────────────────────────────────────
+  // シッター参加をやめる（退出・失効・期限切れ共通の後始末）。
+  // 対象メンバーのデータは端末の状態からも取り除き、永続化し直す。
+  const exitSitterMode=(expired)=>{
+    const ctx=sitterCtx;if(!ctx)return;
+    setSitterCtx(null);
+    const nm=members.filter(m=>!ctx.memberIds.includes(m.id));
+    const ni=items.filter(x=>!ctx.memberIds.includes(x.space));
+    persist(nm,ni);
+    if(fireUser)setDoc(doc(fbDb,"users",fireUser.uid),{sitterHouseholdId:null},{merge:true}).catch(()=>{});
+    showFlash(expired?t("toast.sitterExpired"):t("toast.sitterLeft"));
+  };
+  const leaveSitter=async()=>{
+    const ctx=sitterCtx;if(!ctx||!fireUser)return;
+    setShareLoading(true);
+    try{
+      // 自分のエントリだけを外す（ルールの isSitterSelfLeave が検証する）。
+      await updateDoc(doc(fbDb,"households",ctx.hid),{sitterUids:arrayRemove(fireUser.uid),["sitters."+fireUser.uid]:deleteField()});
+    }catch(e){}
+    setShareLoading(false);
+    exitSitterMode(false);
+  };
+  // シッター招待コードで参加する（家族参加とは別フロー・別ルール）。
+  const joinSitter=async()=>{
+    if(!fireUser||!joinCodeInput.trim())return;
+    setShareLoading(true);setShareError("");
+    try{
+      if(!(await ensureShareVerified())){setShareLoading(false);return;}
+      const code=joinCodeInput.trim().toUpperCase();
+      const gSnap=await getDoc(doc(fbDb,"sitterGrants",code));
+      if(!gSnap.exists())throw new Error("share.errCodeNotFound");
+      const g=gSnap.data();
+      const expMs=g.expiresAt&&typeof g.expiresAt.toMillis==="function"?g.expiresAt.toMillis():0;
+      if(!expMs||Date.now()>expMs)throw new Error("share.errCodeExpired");
+      const hid=g.householdId;
+      const entry={memberIds:Array.isArray(g.memberIds)?g.memberIds:[],canWrite:!!g.canWrite,expiresAt:g.expiresAt,grantCode:code};
+      // memberUids は変えず、sitterUids と自分のエントリだけを足す（ルールがグラントと照合）。
+      await updateDoc(doc(fbDb,"households",hid),{sitterUids:arrayUnion(fireUser.uid),["sitters."+fireUser.uid]:entry,sitterProof:code});
+      await setDoc(doc(fbDb,"users",fireUser.uid),{sitterHouseholdId:hid},{merge:true});
+      setSitterCtx({hid,memberIds:entry.memberIds,canWrite:entry.canWrite,expiresAt:expMs,code});
+      setPendingSitter(null);
+      setShowShareModal(false);
+      showFlash(t("toast.sitterJoined"));
+    }catch(e){
+      if(e&&typeof e.message==="string"&&e.message.indexOf("share.err")===0)setShareError(t(e.message));
+      else if(e&&(e.code==="permission-denied"||String(e.message||"").indexOf("Missing or insufficient permissions")>=0))setShareError(t("share.errNotVerifiedYet"));
+      else setShareError(t("share.errJoinFail"));
+    }
+    setShareLoading(false);
+  };
+  // 発行したシッター招待の控え（端末内。失効操作と一覧表示のため）。
+  const saveMyGrants=(arr)=>{setMyGrants(arr);try{localStorage.setItem("loalife-sittergrants-v1",JSON.stringify(arr));}catch(e){}};
+  const createSitterInvite=async()=>{
+    if(!fireUser||!household)return;
+    if(sitSel.length===0){setShareError(t("sitter.needMember"));return;}
+    setShareLoading(true);setShareError("");
+    try{
+      if(!(await ensureShareVerified())){setShareLoading(false);return;}
+      const code=genCode();
+      const expMs=Date.now()+sitDays*24*60*60*1000;
+      await setDoc(doc(fbDb,"sitterGrants",code),{ownerUid:fireUser.uid,householdId:household.id,memberIds:[...sitSel],canWrite:sitWrite,expiresAt:Timestamp.fromMillis(expMs),createdAt:serverTimestamp()});
+      saveMyGrants([...myGrants.filter(g=>g.householdId!==household.id||g.expiresAt>Date.now()),{code,householdId:household.id,memberIds:[...sitSel],canWrite:sitWrite,expiresAt:expMs}]);
+      setSitMade({code,expiresAt:expMs});
+    }catch(e){setShareError(t("sitter.createFail"));}
+    setShareLoading(false);
+  };
+  const revokeSitterInvite=async(g)=>{
+    if(!fireUser||!household)return;
+    try{await deleteDoc(doc(fbDb,"sitterGrants",g.code));}catch(e){}
+    // 参加済みのシッターがいれば、そのエントリも外して即時失効させる。
+    const sitters=household.sitters||{};
+    const uids=Object.keys(sitters).filter(u=>sitters[u]&&sitters[u].grantCode===g.code);
+    if(uids.length){
+      const upd={sitterUids:arrayRemove(...uids)};uids.forEach(u=>{upd["sitters."+u]=deleteField();});
+      try{await updateDoc(doc(fbDb,"households",household.id),upd);}catch(e){}
+      setHousehold(prev=>{if(!prev)return prev;const ns={...(prev.sitters||{})};uids.forEach(u=>delete ns[u]);return{...prev,sitters:ns,sitterUids:(prev.sitterUids||[]).filter(u=>uids.indexOf(u)<0)};});
+    }
+    saveMyGrants(myGrants.filter(x=>x.code!==g.code));
+    if(sitMade&&sitMade.code===g.code)setSitMade(null);
+    showFlash(t("toast.sitterRevoked"));
+  };
+  const removeSitterUid=async(uid)=>{
+    if(!fireUser||!household)return;
+    try{await updateDoc(doc(fbDb,"households",household.id),{sitterUids:arrayRemove(uid),["sitters."+uid]:deleteField()});}catch(e){}
+    setHousehold(prev=>{if(!prev)return prev;const ns={...(prev.sitters||{})};delete ns[uid];return{...prev,sitters:ns,sitterUids:(prev.sitterUids||[]).filter(u=>u!==uid)};});
+    showFlash(t("toast.sitterRemoved"));
+  };
+  const shareSitterInvite=(g)=>{
+    const text=t("sitter.inviteMsg",{link:sitterLinkFor(g.code),code:g.code});
+    if(navigator.share){navigator.share({title:"LOALIFE",text}).catch(()=>{});return;}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(()=>{setCopiedCode(true);setTimeout(()=>setCopiedCode(false),2000);}).catch(()=>{});
+  };
+
+  // ── #8 参加者プロフィール・除外・招待期限 ──────────────────────
+  // 自分の参加者プロフィール（表示名・メール）を世帯へ登録する（自分の分だけ・ルールで制限）。
+  const ensureMyProfile=async(hh)=>{
+    if(!fireUser||!hh)return;
+    const prof=(hh.memberProfiles||{})[fireUser.uid];
+    const name=(meName&&meName.trim())||fireUser.displayName||"";
+    const email=fireUser.email||"";
+    if(prof&&prof.name===name&&prof.email===email)return;
+    try{await updateDoc(doc(fbDb,"households",hh.id),{["memberProfiles."+fireUser.uid]:{name,email}});}catch(e){}
+  };
+  // オーナーが参加者を除外する（その人の記録自体は世帯に残る。アクセスだけが切れる）。
+  const removeParticipant=async(uid)=>{
+    if(!fireUser||!household||uid===household.ownerUid)return;
+    setShareLoading(true);
+    try{
+      await updateDoc(doc(fbDb,"households",household.id),{memberUids:arrayRemove(uid),["memberProfiles."+uid]:deleteField()});
+      setHousehold(prev=>prev?{...prev,memberUids:(prev.memberUids||[]).filter(u=>u!==uid)}:prev);
+      showFlash(t("toast.participantRemoved"));
+    }catch(e){setShareError(t("share.removeFail"));}
+    setShareLoading(false);
+  };
+  // 共有モーダルを開いたら世帯の最新状態を取り直す（参加者・シッター・期限の表示用）。
+  useEffect(()=>{
+    if(!showShareModal||!household||!fireUser)return;
+    let cancelled=false;
+    (async()=>{
+      try{
+        const snap=await getDoc(doc(fbDb,"households",household.id));
+        if(!cancelled&&snap.exists()){
+          const fresh={id:household.id,...snap.data()};
+          setHousehold(fresh);
+          ensureMyProfile(fresh);
+        }
+      }catch(e){}
+      try{
+        if(household.inviteCode){
+          const cs=await getDoc(doc(fbDb,"inviteCodes",household.inviteCode));
+          if(!cancelled&&cs.exists()&&cs.data().expiresAt)setInviteExp(cs.data().expiresAt);
+        }
+      }catch(e){}
+    })();
+    return()=>{cancelled=true;};
+  },[showShareModal]);
+
   // ── 犬友だち：読み込み・保存（既存の members/items/schema とは独立。読込失敗でも消さない） ──
   useEffect(()=>{try{const raw=localStorage.getItem(DF_KEY);if(raw){const a=JSON.parse(raw);if(Array.isArray(a))setDogFriends(a);}}catch(e){/* 壊れていても生データは残す */}},[]);
   // 一覧/詳細の名刺サムネを遅延読込（render 中に setState しないよう effect で）。
   useEffect(()=>{if(!dfOpen)return;const need=dfView==="detail"?dogFriends.filter(f=>f.id===dfSelId):dogFriends;need.forEach(f=>{if(f.businessCardImageId&&!dfImgCache[f.id])dfThumb(f.id,f.businessCardImageId);});},[dfOpen,dfView,dfSelId,dogFriends]);
   const persistDF=(arr)=>{setDogFriends(arr);try{localStorage.setItem(DF_KEY,JSON.stringify(arr));return true;}catch(e){setDfError(t("df.saveFail"));return false;}};
+  // #6 書類ドキュメント（端末ローカルのみ・共有/バックアップ対象外）
+  const[docsArr,setDocsArr]=useState([]);
+  const[docKindS,setDocKindS]=useState("insurance");const[docTitleS,setDocTitleS]=useState("");const[docDateS,setDocDateS]=useState("");const[docExpiryS,setDocExpiryS]=useState("");const[docNoteS,setDocNoteS]=useState("");
+  useEffect(()=>{try{const raw=localStorage.getItem(DOCS_KEY);if(raw){const a=JSON.parse(raw);if(Array.isArray(a))setDocsArr(a);}}catch(e){/* 壊れていても生データは残す */}},[]);
+  const persistDocs=(arr)=>{setDocsArr(arr);try{localStorage.setItem(DOCS_KEY,JSON.stringify(arr));}catch(e){showFlash(t("toast.storageFull"));}};
+  const docKindsFor=(kind)=>(kind==="pet"?DOC_KINDS_PET:DOC_KINDS_PERSON).map(([k,emoji])=>({k,emoji,label:t("dockind."+k)}));
+  const docKindMeta=(k,kind)=>docKindsFor(kind).find(x=>x.k===k)||{k:"other",emoji:"🗂",label:t("dockind.other")};
+  const docsForTab=useMemo(()=>docsArr.filter(d=>d.space===tab).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[docsArr,tab]);
+  const openDocForm=()=>{const ks=docKindsFor(curKind);setDocKindS(ks.length?ks[0].k:"other");setDocTitleS("");setDocDateS(todayIso);setDocExpiryS("");setDocNoteS("");setInputSheet("doc");};
+  const saveDoc=()=>{const rec={id:"doc"+Date.now(),space:tab,kind:docKindS,title:docTitleS.trim(),date:docDateS||"",expiry:docExpiryS||"",note:docNoteS.trim(),photos:[],createdAt:Date.now()};persistDocs([rec,...docsArr]);setInputSheet(null);showFlash(t("toast.docSaved"));};
+  const removeDoc=(id)=>{const d=docsArr.find(x=>x.id===id);if(d&&(d.photos||[]).length){d.photos.forEach(pid=>{try{photoStorage.delete("photo:"+pid);}catch(e){}});setPhotos(p=>{const n={...p};d.photos.forEach(pid=>delete n[pid]);return n;});}persistDocs(docsArr.filter(x=>x.id!==id));showFlash(t("toast.docDeleted"));};
+  // 書類の写真は端末内（IndexedDB）だけに保存する。addCertPhoto と違い saveItemToFs は
+  // 絶対に呼ばない（書類を家族共有へ流さないための意図的な分離）。
+  const addDocPhoto=async(e,doc)=>{
+    const file=e.target.files&&e.target.files[0];e.target.value="";if(!file)return;
+    if(file.size>20*1024*1024){showFlash(t("toast.fileTooBig"));return;}
+    if((doc.photos||[]).length>=4){showFlash(t("toast.photoMax"));return;}
+    try{
+      const dataUrl=await downscaleImage(file);
+      const pid="pd"+Date.now()+Math.random().toString(36).slice(2,6);
+      const ok=await photoStorage.set("photo:"+pid,dataUrl);
+      if(!ok){showFlash(t("toast.storageFull"));return;}
+      setPhotos(p=>({...p,[pid]:dataUrl}));
+      persistDocs(docsArr.map(x=>x.id===doc.id?{...x,photos:[...(x.photos||[]),pid]}:x));
+      showFlash(t("toast.photoAdded"));
+    }catch(err){showFlash(t("toast.imgSaveFail"));}
+  };
+  const docExpiryState=(d)=>{if(!d.expiry)return null;const du=daysUntil(d.expiry);if(du==null||isNaN(du))return null;if(du<0)return{tone:"over",txt:t("docs.expired")};if(du<=30)return{tone:"soon",txt:t("docs.expSoon",{d:du})};return null;};
   const dfBlank=()=>({id:genId(),schemaVersion:1,dog:{name:"",breed:"",birthday:"",ageText:""},owner:{displayName:""},socialLinks:[],contacts:[],notes:"",businessCardImageId:null,encounters:[],createdAt:Date.now(),updatedAt:Date.now(),_cardImage:null,_origImageId:null,_saveImage:true,_newEnc:{event:"",date:todayIso,place:"",note:""}});
   const openDogFriends=(mode)=>{setDfError("");setDfQr(null);setDfOcr(null);setDfOcrStage("");setDfDetailOpen(false);if(mode==="new"){setDfDraft(dfBlank());setDfView("edit");}else{setDfView("list");}setDfOpen(true);};
   const dfThumb=async(id,imgId)=>{if(!imgId||dfImgCache[id])return;try{const src=await photoStorage.get(DF_IMG_PREFIX+imgId);if(src)setDfImgCache(c=>({...c,[id]:src}));}catch(e){}};
@@ -6258,7 +6605,8 @@ function App(){
   useEffect(()=>{setFilter("all");if(activeMember){const list=careKindsFor(activeMember);const kind=list.find(k=>k.key===draftKind)?draftKind:list[0].key;if(kind!==draftKind)setDraftKind(kind);const label=careLabel(list.find(k=>k.key===kind));if(kind!=="other"&&(draft===""||draftAuto)){setDraft(label);setDraftAuto(true);}else if(kind==="other"&&draftAuto){setDraft("");setDraftAuto(false);}}else if(draftAuto){setDraft("");setDraftAuto(false);}},[tab]);
   // 体調入力の下書きはメンバーごとに独立させる：別のメンバーのシートを開いたら前回の入力を持ち越さない。
   const healthTabRef=useRef(null);
-  useEffect(()=>{if(inputSheet!=="health")return;if(healthTabRef.current!==tab){healthTabRef.current=tab;setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");setHealthHead("");}},[inputSheet,tab]);
+  useEffect(()=>{if(inputSheet!=="health")return;if(healthTabRef.current!==tab){healthTabRef.current=tab;setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");setHealthHead("");setHealthMetrics({});}},[inputSheet,tab]);
+  useEffect(()=>{setChartOverlay([]);},[tab]);
 
   const toggle=(id)=>{
     const it=items.find(x=>x.id===id);if(!it)return;let next;
@@ -6302,7 +6650,7 @@ function App(){
 
   const viewPhoto=async(id,kind)=>{const k=kind||"cert";if(photos[id]){setViewer({id,src:photos[id],kind:k});return;}setViewer({id,loading:true,kind:k});try{const src=await photoStorage.get(`photo:${id}`);setViewer({id,src,kind:k});}catch(e){setViewer({id,src:null,kind:k});}};
   // ビューワーの見出しは写真の文脈で決める（証明書で開いた写真だけが「証明書」）。
-  const viewerTitle=(v)=>{if(!v)return "";if(v.kind==="growth")return t("growth.title");if(v.kind==="diary")return t("rec.diaryTitle");if(v.kind==="photo")return t("viewer.photo");if(v.isMemory)return t("viewer.memory");return t("viewer.cert");};
+  const viewerTitle=(v)=>{if(!v)return "";if(v.kind==="growth")return t("growth.title");if(v.kind==="diary")return t("rec.diaryTitle");if(v.kind==="doc")return t("docs.title");if(v.kind==="photo")return t("viewer.photo");if(v.isMemory)return t("viewer.memory");return t("viewer.cert");};
   const removePhoto=(id)=>{const ownerItem=items.find(x=>x.id===id)||items.find(x=>photoIdsOf(x).includes(id));if(ownerItem)cleanupPhotoIfOrphan(ownerItem.space,id,{excludeItemId:ownerItem.id}).catch(()=>{});try{photoStorage.delete(`photo:${id}`);}catch(e){}setPhotos(p=>{const n={...p};delete n[id];return n;});if(ownerItem){const rest=photoIdsOf(ownerItem).filter(q=>q!==id);const upd={...ownerItem,photo:rest.length>0,photos:rest.length?rest:undefined};persist(members,items.map(x=>x.id===ownerItem.id?upd:x));}else persist(members,items.map(x=>x.id===id?{...x,photo:false}:x));setViewer(null);showFlash(t("toast.certDeleted"));};
   // 証明書の写真を追加（1記録あたり最大4枚）。既存の1枚（photo＝記録ID自体）も
   // photoIdsOf 経由で1枚目として残し、新しい写真は新しいIDで追加する。
@@ -6841,21 +7189,24 @@ function App(){
 
   // --- ルーティン（1日のタスク）---
   const todayIso=iso(new Date());
-  const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:tab});
-  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:curKind==="pet"?"🐾":"⏰",time:"08:00",reminders:[0],space:tab});
-  const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"⏰",time:r.time||"08:00",reminders:r.reminders||[],space:r.space});
+  const openRoutineTemplate=(t)=>setRoutineEdit({title:t.title,emoji:t.emoji,time:t.time,reminders:[0],space:tab,repeat:"daily",repeatDays:null});
+  const openRoutineCustom=()=>setRoutineEdit({title:"",emoji:curKind==="pet"?"🐾":"⏰",time:"08:00",reminders:[0],space:tab,repeat:"daily",repeatDays:null});
+  const openRoutineEdit=(r)=>setRoutineEdit({id:r.id,title:r.title,emoji:r.emoji||"⏰",time:r.time||"08:00",reminders:r.reminders||[],space:r.space,repeat:r.repeat||"daily",repeatDays:Array.isArray(r.repeatDays)?r.repeatDays:null});
   const toggleRoutineReminder=(mins)=>setRoutineEdit(prev=>prev?{...prev,reminders:prev.reminders.includes(mins)?prev.reminders.filter(m=>m!==mins):[...prev.reminders,mins].sort((a,b)=>a-b)}:prev);
   const saveRoutine=()=>{
     if(!routineEdit)return;
     const title=routineEdit.title.trim();if(!title){showFlash(t("toast.titleNeeded"));return;}
     const rem=routineEdit.reminders.length?routineEdit.reminders:undefined;
+    // 頻度：毎日（daily）／曜日指定（weekly＋repeatDays）。予定フォームと同じ保存形式。
+    const rep=routineEdit.repeat==="weekly"?"weekly":"daily";
+    const repDays=rep==="weekly"&&Array.isArray(routineEdit.repeatDays)&&routineEdit.repeatDays.length?[...routineEdit.repeatDays].sort((a,b)=>a-b):undefined;
     let next,savedId;
     if(routineEdit.id){
       savedId=routineEdit.id;
-      next=items.map(x=>x.id===routineEdit.id?{...x,title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem}:x);
+      next=items.map(x=>x.id===routineEdit.id?{...x,title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem,repeat:rep,repeatDays:repDays}:x);
     }else{
       savedId="rt"+Date.now();
-      next=[...items,{id:savedId,space:routineEdit.space,type:"routine",title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem,repeat:"daily",doneDate:null,createdAt:Date.now()}];
+      next=[...items,{id:savedId,space:routineEdit.space,type:"routine",title,emoji:routineEdit.emoji,time:routineEdit.time,reminders:rem,repeat:rep,...(repDays?{repeatDays:repDays}:{}),doneDate:null,createdAt:Date.now()}];
     }
     persist(members,next);
     if(!routineEdit.id)track("task_add",{task_type:"routine"});
@@ -6880,12 +7231,27 @@ function App(){
     setRoutineEdit(null);
   };
   const routines=useMemo(()=>items.filter(x=>x.space===tab&&x.type==="routine").sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")),[items,tab]);
-  const routineDone=routines.filter(r=>r.doneDate===todayIso).length;
+  // 今日が実施日のルーティンだけが「今日のルーティン」（曜日指定対応・追加項目）。
+  const routinesToday=useMemo(()=>routines.filter(r=>routineDueOn(r,todayIso)),[routines,todayIso]);
+  const routineDone=routinesToday.filter(r=>r.doneDate===todayIso).length;
 
   // --- 消耗品ストック（買った日＋サイクルで残量を自動計算）---
   const openSupplyTemplate=(t)=>setSupplyEdit({title:t.title,emoji:t.emoji,cycleDays:t.cycleDays,lastBought:todayIso,space:tab});
-  const openSupplyCustom=()=>setSupplyEdit({title:"",emoji:"🥫",cycleDays:30,lastBought:todayIso,space:tab});
-  const openSupplyEdit=(s)=>setSupplyEdit({id:s.id,title:s.title,emoji:s.emoji||"🥫",cycleDays:s.cycleDays||30,lastBought:s.lastBought||todayIso,space:s.space});
+  // ストックの初期絵文字は種別のセット先頭（人のメンバーでペット寄りの🥫が初期値にならないように）。
+  const supplyFirstEmoji=(space)=>supplyEmojisFor(space==="me"?"me":normKind((members.find(m=>m.id===space)||{}).kind))[0];
+  const openSupplyCustom=()=>setSupplyEdit({title:"",emoji:supplyFirstEmoji(tab),cycleDays:30,lastBought:todayIso,space:tab});
+  const openSupplyEdit=(s)=>setSupplyEdit({id:s.id,title:s.title,emoji:s.emoji||supplyFirstEmoji(s.space),cycleDays:s.cycleDays||30,lastBought:s.lastBought||todayIso,space:s.space});
+  // 品名プレースホルダの例は種別ごとに切り替える（追加5）。
+  const supplyNamePhOf=(space)=>{
+    if(space==="me")return t("supply.namePhAdult");
+    const m=members.find(x=>x.id===space);
+    if(!m)return t("supply.namePh");
+    if(m.kind==="pet")return t("supply.namePhPet");
+    if(m.personType==="baby")return t("supply.namePhBaby");
+    if(m.personType==="child")return t("supply.namePhChild");
+    if(m.personType==="senior")return t("supply.namePhSenior");
+    return t("supply.namePhAdult");
+  };
   const saveSupply=()=>{
     if(!supplyEdit)return;
     const title=supplyEdit.title.trim();if(!title){showFlash(t("toast.titleNeeded"));return;}
@@ -6938,13 +7304,25 @@ function App(){
   const setMemberTarget=(v)=>{if(!activeMember)return;const t=v===""?undefined:Number(v);const next=members.map(m=>m.id===activeMember.id?{...m,targetWeight:t}:m);persist(next,items);const upd=next.find(m=>m.id===activeMember.id);if(upd)saveMemberToFs(upd).catch(()=>{});};
   const latestWeight=weightPts.length?weightPts[weightPts.length-1].value:null;
   const weightDiff=(targetWeight!==""&&latestWeight!=null)?(latestWeight-Number(targetWeight)):null;
+  // #5 カスタム数値項目の定義（メンバーはメンバーオブジェクト、「わたし」は端末ローカル）。
+  const customDefsOf=(space)=>{if(space==="me")return meCustomMetrics;const m=members.find(x=>x.id===space);return (m&&Array.isArray(m.customMetrics))?m.customMetrics:[];};
+  const customDefs=customDefsOf(tab);
+  const saveCustomDefs=(space,defs)=>{
+    if(space==="me"){setMeCustomMetrics(defs);try{localStorage.setItem("loalife-memetrics-v1",JSON.stringify(defs));}catch(e){}return;}
+    const next=members.map(m=>m.id===space?{...m,customMetrics:defs}:m);persist(next,items);const upd=next.find(m=>m.id===space);if(upd)saveMemberToFs(upd).catch(()=>{});
+  };
+  const addCustomMetric=()=>{const name=metricName.trim();if(!name){showFlash(t("toast.metricNameNeeded"));return;}if(customDefs.length>=6){showFlash(t("toast.metricMax"));return;}saveCustomDefs(tab,[...customDefs,{id:"cm"+Date.now(),name,unit:metricUnit.trim()}]);setMetricName("");setMetricUnit("");showFlash(t("toast.metricAdded"));};
+  const removeCustomMetric=(defId)=>{saveCustomDefs(tab,customDefs.filter(d=>d.id!==defId));};
+  const metricPtsOf=(space,defId)=>items.filter(x=>x.space===space&&x.type==="health"&&x.metrics&&x.metrics[defId]!=null&&x.date).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||0)-(b.createdAt||0)).map(r=>({date:r.date,value:r.metrics[defId]}));
   const saveHealth=()=>{
     const w=healthW.trim()===""?null:Number(healthW);const h=healthH.trim()===""?null:Number(healthH);
     const num=(s)=>{const t=(s||"").trim();if(t==="")return null;const n=Number(t);return isNaN(n)?null:n;};
     const bpS=num(healthBpS),bpD=num(healthBpD),temp=num(healthTemp),glu=num(healthGlucose);
     const headC=num(healthHead);
     const hasVital=bpS!=null||bpD!=null||temp!=null||glu!=null;
-    if(w==null&&h==null&&headC==null&&!healthCond&&!hasVital){showFlash(t("toast.healthNeeded"));return;}
+    const mets={};customDefs.forEach(d=>{const v=num(healthMetrics[d.id]);if(v!=null)mets[d.id]=v;});
+    const hasMetric=Object.keys(mets).length>0;
+    if(w==null&&h==null&&headC==null&&!healthCond&&!hasVital&&!hasMetric){showFlash(t("toast.healthNeeded"));return;}
     if(w!=null&&(isNaN(w)||w<=0)){showFlash(t("toast.weightNum"));return;}
     if(h!=null&&(isNaN(h)||h<=0)){showFlash(t("toast.heightNum"));return;}
     const rec={id:"hl"+Date.now(),space:tab,type:"health",date:todayIso,createdAt:Date.now()};
@@ -6954,9 +7332,10 @@ function App(){
     if(w!=null){rec.weight=w;rec.wunit=weightUnit;}if(h!=null&&personLike)rec.height=h;if(healthCond)rec.condition=healthCond;
     if(headC!=null&&activeMember&&activeMember.personType==="baby")rec.headCirc=headC;
     if(bpOk){if(bpS!=null)rec.bpSys=bpS;if(bpD!=null)rec.bpDia=bpD;if(glu!=null)rec.glucose=glu;}if(temp!=null)rec.temp=temp;
+    if(hasMetric)rec.metrics=mets;
     persist(members,[...items,rec]);saveItemToFs(rec).catch(()=>{});
     if(w!=null)track("weight_record");else track("body_record");
-    setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");setHealthHead("");
+    setHealthW("");setHealthH("");setHealthCond("");setHealthBpS("");setHealthBpD("");setHealthTemp("");setHealthGlucose("");setHealthHead("");setHealthMetrics({});
     showFlash(t("toast.healthSaved"));setInputSheet(null);
   };
   const removeHealth=(id)=>{deleteItemFromFs(items.find(x=>x.id===id)).catch(()=>{});persist(members,items.filter(x=>x.id!==id));};
@@ -7320,9 +7699,32 @@ function App(){
     </div>
   </div>);
   // 家族ノート（メッセージ・感謝・きもち）。端末内で家族が書き込める簡易ボード。
-  const familyNotes=useMemo(()=>items.filter(x=>x.type==="familynote").sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),[items]);
-  const addFamilyNote=()=>{const v=(noteText||"").trim();if(!v)return;const author=(meName||"わたし");const rec={id:"fn"+Date.now(),space:"me",type:"familynote",kind:noteKind,text:v,author,date:todayIso,createdAt:Date.now()};persist(members,[...items,rec]);setNoteText("");showFlash(t("toast.noteSaved"));};
-  const removeFamilyNote=(id)=>{deleteItemWithUndo(items.find(x=>x.id===id));};
+  // 家族ノート：端末内の記録と、世帯同期分（Firestore）を id で統合して表示する。
+  const familyNotes=useMemo(()=>{
+    const local=items.filter(x=>x.type==="familynote");
+    const remote=fsNotes.map(n=>({id:n.id,space:"me",type:"familynote",kind:n.kind||"note",text:n.text||"",author:n.author||"",date:n.date||todayIso,createdAt:n.createdAt||0,fs:true,ownerUid:n.ownerUid||""}));
+    const byId=new Map();[...local,...remote].forEach(n=>byId.set(n.id,n));
+    return[...byId.values()].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  },[items,fsNotes]);
+  const addFamilyNote=()=>{
+    const v=(noteText||"").trim();if(!v)return;
+    const author=(meName&&meName.trim())||(fireUser&&fireUser.displayName)||"わたし";
+    const rec={id:"fn"+Date.now(),space:"me",type:"familynote",kind:noteKind,text:v,author,date:todayIso,createdAt:Date.now()};
+    if(household&&fireUser){
+      // 世帯同期：notes サブコレクションへ書く（購読で全員に届く）。端末内には残さない
+      // （二重表示・二重管理を避けるため。世帯を抜けたら同期分は見えなくなる）。
+      const{id,space,type,...rest}=rec;
+      setDoc(doc(fbDb,"households",household.id,"notes",id),{...rest,ownerUid:fireUser.uid}).catch(()=>{showFlash(t("toast.noteSyncFail"));});
+    }else{
+      persist(members,[...items,rec]);
+    }
+    setNoteText("");showFlash(t("toast.noteSaved"));
+  };
+  const removeFamilyNote=(id)=>{
+    const rn=fsNotes.find(x=>x.id===id);
+    if(rn&&household&&fireUser){deleteDoc(doc(fbDb,"households",household.id,"notes",id)).catch(()=>{});return;}
+    deleteItemWithUndo(items.find(x=>x.id===id));
+  };
   const tomorrowIso=plusDays(1);const tomorrowDow=dowOf(tomorrowIso);
   const tomorrowBelongings=useMemo(()=>belongings.filter(b=>b.scope==="always"||(b.scope!=="occasion"&&b.dow===tomorrowDow)),[belongings,tomorrowDow]);
   const toggleBelongPrep=(id)=>{const next=items.map(x=>x.id===id?{...x,prepDate:x.prepDate===tomorrowIso?null:tomorrowIso}:x);persist(members,next);const it=next.find(x=>x.id===id);if(it)saveItemToFs(it).catch(()=>{});};
@@ -7558,7 +7960,7 @@ function App(){
       case "nursing":return t("rec.nursingTitle");case "feed":return t("rec.feedTitle");
       case "meds":return t("rec.medsTitle");case "help":return t("points.title");
       case "prep":return t("rec.prepTitle");case "list":return t("rec.listTitle");
-      case "certs":return t("certs.title");case "health":return t("rec.healthTitle");
+      case "certs":return t("certs.title");case "docs":return t("docs.title");case "health":return t("rec.healthTitle");
       case "growth":return t("growth.title");case "review":return t("review.title");
       case "supply":return t("supply.title");case "expense":return t("exp.title");
       case "belong":return t("belong.title");case "allowance":return t("allow.title");
@@ -8279,7 +8681,7 @@ function App(){
   };
   // ⑤ 小さなふりかえり（軽め）。「今週」＝日曜始まりの暦週。周期ケアの完了は lastDoneAt で数える。
   const weekDone=useMemo(()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());const ws=d.getTime();return items.filter(x=>(x.completedAt&&x.completedAt>=ws)||(x.lastDoneAt&&x.lastDoneAt>=ws)).length;},[items]);
-  const allRoutines=useMemo(()=>items.filter(x=>x.type==="routine"),[items]);
+  const allRoutines=useMemo(()=>items.filter(x=>x.type==="routine"&&routineDueOn(x,todayIso)),[items,todayIso]);
   const routineDoneToday=allRoutines.filter(x=>x.doneDate===todayIso).length;
   // ⑥ 何もない日：すべて落ち着いているか
   const allClear=homeData.todos.length===0&&homeData.bombs.length===0&&lowSupplies.length===0;
@@ -8372,6 +8774,13 @@ function App(){
           <div className="yl-modal share" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title"><Icon name="users" size={18}/> 家族共有</h3>
             <p className="yl-share-desc">{fireUser.displayName||fireUser.email} でサインイン中</p>
+            {sitterCtx&&(
+              <div className="yl-invite-box" style={{textAlign:"left"}}>
+                <p className="yl-invite-label">{t("sitter.nowTitle")}</p>
+                <p className="yl-share-desc" style={{marginBottom:6}}>{t("sitter.untilLine",{date:fmtDate(iso(new Date(sitterCtx.expiresAt)))})+" ・ "+(sitterCtx.canWrite?t("sitter.canWrite"):t("sitter.viewOnly"))}</p>
+                <button className="yl-copy-btn" onClick={leaveSitter} disabled={shareLoading}>{t("sitter.leaveBtn")}</button>
+              </div>
+            )}
             {shareStep==="menu"&&(
               <>
                 <button className="yl-share-choice" onClick={()=>setShareStep("create")}>＋ 新しい家族スペースを作る</button>
@@ -8391,12 +8800,16 @@ function App(){
             )}
             {shareStep==="join"&&(
               <>
+                <div className="yl-chiprow" style={{marginBottom:10}}>
+                  <button type="button" className={"yl-chip"+(joinMode==="family"?" on":"")} onClick={()=>{setJoinMode("family");setShareError("");}}>{t("sitter.modeFamily")}</button>
+                  <button type="button" className={"yl-chip"+(joinMode==="sitter"?" on":"")} onClick={()=>{setJoinMode("sitter");setShareError("");}}>{t("sitter.modeSitter")}</button>
+                </div>
                 <input className="yl-input" value={joinCodeInput} onChange={e=>setJoinCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8))} placeholder={t("auth.codePh")} maxLength={8} style={{letterSpacing:"0.2em",textAlign:"center"}}/>
-                <p className="yl-share-desc">{t("share.joinAbout")}</p>
+                <p className="yl-share-desc">{joinMode==="sitter"?t("sitter.joinAbout"):t("share.joinAbout")}</p>
                 {shareError&&<p className="yl-share-error">{shareError}</p>}
                 <div className="yl-btn-row">
                   <button className="yl-btn-ghost" onClick={()=>{setShareStep("menu");setShareError("");}}>戻る</button>
-                  <button className="yl-btn-primary" onClick={joinHousehold} disabled={shareLoading||!joinCodeInput.trim()}>{shareLoading?"参加中…":"参加する"}</button>
+                  <button className="yl-btn-primary" onClick={joinMode==="sitter"?joinSitter:joinHousehold} disabled={shareLoading||!joinCodeInput.trim()}>{shareLoading?"参加中…":"参加する"}</button>
                 </div>
               </>
             )}
@@ -8435,7 +8848,43 @@ function App(){
             <button className="yl-copy-btn" onClick={shareInvite}>{copiedCode?t("share.inviteCopied"):t("share.inviteBtn")}</button>
           </div>
           <p className="yl-share-desc">{t("share.inviteSendDesc")}</p>
+          {inviteExp&&<p className="yl-share-desc">{t("share.inviteExpiry",{date:fmtDate(iso(new Date(inviteExp)))})}</p>}
           <p className="yl-share-desc">家族の人数: {household.memberUids?.length||1}人</p><p className="yl-share-desc" style={{marginTop:8}}>共有するメンバーは、各メンバーのプロフィール編集画面で「共有／自分のみ」を選べます。</p>
+          {(()=>{const uids=household.memberUids||[];const profs=household.memberProfiles||{};const isOwner=household.ownerUid===fireUser.uid;return(
+            <div className="yl-share-members">
+              <p className="yl-share-members-title">{t("share.participantsTitle")}</p>
+              {uids.map(uid=>{const pr=profs[uid]||{};const nm=uid===fireUser.uid?((meName&&meName.trim())||fireUser.displayName||pr.name||""):pr.name||"";const em=uid===fireUser.uid?(fireUser.email||""):pr.email||"";return(
+                <div key={uid} className="yl-share-member-row">
+                  <span className="yl-share-member-name">{nm||t("share.noName")}{uid===household.ownerUid?" 👑":""}{uid===fireUser.uid?"（"+t("share.you")+"）":""}</span>
+                  {em&&<span className="yl-share-member-mail">{em}</span>}
+                  {isOwner&&uid!==fireUser.uid&&uid!==household.ownerUid&&<button className="yl-health-del" style={{position:"static"}} onClick={()=>removeParticipant(uid)} disabled={shareLoading}>{t("share.removeBtn")}</button>}
+                </div>);})}
+              <p className="yl-set-desc" style={{marginTop:6}}>{t("share.accountLine",{email:fireUser.email||""})}</p>
+            </div>);})()}
+          {(()=>{const isOwner=household.ownerUid===fireUser.uid;const shared=members.filter(m=>m&&m.id!=="me"&&visOf(m)==="household");const grants=myGrants.filter(g=>g.householdId===household.id&&g.expiresAt>Date.now());const sitters=household.sitters||{};const sitterUids=Object.keys(sitters);return(
+            <div className="yl-share-members">
+              <p className="yl-share-members-title">{t("sitter.title")}</p>
+              <p className="yl-set-desc">{t("sitter.desc")}</p>
+              {isOwner&&(<>
+                <div className="yl-chiprow" style={{margin:"8px 0"}}>{shared.map(m=>(<button key={m.id} type="button" className={"yl-chip"+(sitSel.indexOf(m.id)>=0?" on":"")} onClick={()=>setSitSel(p=>p.indexOf(m.id)>=0?p.filter(x=>x!==m.id):[...p,m.id])}>{memberEmojiOf(m)} {m.name}</button>))}</div>
+                {shared.length===0&&<p className="yl-set-desc">{t("sitter.noSharedMembers")}</p>}
+                <div className="yl-chiprow" style={{marginBottom:8}}>
+                  <button type="button" className={"yl-chip"+(!sitWrite?" on":"")} onClick={()=>setSitWrite(false)}>{t("sitter.viewOnly")}</button>
+                  <button type="button" className={"yl-chip"+(sitWrite?" on":"")} onClick={()=>setSitWrite(true)}>{t("sitter.canWrite")}</button>
+                  {[1,3,7].map(d=>(<button key={d} type="button" className={"yl-chip"+(sitDays===d?" on":"")} onClick={()=>setSitDays(d)}>{t("sitter.days",{d})}</button>))}
+                </div>
+                <button className="yl-btn-primary" onClick={createSitterInvite} disabled={shareLoading}>{t("sitter.createBtn")}</button>
+                {sitMade&&(<div className="yl-invite-box" style={{marginTop:10}}>
+                  <p className="yl-invite-label">{t("sitter.codeLabel")}</p>
+                  <p className="yl-invite-code">{sitMade.code}</p>
+                  <p className="yl-invite-link">{sitterLinkFor(sitMade.code)}</p>
+                  <p className="yl-share-desc">{t("sitter.untilLine",{date:fmtDate(iso(new Date(sitMade.expiresAt)))})}</p>
+                  <button className="yl-copy-btn" onClick={()=>shareSitterInvite(sitMade)}>{copiedCode?t("share.inviteCopied"):t("share.inviteBtn")}</button>
+                </div>)}
+                {grants.length>0&&(<div style={{marginTop:10}}>{grants.map(g=>(<div key={g.code} className="yl-share-member-row"><span className="yl-share-member-name">{g.code} ・ {g.memberIds.map(id=>{const m=members.find(x=>x.id===id);return m?m.name:id;}).join("、")} ・ {g.canWrite?t("sitter.canWrite"):t("sitter.viewOnly")} ・ {t("sitter.untilLine",{date:fmtDate(iso(new Date(g.expiresAt)))})}</span><button className="yl-health-del" style={{position:"static"}} onClick={()=>revokeSitterInvite(g)}>{t("sitter.revokeBtn")}</button></div>))}</div>)}
+              </>)}
+              {sitterUids.length>0&&(<div style={{marginTop:10}}><p className="yl-share-members-title">{t("sitter.activeTitle")}</p>{sitterUids.map(uid=>{const e=sitters[uid];const expMs=e&&e.expiresAt&&typeof e.expiresAt.toMillis==="function"?e.expiresAt.toMillis():0;return(<div key={uid} className="yl-share-member-row"><span className="yl-share-member-name">{(e.memberIds||[]).map(id=>{const m=members.find(x=>x.id===id);return m?m.name:id;}).join("、")} ・ {e.canWrite?t("sitter.canWrite"):t("sitter.viewOnly")}{expMs?" ・ "+t("sitter.untilLine",{date:fmtDate(iso(new Date(expMs)))}):""}</span>{isOwner&&<button className="yl-health-del" style={{position:"static"}} onClick={()=>removeSitterUid(uid)}>{t("share.removeBtn")}</button>}</div>);})}</div>)}
+            </div>);})()}
           {fsSubError&&(<div className="yl-share-syncerr"><p className="yl-share-syncerr-text">{t("share.syncError")}</p><button className="yl-btn-ghost sm" onClick={retryFsSync}>{t("share.retry")}</button></div>)}
           {(()=>{const list=members.filter(m=>m&&m.id!=="me");return list.length>0&&(<div className="yl-share-members"><p className="yl-share-members-title">{t("share.memberListTitle")}</p>{list.map(m=>(<div key={m.id} className="yl-share-member-row"><span className="yl-share-member-name">{memberEmojiOf(m)} {m.name}</span><span className={"yl-pill vis"+(visOf(m)==="private"?" private":"")}>{visOf(m)==="private"?t("vis.private"):t("vis.shared")}</span></div>))}</div>);})()}
           {hasLocalMembers&&(<div className="yl-share-push"><p className="yl-share-desc">{t("share.pushDesc")}</p><button className="yl-btn-primary" onClick={manualPushLocal} disabled={fsPushBusy}>{t("share.pushLocal")}</button></div>)}
@@ -8453,7 +8902,7 @@ function App(){
   // ただし公開ビュー（名刺・旧公開ページ・招待導線）が開いている間はゲートでブロックしない：
   // リンクを受け取った人に言語選択を強いると、その時点で離脱してしまうため。
   // 公開ビューを閉じて本体に入った時点で、改めてこの選択が出る（確定保存もその時）。
-  const publicViewOpen=!!petPage||!!petPageBroken||(petCardId&&!petCardClosed)||(sumId&&!sumClosed)||(lostLinkId&&!lostLinkClosed)||!!pendingJoin||!!authAction;
+  const publicViewOpen=!!petPage||!!petPageBroken||(petCardId&&!petCardClosed)||(sumId&&!sumClosed)||(lostLinkId&&!lostLinkClosed)||!!pendingJoin||!!pendingSitter||!!authAction;
   if(!langChosen&&!publicViewOpen){
     return(
       <div className="yl-ob yl-langfirst">
@@ -8504,6 +8953,9 @@ function App(){
       <div className="yl-wrap">
         {!onboarding&&sampleMode&&(
           <div className="yl-samplebar"><span>🧪 {t("sample.banner")}</span><button className="yl-samplebar-btn" onClick={()=>setConfirmReset(true)}>{t("sample.start")}</button></div>
+        )}
+        {!onboarding&&sitterCtx&&(
+          <div className="yl-samplebar yl-sitterbar"><span>🐾 {t("sitter.banner",{date:fmtDate(iso(new Date(sitterCtx.expiresAt)))})} ・ {sitterCtx.canWrite?t("sitter.canWrite"):t("sitter.viewOnly")}</span><button className="yl-samplebar-btn" onClick={()=>{setShowShareModal(true);setShareStep("menu");}}>{t("sitter.leaveBtn")}</button></div>
         )}
         <header className="yl-head">
           {isPersonMode
@@ -9357,15 +9809,17 @@ function App(){
                 <section className="yl-routine">
                   <div className="yl-routine-head">
                     <h2 className="yl-routine-title">{t("rec.routineTitle")}</h2>
-                    {routines.length>0&&<span className="yl-routine-prog">{routineDone} / {routines.length}</span>}
+                    {routinesToday.length>0&&<span className="yl-routine-prog">{routineDone} / {routinesToday.length}</span>}
                   </div>
                   {activeMember&&activeMember.personType==="baby"?babyPanelJSX():(<>
                   <button className="yl-secadd" onClick={openRoutineCustom}><Icon name="plus" size={14}/> {t("rec.routineTitle")}</button>
                   {routines.length===0?(
                     <p className="yl-routine-empty">{t("rec.addFromPlus")}</p>
+                  ):routinesToday.length===0?(
+                    <p className="yl-routine-empty">{t("routine.notToday")}</p>
                   ):(
                     <ul className="yl-timeline">
-                      {routines.map(r=>{
+                      {routinesToday.map(r=>{
                         const done=r.doneDate===todayIso;
                         return(
                           <li key={r.id} className={"yl-tl-item"+(done?" done":"")}>
@@ -9374,6 +9828,7 @@ function App(){
                             <button className="yl-tl-body" onClick={()=>openRoutineEdit(r)}>
                               <span className="yl-tl-emoji"><Icon name={guessIcon(r.title)} size={18}/></span>
                               <span className="yl-tl-text">{r.title}</span>
+                              {r.repeat==="weekly"&&repeatDaysOf(r)&&<span className="yl-tl-repeat">{t("repeat.weeklyDays",{days:repeatDaysOf(r).map(d=>weekdaysShort[d]).join("・")})}</span>}
                               {r.reminders&&r.reminders.length>0&&<span className="yl-tl-bell"><Icon name="bell" size={13}/></span>}
                             </button>
                             <label className="yl-tl-photo" title={t("a11y.photoMemory")} onClick={e=>e.stopPropagation()}><Icon name="camera" size={16}/><input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addMemory(e,{space:r.space,title:r.title,emoji:r.emoji})}/></label>
@@ -9635,20 +10090,73 @@ function App(){
                   </>)}
                 </section>
               )});
+              if(isMemberTab||curKind==="me")defs.push({key:"docs",el:(
+                <section className="yl-docs">
+                  <div className="yl-routine-head">
+                    <h2 className="yl-routine-title">{t("docs.title")}</h2>
+                    <button className="yl-album-add" onClick={()=>openDocForm()}>{t("common.plusAdd")}</button>
+                  </div>
+                  <p className="yl-set-desc" style={{display:"flex",alignItems:"center",gap:5}}><Icon name="lock" size={13}/> {t("docs.deviceOnlyNote")}</p>
+                  {docsForTab.length===0?(
+                    <div className="yl-cert-empty">
+                      <button className="yl-quick-big" onClick={()=>openDocForm()}><Icon name="filetext" size={18}/> {t("docs.addFirst")}</button>
+                      <p className="yl-routine-empty" style={{marginTop:10}}>{t("docs.empty")}</p>
+                      <p className="yl-set-desc">{curKind==="pet"?t("docs.examplesPet"):t("docs.examplesPerson")}</p>
+                    </div>
+                  ):(
+                    <ul className="yl-doc-list">
+                      {docsForTab.map(d=>{const km=docKindMeta(d.kind,curKind);const exp=docExpiryState(d);return(
+                        <li key={d.id} className="yl-doc-item">
+                          <span className="yl-doc-emoji">{km.emoji}</span>
+                          <div className="yl-doc-body">
+                            <span className="yl-doc-title">{d.title||km.label}</span>
+                            <span className="yl-doc-meta">{km.label}{d.date?" ・ "+fmtDate(d.date):""}{d.expiry?" ・ "+t("docs.expiry")+": "+fmtDate(d.expiry):""}</span>
+                            {d.note&&<span className="yl-doc-note">{d.note}</span>}
+                            {exp&&<span className={"yl-cert-exp "+exp.tone}>{exp.txt}</span>}
+                          </div>
+                          {d.photos&&d.photos.length>0&&<button className="yl-photo" onClick={()=>viewPhoto(d.photos[0],"doc")}><Icon name="camera" size={14}/> {d.photos.length}</button>}
+                          {(!d.photos||d.photos.length<4)&&(<label className="yl-photo add"><Icon name="camera" size={14}/><input type="file" accept="image/*" style={{display:"none"}} onChange={e=>addDocPhoto(e,d)}/></label>)}
+                          <button className="yl-health-del" onClick={()=>askDelete(t("docs.delLabel",{title:d.title||km.label}),()=>removeDoc(d.id))} aria-label={t("a11y.delete")}>×</button>
+                        </li>);})}
+                    </ul>
+                  )}
+                </section>
+              )});
               defs.push({key:"health",el:(
                 <section className="yl-health">
                   <h2 className="yl-routine-title" style={{marginBottom:10}}>{t("rec.healthTitle")}</h2>
                   <button className="yl-secadd" onClick={()=>setInputSheet("health")}><Icon name="plus" size={14}/> {t("rec.healthTitle")}</button>
                   {isMemberTab&&weightGoalOk&&weightDiff!=null&&(<p className={"yl-diet-msg"+(Math.abs(weightDiff)<0.05?" ok":weightDiff>0?" over":" under")}>{Math.abs(weightDiff)<0.05?<><Icon name="sparkles" size={13}/> 目標達成中！この調子で</>:weightDiff>0?<>目標を <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span> 超えています<span className="yl-nowrap">（食べすぎ・運動量に気をつけて）</span></>:<>目標まで あと <span className="yl-nowrap">{Math.abs(weightDiff).toFixed(1)}{weightUnit}</span></>}</p>)}
-                  {weightPts.length>=2?<MiniChart points={weightPts} unit={weightPts[weightPts.length-1].unit} color="#E39A5C" label={t("chart.weight")}/>:<p className="yl-routine-empty">{weightPts.length===1?t("health.chartSoon"):t("health.emptyPlus")}</p>}
+                  {weightPts.length>=2?(()=>{
+                    const wUnit=weightPts[weightPts.length-1].unit;
+                    const tBand=(isMemberTab&&weightGoalOk&&targetWeight!=="")?{lo:Number(targetWeight)*0.95,hi:Number(targetWeight)*1.05,target:Number(targetWeight)}:null;
+                    const bBand=(activeMember&&activeMember.personType==="baby"&&activeMember.birthday)?weightPts.map(p=>babyWeightBandAt(activeMember.birthday,p.date)):null;
+                    const hasBBand=!!(bBand&&bBand.some(b=>b));
+                    const bandNote=tBand?t("chart.targetBand"):hasBBand?t("chart.growthNote"):null;
+                    const convW=(pts)=>pts.map(p=>({date:p.date,value:p.unit===wUnit?p.value:(p.unit==="g"?Math.round(p.value/10)/100:p.value*1000)}));
+                    const candSrc=[...members.filter(m=>m.id!==tab).map(m=>({id:m.id,name:m.name})),...(tab!=="me"?[{id:"me",name:meName||t("otd.me")}]:[])];
+                    const memberCands=candSrc.map(c=>({...c,pts:items.filter(x=>x.space===c.id&&x.type==="health"&&x.weight!=null&&x.date).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(r=>({date:r.date,value:r.weight,unit:r.wunit||"kg"}))})).filter(c=>c.pts.length>=2);
+                    const series=[{points:weightPts.map(p=>({date:p.date,value:p.value})),color:"#E39A5C",label:(activeMember?activeMember.name:(meName||t("otd.me")))+" · "+t("chart.weight"),unit:wUnit,axis:"l"}];
+                    chartOverlay.forEach(k=>{
+                      if(k.indexOf("member:")===0){const c=memberCands.find(x=>x.id===k.slice(7));if(c)series.push({points:convW(c.pts),color:colorOf(c.id),label:c.name+" · "+t("chart.weight"),unit:wUnit,axis:"l"});}
+                      else if(k==="height"&&heightPts.length>=2)series.push({points:heightPts.map(p=>({date:p.date,value:p.value})),color:"#D98A4E",label:t("chart.height"),unit:"cm",axis:"r"});
+                      else if(k.indexOf("metric:")===0){const d=customDefs.find(x=>x.id===k.slice(7));if(d){const mp=metricPtsOf(tab,d.id);if(mp.length>=2)series.push({points:mp,color:"#5B7A9E",label:d.name,unit:d.unit,axis:"r"});}}
+                    });
+                    const overlayChips=[...memberCands.map(c=>({key:"member:"+c.id,label:c.name})),...(heightPts.length>=2?[{key:"height",label:t("chart.height")}]:[]),...customDefs.filter(d=>metricPtsOf(tab,d.id).length>=2).map(d=>({key:"metric:"+d.id,label:d.name}))];
+                    return(<>
+                      {chartOverlay.length>0?<MultiChart series={series} band={tBand} bandLabel={bandNote}/>:<MiniChart points={weightPts} unit={wUnit} color="#E39A5C" label={t("chart.weight")} band={tBand} bandPts={hasBBand?bBand:null} bandLabel={bandNote}/>}
+                      {overlayChips.length>0&&(<div className="yl-chart-overlayrow"><span className="yl-set-desc">{t("chart.overlay")}</span>{overlayChips.map(c=>(<button key={c.key} type="button" className={"yl-chip"+(chartOverlay.indexOf(c.key)>=0?" on":"")} onClick={()=>setChartOverlay(p=>p.indexOf(c.key)>=0?p.filter(x=>x!==c.key):[...p,c.key])}>{c.label}</button>))}</div>)}
+                    </>);
+                  })():<p className="yl-routine-empty">{weightPts.length===1?t("health.chartSoon"):t("health.emptyPlus")}</p>}
                   {isMemberTab&&heightPts.length>=2&&<MiniChart points={heightPts} unit="cm" color="#D98A4E" label={t("chart.height")}/>}
                   {bpPts.length>=2&&<MiniChart points={bpPts} unit="mmHg" color="#B23A48" label={t("chart.bpSys")}/>}
+                  {customDefs.map((d,di)=>{const mp=metricPtsOf(tab,d.id);return mp.length>=2?<MiniChart key={d.id} points={mp} unit={d.unit} color={["#5B7A9E","#3E8E8E","#8A6D9E","#7A8B4F","#C77A2E","#B23A48"][di%6]} label={d.name}/>:null;})}
                   {healthRecords.length>0&&(
                     <ul className="yl-health-list">
                       {[...healthRecords].reverse().slice(0,6).map(r=>(
                         <li key={r.id} className="yl-health-item">
                           <span className="yl-health-date">{fmtDate(r.date)}</span>
-                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.headCirc!=null&&<span>{t("health.headCirc")} {r.headCirc}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
+                          <span className="yl-health-vals">{r.weight!=null&&<span>{r.weight}{r.wunit||"kg"}</span>}{r.height!=null&&<span>{r.height}cm</span>}{r.headCirc!=null&&<span>{t("health.headCirc")} {r.headCirc}cm</span>}{(r.bpSys!=null||r.bpDia!=null)&&<span>{t("health.bpPrefix")}{r.bpSys??"–"}/{r.bpDia??"–"}</span>}{r.temp!=null&&<span>{r.temp}℃</span>}{r.glucose!=null&&<span>血糖{r.glucose}</span>}{r.metrics&&customDefs.map(d=>r.metrics[d.id]!=null?<span key={d.id}>{d.name} {r.metrics[d.id]}{d.unit}</span>:null)}{r.condition&&condMeta(r.condition)&&<span>{condMeta(r.condition).emoji}{condMeta(r.condition).label}</span>}</span>
                           {recBySpan(r)}
                           <button className="yl-health-del" onClick={()=>askDelete(t("health.recordOf",{date:fmtDate(r.date)}),()=>removeHealth(r.id))} aria-label={t("a11y.delete")}>×</button>
                         </li>
@@ -10139,7 +10647,7 @@ function App(){
                   <button className="yl-health-del" onClick={()=>removeFamilyNote(n.id)} aria-label={t("a11y.delete")}>×</button>
                 </li>);})}</ul>
             )}
-            <p className="yl-toxic-foot">※ この端末に保存される、家族の連絡帳です。</p>
+            <p className="yl-toxic-foot">{household?t("note.syncedFoot"):"※ この端末に保存される、家族の連絡帳です。"}</p>
           </div>
         </div>
       )}
@@ -10637,7 +11145,7 @@ function App(){
           </div>
         </div>
       )}
-      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={eEndDate} onChange={e=>setEEndDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>{const v=e.target.value;setERepeat(v);if(v==="weekly"&&(!eRepeatDays||!eRepeatDays.length))setERepeatDays([dowOf(eDate||todayIso)]);}}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>{renderRepeatDays(eRepeat,eRepeatDays,setERepeatDays,eDate)}</div>{(()=>{const cur=items.find(x=>x.id===editItemId);if(!cur||(cur.type!=="event"&&cur.type!=="care"))return null;return(<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(eEvCat===c.key?" on":"")} style={eEvCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setEEvCat(c.key)}>{c.emoji} {c.name}</button>)}</div></div>);})()}<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
+      {editItemId&&<div className="yl-overlay" onClick={()=>setEditItemId(null)}><div className="yl-modal edit" onClick={e=>e.stopPropagation()}><h3 className="yl-modal-title">{t("common.edit")}</h3><input className="yl-input" value={eTitle} onChange={e=>setETitle(e.target.value)} placeholder={t("ph.title")}/><div className="yl-optrow"><label className="yl-opt">{t("edit.due")}<input type="date" className="yl-date" value={eDate} onChange={e=>setEDate(e.target.value)}/></label><label className="yl-opt">{t("life.endDate")}<input type="date" className="yl-date" value={eEndDate} onChange={e=>setEEndDate(e.target.value)}/></label><label className="yl-opt">{t("life.time")}<TimeInput value={eTime} onChange={setETime}/></label><label className="yl-opt">{t("edit.endTime")}<TimeInput value={eEndTime} onChange={setEEndTime}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={eRepeat} onChange={e=>{const v=e.target.value;setERepeat(v);if(v==="weekly"&&(!eRepeatDays||!eRepeatDays.length))setERepeatDays([dowOf(eDate||todayIso)]);}}>{REPEATS.map(r=><option key={r.key} value={r.key}>{t("repeat."+r.key)}</option>)}</select></label>{renderRepeatDays(eRepeat,eRepeatDays,setERepeatDays,eDate)}</div>{(()=>{const cur=items.find(x=>x.id===editItemId);if(!cur||(cur.type!=="event"&&cur.type!=="care"))return null;return(<div className="yl-evcatrow"><span className="yl-notify-label"><Icon name="tag" size={14}/> {t("calcat.title")}</span><div className="yl-typerow" style={{flexWrap:"wrap",gap:6,marginTop:6}}>{allEvCats.map(c=><button key={c.key} type="button" className={"yl-chip"+(eEvCat===c.key?" on":"")} style={eEvCat===c.key?{background:c.color,color:"#fff",borderColor:"transparent"}:undefined} onClick={()=>setEEvCat(c.key)}>{c.emoji} {c.name}</button>)}</div></div>);})()}<div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> {t("set.notifications")}</span><div className="yl-notify-chips">{REMINDER_OPTS.map(o=><button key={o.key} className={"yl-nchip"+(eReminders.includes(o.key)?" on":"")} onClick={()=>toggleEReminder(o.key)}>{t("remind."+o.key)}</button>)}</div>{eReminders.length>=4&&<p className="yl-notify-hint">{t("life.notifyHint")}</p>}</div><button type="button" className="yl-detail-toggle" onClick={()=>setEDetailOpen(o=>!o)} aria-expanded={eDetailOpen}><Icon name="plus" size={13}/> {t("edit.details")}<span className="yl-colorpick-caret">{eDetailOpen?"▲":"▼"}</span></button><div className="yl-detailfields" style={eDetailOpen?undefined:{display:"none"}}><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pin" size={13}/> {t("edit.place")}</span><input className="yl-input sm" value={ePlace} onChange={e=>setEPlace(e.target.value)} placeholder={t("edit.placePh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="link" size={13}/> URL</span><input className="yl-input sm" type="url" inputMode="url" value={eUrl} onChange={e=>setEUrl(e.target.value)} placeholder={t("edit.urlPh")}/></label><label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="note" size={13}/> {t("edit.memo")}</span><textarea className="yl-input sm yl-detail-memo" value={eMemo} onChange={e=>setEMemo(e.target.value)} placeholder={t("edit.memoPh")} rows={3}/></label>{(items.find(x=>x.id===editItemId)||{}).type==="care"&&<label className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="pill" size={13}/> {t("edit.stock")}</span><input className="yl-input sm" type="number" inputMode="numeric" min="0" value={eStock} onChange={e=>setEStock(e.target.value)} placeholder={((items.find(x=>x.id===editItemId)||{}).space==="me"||(members.find(m=>m.id===(items.find(x=>x.id===editItemId)||{}).space)||{}).kind==="person")?t("edit.stockPhPerson"):t("edit.stockPh")}/></label>}<div className="yl-detail-field"><span className="yl-detail-flabel"><Icon name="check" size={13}/> {t("edit.checklist")}</span>{eChecklist.length>0&&<ul className="yl-clist">{eChecklist.map(c=>(<li key={c.id} className="yl-clist-item"><button type="button" className={"yl-clist-box"+(c.done?" on":"")} onClick={()=>toggleECheck(c.id)} aria-label={t("a11y.check")}><svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></button><span className={"yl-clist-text"+(c.done?" done":"")}>{c.text}</span><button type="button" className="yl-clist-del" onClick={()=>removeECheck(c.id)} aria-label={t("a11y.delete")}>×</button></li>))}</ul>}<div className="yl-clist-add"><input className="yl-input sm" value={eCheckDraft} onChange={e=>setECheckDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addECheck();}}} placeholder={t("edit.checkAddPh")}/><button type="button" className="yl-addbtn sm" onClick={addECheck}>＋</button></div></div></div><div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setEditItemId(null)}>{t("common.close")}</button><button className="yl-addbtn modal" onClick={saveEdit}>{t("common.save")}</button></div></div></div>}
       {viewer&&<div className="yl-pv" role="dialog" aria-label={viewerTitle(viewer)}><div className="yl-pv-head"><span className="yl-pv-title">{viewerTitle(viewer)}</span><button className="yl-pv-close" onClick={()=>setViewer(null)} aria-label={t("viewer.close")}>×</button></div>{viewer.loading?<p className="yl-loading" style={{color:"#FFF7E8"}}>{t("viewer.loading")}</p>:viewer.src?<div className={"yl-pv-scroll"+(pvZoom>1?" zoomed":"")} onDoubleClick={()=>setPvZoom(z=>z>1?1:2.5)}><img className="yl-pv-img" src={viewer.src} alt={viewerTitle(viewer)} style={pvZoom>1?{width:(pvZoom*100)+"%"}:undefined} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setPvZoom(z=>Math.min(4,Math.max(1,z*(e.deltaY<0?1.15:0.87))));}}} onTouchStart={e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pvPinchRef.current={d:Math.hypot(dx,dy),z:pvZoom};}}} onTouchMove={e=>{if(e.touches.length===2&&pvPinchRef.current){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.hypot(dx,dy);if(pvPinchRef.current.d>0)setPvZoom(Math.min(4,Math.max(1,pvPinchRef.current.z*d/pvPinchRef.current.d)));}}} onTouchEnd={()=>{pvPinchRef.current=null;}}/></div>:<p className="yl-empty" style={{color:"#FFF7E8"}}>{t("viewer.notFound")}</p>}{viewer.src&&<p className="yl-pv-hint">{t("viewer.zoomHint")}</p>}{viewer.confirming?<><p className="yl-pv-confirm">{t("viewer.delConfirm")}</p><div className="yl-pv-btns"><button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:false}))}>{t("viewer.delCancel")}</button><button className="yl-modal-del" onClick={()=>viewer.isMemory?removeMemory(viewer.id):removePhoto(viewer.id)}>{t("viewer.delOk")}</button></div></>:<div className="yl-pv-btns">{viewer.src&&<button className="yl-modal-cancel" onClick={()=>setViewer(v=>({...v,confirming:true}))}>{t("viewer.del")}</button>}{viewer.isMemory&&viewer.src&&<button className="yl-modal-cancel" onClick={openMemoryShare}><Icon name="link" size={14}/> {t("share.memBtn")}</button>}<button className="yl-addbtn modal" onClick={()=>setViewer(null)}>{t("viewer.close")}</button></div>}</div>}
       {shareMemory&&(()=>{const it=shareMemory.item;const sp=it?spaces.find(s=>s.id===it.space):null;const dateStr=it&&it.date?fmtFullDateLoc(it.date,lang):"";const cap=it?(it.note||(it.title&&it.title!=="思い出"?it.title:"")):"";const who=it?(it.space==="me"?(meName||t("otd.me")):(nameOf(it.space)||t("otd.me"))):"";return(
         <div className="yl-overlay" onClick={()=>setShareMemory(null)}><div className="yl-modal" onClick={e=>e.stopPropagation()}>
@@ -11118,9 +11626,35 @@ function App(){
               </div>
             )}
             {isMemberTab&&weightUnit==="g"&&<p className="yl-health-hint">{t("health.smallAnimalHint")}</p>}
+            {customDefs.map(d=>(<label key={d.id} className="yl-opt">{d.name}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={healthMetrics[d.id]||""} onChange={e=>setHealthMetrics(p=>({...p,[d.id]:e.target.value}))} placeholder={t("health.optionalPh")}/>{d.unit&&<span className="yl-health-unit">{d.unit}</span>}</span></label>))}
+            <div className="yl-metric-defs">
+              <p className="yl-set-desc">{t("metric.title")}</p>
+              {customDefs.length>0&&<div className="yl-chiprow">{customDefs.map(d=>(<span key={d.id} className="yl-chip static">{d.name}{d.unit?"（"+d.unit+"）":""}<button type="button" className="yl-chip-x" aria-label={t("common.delete")} onClick={()=>removeCustomMetric(d.id)}>×</button></span>))}</div>}
+              <div className="yl-metric-add">
+                <input className="yl-input yl-metric-name" value={metricName} onChange={e=>setMetricName(e.target.value)} placeholder={t("metric.namePh")}/>
+                <input className="yl-input yl-metric-unit" value={metricUnit} onChange={e=>setMetricUnit(e.target.value)} placeholder={t("metric.unitPh")}/>
+                <button type="button" className="yl-btn sub" onClick={addCustomMetric}>{t("metric.add")}</button>
+              </div>
+            </div>
             {isMemberTab&&weightGoalOk&&<label className="yl-opt" style={{flexDirection:"row",alignItems:"center",gap:8,marginTop:14}}><Icon name="target" size={14}/> {t("health.targetWeight")}<span className="yl-health-field"><input type="number" inputMode="decimal" step="0.1" className="yl-health-num" value={targetWeight} onChange={e=>setMemberTarget(e.target.value)} placeholder={weightUnit==="g"?"25.3":"0.0"}/><span className="yl-health-unit">{weightUnit}</span></span></label>}
             {isMemberTab&&weightGoalOk&&<p className="yl-health-hint" style={{marginTop:4}}>{t("health.targetHint")}</p>}
             <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveHealth}><Icon name="scale" size={16}/> {t("health.saveBtn")}</button>
+            <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
+          </div>
+        </div>
+      )}
+      {inputSheet==="doc"&&(
+        <div className="yl-overlay" onClick={()=>setInputSheet(null)}>
+          <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
+            <h3 className="yl-modal-title">{t("docs.addTitle")}</h3>
+            <p className="yl-set-desc" style={{display:"flex",alignItems:"center",gap:5}}><Icon name="lock" size={13}/> {t("docs.deviceOnlyNote")}</p>
+            <div className="yl-chiprow" style={{margin:"10px 0"}}>{docKindsFor(curKind).map(k=>(<button key={k.k} type="button" className={"yl-chip"+(docKindS===k.k?" on":"")} onClick={()=>setDocKindS(k.k)}>{k.emoji} {k.label}</button>))}</div>
+            <label className="yl-opt">{t("docs.nameLabel")}<input className="yl-input" value={docTitleS} onChange={e=>setDocTitleS(e.target.value)} placeholder={curKind==="pet"?t("docs.namePhPet"):t("docs.namePhPerson")}/></label>
+            <label className="yl-opt">{t("docs.dateLabel")}<input type="date" className="yl-input" value={docDateS} onChange={e=>setDocDateS(e.target.value)}/></label>
+            <label className="yl-opt">{t("docs.expiryLabel")}<input type="date" className="yl-input" value={docExpiryS} onChange={e=>setDocExpiryS(e.target.value)}/></label>
+            <label className="yl-opt">{t("docs.noteLabel")}<input className="yl-input" value={docNoteS} onChange={e=>setDocNoteS(e.target.value)} placeholder={t("docs.notePh")}/></label>
+            <p className="yl-set-desc">{curKind==="pet"?t("docs.examplesPet"):t("docs.examplesPerson")}</p>
+            <button className="yl-addbtn" style={{width:"100%",padding:"13px",marginTop:6}} onClick={saveDoc}><Icon name="filetext" size={16}/> {t("docs.saveBtn")}</button>
             <div className="yl-modal-btns"><button className="yl-modal-cancel" onClick={()=>setInputSheet(null)}>{t("common.close")}</button></div>
           </div>
         </div>
@@ -11531,13 +12065,12 @@ function App(){
           <div className="yl-modal edit" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{t("rec.diaryTitle")}</h3>
             {!todayHasCond(tab)&&<button className="yl-quick-big" style={{marginBottom:12}} onClick={()=>{quickHealthy(tab);setInputSheet(null);}}><Icon name="check" size={18}/> {t("diary.quickHealthy")}</button>}
-            <p className="yl-diary-hint">{t("diary.hint")}</p>
             {(()=>{const dcfg=diaryConfigFor(diaryTypeOf(tab));const symList=diarySymptomsFor(diaryTypeOf(tab),tab==="me"?null:((members.find(x=>x.id===tab)||{}).gender||null));const has=k=>dcfg.rows.includes(k);return(<>
-            {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.energy")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="baby"?DIARY_ENERGY_BABY:DIARY_ENERGY).map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
-            {(diaryDraft.energy==="bad"||diaryDraft.energy==="mood_cry")&&<p className="yl-diary-danger"><Icon name="alert" size={13}/> {t("diary.dangerSign")}</p>}
+            {has("energy")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.energy")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="baby"?DIARY_ENERGY_BABY:DIARY_ENERGY.filter(c=>c.key!=="bad"||diaryDraft.energy==="bad")).map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.energy===c.key?" on":"")} onClick={()=>setDiary({energy:diaryDraft.energy===c.key?"":c.key})}><Icon name={ENERGY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
+            {(diaryDraft.energy==="bad"||diaryDraft.energy==="mood_cry"||(diaryDraft.symptoms||[]).indexOf("limp")>=0)&&<p className="yl-diary-danger"><Icon name="alert" size={13}/> {diaryTypeOf(tab)==="pet"?t("diary.dangerSignPet"):t("diary.dangerSign")}</p>}
             {has("appetite")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.appetite")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="baby"?DIARY_APPETITE_BABY:DIARY_APPETITE).map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.appetite===c.key?" on":"")} onClick={()=>setDiary({appetite:diaryDraft.appetite===c.key?"":c.key})}><Icon name="utensils" size={15}/> {lblOf(c)}</button>)}</span></div>}
             {has("poop")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.poop")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="baby"?DIARY_POOP_BABY:DIARY_POOP).map(c=><button key={c.key} className={"yl-diary-chip"+(diaryDraft.poop===c.key?" on":"")} onClick={()=>setDiary({poop:diaryDraft.poop===c.key?"":c.key})}><Icon name={POOP_DIARY_ICON[c.key]} size={15}/> {lblOf(c)}</button>)}</span></div>}
-            {has("sleep")&&<div className={"yl-diary-row"+(sleepHl?" hl":"")} id="yl-diary-sleep-row"><span className="yl-diary-label">{t("diary.sleep")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="adult"||diaryTypeOf(tab)==="senior"?["6","7","8"]:diaryTypeOf(tab)==="child"?["9","10","11"]:diaryTypeOf(tab)==="baby"?["12","13","14"]:["9","10","11","12"]).map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {t("diary.hours",{h})}</button>)}<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder={t("diary.hoursPh")}/>{t("diary.hoursSuffix")}</span></span></div>}
+            {has("sleep")&&<div className={"yl-diary-row"+(sleepHl?" hl":"")} id="yl-diary-sleep-row"><span className="yl-diary-label">{t("diary.sleep")}</span><span className="yl-diary-chips">{(diaryTypeOf(tab)==="adult"||diaryTypeOf(tab)==="senior"?["6","7","8"]:diaryTypeOf(tab)==="child"?["9","10","11"]:diaryTypeOf(tab)==="baby"?["12","13","14"]:["9","10","11","12"]).map(h=><button key={h} className={"yl-diary-chip"+(diaryDraft.sleep===h?" on":"")} onClick={()=>setDiary({sleep:diaryDraft.sleep===h?"":h})}><Icon name="moon" size={15}/> {t("diary.hours",{h})}</button>)}<span className={"yl-diary-sleepnum"+(diaryDraft.sleep&&(diaryTypeOf(tab)==="adult"||diaryTypeOf(tab)==="senior"?["6","7","8"]:diaryTypeOf(tab)==="child"?["9","10","11"]:diaryTypeOf(tab)==="baby"?["12","13","14"]:["9","10","11","12"]).indexOf(String(diaryDraft.sleep))<0?" on":"")}><input type="number" inputMode="numeric" min="0" max="24" className="yl-health-num" value={diaryDraft.sleep} onChange={e=>setDiary({sleep:e.target.value})} placeholder={t("diary.hoursPh")}/>{t("diary.hoursSuffix")}</span></span></div>}
             {has("exercise")&&<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.exercise")}</span><span className="yl-diary-chips">{exerciseActsFor(diaryTypeOf(tab)).map(a=><button key={a.key} className={"yl-diary-chip"+(diaryDraft.exAct===a.key?" on":"")} onClick={()=>setDiary({exAct:diaryDraft.exAct===a.key?"":a.key})}>{a.emoji} {lblOf(a)}</button>)}{diaryDraft.exAct&&<span className="yl-diary-sleepnum"><input type="number" inputMode="numeric" min="0" max="600" className="yl-health-num" value={diaryDraft.exMin} onChange={e=>setDiary({exMin:e.target.value})} placeholder={t("diary.minPh")}/>{t("diary.minSuffix")}</span>}{diaryDraft.exAct==="other"&&<span className="yl-diary-sleepnum"><input type="text" className="yl-health-num" style={{width:150,textAlign:"left"}} value={diaryDraft.exName} onChange={e=>setDiary({exName:e.target.value})} placeholder={t("diary.exNamePh")}/></span>}</span></div>}
             {(has("walk")||has("hospital"))&&<div className="yl-diary-row"><span className="yl-diary-label">{has("hospital")?t("diary.clinicRow"):t("diary.other")}</span><span className="yl-diary-chips">{has("walk")&&<button className={"yl-diary-chip"+(diaryDraft.walk?" on":"")} onClick={()=>setDiary({walk:!diaryDraft.walk})}><Icon name="paw" size={15}/> {t("diary.walk")}</button>}{has("hospital")&&<button className={"yl-diary-chip"+(diaryDraft.hospital?" on":"")} onClick={()=>setDiary({hospital:!diaryDraft.hospital})}><Icon name="activity" size={15}/> {t("diary.hospital")}</button>}{has("hospital")&&diaryTypeOf(tab)!=="pet"&&<button className={"yl-diary-chip"+(diaryDraft.vaccine?" on":"")} onClick={()=>setDiary({vaccine:!diaryDraft.vaccine})}><Icon name="syringe" size={15}/> {t("diary.vaccinated")}</button>}</span></div>}
             {symList.length>0&&(()=>{const selSym=diaryDraft.symptoms||[];const headSym=selSym.filter(s=>symList.includes(s));const visSym=symOpen?symList:[...headSym,...symList.filter(s=>!headSym.includes(s)).slice(0,3)];return(<div className="yl-diary-row"><span className="yl-diary-label">{t("diary.symptoms")}</span><span className="yl-diary-chips">{visSym.map(sk=>{const s=SYMPTOMS[sk];return s&&<button key={sk} className={"yl-diary-chip"+(selSym.includes(sk)?" on sym":"")} onClick={()=>toggleSymptom(sk)}><Icon name={symIcon(sk)} size={15}/> {lblOf(s)}</button>;})}{(symOpen||visSym.length<symList.length)&&<button className="yl-diary-chip" onClick={()=>setSymOpen(o=>!o)} aria-expanded={symOpen}>{t("diary.moreSymptoms")} {symOpen?"▲":"▼"}</button>}</span></div>);})()}
@@ -11576,7 +12109,7 @@ function App(){
             <div className="yl-belong-add">
               {effScope==="dow"&&<select className="yl-select" value={belongDow} onChange={e=>setBelongDow(Number(e.target.value))}>{weekdaysShort.map((w,i)=><option key={i} value={i}>{w}{t("belong.dowSuffix")}</option>)}</select>}
               {effScope==="occasion"&&<select className="yl-select" value={belongOcc} onChange={e=>setBelongOcc(e.target.value)}>{[["dayservice",t("belong.occDay")],["clinic",t("belong.occClinic")],["outing",t("belong.occOut")]].map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>}
-              <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder={t("belong.addPh")}/>
+              <input className="yl-input sm" value={belongDraft} onChange={e=>setBelongDraft(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addBelonging()} placeholder={isPet?t("belong.addPhPet"):pt==="baby"?t("belong.addPhBaby"):pt==="senior"?t("belong.addPhSenior"):t("belong.addPh")}/>
               <button className="yl-addbtn sm" onClick={()=>{if(belongScope!==effScope)setBelongScope(effScope);addBelonging();}}>{t("common.add")}</button>
             </div>
             <div className="yl-belong-presets"><span className="yl-med-optlabel">{t("belong.presets")}</span>{belongPresetsFor(activeMember).map(pz=><button key={pz.title} className="yl-diary-chip" onClick={()=>setBelongDraft(pz.title)}>{pz.emoji} {pz.title}</button>)}</div>
@@ -11785,8 +12318,9 @@ function App(){
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{routineEdit.id?"ルーティンを編集":"ルーティンを追加"}</h3>
             <div className="yl-routine-emojirow">{(ROUTINE_EMOJIS[normKind(routineEdit.space==="me"?"me":(members.find(m=>m.id===routineEdit.space)||{}).kind)]).map(e=><button key={e} className={"yl-emoji"+(routineEdit.emoji===e?" on":"")} onClick={()=>setRoutineEdit(p=>{const kind=normKind(p.space==="me"?"me":(members.find(m=>m.id===p.space)||{}).kind);const nt=presetTitleFollow(p.title,routineEmojiTitle(kind,p.emoji),routineEmojiTitle(kind,e));return{...p,emoji:e,title:nt};})}>{e}</button>)}</div>
-            <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder={t("rec.routinePh")}/>
-            <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label></div>
+            <input className="yl-input" value={routineEdit.title} onChange={e=>setRoutineEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveRoutine()} placeholder={(routineEdit.space==="me"||(members.find(m=>m.id===routineEdit.space)||{}).kind==="person")?t("rec.routinePhPerson"):t("rec.routinePh")}/>
+            <div className="yl-optrow"><label className="yl-opt">{t("life.time")}<TimeInput value={routineEdit.time} onChange={t=>setRoutineEdit(p=>({...p,time:t}))}/></label><label className="yl-opt">{t("life.repeat")}<select className="yl-select" value={routineEdit.repeat||"daily"} onChange={e=>{const v=e.target.value;setRoutineEdit(p=>({...p,repeat:v,repeatDays:v==="weekly"&&(!p.repeatDays||!p.repeatDays.length)?[dowOf(todayIso)]:p.repeatDays}));}}>{["daily","weekly"].map(k=><option key={k} value={k}>{t("repeat."+k)}</option>)}</select></label></div>
+            {renderRepeatDays(routineEdit.repeat||"daily",routineEdit.repeatDays||null,v=>setRoutineEdit(p=>({...p,repeatDays:v})),todayIso)}
             <div className="yl-notify"><span className="yl-notify-label"><Icon name="bell" size={14}/> リマインド{notifPerm==="default"&&<button className="yl-notif-small" onClick={handleNotifRequest}>許可する</button>}</span><div className="yl-notify-chips">{REMINDER_OPTS.filter(o=>o.key!==1440).map(o=><button key={o.key} className={"yl-nchip"+(routineEdit.reminders.includes(o.key)?" on":"")} onClick={()=>toggleRoutineReminder(o.key)}>{o.label}</button>)}</div>{routineEdit.reminders.length>=4&&<p className="yl-notify-hint">🔔が多いと見落としがち。必要なぶんだけに。</p>}</div>
             <div className="yl-modal-btns">
               {routineEdit.id&&<button className="yl-modal-danger" onClick={()=>askDelete(routineEdit.title,()=>removeRoutine(routineEdit.id))}>削除</button>}
@@ -11801,7 +12335,7 @@ function App(){
           <div className="yl-modal edit routine" onClick={e=>e.stopPropagation()}>
             <h3 className="yl-modal-title">{supplyEdit.id?"ストックを編集":"ストックを追加"}</h3>
             <div style={{marginBottom:12}}><button type="button" className="yl-emoji-current" onClick={()=>setSupplyEmojiOpen(o=>!o)} aria-expanded={supplyEmojiOpen}>{supplyEdit.emoji}<span className="yl-colorpick-caret">{supplyEmojiOpen?"▲":"▼"}</span></button>{supplyEmojiOpen&&<div className="yl-emoji-grid" style={{marginTop:8}}>{supplyEmojisFor(supplyEdit.space==="me"?"me":normKind((members.find(m=>m.id===supplyEdit.space)||{}).kind)).map(e=><button key={e} type="button" className={"yl-emoji-pick"+(supplyEdit.emoji===e?" on":"")} onClick={()=>{setSupplyEdit(p=>{const mem=p.space==="me"?null:(members.find(m=>m.id===p.space)||{});const kind=normKind(p.space==="me"?"me":(mem||{}).kind);const tpls=supplyTemplatesFor(kind,mem?mem.personType:null);const nt=presetTitleFollow(p.title,presetTitleForEmoji(tpls,p.emoji),presetTitleForEmoji(tpls,e));return{...p,emoji:e,title:nt};});setSupplyEmojiOpen(false);}}>{e}</button>)}</div>}</div>
-            <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={t("supply.namePh")}/>
+            <input className="yl-input" value={supplyEdit.title} onChange={e=>setSupplyEdit(p=>({...p,title:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&saveSupply()} placeholder={supplyNamePhOf(supplyEdit.space)}/>
             <div className="yl-optrow">
               <label className="yl-opt">最後に買った日<input type="date" className="yl-date" value={supplyEdit.lastBought} onChange={e=>setSupplyEdit(p=>({...p,lastBought:e.target.value}))}/></label>
               <label className="yl-opt">消費サイクル<select className="yl-select" value={supplyEdit.cycleDays} onChange={e=>setSupplyEdit(p=>({...p,cycleDays:Number(e.target.value)}))}>{SUPPLY_CYCLES.map(d=><option key={d} value={d}>{d}日</option>)}</select></label>
