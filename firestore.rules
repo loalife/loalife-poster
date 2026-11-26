@@ -18,6 +18,17 @@ rules_version = '2';
 //   5. 家族の新規作成・参加・招待コード作成はメール確認済み（または Google）ユーザーのみ。
 //      ※ 退出と、既存メンバーによる自分のデータ更新は従来どおり（ロックアウト防止）。
 //  変更時は Firebase エミュレータで「作成→参加→退出」と既存データ更新の回帰を必ず確認すること。
+//
+//  追加（2026-11-26・残りのギャップバッチ）— 上記5条件は不変のまま:
+//   6. シッター期間限定共有: sitterGrants/{code}（get のみ・list 禁止・作成は確認済み
+//      本人・削除＝失効は作成者のみ）。シッターは memberUids には入らず、世帯ドキュメントの
+//      sitters マップ（uid→{memberIds, canWrite, expiresAt}）で管理する。参加は
+//      グラント文書の内容と一致する自分のエントリ追加のみ許可（コード証明相当）。
+//      読み取り・書き込みは全て expiresAt > request.time をルール側で強制するため、
+//      期限切れ・失効後はクライアントの状態にかかわらずアクセスできない。
+//   7. 家族ノート: households/{hid}/notes（世帯メンバーのみ読み書き、削除は本人/オーナー）。
+//   8. memberProfiles: 参加者表示名は「自分のエントリだけ」を差分で制限して更新可
+//      （memberUids / ownerUid / inviteCode は変更不可のまま）。
 // ============================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -72,6 +83,85 @@ service cloud.firestore {
         && req.resource.data.memberUids.size() == before.data.memberUids.size() - 1;
     }
 
+    // ─── シッター（期間限定共有）ヘルパー ─────────────────────────
+    // 世帯ドキュメントのデータに対して、自分のシッターエントリが有効期限内か。
+    function sitterActiveIn(data) {
+      return request.auth != null
+        && ('sitters' in data)
+        && (request.auth.uid in data.sitters)
+        && data.sitters[request.auth.uid].expiresAt is timestamp
+        && data.sitters[request.auth.uid].expiresAt > request.time;
+    }
+
+    // サブコレクション用：世帯ドキュメントを get して判定する。
+    function isActiveSitter(hid) {
+      return sitterActiveIn(get(/databases/$(database)/documents/households/$(hid)).data);
+    }
+
+    // シッターがそのメンバーを見られるか（期限内＋対象メンバーに含まれる）。
+    function sitterCanSeeMember(hid, memberId) {
+      let h = get(/databases/$(database)/documents/households/$(hid)).data;
+      return sitterActiveIn(h)
+        && ('memberIds' in h.sitters[request.auth.uid])
+        && memberId in h.sitters[request.auth.uid].memberIds;
+    }
+
+    // シッターが記録もできるか（canWrite）。
+    function sitterCanWrite(hid) {
+      let h = get(/databases/$(database)/documents/households/$(hid)).data;
+      return sitterActiveIn(h) && h.sitters[request.auth.uid].canWrite == true;
+    }
+
+    // シッター参加：memberUids は不変のまま、sitterUids と sitters に自分のエントリを
+    // 1つだけ追加する。エントリ内容は sitterGrants のグラント文書（世帯オーナー作成・
+    // 未期限）と完全一致すること（グラントの改ざん・他世帯への流用を防ぐ）。
+    function isSitterSelfJoin(hid, before, req) {
+      let hasProof = ('sitterProof' in req.resource.data) && req.resource.data.sitterProof is string;
+      let g = hasProof ? get(/databases/$(database)/documents/sitterGrants/$(req.resource.data.sitterProof)).data : {};
+      let bs = ('sitters' in before.data) ? before.data.sitters : {};
+      let bu = ('sitterUids' in before.data) ? before.data.sitterUids : [];
+      return hasProof
+        && ('householdId' in g) && g.householdId == hid
+        && g.ownerUid == before.data.ownerUid
+        && g.expiresAt is timestamp && g.expiresAt > request.time
+        && req.resource.data.memberUids == before.data.memberUids
+        && !(request.auth.uid in bu)
+        && (request.auth.uid in req.resource.data.sitterUids)
+        && req.resource.data.sitterUids.hasAll(bu)
+        && req.resource.data.sitterUids.size() == bu.size() + 1
+        && ('sitters' in req.resource.data)
+        && req.resource.data.sitters.diff(bs).affectedKeys().hasOnly([request.auth.uid])
+        && (request.auth.uid in req.resource.data.sitters)
+        && req.resource.data.sitters[request.auth.uid].memberIds == g.memberIds
+        && req.resource.data.sitters[request.auth.uid].canWrite == g.canWrite
+        && req.resource.data.sitters[request.auth.uid].expiresAt == g.expiresAt;
+    }
+
+    // シッター退出：memberUids は不変のまま、自分のエントリだけを外す（確認要件なし＝
+    // ロックアウト防止。通常退出と同じ扱い）。
+    function isSitterSelfLeave(before, req) {
+      let bs = ('sitters' in before.data) ? before.data.sitters : {};
+      let bu = ('sitterUids' in before.data) ? before.data.sitterUids : [];
+      return (request.auth.uid in bu)
+        && req.resource.data.memberUids == before.data.memberUids
+        && !(request.auth.uid in req.resource.data.sitterUids)
+        && bu.hasAll(req.resource.data.sitterUids)
+        && req.resource.data.sitterUids.size() == bu.size() - 1
+        && (request.auth.uid in bs)
+        && req.resource.data.sitters.diff(bs).affectedKeys().hasOnly([request.auth.uid])
+        && !(request.auth.uid in req.resource.data.sitters);
+    }
+
+    // 参加者プロフィール（表示名・メール）の自己更新：変更できるのは memberProfiles の
+    // 自分のエントリだけ。他の全フィールド（memberUids 含む）は差分ゼロを強制する。
+    function isProfileSelfUpdate(before, req) {
+      let bp = ('memberProfiles' in before.data) ? before.data.memberProfiles : {};
+      return (request.auth.uid in before.data.memberUids)
+        && ('memberProfiles' in req.resource.data)
+        && req.resource.data.diff(before.data).affectedKeys().hasOnly(['memberProfiles'])
+        && req.resource.data.memberProfiles.diff(bp).affectedKeys().hasOnly([request.auth.uid]);
+    }
+
     // ─── User profiles ───────────────────────────────────────────
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
@@ -98,6 +188,26 @@ service cloud.firestore {
         request.resource.data.householdId is string;
       // 更新/削除はクライアントから不可（将来の失効はサーバー側で）。
       allow update, delete: if false;
+    }
+
+    // ─── Sitter grants （シッター期間限定共有の招待） ──────────────
+    // 家族共有とは別の、期間限定・対象メンバー限定・権限つきの招待コード。
+    // inviteCodes と同じ規律：get のみ（参加時の解決用）・list（列挙）禁止。
+    // 作成は確認済みユーザーが自分の ownerUid のものだけ（期限は timestamp 必須・未来）。
+    // 更新は不可。削除（＝失効）は作成者のみ。
+    // 参加の実体は households 側の isSitterSelfJoin がグラント内容と照合する。
+    match /sitterGrants/{code} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if verified() &&
+        request.auth.uid == request.resource.data.ownerUid &&
+        request.resource.data.householdId is string &&
+        request.resource.data.memberIds is list &&
+        request.resource.data.expiresAt is timestamp &&
+        request.resource.data.expiresAt > request.time;
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerUid;
     }
 
     // ─── Public pet cards （公開名刺ページ） ──────────────────────
@@ -158,9 +268,10 @@ service cloud.firestore {
 
     // ─── Households ───────────────────────────────────────────────
     match /households/{hid} {
-      // Any member can read the household doc
+      // Any member can read the household doc。有効期限内のシッターも世帯ドキュメント
+      // 自体は読める（対象メンバー・権限・期限の表示に必要）。
       allow read: if request.auth != null &&
-        request.auth.uid in resource.data.memberUids;
+        (request.auth.uid in resource.data.memberUids || sitterActiveIn(resource.data));
 
       // 作成：確認済みユーザーが、自分を唯一のメンバーとして作る
       allow create: if verified() &&
@@ -179,9 +290,41 @@ service cloud.firestore {
           isSelfLeave(resource, request)
         );
 
+      // シッター参加（確認済み・グラント証明つき。memberUids は不変）。
+      // 個別の allow 文に分ける：グラント文書が無い場合の get() エラーが、
+      // 通常の参加・退出の判定へ波及しないようにするため。
+      allow update: if verified() &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.inviteCode == resource.data.inviteCode &&
+        isSitterSelfJoin(hid, resource, request);
+
+      // シッター退出（確認要件なし＝ロックアウト防止。通常退出と同じ扱い）。
+      allow update: if request.auth != null &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.inviteCode == resource.data.inviteCode &&
+        isSitterSelfLeave(resource, request);
+
+      // 参加者プロフィールの自己更新（自分の表示名エントリだけ・他は差分ゼロ）。
+      allow update: if request.auth != null &&
+        isProfileSelfUpdate(resource, request);
+
       // Only owner can delete
       allow delete: if request.auth != null &&
         request.auth.uid == resource.data.ownerUid;
+
+      // ─── Family notes （家族ノートの世帯同期） ───────────────────
+      // 「わたし」タブの家族ノートを世帯内で共有する実体。読み取りは世帯メンバーのみ
+      // （シッターは対象外）。作成・更新は記録者本人、削除は本人または世帯オーナー。
+      match /notes/{noteId} {
+        allow read: if isMember(hid);
+        allow create: if isMember(hid) &&
+          request.auth.uid == request.resource.data.ownerUid;
+        allow update: if isMember(hid) &&
+          request.auth.uid == resource.data.ownerUid;
+        allow delete: if isMember(hid) &&
+          (request.auth.uid == resource.data.ownerUid ||
+           request.auth.uid == householdOwnerUid(hid));
+      }
 
       // ─── Household members ──────────────────────────────────────
       match /members/{memberId} {
@@ -192,10 +335,12 @@ service cloud.firestore {
         // where("ownerUid","==",自分のuid) の2クエリに分けて取得し、それぞれ
         // 下記 OR の片方で証明できる。単一ドキュメント get の意味は従来と同一
         // （共有設定の子、または自分の子だけが読める。秘匿の範囲は変わらない）。
-        allow read: if isMember(hid) &&
-          (resource.data.visibility == "household" || resource.data.ownerUid == request.auth.uid);
+        allow read: if (isMember(hid) &&
+          (resource.data.visibility == "household" || resource.data.ownerUid == request.auth.uid)) ||
+          sitterCanSeeMember(hid, memberId);
 
         // Create: must be a household member and own the record
+        // （シッターはメンバー自体を作れない）
         allow create: if isMember(hid) &&
           request.auth.uid == request.resource.data.ownerUid;
 
@@ -212,12 +357,18 @@ service cloud.firestore {
 
         // ─── Member items ─────────────────────────────────────────
         match /items/{itemId} {
-          // Readable if parent member is visible to current user
-          allow read: if isMember(hid) && memberVisible(hid, memberId);
+          // Readable if parent member is visible to current user。
+          // シッターは対象メンバー配下だけ（期限・対象はルール側で強制）。
+          allow read: if (isMember(hid) && memberVisible(hid, memberId)) ||
+            sitterCanSeeMember(hid, memberId);
 
-          // Create: must be a household member and own the item
-          allow create: if isMember(hid) &&
-            request.auth.uid == request.resource.data.ownerUid;
+          // Create: must be a household member and own the item。
+          // シッターは canWrite のときだけ、対象メンバー配下へ自分の ownerUid で作成可。
+          // 既存アイテムの更新・削除はシッター不可（記録の追加だけ）。
+          allow create: if (isMember(hid) &&
+            request.auth.uid == request.resource.data.ownerUid) ||
+            (sitterCanSeeMember(hid, memberId) && sitterCanWrite(hid) &&
+             request.auth.uid == request.resource.data.ownerUid);
 
           // Update: only the owner
           allow update: if isMember(hid) &&
@@ -244,11 +395,16 @@ service cloud.firestore {
         // 削除は items と同じ3者（アップロード本人・世帯オーナー・メンバー作成者）で、
         // 記録削除・メンバー削除に伴う後始末を通す。
         match /photos/{photoId} {
-          allow read: if isMember(hid) && memberVisible(hid, memberId);
-          allow create: if isMember(hid) &&
+          allow read: if (isMember(hid) && memberVisible(hid, memberId)) ||
+            sitterCanSeeMember(hid, memberId);
+          allow create: if (isMember(hid) &&
             request.auth.uid == request.resource.data.ownerUid &&
             request.resource.data.data is string &&
-            request.resource.data.data.size() <= 700000;
+            request.resource.data.data.size() <= 700000) ||
+            (sitterCanSeeMember(hid, memberId) && sitterCanWrite(hid) &&
+             request.auth.uid == request.resource.data.ownerUid &&
+             request.resource.data.data is string &&
+             request.resource.data.data.size() <= 700000);
           allow update: if isMember(hid) &&
             request.auth.uid == resource.data.ownerUid &&
             request.auth.uid == request.resource.data.ownerUid &&
