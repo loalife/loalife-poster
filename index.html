@@ -2652,7 +2652,17 @@ html.yl-lock,body.yl-lock{overflow:hidden!important;overscroll-behavior:none}
 .yl-colorrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px;}
 .yl-colordot-btn{width:26px;height:26px;border-radius:99px;border:2px solid transparent;cursor:pointer;padding:0;}
 .yl-colordot-btn.on{border-color:var(--text);box-shadow:0 0 0 2px var(--card);}
-
+/* レイアウト修正バッチ(2026-11-26): 横並びフォーム行のはみ出し・圧迫の修正 */
+/* おこづかい帳：金額欄は内容幅に抑え、メモ欄が残り幅を使う（メモ欄のプレースホルダ圧迫の解消） */
+.yl-allow-row .yl-exp-amt{flex:0 1 126px;}
+.yl-allow-row .yl-input{flex:1 1 0;min-width:0;}
+/* ¥金額欄（おこづかい帳・支出モーダル共通）：外枠自体にカード背景を持たせ、中の入力は透明にして
+   「白い箱が透明な外枠に重なる」二重箱の見た目を解消する（授乳ml欄 .yl-nursing-mlbox と同じ方式） */
+.yl-exp-amt{background:var(--card);}
+.yl-exp-amt .yl-health-num{background:transparent;}
+/* お手伝いポイント：pt入力（72px）がラッパー（64px）より広く、右にはみ出していた */
+.yl-points-ptin{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;width:auto;}
+.yl-points-ptin .yl-health-num{width:54px;}
 </style>
 <script>if("serviceWorker" in navigator && !window.Capacitor){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
 </head>
